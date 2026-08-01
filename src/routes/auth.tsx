@@ -41,7 +41,10 @@ function AuthPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) return toast.error("Anmeldung fehlgeschlagen: " + error.message);
+    if (error) {
+      toast.error("Anmeldung fehlgeschlagen: " + error.message);
+      return;
+    }
     navigate({ to: "/dashboard", replace: true });
   }
 
@@ -54,8 +57,14 @@ function AuthPage() {
       options: { emailRedirectTo: window.location.origin },
     });
     setLoading(false);
-    if (error) return toast.error("Registrierung fehlgeschlagen: " + error.message);
-    if (data.session) return navigate({ to: "/dashboard", replace: true });
+    if (error) {
+      toast.error("Registrierung fehlgeschlagen: " + error.message);
+      return;
+    }
+    if (data.session) {
+      navigate({ to: "/dashboard", replace: true });
+      return;
+    }
     toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
   }
 
@@ -63,7 +72,10 @@ function AuthPage() {
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (result.error) return toast.error("Google-Anmeldung fehlgeschlagen.");
+    if (result.error) {
+      toast.error("Google-Anmeldung fehlgeschlagen.");
+      return;
+    }
     if (result.redirected) return;
     navigate({ to: "/dashboard", replace: true });
   }
