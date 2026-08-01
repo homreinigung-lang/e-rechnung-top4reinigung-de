@@ -14,7 +14,247 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      company_settings: {
+        Row: {
+          address_line: string
+          bank_name: string
+          bic: string
+          city: string
+          company_name: string
+          country: string
+          created_at: string
+          email: string
+          iban: string
+          id: string
+          payment_terms_days: number
+          phone: string
+          postal_code: string
+          tax_number: string
+          updated_at: string
+          user_id: string
+          vat_id: string
+        }
+        Insert: {
+          address_line?: string
+          bank_name?: string
+          bic?: string
+          city?: string
+          company_name?: string
+          country?: string
+          created_at?: string
+          email?: string
+          iban?: string
+          id?: string
+          payment_terms_days?: number
+          phone?: string
+          postal_code?: string
+          tax_number?: string
+          updated_at?: string
+          user_id: string
+          vat_id?: string
+        }
+        Update: {
+          address_line?: string
+          bank_name?: string
+          bic?: string
+          city?: string
+          company_name?: string
+          country?: string
+          created_at?: string
+          email?: string
+          iban?: string
+          id?: string
+          payment_terms_days?: number
+          phone?: string
+          postal_code?: string
+          tax_number?: string
+          updated_at?: string
+          user_id?: string
+          vat_id?: string
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          address_line: string
+          city: string
+          company: string
+          country: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          notes: string
+          phone: string
+          postal_code: string
+          updated_at: string
+          user_id: string
+          vat_id: string
+        }
+        Insert: {
+          address_line?: string
+          city?: string
+          company?: string
+          country?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name: string
+          notes?: string
+          phone?: string
+          postal_code?: string
+          updated_at?: string
+          user_id: string
+          vat_id?: string
+        }
+        Update: {
+          address_line?: string
+          city?: string
+          company?: string
+          country?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          notes?: string
+          phone?: string
+          postal_code?: string
+          updated_at?: string
+          user_id?: string
+          vat_id?: string
+        }
+        Relationships: []
+      }
+      document_items: {
+        Row: {
+          created_at: string
+          description: string
+          document_id: string
+          id: string
+          position: number
+          quantity: number
+          unit: string
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          document_id: string
+          id?: string
+          position?: number
+          quantity?: number
+          unit?: string
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          document_id?: string
+          id?: string
+          position?: number
+          quantity?: number
+          unit?: string
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_items_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          created_at: string
+          customer_address_line: string
+          customer_city: string
+          customer_company: string
+          customer_country: string
+          customer_email: string
+          customer_id: string | null
+          customer_name: string
+          customer_postal_code: string
+          customer_vat_id: string
+          due_date: string | null
+          id: string
+          intro_text: string
+          issue_date: string
+          notes: string
+          number: string
+          reverse_charge: boolean
+          sent_at: string | null
+          status: Database["public"]["Enums"]["doc_status"]
+          total: number
+          type: Database["public"]["Enums"]["doc_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_address_line?: string
+          customer_city?: string
+          customer_company?: string
+          customer_country?: string
+          customer_email?: string
+          customer_id?: string | null
+          customer_name?: string
+          customer_postal_code?: string
+          customer_vat_id?: string
+          due_date?: string | null
+          id?: string
+          intro_text?: string
+          issue_date?: string
+          notes?: string
+          number: string
+          reverse_charge?: boolean
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["doc_status"]
+          total?: number
+          type?: Database["public"]["Enums"]["doc_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_address_line?: string
+          customer_city?: string
+          customer_company?: string
+          customer_country?: string
+          customer_email?: string
+          customer_id?: string | null
+          customer_name?: string
+          customer_postal_code?: string
+          customer_vat_id?: string
+          due_date?: string | null
+          id?: string
+          intro_text?: string
+          issue_date?: string
+          notes?: string
+          number?: string
+          reverse_charge?: boolean
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["doc_status"]
+          total?: number
+          type?: Database["public"]["Enums"]["doc_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +263,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      doc_status:
+        | "draft"
+        | "sent"
+        | "paid"
+        | "accepted"
+        | "declined"
+        | "cancelled"
+      doc_type: "invoice" | "quote"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +397,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      doc_status: [
+        "draft",
+        "sent",
+        "paid",
+        "accepted",
+        "declined",
+        "cancelled",
+      ],
+      doc_type: ["invoice", "quote"],
+    },
   },
 } as const
