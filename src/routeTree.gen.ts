@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
@@ -36,6 +37,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEinstellungenRoute =
+  AuthenticatedEinstellungenRouteImport.update({
+    id: '/einstellungen',
+    path: '/einstellungen',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedKundenRoute = AuthenticatedKundenRouteImport.update({
   id: '/kunden',
   path: '/kunden',
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
@@ -76,6 +85,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
@@ -83,15 +93,29 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/dashboard' | '/kunden' | '/dokumente/$id' | '/dokumente/'
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/einstellungen'
+    | '/kunden'
+    | '/dokumente/$id'
+    | '/dokumente/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/kunden' | '/dokumente/$id' | '/dokumente'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/einstellungen'
+    | '/kunden'
+    | '/dokumente/$id'
+    | '/dokumente'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/einstellungen'
     | '/_authenticated/kunden'
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/dokumente/'
@@ -133,6 +157,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/einstellungen': {
+      id: '/_authenticated/einstellungen'
+      path: '/einstellungen'
+      fullPath: '/einstellungen'
+      preLoaderRoute: typeof AuthenticatedEinstellungenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kunden': {
       id: '/_authenticated/kunden'
       path: '/kunden'
@@ -159,6 +190,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
@@ -166,6 +198,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,

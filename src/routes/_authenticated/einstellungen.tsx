@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/einstellungen")({
@@ -43,7 +42,6 @@ const FIELDS = [
 function Einstellungen() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
-  const [footer, setFooter] = useState("");
 
   const { data } = useQuery({
     queryKey: ["company_settings"],
@@ -59,7 +57,6 @@ function Einstellungen() {
     const next: Record<string, string> = {};
     for (const f of FIELDS) next[f.key] = String((data as Record<string, unknown>)[f.key] ?? "");
     setForm(next);
-    setFooter(String(data.footer_note ?? ""));
   }, [data]);
 
   const save = useMutation({
@@ -70,7 +67,6 @@ function Einstellungen() {
       const payload = {
         ...form,
         payment_terms_days: Number(form["payment_terms_days"] || 14),
-        footer_note: footer,
         user_id: userId,
       };
       const { error } = await supabase
@@ -106,10 +102,6 @@ function Einstellungen() {
               />
             </div>
           ))}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="footer">Fußzeile</Label>
-          <Textarea id="footer" value={footer} onChange={(e) => setFooter(e.target.value)} />
         </div>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           Speichern
