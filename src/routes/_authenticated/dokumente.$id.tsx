@@ -303,16 +303,18 @@ function DokumentDetail() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {[
-            ["customer_company", "Firma"],
-            ["customer_name", "Ansprechpartner"],
-            ["customer_email", "E-Mail"],
-            ["customer_vat_id", "USt-IdNr. des Kunden"],
-            ["customer_address_line", "Straße und Hausnummer"],
-            ["customer_postal_code", "PLZ"],
-            ["customer_city", "Ort"],
-            ["customer_country", "Land"],
-          ].map(([key, label]) => (
+          {(
+            [
+              { key: "customer_company", label: "Firma" },
+              { key: "customer_name", label: "Ansprechpartner" },
+              { key: "customer_email", label: "E-Mail" },
+              { key: "customer_vat_id", label: "USt-IdNr. des Kunden" },
+              { key: "customer_address_line", label: "Straße und Hausnummer" },
+              { key: "customer_postal_code", label: "PLZ" },
+              { key: "customer_city", label: "Ort" },
+              { key: "customer_country", label: "Land" },
+            ] as const
+          ).map(({ key, label }) => (
             <div key={key} className="space-y-2">
               <Label htmlFor={key}>{label}</Label>
               <Input
@@ -322,6 +324,7 @@ function DokumentDetail() {
               />
             </div>
           ))}
+
         </div>
 
         <div className="space-y-3">
