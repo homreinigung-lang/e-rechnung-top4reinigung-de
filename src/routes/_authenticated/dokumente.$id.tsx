@@ -21,6 +21,7 @@ import {
   STATUS_LABEL,
   formatDate,
   formatMoney,
+  formatNumber,
 } from "@/lib/format";
 import { ArrowLeft, Mail, Plus, Printer, Save, Trash2 } from "lucide-react";
 
@@ -201,7 +202,7 @@ function DokumentDetail() {
       ``,
       ...items.map(
         (i, n) =>
-          `${n + 1}. ${i.description} – ${i.quantity} ${i.unit} × ${formatMoney(i.unit_price)} = ${formatMoney(i.quantity * i.unit_price)}`,
+          `${n + 1}. ${i.description} – ${formatNumber(i.quantity)} ${i.unit} × ${formatMoney(i.unit_price)} = ${formatMoney(i.quantity * i.unit_price)}`,
       ),
       ``,
       `Gesamtbetrag: ${formatMoney(total)}`,
@@ -491,7 +492,7 @@ function DokumentDetail() {
                 <td className="py-2">{n + 1}</td>
                 <td className="py-2">{i.description}</td>
                 <td className="py-2 text-right">
-                  {i.quantity} {i.unit}
+                  {formatNumber(i.quantity)} {i.unit}
                 </td>
                 <td className="py-2 text-right">{formatMoney(i.unit_price)}</td>
                 <td className="py-2 text-right">{formatMoney(i.quantity * i.unit_price)}</td>
