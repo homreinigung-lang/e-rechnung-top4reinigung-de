@@ -1,17 +1,40 @@
-export const EUR = new Intl.NumberFormat("de-DE", {
+// Deutsches Zahlen-/Datumsformat, ausschließlich gregorianisch und
+// mit lateinischen Ziffern (nu-latn, ca-gregory) – keine Hidschri-Daten,
+// keine östlich-arabischen Ziffern, unabhängig von den Systemeinstellungen.
+const DE_LOCALE = "de-DE-u-ca-gregory-nu-latn";
+
+export const EUR = new Intl.NumberFormat(DE_LOCALE, {
   style: "currency",
   currency: "EUR",
+  numberingSystem: "latn",
+});
+
+const DE_NUMBER = new Intl.NumberFormat(DE_LOCALE, {
+  numberingSystem: "latn",
+  maximumFractionDigits: 2,
 });
 
 export function formatMoney(value: number): string {
   return EUR.format(Number.isFinite(value) ? value : 0);
 }
 
+export function formatNumber(value: number): string {
+  return DE_NUMBER.format(Number.isFinite(value) ? value : 0);
+}
+
+const DE_DATE = new Intl.DateTimeFormat(DE_LOCALE, {
+  calendar: "gregory",
+  numberingSystem: "latn",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
 export function formatDate(value?: string | null): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(date);
+  return DE_DATE.format(date);
 }
 
 export function addDays(dateStr: string, days: number): string {
