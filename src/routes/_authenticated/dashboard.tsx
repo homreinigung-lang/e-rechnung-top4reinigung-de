@@ -3,51 +3,77 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
-import { FileText, Plus, Receipt, Users } from "lucide-react";
+import { FileText, Plus, Receipt, TrendingDown, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Übersicht – Rechnungen & Angebote" },
-      { name: "description", content: "Überblick über offene Rechnungen, Angebote und Umsätze." },
+      { title: "Übersicht – Umsatz, Umsatzsteuer & Quartale" },
+      {
+        name: "description",
+        content: "Offene Rechnungen, Umsatz und Umsatzsteuer je Quartal sowie Ausgaben im Blick.",
+      },
       { property: "og:title", content: "Übersicht – Rechnungen & Angebote" },
-      { property: "og:description", content: "Offene Rechnungen, Angebote und Umsätze auf einen Blick." },
+      { property: "og:description", content: "Umsatz, Umsatzsteuer und Quartalszahlen auf einen Blick." },
     ],
   }),
   component: Dashboard,
 });
 
 function Dashboard() {
+  const year = new Date().getFullYear();
+
   const { data } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
-      const [docs, customers] = await Promise.all([
+      const [docs, customers, expenses] = await Promise.all([
         supabase
           .from("documents")
-          .select("id, type, number, status, issue_date, total, customer_name, customer_company")
-          .order("issue_date", { ascending: false })
-          .limit(50),
+          .select(
+            "id, type, number, status, issue_date, total, net_total, vat_amount, customer_name, customer_company",
+          )
+          .order("issue_date", { ascending: false }),
         supabase.from("customers").select("id", { count: "exact", head: true }),
+        supabase.from("expenses").select("expense_date, net_amount, gross_amount, vat_amount"),
       ]);
       if (docs.error) throw docs.error;
-      return { docs: docs.data ?? [], customerCount: customers.count ?? 0 };
+      return {
+        docs: docs.data ?? [],
+        customerCount: customers.count ?? 0,
+        expenses: expenses.data ?? [],
+      };
     },
   });
 
   const docs = data?.docs ?? [];
-  const invoices = docs.filter((d) => d.type === "invoice");
+  const expenses = data?.expenses ?? [];
+  const invoices = docs.filter((d) => d.type === "invoice" && d.status !== "cancelled");
   const openTotal = invoices
-    .filter((d) => d.status !== "paid" && d.status !== "cancelled")
+    .filter((d) => d.status !== "paid")
     .reduce((sum, d) => sum + Number(d.total), 0);
   const paidTotal = invoices
     .filter((d) => d.status === "paid")
     .reduce((sum, d) => sum + Number(d.total), 0);
   const quotes = docs.filter((d) => d.type === "quote");
+  const expenseTotal = expenses.reduce((s, e) => s + Number(e.gross_amount), 0);
+
+  const quarters = [1, 2, 3, 4].map((q) => {
+    const inQ = (dateStr: string) => {
+      const d = new Date(dateStr);
+      return d.getFullYear() === year && Math.floor(d.getMonth() / 3) + 1 === q;
+    };
+    const rows = invoices.filter((d) => inQ(d.issue_date));
+    const exp = expenses.filter((e) => inQ(e.expense_date));
+    const net = rows.reduce((s, d) => s + Number(d.net_total || d.total), 0);
+    const vat = rows.reduce((s, d) => s + Number(d.vat_amount), 0);
+    const expNet = exp.reduce((s, e) => s + Number(e.net_amount), 0);
+    return { q, net, vat, expNet, profit: net - expNet };
+  });
 
   const stats = [
     { label: "Offene Rechnungen", value: formatMoney(openTotal), icon: Receipt },
     { label: "Bezahlt", value: formatMoney(paidTotal), icon: Receipt },
-    { label: "Angebote", value: String(quotes.length), icon: FileText },
+    { label: "Ausgaben", value: formatMoney(expenseTotal), icon: TrendingDown },
     { label: "Kunden", value: String(data?.customerCount ?? 0), icon: Users },
   ];
 
@@ -57,7 +83,7 @@ function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold">Übersicht</h1>
           <p className="mt-1 text-muted-foreground">
-            Reinigungsdienstleistungen abrechnen – ohne Umsatzsteuer (Reverse Charge, EU).
+            Umsatz, Umsatzsteuer und Ergebnis – konform zu § 14 UStG.
           </p>
         </div>
         <Button asChild>
@@ -77,6 +103,36 @@ function Dashboard() {
             <div className="mt-3 font-display text-2xl font-semibold">{s.value}</div>
           </div>
         ))}
+      </div>
+
+      <div className="surface overflow-hidden">
+        <div className="border-b px-5 py-4">
+          <h2 className="font-semibold">Quartale {year} – Umsatz & Umsatzsteuer</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground uppercase">
+                <th className="px-5 py-3">Quartal</th>
+                <th className="px-5 py-3 text-right">Umsatz netto</th>
+                <th className="px-5 py-3 text-right">Umsatzsteuer</th>
+                <th className="px-5 py-3 text-right">Ausgaben netto</th>
+                <th className="px-5 py-3 text-right">Ergebnis</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quarters.map((q) => (
+                <tr key={q.q} className="border-b last:border-0">
+                  <td className="px-5 py-3 font-medium">Q{q.q}</td>
+                  <td className="px-5 py-3 text-right">{formatMoney(q.net)}</td>
+                  <td className="px-5 py-3 text-right">{formatMoney(q.vat)}</td>
+                  <td className="px-5 py-3 text-right">{formatMoney(q.expNet)}</td>
+                  <td className="px-5 py-3 text-right font-medium">{formatMoney(q.profit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="surface overflow-hidden">
