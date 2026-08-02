@@ -787,7 +787,17 @@ function DokumentDetail() {
           body: mail.body,
           fileBaseName: `${DOC_TYPE_LABEL[doc.type]}-${docNumber}`,
         }}
+        onSent={async () => {
+          setField("status", "sent");
+          await supabase
+            .from("documents")
+            .update({ status: "sent", sent_at: new Date().toISOString() } as never)
+            .eq("id", id);
+          queryClient.invalidateQueries({ queryKey: ["document", id] });
+          queryClient.invalidateQueries({ queryKey: ["documents"] });
+        }}
       />
+
     </div>
   );
 }
