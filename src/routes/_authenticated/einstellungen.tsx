@@ -294,7 +294,11 @@ function Einstellungen() {
           <Button variant="outline" onClick={exportExpenses}>
             <Download className="size-4" /> Ausgaben exportieren
           </Button>
+          <Button asChild>
+            <Link to="/steuerberater">Steuerberater-Bereich öffnen (DATEV, Excel, PDF)</Link>
+          </Button>
         </div>
+
       </div>
 
       <div className="surface space-y-4 p-6">
