@@ -358,7 +358,6 @@ function Einstellungen() {
             e.target.value = "";
           }}
         />
-        />
       </div>
     </div>
   );
