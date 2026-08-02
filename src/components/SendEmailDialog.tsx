@@ -14,7 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Mail, Paperclip } from "lucide-react";
-import { downloadBytes, elementToPdfBytes, mergePdfs } from "@/lib/pdf";
+import { elementToPdfBytes, mergePdfs } from "@/lib/pdf";
+import { useServerFn } from "@tanstack/react-start";
+import { sendInvoiceEmail } from "@/lib/email.functions";
+
 
 export type SendEmailDefaults = {
   to: string;
