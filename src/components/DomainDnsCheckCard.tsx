@@ -116,14 +116,30 @@ export function DomainDnsCheckCard() {
         </div>
       </div>
 
-      <Button
-        className="mt-4"
-        onClick={() => run.mutate()}
-        disabled={run.isPending || domain.trim().length < 3}
-      >
-        <RefreshCw className={run.isPending ? "size-4 animate-spin" : "size-4"} />
-        DNS jetzt prüfen
-      </Button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button
+          onClick={() => run.mutate({})}
+          disabled={run.isPending || domain.trim().length < 3}
+        >
+          <RefreshCw className={run.isPending ? "size-4 animate-spin" : "size-4"} />
+          {run.isPending ? "Prüfe…" : "Erneut prüfen (Retry)"}
+        </Button>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            className="size-4 accent-current"
+            checked={autoCheck}
+            onChange={(e) => setAutoCheck(e.target.checked)}
+          />
+          Automatisch alle 30 Sek. prüfen, bis verifiziert
+        </label>
+        {lastRun && (
+          <span className="text-xs text-muted-foreground">
+            Zuletzt geprüft: {lastRun.toLocaleTimeString("de-DE")}
+          </span>
+        )}
+      </div>
+
 
       {result && (
         <div className="mt-5 space-y-3">
