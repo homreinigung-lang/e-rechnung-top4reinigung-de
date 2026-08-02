@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney, today } from "@/lib/format";
-import { Plus, Trash2 } from "lucide-react";
+import { FileUploadButton } from "@/components/FileUploadButton";
+import { useFileUrl } from "@/hooks/useFileUrl";
+import { Paperclip, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ausgaben")({
   head: () => ({
@@ -42,6 +44,7 @@ type Form = {
   net_amount: string;
   vat_amount: string;
   notes: string;
+  receipt_url: string;
 };
 
 const empty: Form = {
@@ -52,6 +55,7 @@ const empty: Form = {
   net_amount: "",
   vat_amount: "",
   notes: "",
+  receipt_url: "",
 };
 
 function Ausgaben() {
@@ -87,12 +91,13 @@ function Ausgaben() {
         vat_amount: vat,
         gross_amount: net + vat,
         notes: form.notes,
+        receipt_url: form.receipt_url,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Ausgabe erfasst");
-      setForm({ ...empty, expense_date: today() });
+      setForm({ ...empty, expense_date: today(), receipt_url: "" });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
@@ -187,6 +192,19 @@ function Ausgaben() {
             />
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <FileUploadButton
+            folder="belege"
+            accept="image/*,application/pdf"
+            label="Beleg anhängen (Bild oder PDF)"
+            onUploaded={(path) => setForm((f) => ({ ...f, receipt_url: path }))}
+          />
+          {form.receipt_url && (
+            <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+              <Paperclip className="size-4" /> Beleg angehängt
+            </span>
+          )}
+        </div>
         <Button onClick={() => add.mutate()} disabled={add.isPending}>
           <Plus className="size-4" /> Ausgabe speichern
         </Button>
@@ -213,7 +231,30 @@ function Ausgaben() {
         ) : (
           <ul className="divide-y">
             {rows.map((r) => (
-              <li key={r.id} className="flex items-center gap-3 px-5 py-4">
+              <ExpenseRow key={r.id} row={r as never} onDelete={() => remove.mutate(r.id)} />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type ExpenseRowData = {
+  id: string;
+  supplier: string;
+  expense_date: string;
+  category: string;
+  document_number: string;
+  gross_amount: number;
+  net_amount: number;
+  receipt_url: string;
+};
+
+function ExpenseRow({ row: r, onDelete }: { row: ExpenseRowData; onDelete: () => void }) {
+  const receipt = useFileUrl(r.receipt_url);
+  return (
+    <li className="flex items-center gap-3 px-5 py-4">
                 <div className="flex-1">
                   <div className="font-medium">{r.supplier || "Ohne Lieferant"}</div>
                   <div className="text-sm text-muted-foreground">
@@ -227,14 +268,20 @@ function Ausgaben() {
                     netto {formatMoney(Number(r.net_amount))}
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)}>
+                {receipt && (
+                  <a
+                    href={receipt}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex size-9 items-center justify-center rounded-md hover:bg-muted"
+                    title="Beleg öffnen"
+                  >
+                    <Paperclip className="size-4" />
+                  </a>
+                )}
+                <Button variant="ghost" size="icon" onClick={onDelete}>
                   <Trash2 className="size-4 text-destructive" />
                 </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+    </li>
   );
 }
