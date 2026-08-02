@@ -11,6 +11,13 @@ import { formatDate } from "@/lib/format";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   detectKind,
   mapCustomer,
   mapDocument,
