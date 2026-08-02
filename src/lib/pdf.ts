@@ -6,7 +6,20 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
     import("html2canvas"),
     import("jspdf"),
   ]);
-  const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff" });
+  // html2canvas versteht keine oklch()-Farben (Tailwind v4) – im Klon auf
+  // klassische Farbwerte umstellen, damit die Erzeugung nicht abbricht.
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    backgroundColor: "#ffffff",
+    onclone: (doc) => {
+      const style = doc.createElement("style");
+      style.textContent = `*{color:#111827 !important;background-color:transparent !important;border-color:#d1d5db !important;box-shadow:none !important;}
+      body,.paper{background-color:#ffffff !important;}
+      .text-muted-foreground{color:#6b7280 !important;}`;
+      doc.head.appendChild(style);
+    },
+  });
+
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
