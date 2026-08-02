@@ -343,8 +343,9 @@ function Einstellungen() {
         <p className="text-sm text-muted-foreground">
           Datei auswählen – der Typ wird automatisch erkannt: Rechnungen (z. B. Export_RE_…) landen
           unter „Rechnungen“, Ausgaben (z. B. Export_RA_…) unter „Ausgaben“, Kundenlisten im
-          Kundenstamm. Kodierung (UTF-8 / ISO-8859-1) und unbekannte Spalten werden automatisch
-          verarbeitet bzw. übersprungen.
+          Kundenstamm. Trennzeichen (; , Tab |), Kodierung (UTF-8 / Windows-1252 / ISO-8859-1) und
+          abweichende Spaltennamen werden automatisch erkannt; unbekannte Spalten werden
+          übersprungen.
         </p>
         <Label
           htmlFor="csv"
@@ -363,7 +364,82 @@ function Einstellungen() {
             e.target.value = "";
           }}
         />
+        {preview && (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/40 px-4 py-3 text-sm">
+            <span>
+              <strong>{preview.rows.length}</strong> Zeilen erkannt ({KIND_LABEL[preview.kind]}) aus{" "}
+              {preview.fileName}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
+              Vorschau
+            </Button>
+          </div>
+        )}
       </div>
+
+      <Dialog
+        open={previewOpen}
+        onOpenChange={(o) => setPreviewOpen(o)}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              Vorschau: {preview ? `${preview.rows.length} ${KIND_LABEL[preview.kind]}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {preview && preview.rows.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b text-muted-foreground">
+                  <tr>
+                    {Object.keys(preview.rows[0]!).map((k) => (
+                      <th key={k} className="whitespace-nowrap px-2 py-2 font-medium">
+                        {k}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.rows.slice(0, 50).map((r, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      {Object.keys(preview.rows[0]!).map((k) => (
+                        <td key={k} className="whitespace-nowrap px-2 py-1.5">
+                          {String(r[k] ?? "")}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {preview.rows.length > 50 && (
+                <p className="px-2 py-2 text-xs text-muted-foreground">
+                  … {preview.rows.length - 50} weitere Zeilen
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPreviewOpen(false);
+                setPreview(null);
+              }}
+            >
+              Verwerfen
+            </Button>
+            <Button
+              disabled={saving}
+              onClick={async () => {
+                await savePreview();
+                setPreviewOpen(false);
+              }}
+            >
+              {saving ? "Speichern…" : "Jetzt importieren"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
