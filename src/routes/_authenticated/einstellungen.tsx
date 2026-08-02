@@ -10,6 +10,15 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
+import {
+  detectKind,
+  mapCustomer,
+  mapDocument,
+  mapExpense,
+  parseCsv,
+  readTextAuto,
+  toObjects,
+} from "@/lib/import-lexware";
 
 export const Route = createFileRoute("/_authenticated/einstellungen")({
   head: () => ({
@@ -161,53 +170,73 @@ function Einstellungen() {
     );
   }
 
-  async function importCustomers(file: File) {
-    const text = await file.text();
-    const [headerLine, ...lines] = text.split(/\r?\n/).filter((l) => l.trim());
-    if (!headerLine) { toast.error("Leere Datei."); return; }
-    const sep = headerLine.includes(";") ? ";" : ",";
-    const headers = headerLine.split(sep).map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
-    const map: Record<string, string> = {
-      firma: "company",
-      company: "company",
-      name: "name",
-      ansprechpartner: "name",
-      email: "email",
-      "e-mail": "email",
-      telefon: "phone",
-      phone: "phone",
-      straße: "address_line",
-      strasse: "address_line",
-      adresse: "address_line",
-      plz: "postal_code",
-      ort: "city",
-      stadt: "city",
-      land: "country",
-      "ust-idnr.": "vat_id",
-      "ust-idnr": "vat_id",
-      ustid: "vat_id",
-      notizen: "notes",
-    };
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth.user?.id;
-    if (!userId) { toast.error("Nicht angemeldet"); return; }
+  async function importFile(file: File) {
+    try {
+      const text = await readTextAuto(file);
+      const { headers, rows } = parseCsv(text);
+      if (headers.length === 0 || rows.length === 0) {
+        toast.error("Die Datei enthält keine Datenzeilen.");
+        return;
+      }
+      const objects = toObjects(headers, rows);
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) { toast.error("Nicht angemeldet"); return; }
 
-    const rows = lines.map((line) => {
-      const cells = line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
-      const row: Record<string, string> = { user_id: userId };
-      headers.forEach((h, i) => {
-        const key = map[h];
-        if (key) row[key] = cells[i] ?? "";
-      });
-      return row;
-    });
-    const valid = rows.filter((r) => r["company"] || r["name"]);
-    if (valid.length === 0) { toast.error("Keine gültigen Zeilen gefunden."); return; }
-    const { error } = await supabase.from("customers").insert(valid as never);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`${valid.length} Kunden importiert`);
-    queryClient.invalidateQueries({ queryKey: ["customers"] });
+      const kind = detectKind(file.name, headers);
+
+      if (kind === "customers") {
+        const valid = objects.map(mapCustomer).filter(Boolean) as NonNullable<
+          ReturnType<typeof mapCustomer>
+        >[];
+        if (valid.length === 0) {
+          toast.error("Keine gültigen Kundenzeilen gefunden.");
+          return;
+        }
+        const { error } = await supabase
+          .from("customers")
+          .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
+        if (error) { toast.error(error.message); return; }
+        toast.success(`${valid.length} Kunden importiert`);
+        queryClient.invalidateQueries({ queryKey: ["customers"] });
+        return;
+      }
+
+      if (kind === "expenses") {
+        const valid = objects.map(mapExpense).filter(Boolean) as NonNullable<
+          ReturnType<typeof mapExpense>
+        >[];
+        if (valid.length === 0) {
+          toast.error("Keine gültigen Ausgabenzeilen gefunden.");
+          return;
+        }
+        const { error } = await supabase
+          .from("expenses")
+          .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
+        if (error) { toast.error(error.message); return; }
+        toast.success(`${valid.length} Ausgaben importiert`);
+        queryClient.invalidateQueries({ queryKey: ["expenses"] });
+        return;
+      }
+
+      const valid = objects.map(mapDocument).filter(Boolean) as NonNullable<
+        ReturnType<typeof mapDocument>
+      >[];
+      if (valid.length === 0) {
+        toast.error("Keine gültigen Rechnungszeilen gefunden.");
+        return;
+      }
+      const { error } = await supabase
+        .from("documents")
+        .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
+      if (error) { toast.error(error.message); return; }
+      toast.success(`${valid.length} Rechnungen importiert`);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import fehlgeschlagen");
+    }
   }
+
 
   return (
     <div className="space-y-6">
@@ -305,25 +334,27 @@ function Einstellungen() {
       <AccountantAccessCard />
 
       <div className="surface space-y-4 p-6">
-        <h2 className="font-display text-lg font-semibold">Import (z. B. aus Lexoffice)</h2>
+        <h2 className="font-display text-lg font-semibold">Import aus Lexoffice / Lexware</h2>
         <p className="text-sm text-muted-foreground">
-          CSV-Datei mit Spalten wie Firma, Ansprechpartner, E-Mail, Straße, PLZ, Ort, Land,
-          USt-IdNr.
+          Datei auswählen – der Typ wird automatisch erkannt: Rechnungen (z. B. Export_RE_…) landen
+          unter „Rechnungen“, Ausgaben (z. B. Export_RA_…) unter „Ausgaben“, Kundenlisten im
+          Kundenstamm. Kodierung (UTF-8 / ISO-8859-1) und unbekannte Spalten werden automatisch
+          verarbeitet bzw. übersprungen.
         </p>
         <Label
           htmlFor="csv"
           className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
         >
-          <Upload className="size-4" /> Kunden aus CSV importieren
+          <Upload className="size-4" /> Datei importieren (Rechnungen, Ausgaben oder Kunden)
         </Label>
         <input
           id="csv"
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.txt,text/csv,text/plain"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) void importCustomers(file);
+            if (file) void importFile(file);
             e.target.value = "";
           }}
         />
