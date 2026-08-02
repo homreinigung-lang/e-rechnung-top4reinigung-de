@@ -111,7 +111,7 @@ function Einstellungen() {
       .gte("issue_date", from)
       .lte("issue_date", to)
       .order("issue_date");
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     downloadCsv(
       `Rechnungen_${from}_${to}.csv`,
       (docs ?? []).map((d) => ({
@@ -141,7 +141,7 @@ function Einstellungen() {
       .gte("expense_date", from)
       .lte("expense_date", to)
       .order("expense_date");
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     downloadCsv(
       `Ausgaben_${from}_${to}.csv`,
       (rows ?? []).map((e) => ({
@@ -160,7 +160,7 @@ function Einstellungen() {
   async function importCustomers(file: File) {
     const text = await file.text();
     const [headerLine, ...lines] = text.split(/\r?\n/).filter((l) => l.trim());
-    if (!headerLine) return toast.error("Leere Datei.");
+    if (!headerLine) { toast.error("Leere Datei."); return; }
     const sep = headerLine.includes(";") ? ";" : ",";
     const headers = headerLine.split(sep).map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
     const map: Record<string, string> = {
@@ -186,7 +186,7 @@ function Einstellungen() {
     };
     const { data: auth } = await supabase.auth.getUser();
     const userId = auth.user?.id;
-    if (!userId) return toast.error("Nicht angemeldet");
+    if (!userId) { toast.error("Nicht angemeldet"); return; }
 
     const rows = lines.map((line) => {
       const cells = line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
@@ -198,9 +198,9 @@ function Einstellungen() {
       return row;
     });
     const valid = rows.filter((r) => r["company"] || r["name"]);
-    if (valid.length === 0) return toast.error("Keine gültigen Zeilen gefunden.");
+    if (valid.length === 0) { toast.error("Keine gültigen Zeilen gefunden."); return; }
     const { error } = await supabase.from("customers").insert(valid as never);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(`${valid.length} Kunden importiert`);
     queryClient.invalidateQueries({ queryKey: ["customers"] });
   }
