@@ -40,14 +40,11 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
     : 0;
   const summaryHeightPx = summaryRect ? Math.ceil(summaryRect.height * renderScale) : 0;
 
-  const summaryCrossesFirstPage =
-    imgHeight > pageHeight &&
-    summaryTopPx > 0 &&
-    summaryTopPx < pageHeightPx &&
-    summaryTopPx + summaryHeightPx > pageHeightPx &&
-    summaryHeightPx <= pageHeightPx;
+  // Das Dokument ist bewusst als 2-Seiten-Layout aufgebaut: Seite 1 = Kopf +
+  // Positionstabelle, Seite 2 = Summen, Reverse-Charge, Zahlung, Bank, QR-Code.
+  const splitAtSummary = summaryTopPx > 0 && summaryHeightPx > 0;
 
-  if (summaryCrossesFirstPage) {
+  if (splitAtSummary) {
     const addSlice = (startY: number, endY: number, addPage: boolean) => {
       const sliceHeight = Math.max(1, endY - startY);
       const slice = document.createElement("canvas");
