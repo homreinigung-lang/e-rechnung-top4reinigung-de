@@ -603,7 +603,9 @@ function DokumentDetail() {
               <img
                 src={logoSrc}
                 alt="Firmenlogo"
-                className="invoice-logo h-14 max-h-[60px] w-auto max-w-56 object-contain"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                className="invoice-logo w-auto max-w-56 object-contain"
               />
             ) : (
               <div className="invoice-logo flex h-14 w-14 items-center justify-center rounded-md border border-border bg-muted font-display text-lg font-bold text-muted-foreground">
