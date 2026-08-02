@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -84,10 +83,14 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="size-5" />
-          </span>
-          <span className="font-display text-lg font-semibold">Hom Reinigung Service</span>
+          <img
+            src="/app-icon-192.png"
+            alt="CleanInvoice Logo"
+            width={36}
+            height={36}
+            className="size-9 rounded-lg"
+          />
+          <span className="font-display text-lg font-semibold">CleanInvoice</span>
         </Link>
 
         <div className="surface p-6">

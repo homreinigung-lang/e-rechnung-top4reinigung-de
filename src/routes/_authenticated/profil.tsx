@@ -13,7 +13,7 @@ import { FileUploadButton } from "@/components/FileUploadButton";
 export const Route = createFileRoute("/_authenticated/profil")({
   head: () => ({
     meta: [
-      { title: "Firmendaten – Hom Reinigung Service" },
+      { title: "Firmendaten – CleanInvoice" },
       {
         name: "description",
         content: "Firmenname, Inhaber, Anschrift, Steuernummern, Bankverbindung und Logo pflegen.",
