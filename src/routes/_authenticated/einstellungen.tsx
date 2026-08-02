@@ -212,6 +212,7 @@ function Einstellungen() {
         return;
       }
       setPreview({ kind, fileName: file.name, rows: valid });
+      setPreviewOpen(true);
       toast.success(
         `${valid.length} von ${rows.length} Zeilen erkannt (${KIND_LABEL[kind]}) – bitte in der Vorschau prüfen.`,
       );
