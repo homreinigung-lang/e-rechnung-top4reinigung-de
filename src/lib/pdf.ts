@@ -30,8 +30,6 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
     },
   });
 
-  element.setAttribute("style", previousStyle);
-
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -55,6 +53,9 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
         bottom: (rect.bottom - elementRect.top) * renderScale,
       });
     });
+
+  // Breite erst nach dem Vermessen zurücksetzen.
+  element.setAttribute("style", previousStyle);
 
   const nextBreak = (start: number) => {
     const limit = Math.min(canvas.height, start + pagePx);
