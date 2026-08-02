@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
@@ -32,6 +33,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAusgabenRoute = AuthenticatedAusgabenRouteImport.update({
+  id: '/ausgaben',
+  path: '/ausgaben',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -70,6 +76,7 @@ const AuthenticatedDokumenteIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/ausgaben'
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/ausgaben'
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/ausgaben'
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
     | '/_authenticated/kunden'
@@ -161,6 +173,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/ausgaben': {
+      id: '/_authenticated/ausgaben'
+      path: '/ausgaben'
+      fullPath: '/ausgaben'
+      preLoaderRoute: typeof AuthenticatedAusgabenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -208,6 +227,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAusgabenRoute: typeof AuthenticatedAusgabenRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
@@ -217,6 +237,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAusgabenRoute: AuthenticatedAusgabenRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
