@@ -334,27 +334,30 @@ function Einstellungen() {
       <AccountantAccessCard />
 
       <div className="surface space-y-4 p-6">
-        <h2 className="font-display text-lg font-semibold">Import (z. B. aus Lexoffice)</h2>
+        <h2 className="font-display text-lg font-semibold">Import aus Lexoffice / Lexware</h2>
         <p className="text-sm text-muted-foreground">
-          CSV-Datei mit Spalten wie Firma, Ansprechpartner, E-Mail, Straße, PLZ, Ort, Land,
-          USt-IdNr.
+          Datei auswählen – der Typ wird automatisch erkannt: Rechnungen (z. B. Export_RE_…) landen
+          unter „Rechnungen“, Ausgaben (z. B. Export_RA_…) unter „Ausgaben“, Kundenlisten im
+          Kundenstamm. Kodierung (UTF-8 / ISO-8859-1) und unbekannte Spalten werden automatisch
+          verarbeitet bzw. übersprungen.
         </p>
         <Label
           htmlFor="csv"
           className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
         >
-          <Upload className="size-4" /> Kunden aus CSV importieren
+          <Upload className="size-4" /> Datei importieren (Rechnungen, Ausgaben oder Kunden)
         </Label>
         <input
           id="csv"
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.txt,text/csv,text/plain"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) void importCustomers(file);
+            if (file) void importFile(file);
             e.target.value = "";
           }}
+        />
         />
       </div>
     </div>
