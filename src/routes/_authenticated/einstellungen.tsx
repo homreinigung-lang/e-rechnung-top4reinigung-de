@@ -170,6 +170,12 @@ function Einstellungen() {
     );
   }
 
+  const KIND_LABEL: Record<string, string> = {
+    documents: "Rechnungen",
+    expenses: "Ausgaben",
+    customers: "Kunden",
+  };
+
   async function importFile(file: File) {
     try {
       const text = await readTextAuto(file);
@@ -179,63 +185,56 @@ function Einstellungen() {
         return;
       }
       const objects = toObjects(headers, rows);
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) { toast.error("Nicht angemeldet"); return; }
-
       const kind = detectKind(file.name, headers);
+      const mapper = kind === "customers" ? mapCustomer : kind === "expenses" ? mapExpense : mapDocument;
+      const valid = objects
+        .map((o) => mapper(o) as Record<string, unknown> | null)
+        .filter(Boolean) as Record<string, unknown>[];
 
-      if (kind === "customers") {
-        const valid = objects.map(mapCustomer).filter(Boolean) as NonNullable<
-          ReturnType<typeof mapCustomer>
-        >[];
-        if (valid.length === 0) {
-          toast.error("Keine gültigen Kundenzeilen gefunden.");
-          return;
-        }
-        const { error } = await supabase
-          .from("customers")
-          .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
-        if (error) { toast.error(error.message); return; }
-        toast.success(`${valid.length} Kunden importiert`);
-        queryClient.invalidateQueries({ queryKey: ["customers"] });
-        return;
-      }
-
-      if (kind === "expenses") {
-        const valid = objects.map(mapExpense).filter(Boolean) as NonNullable<
-          ReturnType<typeof mapExpense>
-        >[];
-        if (valid.length === 0) {
-          toast.error("Keine gültigen Ausgabenzeilen gefunden.");
-          return;
-        }
-        const { error } = await supabase
-          .from("expenses")
-          .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
-        if (error) { toast.error(error.message); return; }
-        toast.success(`${valid.length} Ausgaben importiert`);
-        queryClient.invalidateQueries({ queryKey: ["expenses"] });
-        return;
-      }
-
-      const valid = objects.map(mapDocument).filter(Boolean) as NonNullable<
-        ReturnType<typeof mapDocument>
-      >[];
       if (valid.length === 0) {
-        toast.error("Keine gültigen Rechnungszeilen gefunden.");
+        toast.error(
+          `Keine verwertbaren Zeilen erkannt. Erkannte Spalten: ${headers.filter(Boolean).join(", ")}`,
+        );
         return;
       }
-      const { error } = await supabase
-        .from("documents")
-        .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
-      if (error) { toast.error(error.message); return; }
-      toast.success(`${valid.length} Rechnungen importiert`);
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setPreview({ kind, fileName: file.name, rows: valid });
+      toast.success(
+        `${valid.length} von ${rows.length} Zeilen erkannt (${KIND_LABEL[kind]}) – bitte in der Vorschau prüfen.`,
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import fehlgeschlagen");
     }
   }
+
+  async function savePreview() {
+    if (!preview) return;
+    setSaving(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) {
+        toast.error("Nicht angemeldet");
+        return;
+      }
+      const table =
+        preview.kind === "customers" ? "customers" : preview.kind === "expenses" ? "expenses" : "documents";
+      const { error } = await supabase
+        .from(table)
+        .insert(preview.rows.map((v) => ({ ...v, user_id: userId })) as never);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(`${preview.rows.length} ${KIND_LABEL[preview.kind]} importiert`);
+      queryClient.invalidateQueries({ queryKey: [table] });
+      setPreview(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import fehlgeschlagen");
+    } finally {
+      setSaving(false);
+    }
+  }
+
 
 
   return (
