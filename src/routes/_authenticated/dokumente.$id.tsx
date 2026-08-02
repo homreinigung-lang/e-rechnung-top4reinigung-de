@@ -720,6 +720,7 @@ function DokumentDetail() {
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="invoice-summary-block">
           <div className="invoice-closing">
