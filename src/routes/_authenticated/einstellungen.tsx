@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { Download, Upload } from "lucide-react";
+import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 
 export const Route = createFileRoute("/_authenticated/einstellungen")({
   head: () => ({
@@ -300,6 +301,8 @@ function Einstellungen() {
         </div>
 
       </div>
+
+      <AccountantAccessCard />
 
       <div className="surface space-y-4 p-6">
         <h2 className="font-display text-lg font-semibold">Import (z. B. aus Lexoffice)</h2>
