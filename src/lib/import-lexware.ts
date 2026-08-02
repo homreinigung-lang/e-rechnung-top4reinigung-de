@@ -252,12 +252,20 @@ export type DocumentRow = {
 };
 
 export function mapDocument(row: Record_): DocumentRow | null {
-  const number = pick(row, ["Rechnungsnummer", "Belegnummer", "Nummer", "Nr", "Dokumentnummer"]);
-  const date = parseDate(pick(row, ["Rechnungsdatum", "Belegdatum", "Datum", "Ausstellungsdatum"]));
-  const company = pick(row, ["Kunde", "Firma", "Empfänger", "Name1", "Kundenname"]);
+  const number = pick(row, ["Belegnummer", "Rechnungsnummer", "Nummer", "Nr", "Dokumentnummer", "Beleg"]);
+  const date = parseDate(
+    pick(row, ["Belegdatum", "Rechnungsdatum", "Datum", "Ausstellungsdatum", "Buchungsdatum"]),
+  );
+  const company = pick(row, [
+    "Kunde", "Kundenname", "Firma", "Person/Firma", "Person", "Empfänger", "Empfaenger",
+    "Name1", "Name", "Debitor", "Kontakt",
+  ]);
   let net = parseNumber(pick(row, ["Netto", "Nettobetrag", "Nettosumme", "Betrag netto"]));
   const vat = parseNumber(pick(row, ["Umsatzsteuer", "MwSt", "Steuer", "Steuerbetrag", "USt"]));
-  let gross = parseNumber(pick(row, ["Brutto", "Bruttobetrag", "Gesamtbetrag", "Gesamt", "Betrag"]));
+  let gross = parseNumber(
+    pick(row, ["Betrag brutto", "Bruttobetrag", "Brutto", "Gesamtbetrag", "Gesamt", "Endbetrag", "Betrag", "Summe"]),
+  );
+
   if (!gross && (net || vat)) gross = net + vat;
   if (!net && gross) net = gross - vat;
   if (!number && !date && !company && !gross) return null;
