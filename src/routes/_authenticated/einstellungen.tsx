@@ -68,6 +68,12 @@ function downloadCsv(name: string, rows: Record<string, unknown>[]) {
 function Einstellungen() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<{
+    kind: "documents" | "expenses" | "customers";
+    fileName: string;
+    rows: Record<string, unknown>[];
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
   const [from, setFrom] = useState(`${new Date().getFullYear()}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
 
