@@ -1,0 +1,48 @@
+import { PDFDocument } from "pdf-lib";
+
+/** Erzeugt aus dem Druckbereich der Rechnung ein A4-PDF (als Bytes). */
+export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Array> {
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
+  const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff" });
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgHeight = (canvas.height * pageWidth) / canvas.width;
+  const image = canvas.toDataURL("image/jpeg", 0.95);
+
+  let remaining = imgHeight;
+  let offset = 0;
+  pdf.addImage(image, "JPEG", 0, 0, pageWidth, imgHeight);
+  remaining -= pageHeight;
+  while (remaining > 0) {
+    offset -= pageHeight;
+    pdf.addPage();
+    pdf.addImage(image, "JPEG", 0, offset, pageWidth, imgHeight);
+    remaining -= pageHeight;
+  }
+  return new Uint8Array(pdf.output("arraybuffer"));
+}
+
+/** Fügt zwei PDF-Dateien zu einer einzigen zusammen (z. B. Rechnung + Stundennachweis). */
+export async function mergePdfs(parts: Uint8Array[]): Promise<Uint8Array> {
+  const merged = await PDFDocument.create();
+  for (const part of parts) {
+    const src = await PDFDocument.load(part);
+    const pages = await merged.copyPages(src, src.getPageIndices());
+    for (const page of pages) merged.addPage(page);
+  }
+  return merged.save();
+}
+
+export function downloadBytes(bytes: Uint8Array, filename: string) {
+  const blob = new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
