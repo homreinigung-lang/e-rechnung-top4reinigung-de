@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const logoSrc = useFileUrl((settings as { logo_url?: string } | null)?.logo_url);
   const companyName =
-    (settings as { company_name?: string } | null)?.company_name || "Hom Reinigung Service";
+    (settings as { company_name?: string } | null)?.company_name || "CleanInvoice";
 
   async function signOut() {
     await queryClient.cancelQueries();
