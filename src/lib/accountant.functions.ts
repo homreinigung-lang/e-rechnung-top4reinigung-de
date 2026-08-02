@@ -1,10 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export type Cell = string | number | boolean | null;
+export type Row = Record<string, Cell>;
+
 export type AccountantReport = {
   companyName: string;
-  documents: Record<string, unknown>[];
-  expenses: Record<string, unknown>[];
+  documents: Row[];
+  expenses: Row[];
 };
 
 /** Erstellt einen neuen Nur-Lese-Zugang für den Steuerberater. */
@@ -80,7 +83,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
 
     return {
       companyName: settings.data?.company_name ?? "",
-      documents: (documents.data ?? []) as Record<string, unknown>[],
-      expenses: (expenses.data ?? []) as Record<string, unknown>[],
+      documents: (documents.data ?? []) as unknown as Row[],
+      expenses: (expenses.data ?? []) as unknown as Row[],
     };
   });
