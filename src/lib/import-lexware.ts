@@ -4,7 +4,7 @@
 
 export type ImportKind = "documents" | "expenses" | "customers";
 
-/** Liest die Datei und wählt UTF-8 oder ISO-8859-1 (Windows-1252) automatisch. */
+/** Liest die Datei und wählt UTF-8, Windows-1252 oder ISO-8859-1 automatisch. */
 export async function readTextAuto(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
@@ -16,21 +16,52 @@ export async function readTextAuto(file: File): Promise<string> {
   try {
     return strict.decode(bytes);
   } catch {
-    return new TextDecoder("iso-8859-1").decode(bytes);
+    for (const enc of ["windows-1252", "iso-8859-15", "iso-8859-1"]) {
+      try {
+        return new TextDecoder(enc).decode(bytes);
+      } catch {
+        // nächste Kodierung versuchen
+      }
+    }
+    return new TextDecoder("utf-8").decode(bytes);
   }
 }
 
-function detectSeparator(line: string): string {
-  const counts = [";", ",", "\t", "|"].map((s) => [s, line.split(s).length - 1] as const);
-  counts.sort((a, b) => b[1] - a[1]);
-  return counts[0]![1] > 0 ? counts[0]![0] : ";";
+/** Zählt Trennzeichen außerhalb von Anführungszeichen. */
+function countOutsideQuotes(line: string, sep: string): number {
+  let quoted = false;
+  let count = 0;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]!;
+    if (ch === '"') quoted = !quoted;
+    else if (!quoted && ch === sep) count++;
+  }
+  return count;
+}
+
+/** Erkennt ; , Tab oder | anhand der ersten Datenzeilen. */
+export function detectSeparator(text: string): string {
+  const lines = text
+    .split("\n")
+    .filter((l) => l.trim())
+    .slice(0, 5);
+  if (lines.length === 0) return ";";
+  const scored = [";", ",", "\t", "|"].map((sep) => {
+    const counts = lines.map((l) => countOutsideQuotes(l, sep));
+    const total = counts.reduce((a, b) => a + b, 0);
+    const consistent = counts.every((c) => c === counts[0]) ? 1 : 0;
+    return { sep, total, consistent };
+  });
+  scored.sort((a, b) => b.consistent - a.consistent || b.total - a.total);
+  const best = scored[0]!;
+  return best.total > 0 ? best.sep : ";";
 }
 
 /** CSV-Parser mit Unterstützung für Anführungszeichen und Zeilenumbrüche in Feldern. */
 export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
   const clean = text.replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
-  const firstLine = clean.split("\n").find((l) => l.trim()) ?? "";
-  const sep = detectSeparator(firstLine);
+  const sep = detectSeparator(clean);
+
 
   const rows: string[][] = [];
   let row: string[] = [];
