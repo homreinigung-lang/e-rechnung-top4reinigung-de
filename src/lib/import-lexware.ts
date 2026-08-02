@@ -212,8 +212,10 @@ export type CustomerRow = {
 };
 
 export function mapCustomer(row: Record_): CustomerRow | null {
-  const company = pick(row, ["Firma", "Firmenname", "Company", "Unternehmen", "Name1", "Kunde"]);
-  const name = pick(row, ["Ansprechpartner", "Name", "Nachname", "Kontakt", "Vorname"]);
+  const company = pick(row, [
+    "Firma", "Firmenname", "Person/Firma", "Company", "Unternehmen", "Name1", "Kunde", "Empfänger",
+  ]);
+  const name = pick(row, ["Ansprechpartner", "Name", "Nachname", "Kontakt", "Vorname", "Person"]);
   if (!company && !name) return null;
   return {
     name,
