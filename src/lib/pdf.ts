@@ -25,68 +25,78 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const image = canvas.toDataURL("image/jpeg", 0.95);
 
-  // Normale Schriftgröße beibehalten. Wenn der zusammengehörige Abschlussblock
-  // die A4-Grenze kreuzt, wird er vollständig an den Anfang von Seite 2 gesetzt.
-  const imgHeight = (canvas.height * pageWidth) / canvas.width;
-  const summary = element.querySelector<HTMLElement>(".invoice-summary-block");
   const elementRect = element.getBoundingClientRect();
-  const summaryRect = summary?.getBoundingClientRect();
   const renderScale = canvas.width / elementRect.width;
-  const summaryTopPx = summaryRect
-    ? Math.round((summaryRect.top - elementRect.top) * renderScale)
-    : 0;
-  const summaryHeightPx = summaryRect ? Math.ceil(summaryRect.height * renderScale) : 0;
+  // Wie viele Canvas-Pixel passen auf eine A4-Seite?
+  const pagePx = Math.floor((pageHeight * canvas.width) / pageWidth);
 
-  // Das Dokument ist bewusst als 2-Seiten-Layout aufgebaut: Seite 1 = Kopf +
-  // Positionstabelle, Seite 2 = Summen, Reverse-Charge, Zahlung, Bank, QR-Code.
-  const splitAtSummary = summaryTopPx > 0 && summaryHeightPx > 0;
+  // Blöcke, die niemals zerschnitten werden dürfen (Kopf, Zeilen, Summen, Fuß).
+  const blocks: Array<{ top: number; bottom: number }> = [];
+  element
+    .querySelectorAll<HTMLElement>(
+      "header, tr, .invoice-summary-block, .invoice-closing, footer, p, h1, h2, h3",
+    )
+    .forEach((node) => {
+      const rect = node.getBoundingClientRect();
+      if (rect.height <= 0) return;
+      blocks.push({
+        top: (rect.top - elementRect.top) * renderScale,
+        bottom: (rect.bottom - elementRect.top) * renderScale,
+      });
+    });
 
-  if (splitAtSummary) {
-    const addSlice = (startY: number, endY: number, addPage: boolean) => {
-      const sliceHeight = Math.max(1, endY - startY);
-      const slice = document.createElement("canvas");
-      slice.width = canvas.width;
-      slice.height = sliceHeight;
-      const context = slice.getContext("2d");
-      if (!context) return;
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, slice.width, slice.height);
-      context.drawImage(
-        canvas,
-        0,
-        startY,
-        canvas.width,
-        sliceHeight,
-        0,
-        0,
-        canvas.width,
-        sliceHeight,
-      );
-      if (addPage) pdf.addPage();
-      const renderedHeight = (sliceHeight * pageWidth) / canvas.width;
-      pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pageWidth, renderedHeight);
-    };
+  const nextBreak = (start: number) => {
+    const limit = Math.min(canvas.height, start + pagePx);
+    if (limit >= canvas.height) return canvas.height;
+    let cut = limit;
+    for (const b of blocks) {
+      // Block kreuzt die Seitengrenze -> Umbruch davor setzen.
+      if (b.top > start && b.top < limit && b.bottom > limit) {
+        cut = Math.min(cut, b.top);
+      }
+    }
+    // Falls ein einzelner Block höher als eine Seite ist: hart schneiden.
+    return cut <= start + 1 ? limit : cut;
+  };
 
-    addSlice(0, summaryTopPx, false);
-    addSlice(summaryTopPx, canvas.height, true);
-    return new Uint8Array(pdf.output("arraybuffer"));
+  const addSlice = (startY: number, endY: number, addPage: boolean) => {
+    const sliceHeight = Math.max(1, Math.round(endY - startY));
+    const slice = document.createElement("canvas");
+    slice.width = canvas.width;
+    slice.height = sliceHeight;
+    const context = slice.getContext("2d");
+    if (!context) return;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, slice.width, slice.height);
+    context.drawImage(
+      canvas,
+      0,
+      Math.round(startY),
+      canvas.width,
+      sliceHeight,
+      0,
+      0,
+      canvas.width,
+      sliceHeight,
+    );
+    if (addPage) pdf.addPage();
+    const renderedHeight = (sliceHeight * pageWidth) / canvas.width;
+    pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pageWidth, renderedHeight);
+  };
+
+  let cursor = 0;
+  let first = true;
+  while (cursor < canvas.height) {
+    const end = nextBreak(cursor);
+    addSlice(cursor, end, !first);
+    first = false;
+    cursor = end;
   }
 
-  // Allgemeiner Fallback für längere Dokumente.
-  let remaining = imgHeight;
-  let offset = 0;
-  pdf.addImage(image, "JPEG", 0, 0, pageWidth, imgHeight);
-  remaining -= pageHeight;
-  while (remaining > 0) {
-    offset -= pageHeight;
-    pdf.addPage();
-    pdf.addImage(image, "JPEG", 0, offset, pageWidth, imgHeight);
-    remaining -= pageHeight;
-  }
   return new Uint8Array(pdf.output("arraybuffer"));
 }
+
 
 
 /** Fügt zwei PDF-Dateien zu einer einzigen zusammen (z. B. Rechnung + Stundennachweis). */

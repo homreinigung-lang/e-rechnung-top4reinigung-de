@@ -189,7 +189,9 @@
     font-size: 11pt;
   }
 
-  /* Zeilen, Textblöcke und Abschluss nie mitten im Umbruch zerreißen. */
+  /* Natürlicher Fluss: kein erzwungener Seitenumbruch, aber einzelne Blöcke
+     (Kopf, Tabelle, Summen, Fußbereich/QR) werden nie zerrissen. */
+  .print-area header,
   .invoice-summary-block,
   .invoice-closing,
   .print-area footer,
@@ -205,20 +207,12 @@
     page-break-inside: avoid;
   }
 
-  /* Explizites 2-Seiten-Layout: Seite 1 = Kopf + Positionstabelle,
-     Seite 2 = Summen, Reverse-Charge, Zahlung, Bankdaten, QR-Code. */
-  .invoice-page-1 {
-    break-after: page;
-    page-break-after: always;
-  }
-
   .invoice-summary-block {
     display: flow-root;
-    break-before: page !important;
-    page-break-before: always !important;
-    break-inside: avoid-page !important;
-    page-break-inside: avoid !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
+
 
   /* Tabellenkopf auf Folgeseite wiederholen. */
   .print-area thead {
