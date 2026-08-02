@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Download, FileSpreadsheet, Printer } from "lucide-react";
+import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 
 export const Route = createFileRoute("/_authenticated/steuerberater")({
   head: () => ({
@@ -196,6 +197,10 @@ function Steuerberater() {
         <p className="text-sm text-muted-foreground">
           Auswertung und Belegexport für Ihren Steuerberater – DATEV-Buchungsstapel, Excel oder PDF.
         </p>
+      </div>
+
+      <div className="no-print">
+        <AccountantAccessCard />
       </div>
 
       <section className="no-print grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2">
