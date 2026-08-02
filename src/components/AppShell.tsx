@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { FileText, LayoutDashboard, LogOut, Settings, Sparkles, TrendingDown, UserCircle, Users } from "lucide-react";
+import { Calculator, FileText, LayoutDashboard, LogOut, Settings, Sparkles, TrendingDown, UserCircle, Users } from "lucide-react";
 import type { ReactNode } from "react";
 
 const nav = [
@@ -12,9 +12,11 @@ const nav = [
   { to: "/dokumente", label: "Rechnungen & Angebote", icon: FileText },
   { to: "/kunden", label: "Kunden", icon: Users },
   { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
+  { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
   { to: "/profil", label: "Mein Profil", icon: UserCircle },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ] as const;
+
 
 
 export function AppShell({ children }: { children: ReactNode }) {
