@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
+import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
 
@@ -48,6 +49,11 @@ const AuthenticatedKundenRoute = AuthenticatedKundenRouteImport.update({
   path: '/kunden',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDokumenteIndexRoute =
   AuthenticatedDokumenteIndexRouteImport.update({
     id: '/dokumente/',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
+  '/profil': typeof AuthenticatedProfilRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
+  '/profil': typeof AuthenticatedProfilRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
+  '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
+    | '/profil'
     | '/dokumente/$id'
     | '/dokumente/'
   fileRoutesByTo: FileRoutesByTo
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
+    | '/profil'
     | '/dokumente/$id'
     | '/dokumente'
   id:
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
     | '/_authenticated/kunden'
+    | '/_authenticated/profil'
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/dokumente/'
   fileRoutesById: FileRoutesById
@@ -171,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKundenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/profil': {
+      id: '/_authenticated/profil'
+      path: '/profil'
+      fullPath: '/profil'
+      preLoaderRoute: typeof AuthenticatedProfilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dokumente/': {
       id: '/_authenticated/dokumente/'
       path: '/dokumente'
@@ -192,6 +211,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
+  AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
 }
@@ -200,6 +220,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
+  AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,
 }
