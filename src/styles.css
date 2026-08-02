@@ -205,10 +205,17 @@
     page-break-inside: avoid;
   }
 
-  /* Summen, Rechtstext, Zahlung, QR-Code und Fußzeile bleiben als eine Einheit.
-     Passt die Einheit nicht mehr auf Seite 1, verschiebt der Drucker sie komplett. */
+  /* Explizites 2-Seiten-Layout: Seite 1 = Kopf + Positionstabelle,
+     Seite 2 = Summen, Reverse-Charge, Zahlung, Bankdaten, QR-Code. */
+  .invoice-page-1 {
+    break-after: page;
+    page-break-after: always;
+  }
+
   .invoice-summary-block {
     display: flow-root;
+    break-before: page !important;
+    page-break-before: always !important;
     break-inside: avoid-page !important;
     page-break-inside: avoid !important;
   }
