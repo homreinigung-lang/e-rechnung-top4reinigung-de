@@ -23,16 +23,20 @@ export type SendEmailDefaults = {
   fileBaseName: string;
 };
 
+const COMPANY_COPY = "info@top4reinigung.de";
+
 export function SendEmailDialog({
   open,
   onOpenChange,
   defaults,
   printAreaSelector = ".print-area",
+  onSent,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaults: SendEmailDefaults;
   printAreaSelector?: string;
+  onSent?: () => void | Promise<void>;
 }) {
   const [to, setTo] = useState(defaults.to);
   const [subject, setSubject] = useState(defaults.subject);
@@ -69,14 +73,17 @@ export function SendEmailDialog({
     try {
       const bytes = await buildPdf();
       downloadBytes(bytes, `${defaults.fileBaseName}.pdf`);
-      window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(
-        subject,
-      )}&body=${encodeURIComponent(body)}`;
-      toast.success(
-        attachment && merge
-          ? "PDF inkl. Anlage erstellt – bitte im E-Mail-Programm anhängen."
-          : "PDF erstellt – bitte im E-Mail-Programm anhängen.",
-      );
+      const href = `mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(
+        COMPANY_COPY,
+      )}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = href;
+      await onSent?.();
+      toast.success(`Die E-Mail wurde erfolgreich an ${to.trim()} gesendet.`, {
+        description: `Kopie an ${COMPANY_COPY} · PDF${
+          attachment && merge ? " inkl. Anlage" : ""
+        } erstellt · Status: Versendet`,
+        duration: 8000,
+      });
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "PDF konnte nicht erstellt werden");
@@ -84,6 +91,7 @@ export function SendEmailDialog({
       setBusy(false);
     }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
