@@ -166,6 +166,15 @@
     background: #fff;
   }
 
+  /* QR-Code und Grafiken müssen im Druck sichtbar bleiben. */
+  img {
+    display: inline-block !important;
+    visibility: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+
   .print-area {
     box-shadow: none !important;
     border: none !important;

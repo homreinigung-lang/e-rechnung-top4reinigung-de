@@ -7,8 +7,10 @@ export function buildEpcPayload(params: {
   reference: string;
 }): string | null {
   const iban = params.iban.replace(/\s+/g, "").toUpperCase();
-  const name = params.name.trim().slice(0, 70);
-  if (!iban || !name || !(params.amount > 0)) return null;
+  const name = (params.name || "").trim().slice(0, 70) || "Hom Reinigung Service";
+  if (!iban) return null;
+  // Betrag ist optional: bei 0 EUR wird das Feld leer gelassen (Bank-App fragt nach).
+  const amount = params.amount > 0 ? `EUR${params.amount.toFixed(2)}` : "";
   return [
     "BCD",
     "002",
@@ -17,7 +19,7 @@ export function buildEpcPayload(params: {
     (params.bic ?? "").replace(/\s+/g, "").toUpperCase(),
     name,
     iban,
-    `EUR${params.amount.toFixed(2)}`,
+    amount,
     "",
     "",
     params.reference.slice(0, 140),
