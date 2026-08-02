@@ -18,6 +18,9 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   const canvas = await html2canvas(element, {
     scale: 2,
     windowWidth: 1024,
+    useCORS: true,
+    allowTaint: false,
+    imageTimeout: 15000,
     backgroundColor: "#ffffff",
     onclone: (doc) => {
       const style = doc.createElement("style");
@@ -29,7 +32,8 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
       .print-area{padding:14mm 15mm !important;box-shadow:none !important;border:none !important;}
       .invoice-table{table-layout:fixed !important;width:100% !important;border-collapse:collapse !important;}
       .invoice-table th,.invoice-table td{vertical-align:top !important;overflow-wrap:break-word !important;word-break:normal !important;letter-spacing:normal !important;}
-      .invoice-table-wrap{overflow:visible !important;}`;
+      .invoice-table-wrap{overflow:visible !important;}
+      .invoice-logo{max-height:50px !important;width:auto !important;object-fit:contain !important;display:block !important;}`;
       doc.head.appendChild(style);
     },
   });
