@@ -30,7 +30,6 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   // Normale Schriftgröße beibehalten. Wenn der zusammengehörige Abschlussblock
   // die A4-Grenze kreuzt, wird er vollständig an den Anfang von Seite 2 gesetzt.
   const imgHeight = (canvas.height * pageWidth) / canvas.width;
-  const pageHeightPx = (pageHeight * canvas.width) / pageWidth;
   const summary = element.querySelector<HTMLElement>(".invoice-summary-block");
   const elementRect = element.getBoundingClientRect();
   const summaryRect = summary?.getBoundingClientRect();
