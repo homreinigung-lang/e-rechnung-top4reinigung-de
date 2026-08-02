@@ -245,6 +245,31 @@ function Einstellungen() {
             Die Signatur wird automatisch unter jede Rechnungs- und Angebots-E-Mail gesetzt.
           </p>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="website_url">Website (Link in der Signatur)</Label>
+            <Input
+              id="website_url"
+              placeholder="https://www.hom-reinigung.de"
+              value={form["website_url"] ?? ""}
+              onChange={(e) => setForm({ ...form, website_url: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="facebook_url">Facebook / Social Media</Label>
+            <Input
+              id="facebook_url"
+              placeholder="https://www.facebook.com/homreinigung"
+              value={form["facebook_url"] ?? ""}
+              onChange={(e) => setForm({ ...form, facebook_url: e.target.value })}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Beide Adressen erscheinen in der E-Mail als blaue, anklickbare Links – wie eine
+          professionelle Gmail-Signatur.
+        </p>
+
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           Speichern
         </Button>
