@@ -82,13 +82,16 @@ function Profil() {
     setForm(next);
   }, [data]);
 
+  const logoSrc = useFileUrl(form["logo_url"]);
+
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (override?: Record<string, string>) => {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       const payload = {
         ...form,
+        ...(override ?? {}),
         payment_terms_days: Number(form["payment_terms_days"] || 14),
         user_id: userId,
       };
@@ -97,6 +100,7 @@ function Profil() {
         .upsert(payload as never, { onConflict: "user_id" });
       if (error) throw error;
     },
+
     onSuccess: () => {
       toast.success("Firmendaten gespeichert");
       queryClient.invalidateQueries({ queryKey: ["company_settings"] });
