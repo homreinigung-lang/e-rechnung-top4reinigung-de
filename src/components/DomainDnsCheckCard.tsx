@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { checkDomainDns } from "@/lib/dns.functions";
@@ -27,9 +27,13 @@ function Row({ ok, label, value }: { ok: boolean; label: string; value: string }
   );
 }
 
+const POLL_MS = 30_000;
+
 export function DomainDnsCheckCard() {
   const [domain, setDomain] = useState("e-rechnung.top4reinigung.de");
   const [expected, setExpected] = useState("");
+  const [autoCheck, setAutoCheck] = useState(true);
+  const [lastRun, setLastRun] = useState<Date | null>(null);
   const check = useServerFn(checkDomainDns);
 
   useEffect(() => {
@@ -40,19 +44,45 @@ export function DomainDnsCheckCard() {
   }, []);
 
   const run = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ silent }: { silent?: boolean } = {}) => {
       localStorage.setItem(DOMAIN_KEY, domain);
       localStorage.setItem(EXPECTED_KEY, expected);
-      return check({ data: { domain, expected: expected || undefined } });
+      const r = await check({ data: { domain, expected: expected || undefined } });
+      return { ...r, silent: silent ?? false };
     },
     onError: (e: Error) => toast.error(e.message),
-    onSuccess: (r) =>
-      r.verified
-        ? toast.success("Domain korrekt konfiguriert.")
-        : toast.warning(`${r.issues.length} Abweichung(en) gefunden.`),
+    onSuccess: (r) => {
+      setLastRun(new Date());
+      if (r.verified) toast.success("Domain korrekt konfiguriert.");
+      else if (!r.silent) toast.warning(`${r.issues.length} Abweichung(en) gefunden.`);
+    },
   });
 
   const result = run.data;
+  const verified = result?.verified ?? false;
+  const runRef = useRef(run);
+  runRef.current = run;
+
+  // Erste automatische Prüfung, sobald Domain/erwarteter Wert stehen
+  useEffect(() => {
+    if (!autoCheck || verified) return;
+    if (domain.trim().length < 3) return;
+    const t = setTimeout(() => {
+      if (!runRef.current.isPending) runRef.current.mutate({ silent: true });
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCheck, domain, expected]);
+
+  // Fortlaufende Prüfung bis verifiziert
+  useEffect(() => {
+    if (!autoCheck || verified) return;
+    const id = setInterval(() => {
+      if (!runRef.current.isPending) runRef.current.mutate({ silent: true });
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, [autoCheck, verified]);
+
 
   return (
     <section className="rounded-xl border bg-card p-5 shadow-sm">
