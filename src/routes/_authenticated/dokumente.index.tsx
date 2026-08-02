@@ -107,10 +107,7 @@ function DokumenteListe() {
         src.type as "invoice" | "quote",
         documents.filter((d) => d.type === src.type).map((d) => d.number),
       );
-      const { id: _i, created_at: _c, updated_at: _u, sent_at: _s, ...rest } = src as Record<
-        string,
-        never
-      >;
+      const { id: _i, created_at: _c, updated_at: _u, sent_at: _s, ...rest } = src as unknown as Record<string, unknown>;
       const { data: created, error: insErr } = await supabase
         .from("documents")
         .insert({ ...rest, user_id: userId, number, status: "draft" } as never)

@@ -202,7 +202,7 @@ function DokumentDetail() {
         updated_at: _u,
         sent_at: _s,
         ...rest
-      } = doc as Record<string, never>;
+      } = doc as unknown as Record<string, unknown>;
 
       const { data: created, error } = await supabase
         .from("documents")
