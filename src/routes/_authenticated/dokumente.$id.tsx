@@ -84,6 +84,7 @@ function DokumentDetail() {
 
   const [form, setForm] = useState<Record<string, string | boolean | null>>({});
   const [items, setItems] = useState<Item[]>([]);
+  const [mailOpen, setMailOpen] = useState(false);
 
   useEffect(() => {
     if (!data) return;
