@@ -79,7 +79,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Rechnungen & Angebote – Hom Reinigung Service" },
+      { title: "CleanInvoice – Rechnungen & Angebote" },
+      { property: "og:site_name", content: "CleanInvoice" },
       {
         name: "description",
         content:
