@@ -596,7 +596,7 @@ function DokumentDetail() {
 
       {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto w-full max-w-3xl p-9 text-sm">
-        <div className="invoice-page-1">
+        <div>
         <header className="flex items-start justify-between gap-6">
           <div className="flex items-start gap-4">
             {logoSrc ? (
