@@ -51,9 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {logoSrc ? (
               <img src={logoSrc} alt={`Logo ${companyName}`} className="h-8 w-auto max-w-28 object-contain" />
             ) : (
-              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Sparkles className="size-4" />
-              </span>
+              <img src="/app-icon-192.png" alt="CleanInvoice Logo" width={32} height={32} className="size-8 rounded-lg" />
             )}
             <span className="font-display text-sm font-semibold">{companyName}</span>
           </Link>
