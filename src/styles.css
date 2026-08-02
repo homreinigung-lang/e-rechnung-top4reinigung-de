@@ -153,7 +153,12 @@
 }
 
 @media print {
-  .no-print {
+  .no-print,
+  #lovable-badge,
+  [id*="lovable-badge"],
+  [class*="lovable-badge"],
+  a[href*="lovable.dev"],
+  a[href*="lovable.app"] {
     display: none !important;
   }
 
@@ -165,12 +170,21 @@
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 18mm 16mm !important;
     max-width: none !important;
   }
 
+  /* Ohne Seitenrand druckt der Browser keine Kopf-/Fußzeile (Titel, URL, Datum). */
   @page {
     size: A4;
-    margin: 18mm 16mm;
+    margin: 0;
   }
 }
+
+/* Das Lovable-Badge auch in der Bildschirm-Vorschau der Rechnung ausblenden. */
+#lovable-badge,
+[id*="lovable-badge"],
+[class*="lovable-badge"] {
+  display: none !important;
+}
+
