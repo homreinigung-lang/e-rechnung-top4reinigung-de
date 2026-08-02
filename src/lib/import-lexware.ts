@@ -124,19 +124,31 @@ export function toObjects(headers: string[], rows: string[][]): Record_[] {
   });
 }
 
+/**
+ * Sucht einen Wert unabhängig von der exakten Spaltenbezeichnung:
+ * exakter Treffer > Spalte enthält den Begriff > Begriff enthält die Spalte.
+ */
 function pick(row: Record_, candidates: string[]): string {
+  const keys = Object.keys(row);
   for (const c of candidates) {
     const key = norm(c);
     if (row[key]) return row[key]!;
   }
-  // Teiltreffer (z. B. "rechnungsnummer2")
   for (const c of candidates) {
     const key = norm(c);
-    const hit = Object.keys(row).find((k) => k.includes(key));
+    if (!key) continue;
+    const hit = keys.find((k) => k.includes(key));
+    if (hit && row[hit]) return row[hit]!;
+  }
+  for (const c of candidates) {
+    const key = norm(c);
+    if (key.length < 4) continue;
+    const hit = keys.find((k) => k.length >= 4 && key.includes(k));
     if (hit && row[hit]) return row[hit]!;
   }
   return "";
 }
+
 
 /** Deutsche Zahl ("1.234,56 €") => number */
 export function parseNumber(value: string): number {
