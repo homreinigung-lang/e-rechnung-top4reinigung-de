@@ -602,7 +602,7 @@ function DokumentDetail() {
       </div>
 
       {/* Druckansicht – DIN 5008 */}
-      <article className="paper print-area mx-auto w-full max-w-3xl p-10 text-sm">
+      <article className="paper print-area mx-auto w-full max-w-3xl p-9 text-sm">
         <header className="flex items-start justify-between gap-6">
           <div>
             {logoSrc && (
@@ -627,7 +627,7 @@ function DokumentDetail() {
           </div>
         </header>
 
-        <div className="mt-10 grid gap-8 sm:grid-cols-2">
+        <div className="mt-7 grid gap-8 sm:grid-cols-2">
           <address className="not-italic">
             <div className="border-b pb-1 text-[10px] text-muted-foreground">{senderLine}</div>
             <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
@@ -675,12 +675,12 @@ function DokumentDetail() {
           </dl>
         </div>
 
-        <h2 className="mt-10 font-display text-xl font-semibold">
+        <h2 className="mt-7 font-display text-xl font-semibold">
           {DOC_TYPE_LABEL[doc.type]} {docNumber}
         </h2>
         {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
 
-        <table className="mt-6 w-full table-fixed border-collapse text-left text-sm">
+        <table className="mt-4 w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-[8%]" />
             <col className="w-[44%]" />
@@ -691,25 +691,25 @@ function DokumentDetail() {
           </colgroup>
           <thead>
             <tr className="bg-muted text-xs tracking-wide text-muted-foreground uppercase">
-              <th className="px-3 py-2.5 font-medium">Pos.</th>
-              <th className="px-3 py-2.5 font-medium">Bezeichnung</th>
-              <th className="px-3 py-2.5 text-right font-medium">Menge</th>
-              <th className="px-3 py-2.5 font-medium">Einheit</th>
-              <th className="px-3 py-2.5 text-right font-medium">Einzelpreis&nbsp;€</th>
-              <th className="px-3 py-2.5 text-right font-medium">Gesamtpreis&nbsp;€</th>
+              <th className="px-3 py-1.5 font-medium">Pos.</th>
+              <th className="px-3 py-1.5 font-medium">Bezeichnung</th>
+              <th className="px-3 py-1.5 text-right font-medium">Menge</th>
+              <th className="px-3 py-1.5 font-medium">Einheit</th>
+              <th className="px-3 py-1.5 text-right font-medium">Einzelpreis&nbsp;€</th>
+              <th className="px-3 py-1.5 text-right font-medium">Gesamtpreis&nbsp;€</th>
             </tr>
           </thead>
           <tbody>
             {items.map((i, n) => (
               <tr key={i.id} className="border-b border-border align-top">
-                <td className="px-3 py-2.5 tabular-nums">{n + 1}</td>
-                <td className="px-3 py-2.5 break-words whitespace-pre-line">{i.description}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatNumber(i.quantity)}</td>
-                <td className="px-3 py-2.5">{i.unit}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                <td className="px-3 py-1.5 tabular-nums">{n + 1}</td>
+                <td className="px-3 py-1.5 break-words whitespace-pre-line">{i.description}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{formatNumber(i.quantity)}</td>
+                <td className="px-3 py-1.5">{i.unit}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
                   {formatMoney(i.unit_price)}
                 </td>
-                <td className="px-3 py-2.5 text-right font-medium tabular-nums whitespace-nowrap">
+                <td className="px-3 py-1.5 text-right font-medium tabular-nums whitespace-nowrap">
                   {formatMoney(i.quantity * i.unit_price)}
                 </td>
               </tr>
@@ -759,7 +759,7 @@ function DokumentDetail() {
         </div>
 
 
-        <footer className="mt-10 grid gap-4 border-t pt-4 text-[11px] text-muted-foreground sm:grid-cols-3">
+        <footer className="mt-8 grid gap-4 border-t pt-3 text-[11px] text-muted-foreground sm:grid-cols-3">
           <div>
             <div className="font-medium text-foreground">
               {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
