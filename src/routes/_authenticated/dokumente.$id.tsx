@@ -27,7 +27,6 @@ import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useFileUrl } from "@/hooks/useFileUrl";
-import { usePrintFit } from "@/hooks/usePrintFit";
 import { ArrowLeft, Copy, Mail, Plus, Printer, Save, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
@@ -86,7 +85,6 @@ function DokumentDetail() {
   const [form, setForm] = useState<Record<string, string | boolean | null>>({});
   const [items, setItems] = useState<Item[]>([]);
   const [mailOpen, setMailOpen] = useState(false);
-  usePrintFit();
 
 
   useEffect(() => {

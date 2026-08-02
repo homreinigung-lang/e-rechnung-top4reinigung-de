@@ -27,16 +27,18 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   const pageHeight = pdf.internal.pageSize.getHeight();
   const image = canvas.toDataURL("image/jpeg", 0.95);
 
-  // Immer exakt eine Seite: bei Überlänge wird proportional herunterskaliert.
-  let width = pageWidth;
-  let height = (canvas.height * pageWidth) / canvas.width;
-  if (height > pageHeight) {
-    const ratio = pageHeight / height;
-    height = pageHeight;
-    width = pageWidth * ratio;
+  // Normale Schriftgröße beibehalten: bei Bedarf über mehrere Seiten verteilen.
+  const imgHeight = (canvas.height * pageWidth) / canvas.width;
+  let remaining = imgHeight;
+  let offset = 0;
+  pdf.addImage(image, "JPEG", 0, 0, pageWidth, imgHeight);
+  remaining -= pageHeight;
+  while (remaining > 0) {
+    offset -= pageHeight;
+    pdf.addPage();
+    pdf.addImage(image, "JPEG", 0, offset, pageWidth, imgHeight);
+    remaining -= pageHeight;
   }
-  const x = (pageWidth - width) / 2;
-  pdf.addImage(image, "JPEG", x, 0, width, height);
   return new Uint8Array(pdf.output("arraybuffer"));
 }
 
