@@ -729,12 +729,10 @@ function DokumentDetail() {
               <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
               <p>Vielen Dank für die gute Zusammenarbeit.</p>
             </div>
-            {(settings?.["iban"] || settings?.["bank_name"]) && (
-              <p className="text-xs text-muted-foreground">
-                {String(settings?.["bank_name"] ?? "")} · IBAN {String(settings?.["iban"] ?? "")}
-                {settings?.["bic"] ? ` · BIC ${String(settings["bic"])}` : ""}
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              {bankName} · IBAN {iban} · BIC {bic}
+            </p>
+
             <GiroCode payload={epc} />
           </div>
         )}
