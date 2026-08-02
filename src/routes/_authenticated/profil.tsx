@@ -178,7 +178,7 @@ function Profil() {
       </div>
 
 
-      <Button onClick={() => save.mutate()} disabled={save.isPending}>
+      <Button onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         Speichern
       </Button>
     </div>
