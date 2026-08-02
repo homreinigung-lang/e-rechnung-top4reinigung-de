@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
+import { DomainDnsCheckCard } from "@/components/DomainDnsCheckCard";
 import {
   Dialog,
   DialogContent,
@@ -346,6 +347,8 @@ function Einstellungen() {
       </div>
 
       <AccountantAccessCard />
+
+      <DomainDnsCheckCard />
 
       <div className="surface space-y-4 p-6">
         <h2 className="font-display text-lg font-semibold">Import aus Lexoffice / Lexware</h2>
