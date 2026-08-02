@@ -179,9 +179,23 @@
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
-    padding: 18mm 16mm !important;
+    padding: 14mm 15mm !important;
     max-width: none !important;
   }
+
+  /* Summe, Zahlungsziel, Bankdaten und QR-Code nie umbrechen. */
+  .invoice-closing,
+  .print-area footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-area tr,
+  .print-area thead {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
 
   /* Ohne Seitenrand druckt der Browser keine Kopf-/Fußzeile (Titel, URL, Datum). */
   @page {

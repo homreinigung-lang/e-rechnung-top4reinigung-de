@@ -602,7 +602,7 @@ function DokumentDetail() {
       </div>
 
       {/* Druckansicht – DIN 5008 */}
-      <article className="paper print-area mx-auto w-full max-w-3xl p-10 text-sm">
+      <article className="paper print-area mx-auto w-full max-w-3xl p-9 text-sm">
         <header className="flex items-start justify-between gap-6">
           <div>
             {logoSrc && (
@@ -627,7 +627,7 @@ function DokumentDetail() {
           </div>
         </header>
 
-        <div className="mt-10 grid gap-8 sm:grid-cols-2">
+        <div className="mt-7 grid gap-8 sm:grid-cols-2">
           <address className="not-italic">
             <div className="border-b pb-1 text-[10px] text-muted-foreground">{senderLine}</div>
             <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
@@ -675,12 +675,12 @@ function DokumentDetail() {
           </dl>
         </div>
 
-        <h2 className="mt-10 font-display text-xl font-semibold">
+        <h2 className="mt-7 font-display text-xl font-semibold">
           {DOC_TYPE_LABEL[doc.type]} {docNumber}
         </h2>
         {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
 
-        <table className="mt-6 w-full table-fixed border-collapse text-left text-sm">
+        <table className="mt-4 w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-[8%]" />
             <col className="w-[44%]" />
@@ -691,25 +691,25 @@ function DokumentDetail() {
           </colgroup>
           <thead>
             <tr className="bg-muted text-xs tracking-wide text-muted-foreground uppercase">
-              <th className="px-3 py-2.5 font-medium">Pos.</th>
-              <th className="px-3 py-2.5 font-medium">Bezeichnung</th>
-              <th className="px-3 py-2.5 text-right font-medium">Menge</th>
-              <th className="px-3 py-2.5 font-medium">Einheit</th>
-              <th className="px-3 py-2.5 text-right font-medium">Einzelpreis&nbsp;€</th>
-              <th className="px-3 py-2.5 text-right font-medium">Gesamtpreis&nbsp;€</th>
+              <th className="px-3 py-1.5 font-medium">Pos.</th>
+              <th className="px-3 py-1.5 font-medium">Bezeichnung</th>
+              <th className="px-3 py-1.5 text-right font-medium">Menge</th>
+              <th className="px-3 py-1.5 font-medium">Einheit</th>
+              <th className="px-3 py-1.5 text-right font-medium">Einzelpreis&nbsp;€</th>
+              <th className="px-3 py-1.5 text-right font-medium">Gesamtpreis&nbsp;€</th>
             </tr>
           </thead>
           <tbody>
             {items.map((i, n) => (
               <tr key={i.id} className="border-b border-border align-top">
-                <td className="px-3 py-2.5 tabular-nums">{n + 1}</td>
-                <td className="px-3 py-2.5 break-words whitespace-pre-line">{i.description}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatNumber(i.quantity)}</td>
-                <td className="px-3 py-2.5">{i.unit}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                <td className="px-3 py-1.5 tabular-nums">{n + 1}</td>
+                <td className="px-3 py-1.5 break-words whitespace-pre-line">{i.description}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{formatNumber(i.quantity)}</td>
+                <td className="px-3 py-1.5">{i.unit}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
                   {formatMoney(i.unit_price)}
                 </td>
-                <td className="px-3 py-2.5 text-right font-medium tabular-nums whitespace-nowrap">
+                <td className="px-3 py-1.5 text-right font-medium tabular-nums whitespace-nowrap">
                   {formatMoney(i.quantity * i.unit_price)}
                 </td>
               </tr>
@@ -717,47 +717,49 @@ function DokumentDetail() {
           </tbody>
         </table>
 
-
-        <div className="mt-4 flex justify-end">
-          <div className="w-72 space-y-1">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Zwischensumme netto</span>
-              <span>{formatMoney(netTotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                Umsatzsteuer {formatNumber(vatRate)} %
-              </span>
-              <span>{formatMoney(vatAmount)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
-              <span>Gesamtbetrag</span>
-              <span>{formatMoney(grossTotal)}</span>
+        <div className="invoice-closing">
+          <div className="mt-3 flex justify-end">
+            <div className="w-72 space-y-0.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Zwischensumme netto</span>
+                <span>{formatMoney(netTotal)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  Umsatzsteuer {formatNumber(vatRate)} %
+                </span>
+                <span>{formatMoney(vatAmount)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
+                <span>Gesamtbetrag</span>
+                <span>{formatMoney(grossTotal)}</span>
+              </div>
             </div>
           </div>
+
+          {taxMode !== "domestic" && (
+            <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{REVERSE_CHARGE_NOTE}</p>
+          )}
+
+          {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
+
+          {isInvoice && (
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+              <div className="space-y-0.5 text-sm">
+                <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
+                <p>Vielen Dank für die gute Zusammenarbeit.</p>
+                <p className="pt-1 text-xs text-muted-foreground">
+                  {bankName} · IBAN {iban} · BIC {bic}
+                </p>
+              </div>
+
+              <GiroCode payload={epc} size={84} />
+            </div>
+          )}
         </div>
 
-        {taxMode !== "domestic" && (
-          <p className="mt-6 rounded-md bg-muted p-3 text-xs">{REVERSE_CHARGE_NOTE}</p>
-        )}
 
-        {form["notes"] && <p className="mt-4">{String(form["notes"])}</p>}
-
-        {isInvoice && (
-          <div className="mt-6 space-y-4">
-            <div className="space-y-1 text-sm">
-              <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
-              <p>Vielen Dank für die gute Zusammenarbeit.</p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {bankName} · IBAN {iban} · BIC {bic}
-            </p>
-
-            <GiroCode payload={epc} />
-          </div>
-        )}
-
-        <footer className="mt-10 grid gap-4 border-t pt-4 text-[11px] text-muted-foreground sm:grid-cols-3">
+        <footer className="mt-8 grid gap-4 border-t pt-3 text-[11px] text-muted-foreground sm:grid-cols-3">
           <div>
             <div className="font-medium text-foreground">
               {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
