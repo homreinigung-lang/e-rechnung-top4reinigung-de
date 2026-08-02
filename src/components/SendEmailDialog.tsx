@@ -47,6 +47,7 @@ export function SendEmailDialog({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [merge, setMerge] = useState(true);
   const [busy, setBusy] = useState(false);
+  const sendEmail = useServerFn(sendInvoiceEmail);
 
   useEffect(() => {
     if (!open) return;
@@ -67,6 +68,15 @@ export function SendEmailDialog({
     return invoice;
   }
 
+  function toBase64(bytes: Uint8Array) {
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
+
   async function handleSend() {
     if (!to.trim()) {
       toast.error("Bitte eine Empfänger-Adresse angeben.");
@@ -75,25 +85,30 @@ export function SendEmailDialog({
     setBusy(true);
     try {
       const bytes = await buildPdf();
-      downloadBytes(bytes, `${defaults.fileBaseName}.pdf`);
-      const href = `mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(
-        COMPANY_COPY,
-      )}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = href;
+      await sendEmail({
+        data: {
+          to: to.trim(),
+          subject,
+          body,
+          filename: `${defaults.fileBaseName}.pdf`,
+          pdfBase64: toBase64(bytes),
+        },
+      });
       await onSent?.();
       toast.success(`Die E-Mail wurde erfolgreich an ${to.trim()} gesendet.`, {
         description: `Kopie an ${COMPANY_COPY} · PDF${
           attachment && merge ? " inkl. Anlage" : ""
-        } erstellt · Status: Versendet`,
+        } angehängt · Status: Versendet`,
         duration: 8000,
       });
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "PDF konnte nicht erstellt werden");
+      toast.error(e instanceof Error ? e.message : "E-Mail konnte nicht gesendet werden");
     } finally {
       setBusy(false);
     }
   }
+
 
 
   return (
