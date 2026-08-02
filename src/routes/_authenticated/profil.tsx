@@ -131,13 +131,45 @@ function Profil() {
         </div>
       ))}
 
-      {form["logo_url"] && (
-        <img
-          src={form["logo_url"]}
-          alt="Firmenlogo"
-          className="h-16 w-auto rounded-md border bg-card p-2"
-        />
-      )}
+      <div className="surface space-y-4 p-6">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Firmenlogo</h2>
+          <p className="text-sm text-muted-foreground">
+            Das Logo erscheint in der Kopfzeile des Programms sowie oben auf Rechnungen, Angeboten
+            und im PDF.
+          </p>
+        </div>
+        {logoSrc && (
+          <img
+            src={logoSrc}
+            alt="Firmenlogo"
+            className="h-16 w-auto rounded-md border bg-card p-2"
+          />
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <FileUploadButton
+            folder="logo"
+            accept="image/*"
+            label="Logo hochladen"
+            onUploaded={(path) => {
+              setForm((f) => ({ ...f, logo_url: path }));
+              save.mutate({ logo_url: path });
+            }}
+          />
+          {form["logo_url"] && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setForm((f) => ({ ...f, logo_url: "" }));
+                save.mutate({ logo_url: "" });
+              }}
+            >
+              Logo entfernen
+            </Button>
+          )}
+        </div>
+      </div>
+
 
       <Button onClick={() => save.mutate()} disabled={save.isPending}>
         Speichern
