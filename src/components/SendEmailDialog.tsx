@@ -117,7 +117,7 @@ export function SendEmailDialog({
         <DialogHeader>
           <DialogTitle>E-Mail senden</DialogTitle>
           <DialogDescription>
-            Text prüfen, optional eine Anlage (z. B. Stundennachweis) anhängen und das PDF erzeugen.
+            Text prüfen, optional eine Anlage anhängen – die E-Mail wird direkt mit PDF versendet.
           </DialogDescription>
         </DialogHeader>
 
@@ -165,7 +165,7 @@ export function SendEmailDialog({
           </Button>
           <Button onClick={handleSend} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
-            PDF erzeugen & E-Mail öffnen
+            E-Mail direkt senden
           </Button>
         </DialogFooter>
       </DialogContent>
