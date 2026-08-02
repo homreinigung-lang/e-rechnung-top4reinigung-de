@@ -24,6 +24,9 @@ import {
 } from "@/lib/format";
 import { buildEpcPayload } from "@/lib/epc";
 import { GiroCode } from "@/components/GiroCode";
+import { DateRangeField } from "@/components/DateRangeField";
+import { SendEmailDialog } from "@/components/SendEmailDialog";
+import { useFileUrl } from "@/hooks/useFileUrl";
 import { ArrowLeft, Copy, Mail, Plus, Printer, Save, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
@@ -275,12 +278,8 @@ function DokumentDetail() {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   }
 
-  function mailto() {
+  function buildMail() {
     const to = String(form["customer_email"] ?? "");
-    if (!to) {
-      toast.error("Bitte zuerst eine E-Mail-Adresse des Kunden hinterlegen.");
-      return;
-    }
     const label = DOC_TYPE_LABEL[doc.type];
     const subject = `${label} ${docNumber} – ${settings?.["company_name"] ?? "Hom Reinigung Service"}`;
     const lines = [
@@ -309,9 +308,15 @@ function DokumentDetail() {
         [settings?.["company_name"] ?? "Hom Reinigung Service", settings?.["phone"] ?? ""]
           .filter(Boolean)
           .join("\n"),
+      settings?.["website_url"] ? String(settings["website_url"]) : "",
+      settings?.["facebook_url"] ? String(settings["facebook_url"]) : "",
     ].filter(Boolean);
-    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+    return { to, subject, body: lines.join("\n") };
   }
+
+  const mail = buildMail();
+  const logoSrc = useFileUrl(settings?.["logo_url"] ? String(settings["logo_url"]) : "");
+  const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
   const epc = isInvoice
     ? buildEpcPayload({
@@ -338,7 +343,7 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-4" /> Drucken / PDF
           </Button>
-          <Button variant="outline" onClick={mailto}>
+          <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
@@ -433,11 +438,10 @@ function DokumentDetail() {
           )}
           <div className="space-y-2">
             <Label htmlFor="service_period">Leistungszeitraum / Lieferdatum</Label>
-            <Input
-              id="service_period"
-              placeholder="z. B. 01.07.2026 – 31.07.2026"
+            <DateRangeField
               value={String(form["service_period"] ?? "")}
-              onChange={(e) => setField("service_period", e.target.value)}
+              onChange={(v) => setField("service_period", v)}
+              placeholder="Zeitraum im Kalender wählen"
             />
           </div>
         </div>
@@ -583,32 +587,19 @@ function DokumentDetail() {
           </div>
         </div>
 
-        <div className="space-y-3 rounded-lg border p-4">
-          <div>
-            <Label htmlFor="attachment_title">Anlage im selben PDF (z. B. Stundennachweis)</Label>
-            <p className="text-xs text-muted-foreground">
-              Wird als zusätzliche Seite an dasselbe PDF angehängt – so verlangt es z. B. SGS.
-            </p>
-          </div>
-          <Input
-            id="attachment_title"
-            placeholder="Titel der Anlage, z. B. Stundennachweis Juli 2026"
-            value={String(form["attachment_title"] ?? "")}
-            onChange={(e) => setField("attachment_title", e.target.value)}
-          />
-          <Textarea
-            rows={6}
-            placeholder="Datum | Objekt | Mitarbeiter | Stunden …"
-            value={String(form["attachment_text"] ?? "")}
-            onChange={(e) => setField("attachment_text", e.target.value)}
-          />
-        </div>
       </div>
 
       {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto w-full max-w-3xl p-10 text-sm">
         <header className="flex items-start justify-between gap-6">
           <div>
+            {logoSrc && (
+              <img
+                src={logoSrc}
+                alt="Firmenlogo"
+                className="mb-3 h-14 w-auto max-w-56 object-contain"
+              />
+            )}
             <h1 className="font-display text-2xl font-bold">
               {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
             </h1>
@@ -727,13 +718,18 @@ function DokumentDetail() {
 
         {form["notes"] && <p className="mt-4">{String(form["notes"])}</p>}
 
-        {isInvoice && (settings?.["iban"] || settings?.["bank_name"]) && (
-          <div className="mt-6 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Bitte überweisen Sie den Gesamtbetrag auf folgendes Konto:{" "}
-              {String(settings?.["bank_name"] ?? "")} · IBAN {String(settings?.["iban"] ?? "")}
-              {settings?.["bic"] ? ` · BIC ${String(settings["bic"])}` : ""}
-            </p>
+        {isInvoice && (
+          <div className="mt-6 space-y-4">
+            <div className="space-y-1 text-sm">
+              <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
+              <p>Vielen Dank für die gute Zusammenarbeit.</p>
+            </div>
+            {(settings?.["iban"] || settings?.["bank_name"]) && (
+              <p className="text-xs text-muted-foreground">
+                {String(settings?.["bank_name"] ?? "")} · IBAN {String(settings?.["iban"] ?? "")}
+                {settings?.["bic"] ? ` · BIC ${String(settings["bic"])}` : ""}
+              </p>
+            )}
             <GiroCode payload={epc} />
           </div>
         )}
@@ -764,20 +760,18 @@ function DokumentDetail() {
           </div>
         </footer>
 
-        {form["attachment_text"] && (
-          <section className="mt-10 break-before-page">
-            <h2 className="font-display text-lg font-semibold">
-              {String(form["attachment_title"] ?? "Anlage")}
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Anlage zu {DOC_TYPE_LABEL[doc.type]} {docNumber}
-            </p>
-            <pre className="mt-4 whitespace-pre-wrap font-sans text-xs">
-              {String(form["attachment_text"])}
-            </pre>
-          </section>
-        )}
       </article>
+
+      <SendEmailDialog
+        open={mailOpen}
+        onOpenChange={setMailOpen}
+        defaults={{
+          to: mail.to,
+          subject: mail.subject,
+          body: mail.body,
+          fileBaseName: `${DOC_TYPE_LABEL[doc.type]}-${docNumber}`,
+        }}
+      />
     </div>
   );
 }
