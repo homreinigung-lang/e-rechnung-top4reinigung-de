@@ -24,11 +24,18 @@ export type Database = {
           country: string
           created_at: string
           email: string
+          email_signature: string
           iban: string
           id: string
+          logo_url: string
+          owner_name: string
           payment_terms_days: number
           phone: string
           postal_code: string
+          smtp_from: string
+          smtp_host: string
+          smtp_port: number
+          smtp_user: string
           tax_number: string
           updated_at: string
           user_id: string
@@ -43,11 +50,18 @@ export type Database = {
           country?: string
           created_at?: string
           email?: string
+          email_signature?: string
           iban?: string
           id?: string
+          logo_url?: string
+          owner_name?: string
           payment_terms_days?: number
           phone?: string
           postal_code?: string
+          smtp_from?: string
+          smtp_host?: string
+          smtp_port?: number
+          smtp_user?: string
           tax_number?: string
           updated_at?: string
           user_id: string
@@ -62,11 +76,18 @@ export type Database = {
           country?: string
           created_at?: string
           email?: string
+          email_signature?: string
           iban?: string
           id?: string
+          logo_url?: string
+          owner_name?: string
           payment_terms_days?: number
           phone?: string
           postal_code?: string
+          smtp_from?: string
+          smtp_host?: string
+          smtp_port?: number
+          smtp_user?: string
           tax_number?: string
           updated_at?: string
           user_id?: string
@@ -171,6 +192,8 @@ export type Database = {
       }
       documents: {
         Row: {
+          attachment_text: string
+          attachment_title: string
           created_at: string
           customer_address_line: string
           customer_city: string
@@ -185,17 +208,25 @@ export type Database = {
           id: string
           intro_text: string
           issue_date: string
+          net_total: number
           notes: string
           number: string
+          order_number: string
           reverse_charge: boolean
           sent_at: string | null
+          service_period: string
           status: Database["public"]["Enums"]["doc_status"]
+          tax_mode: string
           total: number
           type: Database["public"]["Enums"]["doc_type"]
           updated_at: string
           user_id: string
+          vat_amount: number
+          vat_rate: number
         }
         Insert: {
+          attachment_text?: string
+          attachment_title?: string
           created_at?: string
           customer_address_line?: string
           customer_city?: string
@@ -210,17 +241,25 @@ export type Database = {
           id?: string
           intro_text?: string
           issue_date?: string
+          net_total?: number
           notes?: string
           number: string
+          order_number?: string
           reverse_charge?: boolean
           sent_at?: string | null
+          service_period?: string
           status?: Database["public"]["Enums"]["doc_status"]
+          tax_mode?: string
           total?: number
           type?: Database["public"]["Enums"]["doc_type"]
           updated_at?: string
           user_id: string
+          vat_amount?: number
+          vat_rate?: number
         }
         Update: {
+          attachment_text?: string
+          attachment_title?: string
           created_at?: string
           customer_address_line?: string
           customer_city?: string
@@ -235,15 +274,21 @@ export type Database = {
           id?: string
           intro_text?: string
           issue_date?: string
+          net_total?: number
           notes?: string
           number?: string
+          order_number?: string
           reverse_charge?: boolean
           sent_at?: string | null
+          service_period?: string
           status?: Database["public"]["Enums"]["doc_status"]
+          tax_mode?: string
           total?: number
           type?: Database["public"]["Enums"]["doc_type"]
           updated_at?: string
           user_id?: string
+          vat_amount?: number
+          vat_rate?: number
         }
         Relationships: [
           {
@@ -251,6 +296,105 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          category: string
+          created_at: string
+          document_number: string
+          expense_date: string
+          gross_amount: number
+          id: string
+          net_amount: number
+          notes: string
+          supplier: string
+          updated_at: string
+          user_id: string
+          vat_amount: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          document_number?: string
+          expense_date?: string
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          notes?: string
+          supplier?: string
+          updated_at?: string
+          user_id: string
+          vat_amount?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          document_number?: string
+          expense_date?: string
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          notes?: string
+          supplier?: string
+          updated_at?: string
+          user_id?: string
+          vat_amount?: number
+        }
+        Relationships: []
+      }
+      recurring_invoices: {
+        Row: {
+          active: boolean
+          created_at: string
+          customer_id: string | null
+          id: string
+          interval_months: number
+          next_run: string
+          template_document_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          interval_months?: number
+          next_run?: string
+          template_document_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          interval_months?: number
+          next_run?: string
+          template_document_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_invoices_template_document_id_fkey"
+            columns: ["template_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
