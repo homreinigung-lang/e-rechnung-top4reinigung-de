@@ -25,21 +25,21 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const imgHeight = (canvas.height * pageWidth) / canvas.width;
   const image = canvas.toDataURL("image/jpeg", 0.95);
 
-  let remaining = imgHeight;
-  let offset = 0;
-  pdf.addImage(image, "JPEG", 0, 0, pageWidth, imgHeight);
-  remaining -= pageHeight;
-  while (remaining > 0) {
-    offset -= pageHeight;
-    pdf.addPage();
-    pdf.addImage(image, "JPEG", 0, offset, pageWidth, imgHeight);
-    remaining -= pageHeight;
+  // Immer exakt eine Seite: bei Überlänge wird proportional herunterskaliert.
+  let width = pageWidth;
+  let height = (canvas.height * pageWidth) / canvas.width;
+  if (height > pageHeight) {
+    const ratio = pageHeight / height;
+    height = pageHeight;
+    width = pageWidth * ratio;
   }
+  const x = (pageWidth - width) / 2;
+  pdf.addImage(image, "JPEG", x, 0, width, height);
   return new Uint8Array(pdf.output("arraybuffer"));
 }
+
 
 /** Fügt zwei PDF-Dateien zu einer einzigen zusammen (z. B. Rechnung + Stundennachweis). */
 export async function mergePdfs(parts: Uint8Array[]): Promise<Uint8Array> {
