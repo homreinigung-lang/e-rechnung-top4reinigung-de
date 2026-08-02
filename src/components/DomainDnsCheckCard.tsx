@@ -6,7 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Globe, RefreshCw, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Copy, Globe, RefreshCw, XCircle } from "lucide-react";
+
+/** Bereinigt den aus dem Dialog kopierten Wert und meldet Platzhalter. */
+export function normalizeVerifyToken(raw: string): { value: string; error?: string } {
+  const cleaned = raw
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/\s+/g, "");
+  if (!cleaned) return { value: "", error: "Kein Wert eingetragen." };
+  if (/[…<>]|\.\.\./.test(cleaned))
+    return { value: cleaned, error: "Der Wert enthält noch einen Platzhalter (… bzw. ...)." };
+  const withPrefix = cleaned.startsWith("lovable_verify=") ? cleaned : `lovable_verify=${cleaned}`;
+  const token = withPrefix.slice("lovable_verify=".length);
+  if (token.length < 8) return { value: withPrefix, error: "Der Token ist zu kurz – bitte vollständig kopieren." };
+  if (/^_?lovable\./i.test(token))
+    return { value: withPrefix, error: "Hier steht der Record-Name statt des Tokens." };
+  return { value: withPrefix };
+}
 
 const DOMAIN_KEY = "dns-check-domain";
 const EXPECTED_KEY = "dns-check-expected";
@@ -117,6 +134,31 @@ export function DomainDnsCheckCard() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button
+          variant="secondary"
+          onClick={async () => {
+            const { value, error } = normalizeVerifyToken(expected);
+            if (error) {
+              toast.error(error, {
+                description: "Wert aus Settings → Project → Domains → Configure per Copy-Button einfügen.",
+              });
+              return;
+            }
+            setExpected(value);
+            localStorage.setItem(EXPECTED_KEY, value);
+            try {
+              await navigator.clipboard.writeText(value);
+              toast.success("Exakter TXT-Wert kopiert – jetzt bei Hostinger einfügen.");
+            } catch {
+              toast.info(`TXT-Wert: ${value}`);
+            }
+            run.mutate({});
+          }}
+          disabled={run.isPending}
+        >
+          <Copy className="size-4" />
+          Erwarteten TXT-Wert kopieren
+        </Button>
         <Button
           onClick={() => run.mutate({})}
           disabled={run.isPending || domain.trim().length < 3}
