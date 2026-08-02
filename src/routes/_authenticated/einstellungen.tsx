@@ -79,7 +79,10 @@ function Einstellungen() {
       smtp_user: String(d["smtp_user"] ?? ""),
       smtp_from: String(d["smtp_from"] ?? ""),
       email_signature: String(d["email_signature"] ?? ""),
+      website_url: String(d["website_url"] ?? ""),
+      facebook_url: String(d["facebook_url"] ?? ""),
     });
+
   }, [data]);
 
   const save = useMutation({
