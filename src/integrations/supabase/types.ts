@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      accountant_access: {
+        Row: {
+          access_code: string
+          active: boolean
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          last_used_at: string | null
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_code: string
+          active?: boolean
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_code?: string
+          active?: boolean
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       company_settings: {
         Row: {
           address_line: string
