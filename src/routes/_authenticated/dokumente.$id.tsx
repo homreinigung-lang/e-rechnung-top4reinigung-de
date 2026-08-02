@@ -684,42 +684,44 @@ function DokumentDetail() {
         </h2>
         {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
 
-        <table className="mt-4 w-full table-fixed border-collapse text-left text-sm">
-          <colgroup>
-            <col className="w-[8%]" />
-            <col className="w-[44%]" />
-            <col className="w-[10%]" />
-            <col className="w-[10%]" />
-            <col className="w-[14%]" />
-            <col className="w-[14%]" />
-          </colgroup>
-          <thead>
-            <tr className="bg-muted text-xs tracking-wide text-muted-foreground uppercase">
-              <th className="px-3 py-1.5 font-medium">Pos.</th>
-              <th className="px-3 py-1.5 font-medium">Bezeichnung</th>
-              <th className="px-3 py-1.5 text-right font-medium">Menge</th>
-              <th className="px-3 py-1.5 font-medium">Einheit</th>
-              <th className="px-3 py-1.5 text-right font-medium">Einzelpreis&nbsp;€</th>
-              <th className="px-3 py-1.5 text-right font-medium">Gesamtpreis&nbsp;€</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((i, n) => (
-              <tr key={i.id} className="border-b border-border align-top">
-                <td className="px-3 py-1.5 tabular-nums">{n + 1}</td>
-                <td className="px-3 py-1.5 break-words whitespace-pre-line">{i.description}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{formatNumber(i.quantity)}</td>
-                <td className="px-3 py-1.5">{i.unit}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
-                  {formatMoney(i.unit_price)}
-                </td>
-                <td className="px-3 py-1.5 text-right font-medium tabular-nums whitespace-nowrap">
-                  {formatMoney(i.quantity * i.unit_price)}
-                </td>
+        <div className="invoice-table-wrap mt-4 overflow-x-auto">
+          <table className="invoice-table w-full border-collapse text-left text-sm">
+            <colgroup>
+              <col style={{ width: "7%" }} />
+              <col style={{ width: "43%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "15%" }} />
+            </colgroup>
+            <thead>
+              <tr className="bg-muted text-[11px] tracking-normal text-muted-foreground uppercase">
+                <th className="px-2 py-2 font-medium">Pos.</th>
+                <th className="px-2 py-2 font-medium">Bezeichnung</th>
+                <th className="px-2 py-2 text-right font-medium">Menge</th>
+                <th className="px-2 py-2 font-medium">Einheit</th>
+                <th className="px-2 py-2 text-right font-medium">Einzelpreis €</th>
+                <th className="px-2 py-2 text-right font-medium">Gesamtpreis €</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((i, n) => (
+                <tr key={i.id} className="border-b border-border align-top">
+                  <td className="px-2 py-2 tabular-nums">{n + 1}</td>
+                  <td className="px-2 py-2 break-words whitespace-pre-line">{i.description}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{formatNumber(i.quantity)}</td>
+                  <td className="px-2 py-2">{i.unit}</td>
+                  <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">
+                    {formatMoney(i.unit_price)}
+                  </td>
+                  <td className="px-2 py-2 text-right font-medium tabular-nums whitespace-nowrap">
+                    {formatMoney(i.quantity * i.unit_price)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         </div>
 
         <div className="invoice-summary-block">

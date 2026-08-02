@@ -222,6 +222,11 @@
     display: table-footer-group;
   }
 
+  .invoice-table-wrap {
+    overflow: visible !important;
+  }
+
+
   /* Überschriften nicht als letzte Zeile einer Seite stehen lassen. */
   .print-area h1,
   .print-area h2,
@@ -251,3 +256,23 @@
   display: none !important;
 }
 
+
+/* Rechnungstabelle: klar getrennte, ausgerichtete Spalten (Bildschirm + Druck). */
+.invoice-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+.invoice-table th,
+.invoice-table td {
+  vertical-align: top;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+  line-height: 1.35;
+}
+.invoice-table th {
+  white-space: normal;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--color-border);
+}

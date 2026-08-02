@@ -8,8 +8,16 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   ]);
   // html2canvas versteht keine oklch()-Farben (Tailwind v4) – im Klon auf
   // klassische Farbwerte umstellen, damit die Erzeugung nicht abbricht.
+  // Für ein sauberes A4-Layout die Breite während der Aufnahme auf
+  // A4 (794 px @96dpi) fixieren – sonst quetschen sich die Tabellenspalten
+  // auf schmalen Bildschirmen ineinander.
+  const previousStyle = element.getAttribute("style") ?? "";
+  element.style.width = "794px";
+  element.style.maxWidth = "794px";
+
   const canvas = await html2canvas(element, {
     scale: 2,
+    windowWidth: 1024,
     backgroundColor: "#ffffff",
     onclone: (doc) => {
       const style = doc.createElement("style");
@@ -17,7 +25,11 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
       body,.paper{background-color:#ffffff !important;}
       .text-muted-foreground{color:#6b7280 !important;}
       thead tr{background-color:#f3f4f6 !important;}
-      td,th{border-color:#e5e7eb !important;}`;
+      td,th{border-color:#e5e7eb !important;}
+      .print-area{padding:14mm 15mm !important;box-shadow:none !important;border:none !important;}
+      .invoice-table{table-layout:fixed !important;width:100% !important;border-collapse:collapse !important;}
+      .invoice-table th,.invoice-table td{vertical-align:top !important;overflow-wrap:break-word !important;word-break:normal !important;letter-spacing:normal !important;}
+      .invoice-table-wrap{overflow:visible !important;}`;
       doc.head.appendChild(style);
     },
   });
@@ -45,6 +57,9 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
         bottom: (rect.bottom - elementRect.top) * renderScale,
       });
     });
+
+  // Breite erst nach dem Vermessen zurücksetzen.
+  element.setAttribute("style", previousStyle);
 
   const nextBreak = (start: number) => {
     const limit = Math.min(canvas.height, start + pagePx);
