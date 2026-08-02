@@ -123,7 +123,14 @@ function DokumentDetail() {
   const taxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
   const vatRate = taxMode === "domestic" ? 19 : 0;
 
+  const logoSrc = useFileUrl(
+    data?.settings && (data.settings as Record<string, unknown>)["logo_url"]
+      ? String((data.settings as Record<string, unknown>)["logo_url"])
+      : "",
+  );
+
   const netTotal = useMemo(
+
     () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
@@ -316,7 +323,7 @@ function DokumentDetail() {
   }
 
   const mail = buildMail();
-  const logoSrc = useFileUrl(settings?.["logo_url"] ? String(settings["logo_url"]) : "");
+
   const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
   const bankName = String(settings?.["bank_name"] ?? "") || "Sparkasse Saarbrücken";

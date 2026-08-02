@@ -14,7 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Mail, Paperclip } from "lucide-react";
-import { downloadBytes, elementToPdfBytes, mergePdfs } from "@/lib/pdf";
+import { elementToPdfBytes, mergePdfs } from "@/lib/pdf";
+import { useServerFn } from "@tanstack/react-start";
+import { sendInvoiceEmail } from "@/lib/email.functions";
+
 
 export type SendEmailDefaults = {
   to: string;
@@ -44,6 +47,7 @@ export function SendEmailDialog({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [merge, setMerge] = useState(true);
   const [busy, setBusy] = useState(false);
+  const sendEmail = useServerFn(sendInvoiceEmail);
 
   useEffect(() => {
     if (!open) return;
@@ -64,6 +68,15 @@ export function SendEmailDialog({
     return invoice;
   }
 
+  function toBase64(bytes: Uint8Array) {
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
+
   async function handleSend() {
     if (!to.trim()) {
       toast.error("Bitte eine Empfänger-Adresse angeben.");
@@ -72,25 +85,30 @@ export function SendEmailDialog({
     setBusy(true);
     try {
       const bytes = await buildPdf();
-      downloadBytes(bytes, `${defaults.fileBaseName}.pdf`);
-      const href = `mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(
-        COMPANY_COPY,
-      )}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = href;
+      await sendEmail({
+        data: {
+          to: to.trim(),
+          subject,
+          body,
+          filename: `${defaults.fileBaseName}.pdf`,
+          pdfBase64: toBase64(bytes),
+        },
+      });
       await onSent?.();
       toast.success(`Die E-Mail wurde erfolgreich an ${to.trim()} gesendet.`, {
         description: `Kopie an ${COMPANY_COPY} · PDF${
           attachment && merge ? " inkl. Anlage" : ""
-        } erstellt · Status: Versendet`,
+        } angehängt · Status: Versendet`,
         duration: 8000,
       });
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "PDF konnte nicht erstellt werden");
+      toast.error(e instanceof Error ? e.message : "E-Mail konnte nicht gesendet werden");
     } finally {
       setBusy(false);
     }
   }
+
 
 
   return (
@@ -99,7 +117,7 @@ export function SendEmailDialog({
         <DialogHeader>
           <DialogTitle>E-Mail senden</DialogTitle>
           <DialogDescription>
-            Text prüfen, optional eine Anlage (z. B. Stundennachweis) anhängen und das PDF erzeugen.
+            Text prüfen, optional eine Anlage anhängen – die E-Mail wird direkt mit PDF versendet.
           </DialogDescription>
         </DialogHeader>
 
@@ -147,7 +165,7 @@ export function SendEmailDialog({
           </Button>
           <Button onClick={handleSend} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
-            PDF erzeugen & E-Mail öffnen
+            E-Mail direkt senden
           </Button>
         </DialogFooter>
       </DialogContent>
