@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Calculator, FileText, LayoutDashboard, LogOut, Settings, Sparkles, TrendingDown, UserCircle, Users } from "lucide-react";
+import { Calculator, FileText, LayoutDashboard, LogOut, Settings, TrendingDown, UserCircle, Users } from "lucide-react";
 import type { ReactNode } from "react";
 
 const nav = [
