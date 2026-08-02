@@ -184,26 +184,45 @@
     box-shadow: none !important;
     border: none !important;
     margin: 0 auto !important;
-    padding: 10mm 12mm !important;
+    padding: 14mm 15mm !important;
     max-width: none !important;
-    /* Wird vor dem Druck automatisch berechnet, damit alles auf eine Seite passt. */
-    zoom: var(--print-scale, 1);
-    transform-origin: top left;
+    font-size: 11pt;
   }
 
-  /* Summe, Zahlungsziel, Bankdaten und QR-Code nie umbrechen. */
+  /* Zeilen, Textblöcke und Abschluss nie mitten im Umbruch zerreißen. */
   .invoice-closing,
   .print-area footer,
-  .print-area table,
   .print-area tr,
-  .print-area thead {
+  .print-area thead,
+  .print-area p,
+  .print-area li,
+  .print-area dl,
+  .print-area h1,
+  .print-area h2,
+  .print-area h3 {
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  .print-area,
-  .print-area * {
+  /* Tabellenkopf auf Folgeseite wiederholen. */
+  .print-area thead {
+    display: table-header-group;
+  }
+  .print-area tfoot {
+    display: table-footer-group;
+  }
+
+  /* Überschriften nicht als letzte Zeile einer Seite stehen lassen. */
+  .print-area h1,
+  .print-area h2,
+  .print-area h3 {
+    break-after: avoid;
     page-break-after: avoid;
+  }
+
+  .print-area p {
+    orphans: 3;
+    widows: 3;
   }
 
   /* Ohne Seitenrand druckt der Browser keine Kopf-/Fußzeile (Titel, URL, Datum). */
@@ -211,6 +230,7 @@
     size: A4 portrait;
     margin: 0;
   }
+
 
 }
 
