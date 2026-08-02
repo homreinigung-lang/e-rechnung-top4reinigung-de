@@ -294,23 +294,14 @@ function DokumentDetail() {
     const lines = [
       `Sehr geehrte Damen und Herren,`,
       ``,
-      `anbei erhalten Sie ${isInvoice ? "unsere Rechnung" : "unser Angebot"} ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))}.`,
-      form["order_number"] ? `Ihre Bestellnummer: ${String(form["order_number"])}` : "",
-      form["service_period"] ? `Leistungszeitraum: ${String(form["service_period"])}` : "",
-      ``,
-      ...items.map(
-        (i, n) =>
-          `${n + 1}. ${i.description} – ${formatNumber(i.quantity)} ${i.unit} × ${formatMoney(i.unit_price)} = ${formatMoney(i.quantity * i.unit_price)}`,
-      ),
-      ``,
-      `Zwischensumme netto: ${formatMoney(netTotal)}`,
-      `Umsatzsteuer ${formatNumber(vatRate)} %: ${formatMoney(vatAmount)}`,
-      `Gesamtbetrag: ${formatMoney(grossTotal)}`,
-      taxMode !== "domestic" ? REVERSE_CHARGE_NOTE : "",
-      ``,
+      isInvoice
+        ? `im Anhang finden Sie unsere Rechnung ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`
+        : `im Anhang finden Sie unser Angebot ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`,
       isInvoice && form["due_date"]
-        ? `Zahlbar bis ${formatDate(String(form["due_date"]))} ohne Abzug.`
+        ? `Wir bitten um Begleichung des Rechnungsbetrags bis zum ${formatDate(String(form["due_date"]))} ohne Abzug.`
         : "",
+      ``,
+      `Alle Einzelheiten entnehmen Sie bitte dem beigefügten PDF. Für Rückfragen stehen wir Ihnen gerne zur Verfügung.`,
       ``,
       `Mit freundlichen Grüßen`,
       String(settings?.["email_signature"] ?? "") ||
@@ -320,6 +311,7 @@ function DokumentDetail() {
       settings?.["website_url"] ? String(settings["website_url"]) : "",
       settings?.["facebook_url"] ? String(settings["facebook_url"]) : "",
     ].filter(Boolean);
+
     return { to, subject, body: lines.join("\n") };
   }
 
