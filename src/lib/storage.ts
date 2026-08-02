@@ -11,8 +11,9 @@ export async function uploadUserFile(file: File, folder: string): Promise<string
   const path = `${userId}/${folder}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from(FILES_BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type || undefined });
+    .upload(path, file, { upsert: true, contentType: file.type || "application/octet-stream" });
   if (error) throw error;
+
   return path;
 }
 
