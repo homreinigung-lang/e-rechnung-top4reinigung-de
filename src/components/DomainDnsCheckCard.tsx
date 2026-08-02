@@ -135,6 +135,31 @@ export function DomainDnsCheckCard() {
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button
+          variant="secondary"
+          onClick={async () => {
+            const { value, error } = normalizeVerifyToken(expected);
+            if (error) {
+              toast.error(error, {
+                description: "Wert aus Settings → Project → Domains → Configure per Copy-Button einfügen.",
+              });
+              return;
+            }
+            setExpected(value);
+            localStorage.setItem(EXPECTED_KEY, value);
+            try {
+              await navigator.clipboard.writeText(value);
+              toast.success("Exakter TXT-Wert kopiert – jetzt bei Hostinger einfügen.");
+            } catch {
+              toast.info(`TXT-Wert: ${value}`);
+            }
+            run.mutate({});
+          }}
+          disabled={run.isPending}
+        >
+          <Copy className="size-4" />
+          Erwarteten TXT-Wert kopieren
+        </Button>
+        <Button
           onClick={() => run.mutate({})}
           disabled={run.isPending || domain.trim().length < 3}
         >
