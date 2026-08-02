@@ -57,13 +57,10 @@ const GROUPS = [
       { key: "bic", label: "BIC" },
     ],
   },
-  {
-    title: "Logo",
-    fields: [{ key: "logo_url", label: "Logo-URL" }],
-  },
 ] as const;
 
-const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
+const ALL_KEYS = [...GROUPS.flatMap((g) => g.fields.map((f) => f.key)), "logo_url"];
+
 
 function Profil() {
   const queryClient = useQueryClient();
