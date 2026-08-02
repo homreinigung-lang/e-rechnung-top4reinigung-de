@@ -710,73 +710,74 @@ function DokumentDetail() {
           </tbody>
         </table>
 
-        <div className="invoice-closing">
-          <div className="mt-3 flex justify-end">
-            <div className="w-72 space-y-0.5">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Zwischensumme netto</span>
-                <span>{formatMoney(netTotal)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Umsatzsteuer {formatNumber(vatRate)} %
-                </span>
-                <span>{formatMoney(vatAmount)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
-                <span>Gesamtbetrag</span>
-                <span>{formatMoney(grossTotal)}</span>
+        <div className="invoice-summary-block">
+          <div className="invoice-closing">
+            <div className="mt-3 flex justify-end">
+              <div className="w-72 space-y-0.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Zwischensumme netto</span>
+                  <span>{formatMoney(netTotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Umsatzsteuer {formatNumber(vatRate)} %
+                  </span>
+                  <span>{formatMoney(vatAmount)}</span>
+                </div>
+                <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
+                  <span>Gesamtbetrag</span>
+                  <span>{formatMoney(grossTotal)}</span>
+                </div>
               </div>
             </div>
+
+            {taxMode !== "domestic" && (
+              <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{REVERSE_CHARGE_NOTE}</p>
+            )}
+
+            {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
+
+            {isInvoice && (
+              <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+                <div className="space-y-0.5 text-sm">
+                  <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
+                  <p>Vielen Dank für die gute Zusammenarbeit.</p>
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    {bankName} · IBAN {iban} · BIC {bic}
+                  </p>
+                </div>
+
+                <GiroCode payload={epc} size={84} />
+              </div>
+            )}
           </div>
 
-          {taxMode !== "domestic" && (
-            <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{REVERSE_CHARGE_NOTE}</p>
-          )}
-
-          {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
-
-          {isInvoice && (
-            <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-              <div className="space-y-0.5 text-sm">
-                <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
-                <p>Vielen Dank für die gute Zusammenarbeit.</p>
-                <p className="pt-1 text-xs text-muted-foreground">
-                  {bankName} · IBAN {iban} · BIC {bic}
-                </p>
-              </div>
-
-              <GiroCode payload={epc} size={84} />
-            </div>
-          )}
-        </div>
-
-
-        <footer className="mt-8 grid gap-4 border-t pt-3 text-[11px] text-muted-foreground sm:grid-cols-3">
-          <div>
-            <div className="font-medium text-foreground">
-              {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
-            </div>
-            <div>{String(settings?.["address_line"] ?? "")}</div>
+          <footer className="mt-8 grid gap-4 border-t pt-3 text-[11px] text-muted-foreground sm:grid-cols-3">
             <div>
-              {String(settings?.["postal_code"] ?? "")} {String(settings?.["city"] ?? "")}
+              <div className="font-medium text-foreground">
+                {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
+              </div>
+              <div>{String(settings?.["address_line"] ?? "")}</div>
+              <div>
+                {String(settings?.["postal_code"] ?? "")} {String(settings?.["city"] ?? "")}
+              </div>
+              {settings?.["phone"] && <div>Tel. {String(settings["phone"])}</div>}
+              {settings?.["email"] && <div>{String(settings["email"])}</div>}
             </div>
-            {settings?.["phone"] && <div>Tel. {String(settings["phone"])}</div>}
-            {settings?.["email"] && <div>{String(settings["email"])}</div>}
-          </div>
-          <div>
-            <div className="font-medium text-foreground">Steuerangaben</div>
-            <div>USt-IdNr.: {String(settings?.["vat_id"] ?? "DE458492078")}</div>
-            <div>Steuernummer: {String(settings?.["tax_number"] ?? "040/200/01653")}</div>
-            {settings?.["owner_name"] && <div>Inhaber: {String(settings["owner_name"])}</div>}
-          </div>
-          <div>
-            <div className="font-medium text-foreground">Bankverbindung</div>
-            <div>{String(settings?.["bank_name"] ?? "")}</div>
-            <div>IBAN {String(settings?.["iban"] ?? "")}</div>
-            <div>BIC {String(settings?.["bic"] ?? "")}</div>
-          </div>
-        </footer>
+            <div>
+              <div className="font-medium text-foreground">Steuerangaben</div>
+              <div>USt-IdNr.: {String(settings?.["vat_id"] ?? "DE458492078")}</div>
+              <div>Steuernummer: {String(settings?.["tax_number"] ?? "040/200/01653")}</div>
+              {settings?.["owner_name"] && <div>Inhaber: {String(settings["owner_name"])}</div>}
+            </div>
+            <div>
+              <div className="font-medium text-foreground">Bankverbindung</div>
+              <div>{String(settings?.["bank_name"] ?? "")}</div>
+              <div>IBAN {String(settings?.["iban"] ?? "")}</div>
+              <div>BIC {String(settings?.["bic"] ?? "")}</div>
+            </div>
+          </footer>
+        </div>
 
       </article>
 

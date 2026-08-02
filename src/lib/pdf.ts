@@ -27,8 +27,58 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   const pageHeight = pdf.internal.pageSize.getHeight();
   const image = canvas.toDataURL("image/jpeg", 0.95);
 
-  // Normale Schriftgröße beibehalten: bei Bedarf über mehrere Seiten verteilen.
+  // Normale Schriftgröße beibehalten. Wenn der zusammengehörige Abschlussblock
+  // die A4-Grenze kreuzt, wird er vollständig an den Anfang von Seite 2 gesetzt.
   const imgHeight = (canvas.height * pageWidth) / canvas.width;
+  const pageHeightPx = (pageHeight * canvas.width) / pageWidth;
+  const summary = element.querySelector<HTMLElement>(".invoice-summary-block");
+  const elementRect = element.getBoundingClientRect();
+  const summaryRect = summary?.getBoundingClientRect();
+  const renderScale = canvas.width / elementRect.width;
+  const summaryTopPx = summaryRect
+    ? Math.round((summaryRect.top - elementRect.top) * renderScale)
+    : 0;
+  const summaryHeightPx = summaryRect ? Math.ceil(summaryRect.height * renderScale) : 0;
+
+  const summaryCrossesFirstPage =
+    imgHeight > pageHeight &&
+    summaryTopPx > 0 &&
+    summaryTopPx < pageHeightPx &&
+    summaryTopPx + summaryHeightPx > pageHeightPx &&
+    summaryHeightPx <= pageHeightPx;
+
+  if (summaryCrossesFirstPage) {
+    const addSlice = (startY: number, endY: number, addPage: boolean) => {
+      const sliceHeight = Math.max(1, endY - startY);
+      const slice = document.createElement("canvas");
+      slice.width = canvas.width;
+      slice.height = sliceHeight;
+      const context = slice.getContext("2d");
+      if (!context) return;
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, slice.width, slice.height);
+      context.drawImage(
+        canvas,
+        0,
+        startY,
+        canvas.width,
+        sliceHeight,
+        0,
+        0,
+        canvas.width,
+        sliceHeight,
+      );
+      if (addPage) pdf.addPage();
+      const renderedHeight = (sliceHeight * pageWidth) / canvas.width;
+      pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pageWidth, renderedHeight);
+    };
+
+    addSlice(0, summaryTopPx, false);
+    addSlice(summaryTopPx, canvas.height, true);
+    return new Uint8Array(pdf.output("arraybuffer"));
+  }
+
+  // Allgemeiner Fallback für längere Dokumente.
   let remaining = imgHeight;
   let offset = 0;
   pdf.addImage(image, "JPEG", 0, 0, pageWidth, imgHeight);
