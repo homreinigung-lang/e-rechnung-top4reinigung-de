@@ -25,6 +25,7 @@ export type Database = {
           created_at: string
           email: string
           email_signature: string
+          facebook_url: string
           iban: string
           id: string
           logo_url: string
@@ -40,6 +41,7 @@ export type Database = {
           updated_at: string
           user_id: string
           vat_id: string
+          website_url: string
         }
         Insert: {
           address_line?: string
@@ -51,6 +53,7 @@ export type Database = {
           created_at?: string
           email?: string
           email_signature?: string
+          facebook_url?: string
           iban?: string
           id?: string
           logo_url?: string
@@ -66,6 +69,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           vat_id?: string
+          website_url?: string
         }
         Update: {
           address_line?: string
@@ -77,6 +81,7 @@ export type Database = {
           created_at?: string
           email?: string
           email_signature?: string
+          facebook_url?: string
           iban?: string
           id?: string
           logo_url?: string
@@ -92,6 +97,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vat_id?: string
+          website_url?: string
         }
         Relationships: []
       }
@@ -310,6 +316,7 @@ export type Database = {
           id: string
           net_amount: number
           notes: string
+          receipt_url: string
           supplier: string
           updated_at: string
           user_id: string
@@ -324,6 +331,7 @@ export type Database = {
           id?: string
           net_amount?: number
           notes?: string
+          receipt_url?: string
           supplier?: string
           updated_at?: string
           user_id: string
@@ -338,6 +346,7 @@ export type Database = {
           id?: string
           net_amount?: number
           notes?: string
+          receipt_url?: string
           supplier?: string
           updated_at?: string
           user_id?: string
