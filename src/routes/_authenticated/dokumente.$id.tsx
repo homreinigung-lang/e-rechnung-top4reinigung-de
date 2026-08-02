@@ -717,45 +717,47 @@ function DokumentDetail() {
           </tbody>
         </table>
 
-
-        <div className="mt-4 flex justify-end">
-          <div className="w-72 space-y-1">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Zwischensumme netto</span>
-              <span>{formatMoney(netTotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                Umsatzsteuer {formatNumber(vatRate)} %
-              </span>
-              <span>{formatMoney(vatAmount)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
-              <span>Gesamtbetrag</span>
-              <span>{formatMoney(grossTotal)}</span>
+        <div className="invoice-closing">
+          <div className="mt-3 flex justify-end">
+            <div className="w-72 space-y-0.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Zwischensumme netto</span>
+                <span>{formatMoney(netTotal)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  Umsatzsteuer {formatNumber(vatRate)} %
+                </span>
+                <span>{formatMoney(vatAmount)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
+                <span>Gesamtbetrag</span>
+                <span>{formatMoney(grossTotal)}</span>
+              </div>
             </div>
           </div>
+
+          {taxMode !== "domestic" && (
+            <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{REVERSE_CHARGE_NOTE}</p>
+          )}
+
+          {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
+
+          {isInvoice && (
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+              <div className="space-y-0.5 text-sm">
+                <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
+                <p>Vielen Dank für die gute Zusammenarbeit.</p>
+                <p className="pt-1 text-xs text-muted-foreground">
+                  {bankName} · IBAN {iban} · BIC {bic}
+                </p>
+              </div>
+
+              <GiroCode payload={epc} size={84} />
+            </div>
+          )}
         </div>
 
-        {taxMode !== "domestic" && (
-          <p className="mt-6 rounded-md bg-muted p-3 text-xs">{REVERSE_CHARGE_NOTE}</p>
-        )}
-
-        {form["notes"] && <p className="mt-4">{String(form["notes"])}</p>}
-
-        {isInvoice && (
-          <div className="mt-6 space-y-4">
-            <div className="space-y-1 text-sm">
-              <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
-              <p>Vielen Dank für die gute Zusammenarbeit.</p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {bankName} · IBAN {iban} · BIC {bic}
-            </p>
-
-            <GiroCode payload={epc} />
-          </div>
-        )}
 
         <footer className="mt-10 grid gap-4 border-t pt-4 text-[11px] text-muted-foreground sm:grid-cols-3">
           <div>
