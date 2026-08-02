@@ -596,23 +596,34 @@ function DokumentDetail() {
 
       {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto w-full max-w-3xl p-9 text-sm">
+        <div className="invoice-page-1">
         <header className="flex items-start justify-between gap-6">
-          <div>
-            {logoSrc && (
+          <div className="flex items-start gap-4">
+            {logoSrc ? (
               <img
                 src={logoSrc}
                 alt="Firmenlogo"
-                className="mb-3 h-14 w-auto max-w-56 object-contain"
+                className="invoice-logo h-14 max-h-[60px] w-auto max-w-56 object-contain"
               />
+            ) : (
+              <div className="invoice-logo flex h-14 w-14 items-center justify-center rounded-md border border-border bg-muted font-display text-lg font-bold text-muted-foreground">
+                {String(settings?.["company_name"] ?? "Hom Reinigung Service")
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((w) => w.charAt(0).toUpperCase())
+                  .join("")}
+              </div>
             )}
-            <h1 className="font-display text-2xl font-bold">
-              {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
-            </h1>
-            {settings?.["owner_name"] && (
-              <p className="text-xs text-muted-foreground">
-                Inhaber: {String(settings["owner_name"])}
-              </p>
-            )}
+            <div>
+              <h1 className="font-display text-2xl font-bold">
+                {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
+              </h1>
+              {settings?.["owner_name"] && (
+                <p className="text-xs text-muted-foreground">
+                  Inhaber: {String(settings["owner_name"])}
+                </p>
+              )}
+            </div>
           </div>
           <div className="text-right text-xs text-muted-foreground">
             {settings?.["email"] && <div>{String(settings["email"])}</div>}
