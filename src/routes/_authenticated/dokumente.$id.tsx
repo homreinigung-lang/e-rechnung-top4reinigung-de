@@ -319,11 +319,15 @@ function DokumentDetail() {
   const logoSrc = useFileUrl(settings?.["logo_url"] ? String(settings["logo_url"]) : "");
   const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
+  const bankName = String(settings?.["bank_name"] ?? "") || "Sparkasse Saarbrücken";
+  const iban = String(settings?.["iban"] ?? "") || "DE05 5905 0101 0067 2210 28";
+  const bic = String(settings?.["bic"] ?? "") || "SAKSDE55XXX";
+
   const epc = isInvoice
     ? buildEpcPayload({
         name: String(settings?.["company_name"] ?? "Hom Reinigung Service"),
-        iban: String(settings?.["iban"] ?? ""),
-        bic: String(settings?.["bic"] ?? ""),
+        iban,
+        bic,
         amount: grossTotal,
         reference: `${DOC_TYPE_LABEL[doc.type]} ${docNumber}`,
       })
@@ -725,12 +729,10 @@ function DokumentDetail() {
               <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
               <p>Vielen Dank für die gute Zusammenarbeit.</p>
             </div>
-            {(settings?.["iban"] || settings?.["bank_name"]) && (
-              <p className="text-xs text-muted-foreground">
-                {String(settings?.["bank_name"] ?? "")} · IBAN {String(settings?.["iban"] ?? "")}
-                {settings?.["bic"] ? ` · BIC ${String(settings["bic"])}` : ""}
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              {bankName} · IBAN {iban} · BIC {bic}
+            </p>
+
             <GiroCode payload={epc} />
           </div>
         )}
