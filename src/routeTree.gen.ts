@@ -18,6 +18,7 @@ import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authen
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
+import { Route as StbTokenRouteImport } from './routes/stb.$token'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
 
@@ -67,6 +68,11 @@ const AuthenticatedSteuerberaterRoute =
     path: '/steuerberater',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const StbTokenRoute = StbTokenRouteImport.update({
+  id: '/stb/$token',
+  path: '/stb/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedDokumenteIndexRoute =
   AuthenticatedDokumenteIndexRouteImport.update({
     id: '/dokumente/',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/kunden': typeof AuthenticatedKundenRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/stb/$token': typeof StbTokenRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/kunden': typeof AuthenticatedKundenRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/stb/$token': typeof StbTokenRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/stb/$token': typeof StbTokenRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/profil'
     | '/steuerberater'
+    | '/stb/$token'
     | '/dokumente/$id'
     | '/dokumente/'
   fileRoutesByTo: FileRoutesByTo
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/profil'
     | '/steuerberater'
+    | '/stb/$token'
     | '/dokumente/$id'
     | '/dokumente'
   id:
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kunden'
     | '/_authenticated/profil'
     | '/_authenticated/steuerberater'
+    | '/stb/$token'
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/dokumente/'
   fileRoutesById: FileRoutesById
@@ -162,6 +174,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  StbTokenRoute: typeof StbTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -229,6 +242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSteuerberaterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/stb/$token': {
+      id: '/stb/$token'
+      path: '/stb/$token'
+      fullPath: '/stb/$token'
+      preLoaderRoute: typeof StbTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/dokumente/': {
       id: '/_authenticated/dokumente/'
       path: '/dokumente'
@@ -275,6 +295,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  StbTokenRoute: StbTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

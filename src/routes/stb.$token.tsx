@@ -48,7 +48,10 @@ function download(name: string, blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 function downloadCsv(name: string, rows: Table[]) {
-  if (rows.length === 0) return toast.error("Keine Daten im gewählten Zeitraum.");
+  if (rows.length === 0) {
+    toast.error("Keine Daten im gewählten Zeitraum.");
+    return;
+  }
   const headers = Object.keys(rows[0]!);
   const csv = [
     headers.join(";"),
@@ -68,7 +71,10 @@ function downloadExcel(name: string, sheets: { title: string; rows: Table[] }[])
         .join("")}</table>`;
     })
     .join("<br/>");
-  if (!tables) return toast.error("Keine Daten im gewählten Zeitraum.");
+  if (!tables) {
+    toast.error("Keine Daten im gewählten Zeitraum.");
+    return;
+  }
   download(
     name,
     new Blob(
