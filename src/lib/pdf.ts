@@ -15,7 +15,9 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
       const style = doc.createElement("style");
       style.textContent = `*{color:#111827 !important;background-color:transparent !important;border-color:#d1d5db !important;box-shadow:none !important;}
       body,.paper{background-color:#ffffff !important;}
-      .text-muted-foreground{color:#6b7280 !important;}`;
+      .text-muted-foreground{color:#6b7280 !important;}
+      thead tr{background-color:#f3f4f6 !important;}
+      td,th{border-color:#e5e7eb !important;}`;
       doc.head.appendChild(style);
     },
   });

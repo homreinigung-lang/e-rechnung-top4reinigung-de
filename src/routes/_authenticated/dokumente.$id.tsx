@@ -673,30 +673,43 @@ function DokumentDetail() {
         </h2>
         {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
 
-        <table className="mt-6 w-full border-collapse text-left">
+        <table className="mt-6 w-full table-fixed border-collapse text-left text-sm">
+          <colgroup>
+            <col className="w-[8%]" />
+            <col className="w-[44%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+          </colgroup>
           <thead>
-            <tr className="border-b text-xs text-muted-foreground uppercase">
-              <th className="py-2">Pos.</th>
-              <th className="py-2">Bezeichnung</th>
-              <th className="py-2 text-right">Menge</th>
-              <th className="py-2">Einheit</th>
-              <th className="py-2 text-right">Einzel €</th>
-              <th className="py-2 text-right">Gesamt €</th>
+            <tr className="bg-muted text-xs tracking-wide text-muted-foreground uppercase">
+              <th className="px-3 py-2.5 font-medium">Pos.</th>
+              <th className="px-3 py-2.5 font-medium">Bezeichnung</th>
+              <th className="px-3 py-2.5 text-right font-medium">Menge</th>
+              <th className="px-3 py-2.5 font-medium">Einheit</th>
+              <th className="px-3 py-2.5 text-right font-medium">Einzelpreis&nbsp;€</th>
+              <th className="px-3 py-2.5 text-right font-medium">Gesamtpreis&nbsp;€</th>
             </tr>
           </thead>
           <tbody>
             {items.map((i, n) => (
-              <tr key={i.id} className="border-b align-top">
-                <td className="py-2">{n + 1}</td>
-                <td className="py-2">{i.description}</td>
-                <td className="py-2 text-right">{formatNumber(i.quantity)}</td>
-                <td className="py-2">{i.unit}</td>
-                <td className="py-2 text-right">{formatMoney(i.unit_price)}</td>
-                <td className="py-2 text-right">{formatMoney(i.quantity * i.unit_price)}</td>
+              <tr key={i.id} className="border-b border-border align-top">
+                <td className="px-3 py-2.5 tabular-nums">{n + 1}</td>
+                <td className="px-3 py-2.5 break-words whitespace-pre-line">{i.description}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{formatNumber(i.quantity)}</td>
+                <td className="px-3 py-2.5">{i.unit}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                  {formatMoney(i.unit_price)}
+                </td>
+                <td className="px-3 py-2.5 text-right font-medium tabular-nums whitespace-nowrap">
+                  {formatMoney(i.quantity * i.unit_price)}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+
 
         <div className="mt-4 flex justify-end">
           <div className="w-72 space-y-1">
