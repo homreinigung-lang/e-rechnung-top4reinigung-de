@@ -50,10 +50,14 @@ function Landing() {
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="size-5" />
-          </span>
-          <span className="font-display text-lg font-semibold">Hom Reinigung Service</span>
+          <img
+            src="/app-icon-192.png"
+            alt="CleanInvoice Logo"
+            width={36}
+            height={36}
+            className="size-9 rounded-lg"
+          />
+          <span className="font-display text-lg font-semibold">CleanInvoice</span>
         </div>
         <Button asChild variant="outline">
           <Link to="/auth">Anmelden</Link>
