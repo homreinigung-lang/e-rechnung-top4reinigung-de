@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useFileUrl } from "@/hooks/useFileUrl";
+import { FileUploadButton } from "@/components/FileUploadButton";
+
 
 export const Route = createFileRoute("/_authenticated/profil")({
   head: () => ({
@@ -57,13 +60,10 @@ const GROUPS = [
       { key: "bic", label: "BIC" },
     ],
   },
-  {
-    title: "Logo",
-    fields: [{ key: "logo_url", label: "Logo-URL" }],
-  },
 ] as const;
 
-const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
+const ALL_KEYS = [...GROUPS.flatMap((g) => g.fields.map((f) => f.key)), "logo_url"];
+
 
 function Profil() {
   const queryClient = useQueryClient();
@@ -85,13 +85,16 @@ function Profil() {
     setForm(next);
   }, [data]);
 
+  const logoSrc = useFileUrl(form["logo_url"]);
+
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (override?: Record<string, string>) => {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       const payload = {
         ...form,
+        ...(override ?? {}),
         payment_terms_days: Number(form["payment_terms_days"] || 14),
         user_id: userId,
       };
@@ -100,6 +103,7 @@ function Profil() {
         .upsert(payload as never, { onConflict: "user_id" });
       if (error) throw error;
     },
+
     onSuccess: () => {
       toast.success("Firmendaten gespeichert");
       queryClient.invalidateQueries({ queryKey: ["company_settings"] });
@@ -134,15 +138,47 @@ function Profil() {
         </div>
       ))}
 
-      {form["logo_url"] && (
-        <img
-          src={form["logo_url"]}
-          alt="Firmenlogo"
-          className="h-16 w-auto rounded-md border bg-card p-2"
-        />
-      )}
+      <div className="surface space-y-4 p-6">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Firmenlogo</h2>
+          <p className="text-sm text-muted-foreground">
+            Das Logo erscheint in der Kopfzeile des Programms sowie oben auf Rechnungen, Angeboten
+            und im PDF.
+          </p>
+        </div>
+        {logoSrc && (
+          <img
+            src={logoSrc}
+            alt="Firmenlogo"
+            className="h-16 w-auto rounded-md border bg-card p-2"
+          />
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <FileUploadButton
+            folder="logo"
+            accept="image/*"
+            label="Logo hochladen"
+            onUploaded={(path) => {
+              setForm((f) => ({ ...f, logo_url: path }));
+              save.mutate({ logo_url: path });
+            }}
+          />
+          {form["logo_url"] && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setForm((f) => ({ ...f, logo_url: "" }));
+                save.mutate({ logo_url: "" });
+              }}
+            >
+              Logo entfernen
+            </Button>
+          )}
+        </div>
+      </div>
 
-      <Button onClick={() => save.mutate()} disabled={save.isPending}>
+
+      <Button onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         Speichern
       </Button>
     </div>

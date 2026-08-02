@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useFileUrl } from "@/hooks/useFileUrl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FileText, LayoutDashboard, LogOut, Settings, Sparkles, TrendingDown, UserCircle, Users } from "lucide-react";
@@ -15,10 +16,23 @@ const nav = [
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ] as const;
 
+
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  const { data: settings } = useQuery({
+    queryKey: ["company_settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("company_settings").select("*").maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const logoSrc = useFileUrl((settings as { logo_url?: string } | null)?.logo_url);
+  const companyName =
+    (settings as { company_name?: string } | null)?.company_name || "Hom Reinigung Service";
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -32,11 +46,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="no-print sticky top-0 z-30 border-b bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Sparkles className="size-4" />
-            </span>
-            <span className="font-display text-sm font-semibold">Hom Reinigung Service</span>
+            {logoSrc ? (
+              <img src={logoSrc} alt={`Logo ${companyName}`} className="h-8 w-auto max-w-28 object-contain" />
+            ) : (
+              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Sparkles className="size-4" />
+              </span>
+            )}
+            <span className="font-display text-sm font-semibold">{companyName}</span>
           </Link>
+
 
           <nav className="flex flex-1 flex-wrap items-center gap-1">
             {nav.map((item) => {

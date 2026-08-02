@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
-export function GiroCode({ payload, size = 116 }: { payload: string | null; size?: number }) {
+export function GiroCode({ payload, size = 104 }: { payload: string | null; size?: number }) {
   const [src, setSrc] = useState<string>("");
 
   useEffect(() => {
@@ -10,7 +10,7 @@ export function GiroCode({ payload, size = 116 }: { payload: string | null; size
       setSrc("");
       return;
     }
-    QRCode.toDataURL(payload, { margin: 0, width: size * 2, errorCorrectionLevel: "M" })
+    QRCode.toDataURL(payload, { margin: 0, width: size * 3, errorCorrectionLevel: "M" })
       .then((url) => {
         if (active) setSrc(url);
       })
@@ -23,12 +23,14 @@ export function GiroCode({ payload, size = 116 }: { payload: string | null; size
   if (!src) return null;
 
   return (
-    <div className="flex items-center gap-3">
-      <img src={src} alt="GiroCode zur Überweisung" width={size} height={size} />
-      <div className="text-xs text-muted-foreground">
-        <div className="font-medium text-foreground">Überweisen per Code</div>
-        <div>Mit der Banking-App scannen (GiroCode / EPC-QR).</div>
+    <div className="inline-flex items-center gap-4 rounded-md border px-4 py-3">
+      <div className="text-xs">
+        <div className="font-display text-sm font-semibold text-foreground">Überweisen per Code</div>
+        <div className="mt-1 text-muted-foreground">
+          Ganz bequem Code mit der Banking-App scannen.
+        </div>
       </div>
+      <img src={src} alt="GiroCode zur Überweisung" width={size} height={size} />
     </div>
   );
 }
