@@ -5,13 +5,13 @@ import { FileText, Mail, Receipt, ShieldCheck, Sparkles } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Rechnungen & Angebote für Reinigungsfirmen | Hom Reinigung Service" },
+      { title: "CleanInvoice – Rechnungen & Angebote für Reinigungsfirmen" },
       {
         name: "description",
         content:
           "Angebote und Rechnungen ohne Umsatzsteuer (Reverse-Charge, EU) erstellen, verwalten und direkt per E-Mail versenden.",
       },
-      { property: "og:title", content: "Rechnungen & Angebote – Hom Reinigung Service" },
+      { property: "og:title", content: "CleanInvoice – Rechnungen & Angebote" },
       {
         property: "og:description",
         content:
