@@ -311,11 +311,17 @@ export type ExpenseRow = {
 };
 
 export function mapExpense(row: Record_): ExpenseRow | null {
-  const supplier = pick(row, ["Lieferant", "Kreditor", "Firma", "Name", "Empfänger", "Zahlungsempfänger"]);
+  const supplier = pick(row, [
+    "Lieferant", "Kreditor", "Person/Firma", "Person", "Firma", "Empfänger", "Empfaenger",
+    "Zahlungsempfänger", "Name1", "Name",
+  ]);
   const date = parseDate(pick(row, ["Belegdatum", "Rechnungsdatum", "Datum", "Buchungsdatum"]));
   let net = parseNumber(pick(row, ["Netto", "Nettobetrag", "Betrag netto"]));
   const vat = parseNumber(pick(row, ["Vorsteuer", "Umsatzsteuer", "MwSt", "Steuer", "Steuerbetrag"]));
-  let gross = parseNumber(pick(row, ["Brutto", "Bruttobetrag", "Gesamtbetrag", "Betrag", "Gesamt"]));
+  let gross = parseNumber(
+    pick(row, ["Betrag brutto", "Bruttobetrag", "Brutto", "Gesamtbetrag", "Gesamt", "Betrag", "Summe"]),
+  );
+
   if (!gross && (net || vat)) gross = net + vat;
   if (!net && gross) net = gross - vat;
   if (!supplier && !gross && !date) return null;
