@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,14 +16,15 @@ import {
 import { toast } from "sonner";
 import {
   DOC_TYPE_LABEL,
-  NO_VAT_NOTE,
   REVERSE_CHARGE_NOTE,
   STATUS_LABEL,
   formatDate,
   formatMoney,
   formatNumber,
 } from "@/lib/format";
-import { ArrowLeft, Mail, Plus, Printer, Save, Trash2 } from "lucide-react";
+import { buildEpcPayload } from "@/lib/epc";
+import { GiroCode } from "@/components/GiroCode";
+import { ArrowLeft, Copy, Mail, Plus, Printer, Save, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
   head: () => ({
@@ -31,7 +32,8 @@ export const Route = createFileRoute("/_authenticated/dokumente/$id")({
       { title: "Dokument bearbeiten – Rechnungen & Angebote" },
       {
         name: "description",
-        content: "Positionen erfassen, Reverse-Charge-Hinweis prüfen, drucken und per E-Mail senden.",
+        content:
+          "Positionen erfassen, Steuerart wählen, Bestellnummer hinterlegen, drucken und per E-Mail senden.",
       },
       { property: "og:title", content: "Dokument bearbeiten" },
       { property: "og:description", content: "Rechnung oder Angebot bearbeiten und versenden." },
@@ -52,6 +54,7 @@ type Item = {
 function DokumentDetail() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
     queryKey: ["document", id],
@@ -81,23 +84,28 @@ function DokumentDetail() {
 
   useEffect(() => {
     if (!data) return;
-    const d = data.doc;
+    const d = data.doc as Record<string, unknown>;
     setForm({
-      status: d.status,
-      issue_date: d.issue_date,
-      due_date: d.due_date,
-      customer_id: d.customer_id,
-      customer_name: d.customer_name,
-      customer_company: d.customer_company,
-      customer_email: d.customer_email,
-      customer_address_line: d.customer_address_line,
-      customer_postal_code: d.customer_postal_code,
-      customer_city: d.customer_city,
-      customer_country: d.customer_country,
-      customer_vat_id: d.customer_vat_id,
-      reverse_charge: d.reverse_charge,
-      intro_text: d.intro_text,
-      notes: d.notes,
+      number: String(d["number"] ?? ""),
+      order_number: String(d["order_number"] ?? ""),
+      status: String(d["status"] ?? "draft"),
+      issue_date: String(d["issue_date"] ?? ""),
+      due_date: (d["due_date"] as string) ?? "",
+      service_period: String(d["service_period"] ?? ""),
+      tax_mode: String(d["tax_mode"] ?? "eu_reverse_charge"),
+      customer_id: (d["customer_id"] as string) ?? null,
+      customer_name: String(d["customer_name"] ?? ""),
+      customer_company: String(d["customer_company"] ?? ""),
+      customer_email: String(d["customer_email"] ?? ""),
+      customer_address_line: String(d["customer_address_line"] ?? ""),
+      customer_postal_code: String(d["customer_postal_code"] ?? ""),
+      customer_city: String(d["customer_city"] ?? ""),
+      customer_country: String(d["customer_country"] ?? ""),
+      customer_vat_id: String(d["customer_vat_id"] ?? ""),
+      intro_text: String(d["intro_text"] ?? ""),
+      notes: String(d["notes"] ?? ""),
+      attachment_title: String(d["attachment_title"] ?? ""),
+      attachment_text: String(d["attachment_text"] ?? ""),
     });
     setItems(
       data.items.map((i) => ({
@@ -108,20 +116,39 @@ function DokumentDetail() {
     );
   }, [data]);
 
-  const total = useMemo(
+  const taxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
+  const vatRate = taxMode === "domestic" ? 19 : 0;
+
+  const netTotal = useMemo(
     () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
+  const vatAmount = (netTotal * vatRate) / 100;
+  const grossTotal = netTotal + vatAmount;
 
   const save = useMutation({
     mutationFn: async () => {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
+      const number = String(form["number"] ?? "").trim();
+      if (!number) throw new Error("Bitte eine Rechnungs-/Angebotsnummer eingeben.");
+
+      const payload = {
+        ...form,
+        number,
+        due_date: form["due_date"] ? form["due_date"] : null,
+        customer_id: form["customer_id"] || null,
+        vat_rate: vatRate,
+        reverse_charge: taxMode !== "domestic",
+        net_total: netTotal,
+        vat_amount: vatAmount,
+        total: grossTotal,
+      };
 
       const { error: docError } = await supabase
         .from("documents")
-        .update({ ...form, total } as never)
+        .update(payload as never)
         .eq("id", id);
       if (docError) throw docError;
 
@@ -154,13 +181,74 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const duplicate = useMutation({
+    mutationFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const doc = data!.doc as Record<string, unknown>;
+      const { data: existing } = await supabase.from("documents").select("number, type");
+      const prefix = String(doc["number"] ?? "").replace(/\d+$/, "");
+      const max = (existing ?? [])
+        .filter((d) => d.number.startsWith(prefix))
+        .map((d) => parseInt(d.number.slice(prefix.length), 10))
+        .filter((n) => Number.isFinite(n))
+        .reduce((a, b) => Math.max(a, b), 0);
+      const nextNr = `${prefix}${String(max + 1).padStart(4, "0")}`;
+
+      const {
+        id: _id,
+        created_at: _c,
+        updated_at: _u,
+        sent_at: _s,
+        ...rest
+      } = doc as Record<string, never>;
+
+      const { data: created, error } = await supabase
+        .from("documents")
+        .insert({ ...rest, user_id: userId, number: nextNr, status: "draft" } as never)
+        .select("id")
+        .single();
+      if (error) throw error;
+
+      if (items.length > 0) {
+        await supabase.from("document_items").insert(
+          items.map((i, index) => ({
+            document_id: created.id,
+            user_id: userId,
+            position: index + 1,
+            description: i.description,
+            quantity: i.quantity,
+            unit: i.unit,
+            unit_price: i.unit_price,
+          })),
+        );
+      }
+      return created.id as string;
+    },
+    onSuccess: (newId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast.success("Kopie erstellt");
+      navigate({ to: "/dokumente/$id", params: { id: newId } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading || !data) {
     return <p className="text-muted-foreground">Wird geladen…</p>;
   }
 
   const doc = data.doc;
-  const settings = data.settings;
+  const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
+  const docNumber = String(form["number"] ?? doc.number);
+  const senderLine = [
+    settings?.["company_name"] ?? "Hom Reinigung Service",
+    settings?.["address_line"] ?? "Poststr 8",
+    `${settings?.["postal_code"] ?? "66333"} ${settings?.["city"] ?? "Völklingen"}`.trim(),
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   function setField(key: string, value: string | boolean | null) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -194,30 +282,46 @@ function DokumentDetail() {
       return;
     }
     const label = DOC_TYPE_LABEL[doc.type];
-    const subject = `${label} ${doc.number} – ${settings?.company_name ?? "Hom Reinigung Service"}`;
+    const subject = `${label} ${docNumber} – ${settings?.["company_name"] ?? "Hom Reinigung Service"}`;
     const lines = [
       `Sehr geehrte Damen und Herren,`,
       ``,
-      `anbei erhalten Sie ${isInvoice ? "unsere Rechnung" : "unser Angebot"} ${doc.number} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))}.`,
+      `anbei erhalten Sie ${isInvoice ? "unsere Rechnung" : "unser Angebot"} ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))}.`,
+      form["order_number"] ? `Ihre Bestellnummer: ${String(form["order_number"])}` : "",
+      form["service_period"] ? `Leistungszeitraum: ${String(form["service_period"])}` : "",
       ``,
       ...items.map(
         (i, n) =>
           `${n + 1}. ${i.description} – ${formatNumber(i.quantity)} ${i.unit} × ${formatMoney(i.unit_price)} = ${formatMoney(i.quantity * i.unit_price)}`,
       ),
       ``,
-      `Gesamtbetrag: ${formatMoney(total)}`,
-      form["reverse_charge"] ? REVERSE_CHARGE_NOTE : NO_VAT_NOTE,
+      `Zwischensumme netto: ${formatMoney(netTotal)}`,
+      `Umsatzsteuer ${formatNumber(vatRate)} %: ${formatMoney(vatAmount)}`,
+      `Gesamtbetrag: ${formatMoney(grossTotal)}`,
+      taxMode !== "domestic" ? REVERSE_CHARGE_NOTE : "",
       ``,
       isInvoice && form["due_date"]
         ? `Zahlbar bis ${formatDate(String(form["due_date"]))} ohne Abzug.`
         : "",
       ``,
       `Mit freundlichen Grüßen`,
-      settings?.company_name ?? "Hom Reinigung Service",
-      settings?.phone ?? "",
+      String(settings?.["email_signature"] ?? "") ||
+        [settings?.["company_name"] ?? "Hom Reinigung Service", settings?.["phone"] ?? ""]
+          .filter(Boolean)
+          .join("\n"),
     ].filter(Boolean);
     window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
   }
+
+  const epc = isInvoice
+    ? buildEpcPayload({
+        name: String(settings?.["company_name"] ?? "Hom Reinigung Service"),
+        iban: String(settings?.["iban"] ?? ""),
+        bic: String(settings?.["bic"] ?? ""),
+        amount: grossTotal,
+        reference: `${DOC_TYPE_LABEL[doc.type]} ${docNumber}`,
+      })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -228,6 +332,9 @@ function DokumentDetail() {
           </Link>
         </Button>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}>
+            <Copy className="size-4" /> Duplizieren
+          </Button>
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-4" /> Drucken / PDF
           </Button>
@@ -242,10 +349,49 @@ function DokumentDetail() {
 
       <div className="no-print surface space-y-6 p-6">
         <h2 className="font-display text-xl font-semibold">
-          {DOC_TYPE_LABEL[doc.type]} {doc.number} bearbeiten
+          {DOC_TYPE_LABEL[doc.type]} {docNumber} bearbeiten
         </h2>
 
+        <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
+          <Label>Steuer-Art</Label>
+          <Select value={taxMode} onValueChange={(v) => setField("tax_mode", v)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="domestic">Inland (Deutschland) – 19 % MwSt.</SelectItem>
+              <SelectItem value="eu_reverse_charge">
+                EU-Ausland – Reverse-Charge (0 % MwSt.)
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {taxMode === "domestic"
+              ? "Es werden 19 % Umsatzsteuer ausgewiesen. Der Reverse-Charge-Hinweis wird nicht gedruckt."
+              : "0 % Umsatzsteuer. Der Hinweis zur Steuerschuldnerschaft erscheint automatisch auf dem Dokument."}
+          </p>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="number">
+              {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"} (frei änderbar)
+            </Label>
+            <Input
+              id="number"
+              value={String(form["number"] ?? "")}
+              onChange={(e) => setField("number", e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
+            <Input
+              id="order_number"
+              placeholder="z. B. SGS-PO-123456"
+              value={String(form["order_number"] ?? "")}
+              onChange={(e) => setField("order_number", e.target.value)}
+            />
+          </div>
           <div className="space-y-2">
             <Label>Status</Label>
             <Select
@@ -268,7 +414,7 @@ function DokumentDetail() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Datum</Label>
+            <Label>Rechnungsdatum</Label>
             <Input
               type="date"
               value={String(form["issue_date"] ?? "")}
@@ -285,6 +431,15 @@ function DokumentDetail() {
               />
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="service_period">Leistungszeitraum / Lieferdatum</Label>
+            <Input
+              id="service_period"
+              placeholder="z. B. 01.07.2026 – 31.07.2026"
+              value={String(form["service_period"] ?? "")}
+              onChange={(e) => setField("service_period", e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -325,7 +480,6 @@ function DokumentDetail() {
               />
             </div>
           ))}
-
         </div>
 
         <div className="space-y-3">
@@ -356,7 +510,7 @@ function DokumentDetail() {
             <div key={item.id} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-12">
               <Input
                 className="sm:col-span-5"
-                placeholder="Leistung (z. B. Unterhaltsreinigung Büro)"
+                placeholder="Bezeichnung (z. B. Unterhaltsreinigung Büro)"
                 value={item.description}
                 onChange={(e) => updateItem(index, { description: e.target.value })}
               />
@@ -390,8 +544,22 @@ function DokumentDetail() {
               </Button>
             </div>
           ))}
-          <div className="text-right font-display text-lg font-semibold">
-            Gesamt: {formatMoney(total)}
+
+          <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Zwischensumme netto</span>
+              <span>{formatMoney(netTotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                Umsatzsteuer {formatNumber(vatRate)} %
+              </span>
+              <span>{formatMoney(vatAmount)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
+              <span>Gesamtbetrag</span>
+              <span>{formatMoney(grossTotal)}</span>
+            </div>
           </div>
         </div>
 
@@ -414,33 +582,52 @@ function DokumentDetail() {
             />
           </div>
         </div>
+
+        <div className="space-y-3 rounded-lg border p-4">
+          <div>
+            <Label htmlFor="attachment_title">Anlage im selben PDF (z. B. Stundennachweis)</Label>
+            <p className="text-xs text-muted-foreground">
+              Wird als zusätzliche Seite an dasselbe PDF angehängt – so verlangt es z. B. SGS.
+            </p>
+          </div>
+          <Input
+            id="attachment_title"
+            placeholder="Titel der Anlage, z. B. Stundennachweis Juli 2026"
+            value={String(form["attachment_title"] ?? "")}
+            onChange={(e) => setField("attachment_title", e.target.value)}
+          />
+          <Textarea
+            rows={6}
+            placeholder="Datum | Objekt | Mitarbeiter | Stunden …"
+            value={String(form["attachment_text"] ?? "")}
+            onChange={(e) => setField("attachment_text", e.target.value)}
+          />
+        </div>
       </div>
 
-      {/* Druckansicht */}
+      {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto w-full max-w-3xl p-10 text-sm">
         <header className="flex items-start justify-between gap-6">
           <div>
             <h1 className="font-display text-2xl font-bold">
-              {settings?.company_name ?? "Hom Reinigung Service"}
+              {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
             </h1>
-            <p className="mt-1 text-muted-foreground">
-              {[settings?.address_line, `${settings?.postal_code ?? ""} ${settings?.city ?? ""}`.trim(), settings?.country]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
+            {settings?.["owner_name"] && (
+              <p className="text-xs text-muted-foreground">
+                Inhaber: {String(settings["owner_name"])}
+              </p>
+            )}
           </div>
           <div className="text-right text-xs text-muted-foreground">
-            {settings?.email && <div>{settings.email}</div>}
-            {settings?.phone && <div>{settings.phone}</div>}
-            <div>USt-IdNr.: {settings?.vat_id ?? "DE458492078"}</div>
-            <div>Steuernummer: {settings?.tax_number ?? "040/200/01653"}</div>
+            {settings?.["email"] && <div>{String(settings["email"])}</div>}
+            {settings?.["phone"] && <div>{String(settings["phone"])}</div>}
           </div>
         </header>
 
         <div className="mt-10 grid gap-8 sm:grid-cols-2">
           <address className="not-italic">
-            <div className="text-xs text-muted-foreground">Rechnungsempfänger</div>
-            <div className="mt-1 font-medium">{String(form["customer_company"] ?? "")}</div>
+            <div className="border-b pb-1 text-[10px] text-muted-foreground">{senderLine}</div>
+            <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
             <div>{String(form["customer_name"] ?? "")}</div>
             <div>{String(form["customer_address_line"] ?? "")}</div>
             <div>
@@ -456,23 +643,37 @@ function DokumentDetail() {
               <dt className="inline text-muted-foreground">
                 {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"}:{" "}
               </dt>
-              <dd className="inline font-medium">{doc.number}</dd>
+              <dd className="inline font-medium">{docNumber}</dd>
             </div>
             <div>
-              <dt className="inline text-muted-foreground">Datum: </dt>
+              <dt className="inline text-muted-foreground">
+                {isInvoice ? "Rechnungsdatum" : "Datum"}:{" "}
+              </dt>
               <dd className="inline">{formatDate(String(form["issue_date"] ?? ""))}</dd>
             </div>
+            {form["service_period"] && (
+              <div>
+                <dt className="inline text-muted-foreground">Leistungszeitraum: </dt>
+                <dd className="inline">{String(form["service_period"])}</dd>
+              </div>
+            )}
             {isInvoice && form["due_date"] && (
               <div>
                 <dt className="inline text-muted-foreground">Fällig am: </dt>
                 <dd className="inline">{formatDate(String(form["due_date"]))}</dd>
               </div>
             )}
+            {form["order_number"] && (
+              <div>
+                <dt className="inline text-muted-foreground">Bestellnummer: </dt>
+                <dd className="inline font-medium">{String(form["order_number"])}</dd>
+              </div>
+            )}
           </dl>
         </div>
 
         <h2 className="mt-10 font-display text-xl font-semibold">
-          {DOC_TYPE_LABEL[doc.type]} {doc.number}
+          {DOC_TYPE_LABEL[doc.type]} {docNumber}
         </h2>
         {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
 
@@ -480,10 +681,11 @@ function DokumentDetail() {
           <thead>
             <tr className="border-b text-xs text-muted-foreground uppercase">
               <th className="py-2">Pos.</th>
-              <th className="py-2">Leistung</th>
+              <th className="py-2">Bezeichnung</th>
               <th className="py-2 text-right">Menge</th>
-              <th className="py-2 text-right">Einzelpreis</th>
-              <th className="py-2 text-right">Betrag</th>
+              <th className="py-2">Einheit</th>
+              <th className="py-2 text-right">Einzel €</th>
+              <th className="py-2 text-right">Gesamt €</th>
             </tr>
           </thead>
           <tbody>
@@ -491,9 +693,8 @@ function DokumentDetail() {
               <tr key={i.id} className="border-b align-top">
                 <td className="py-2">{n + 1}</td>
                 <td className="py-2">{i.description}</td>
-                <td className="py-2 text-right">
-                  {formatNumber(i.quantity)} {i.unit}
-                </td>
+                <td className="py-2 text-right">{formatNumber(i.quantity)}</td>
+                <td className="py-2">{i.unit}</td>
                 <td className="py-2 text-right">{formatMoney(i.unit_price)}</td>
                 <td className="py-2 text-right">{formatMoney(i.quantity * i.unit_price)}</td>
               </tr>
@@ -502,33 +703,79 @@ function DokumentDetail() {
         </table>
 
         <div className="mt-4 flex justify-end">
-          <div className="w-64 space-y-1">
+          <div className="w-72 space-y-1">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Nettobetrag</span>
-              <span>{formatMoney(total)}</span>
+              <span className="text-muted-foreground">Zwischensumme netto</span>
+              <span>{formatMoney(netTotal)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Umsatzsteuer</span>
-              <span>0,00 €</span>
+              <span className="text-muted-foreground">
+                Umsatzsteuer {formatNumber(vatRate)} %
+              </span>
+              <span>{formatMoney(vatAmount)}</span>
             </div>
             <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
               <span>Gesamtbetrag</span>
-              <span>{formatMoney(total)}</span>
+              <span>{formatMoney(grossTotal)}</span>
             </div>
           </div>
         </div>
 
-        <p className="mt-6 rounded-md bg-muted p-3 text-xs">
-          {form["reverse_charge"] ? REVERSE_CHARGE_NOTE : NO_VAT_NOTE}
-        </p>
+        {taxMode !== "domestic" && (
+          <p className="mt-6 rounded-md bg-muted p-3 text-xs">{REVERSE_CHARGE_NOTE}</p>
+        )}
 
         {form["notes"] && <p className="mt-4">{String(form["notes"])}</p>}
 
-        {isInvoice && (settings?.iban || settings?.bank_name) && (
-          <p className="mt-6 text-xs text-muted-foreground">
-            Bitte überweisen Sie den Gesamtbetrag auf folgendes Konto: {settings?.bank_name} ·
-            IBAN {settings?.iban} {settings?.bic ? `· BIC ${settings.bic}` : ""}
-          </p>
+        {isInvoice && (settings?.["iban"] || settings?.["bank_name"]) && (
+          <div className="mt-6 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Bitte überweisen Sie den Gesamtbetrag auf folgendes Konto:{" "}
+              {String(settings?.["bank_name"] ?? "")} · IBAN {String(settings?.["iban"] ?? "")}
+              {settings?.["bic"] ? ` · BIC ${String(settings["bic"])}` : ""}
+            </p>
+            <GiroCode payload={epc} />
+          </div>
+        )}
+
+        <footer className="mt-10 grid gap-4 border-t pt-4 text-[11px] text-muted-foreground sm:grid-cols-3">
+          <div>
+            <div className="font-medium text-foreground">
+              {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
+            </div>
+            <div>{String(settings?.["address_line"] ?? "")}</div>
+            <div>
+              {String(settings?.["postal_code"] ?? "")} {String(settings?.["city"] ?? "")}
+            </div>
+            {settings?.["phone"] && <div>Tel. {String(settings["phone"])}</div>}
+            {settings?.["email"] && <div>{String(settings["email"])}</div>}
+          </div>
+          <div>
+            <div className="font-medium text-foreground">Steuerangaben</div>
+            <div>USt-IdNr.: {String(settings?.["vat_id"] ?? "DE458492078")}</div>
+            <div>Steuernummer: {String(settings?.["tax_number"] ?? "040/200/01653")}</div>
+            {settings?.["owner_name"] && <div>Inhaber: {String(settings["owner_name"])}</div>}
+          </div>
+          <div>
+            <div className="font-medium text-foreground">Bankverbindung</div>
+            <div>{String(settings?.["bank_name"] ?? "")}</div>
+            <div>IBAN {String(settings?.["iban"] ?? "")}</div>
+            <div>BIC {String(settings?.["bic"] ?? "")}</div>
+          </div>
+        </footer>
+
+        {form["attachment_text"] && (
+          <section className="mt-10 break-before-page">
+            <h2 className="font-display text-lg font-semibold">
+              {String(form["attachment_title"] ?? "Anlage")}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Anlage zu {DOC_TYPE_LABEL[doc.type]} {docNumber}
+            </p>
+            <pre className="mt-4 whitespace-pre-wrap font-sans text-xs">
+              {String(form["attachment_text"])}
+            </pre>
+          </section>
         )}
       </article>
     </div>
