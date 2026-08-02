@@ -316,7 +316,7 @@ function DokumentDetail() {
   }
 
   const mail = buildMail();
-  const logoSrc = useFileUrl(settings?.["logo_url"] ? String(settings["logo_url"]) : "");
+
   const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
   const bankName = String(settings?.["bank_name"] ?? "") || "Sparkasse Saarbrücken";
