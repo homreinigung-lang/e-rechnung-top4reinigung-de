@@ -276,3 +276,15 @@
   letter-spacing: 0;
   border-bottom: 1px solid var(--color-border);
 }
+
+/* Firmenlogo im Rechnungskopf: feste, professionelle Höhe. */
+.invoice-logo {
+  max-height: 50px;
+  height: auto;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+img.invoice-logo {
+  max-height: 50px;
+}
