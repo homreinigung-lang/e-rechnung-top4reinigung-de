@@ -175,33 +175,43 @@
   }
 
 
+  html,
+  body {
+    height: auto !important;
+  }
+
   .print-area {
     box-shadow: none !important;
     border: none !important;
-    margin: 0 !important;
-    padding: 14mm 15mm !important;
+    margin: 0 auto !important;
+    padding: 10mm 12mm !important;
     max-width: none !important;
+    /* Wird vor dem Druck automatisch berechnet, damit alles auf eine Seite passt. */
+    zoom: var(--print-scale, 1);
+    transform-origin: top left;
   }
 
   /* Summe, Zahlungsziel, Bankdaten und QR-Code nie umbrechen. */
   .invoice-closing,
-  .print-area footer {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
+  .print-area footer,
+  .print-area table,
   .print-area tr,
   .print-area thead {
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
+  .print-area,
+  .print-area * {
+    page-break-after: avoid;
+  }
 
   /* Ohne Seitenrand druckt der Browser keine Kopf-/Fußzeile (Titel, URL, Datum). */
   @page {
-    size: A4;
+    size: A4 portrait;
     margin: 0;
   }
+
 }
 
 /* Das Lovable-Badge auch in der Bildschirm-Vorschau der Rechnung ausblenden. */
