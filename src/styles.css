@@ -222,6 +222,11 @@
     display: table-footer-group;
   }
 
+  .invoice-table-wrap {
+    overflow: visible !important;
+  }
+
+
   /* Überschriften nicht als letzte Zeile einer Seite stehen lassen. */
   .print-area h1,
   .print-area h2,
