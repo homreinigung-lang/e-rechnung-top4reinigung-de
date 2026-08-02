@@ -8,8 +8,16 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   ]);
   // html2canvas versteht keine oklch()-Farben (Tailwind v4) – im Klon auf
   // klassische Farbwerte umstellen, damit die Erzeugung nicht abbricht.
+  // Für ein sauberes A4-Layout die Breite während der Aufnahme auf
+  // A4 (794 px @96dpi) fixieren – sonst quetschen sich die Tabellenspalten
+  // auf schmalen Bildschirmen ineinander.
+  const previousStyle = element.getAttribute("style") ?? "";
+  element.style.width = "794px";
+  element.style.maxWidth = "794px";
+
   const canvas = await html2canvas(element, {
     scale: 2,
+    windowWidth: 1024,
     backgroundColor: "#ffffff",
     onclone: (doc) => {
       const style = doc.createElement("style");
@@ -21,6 +29,8 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
       doc.head.appendChild(style);
     },
   });
+
+  element.setAttribute("style", previousStyle);
 
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageWidth = pdf.internal.pageSize.getWidth();
