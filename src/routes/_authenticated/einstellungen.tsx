@@ -11,6 +11,13 @@ import { formatDate } from "@/lib/format";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   detectKind,
   mapCustomer,
   mapDocument,
@@ -68,6 +75,13 @@ function downloadCsv(name: string, rows: Record<string, unknown>[]) {
 function Einstellungen() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<{
+    kind: "documents" | "expenses" | "customers";
+    fileName: string;
+    rows: Record<string, unknown>[];
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [from, setFrom] = useState(`${new Date().getFullYear()}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
 
@@ -170,6 +184,12 @@ function Einstellungen() {
     );
   }
 
+  const KIND_LABEL: Record<string, string> = {
+    documents: "Rechnungen",
+    expenses: "Ausgaben",
+    customers: "Kunden",
+  };
+
   async function importFile(file: File) {
     try {
       const text = await readTextAuto(file);
@@ -179,63 +199,57 @@ function Einstellungen() {
         return;
       }
       const objects = toObjects(headers, rows);
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) { toast.error("Nicht angemeldet"); return; }
-
       const kind = detectKind(file.name, headers);
+      const mapper = kind === "customers" ? mapCustomer : kind === "expenses" ? mapExpense : mapDocument;
+      const valid = objects
+        .map((o) => mapper(o) as Record<string, unknown> | null)
+        .filter(Boolean) as Record<string, unknown>[];
 
-      if (kind === "customers") {
-        const valid = objects.map(mapCustomer).filter(Boolean) as NonNullable<
-          ReturnType<typeof mapCustomer>
-        >[];
-        if (valid.length === 0) {
-          toast.error("Keine gültigen Kundenzeilen gefunden.");
-          return;
-        }
-        const { error } = await supabase
-          .from("customers")
-          .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
-        if (error) { toast.error(error.message); return; }
-        toast.success(`${valid.length} Kunden importiert`);
-        queryClient.invalidateQueries({ queryKey: ["customers"] });
-        return;
-      }
-
-      if (kind === "expenses") {
-        const valid = objects.map(mapExpense).filter(Boolean) as NonNullable<
-          ReturnType<typeof mapExpense>
-        >[];
-        if (valid.length === 0) {
-          toast.error("Keine gültigen Ausgabenzeilen gefunden.");
-          return;
-        }
-        const { error } = await supabase
-          .from("expenses")
-          .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
-        if (error) { toast.error(error.message); return; }
-        toast.success(`${valid.length} Ausgaben importiert`);
-        queryClient.invalidateQueries({ queryKey: ["expenses"] });
-        return;
-      }
-
-      const valid = objects.map(mapDocument).filter(Boolean) as NonNullable<
-        ReturnType<typeof mapDocument>
-      >[];
       if (valid.length === 0) {
-        toast.error("Keine gültigen Rechnungszeilen gefunden.");
+        toast.error(
+          `Keine verwertbaren Zeilen erkannt. Erkannte Spalten: ${headers.filter(Boolean).join(", ")}`,
+        );
         return;
       }
-      const { error } = await supabase
-        .from("documents")
-        .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
-      if (error) { toast.error(error.message); return; }
-      toast.success(`${valid.length} Rechnungen importiert`);
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setPreview({ kind, fileName: file.name, rows: valid });
+      setPreviewOpen(true);
+      toast.success(
+        `${valid.length} von ${rows.length} Zeilen erkannt (${KIND_LABEL[kind]}) – bitte in der Vorschau prüfen.`,
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import fehlgeschlagen");
     }
   }
+
+  async function savePreview() {
+    if (!preview) return;
+    setSaving(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) {
+        toast.error("Nicht angemeldet");
+        return;
+      }
+      const table =
+        preview.kind === "customers" ? "customers" : preview.kind === "expenses" ? "expenses" : "documents";
+      const { error } = await supabase
+        .from(table)
+        .insert(preview.rows.map((v) => ({ ...v, user_id: userId })) as never);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(`${preview.rows.length} ${KIND_LABEL[preview.kind]} importiert`);
+      queryClient.invalidateQueries({ queryKey: [table] });
+      setPreview(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import fehlgeschlagen");
+    } finally {
+      setSaving(false);
+    }
+  }
+
 
 
   return (
@@ -338,8 +352,9 @@ function Einstellungen() {
         <p className="text-sm text-muted-foreground">
           Datei auswählen – der Typ wird automatisch erkannt: Rechnungen (z. B. Export_RE_…) landen
           unter „Rechnungen“, Ausgaben (z. B. Export_RA_…) unter „Ausgaben“, Kundenlisten im
-          Kundenstamm. Kodierung (UTF-8 / ISO-8859-1) und unbekannte Spalten werden automatisch
-          verarbeitet bzw. übersprungen.
+          Kundenstamm. Trennzeichen (; , Tab |), Kodierung (UTF-8 / Windows-1252 / ISO-8859-1) und
+          abweichende Spaltennamen werden automatisch erkannt; unbekannte Spalten werden
+          übersprungen.
         </p>
         <Label
           htmlFor="csv"
@@ -358,7 +373,82 @@ function Einstellungen() {
             e.target.value = "";
           }}
         />
+        {preview && (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/40 px-4 py-3 text-sm">
+            <span>
+              <strong>{preview.rows.length}</strong> Zeilen erkannt ({KIND_LABEL[preview.kind]}) aus{" "}
+              {preview.fileName}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
+              Vorschau
+            </Button>
+          </div>
+        )}
       </div>
+
+      <Dialog
+        open={previewOpen}
+        onOpenChange={(o) => setPreviewOpen(o)}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              Vorschau: {preview ? `${preview.rows.length} ${KIND_LABEL[preview.kind]}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {preview && preview.rows.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b text-muted-foreground">
+                  <tr>
+                    {Object.keys(preview.rows[0]!).map((k) => (
+                      <th key={k} className="whitespace-nowrap px-2 py-2 font-medium">
+                        {k}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.rows.slice(0, 50).map((r, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      {Object.keys(preview.rows[0]!).map((k) => (
+                        <td key={k} className="whitespace-nowrap px-2 py-1.5">
+                          {String(r[k] ?? "")}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {preview.rows.length > 50 && (
+                <p className="px-2 py-2 text-xs text-muted-foreground">
+                  … {preview.rows.length - 50} weitere Zeilen
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPreviewOpen(false);
+                setPreview(null);
+              }}
+            >
+              Verwerfen
+            </Button>
+            <Button
+              disabled={saving}
+              onClick={async () => {
+                await savePreview();
+                setPreviewOpen(false);
+              }}
+            >
+              {saving ? "Speichern…" : "Jetzt importieren"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

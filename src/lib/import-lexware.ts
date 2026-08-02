@@ -4,7 +4,7 @@
 
 export type ImportKind = "documents" | "expenses" | "customers";
 
-/** Liest die Datei und wählt UTF-8 oder ISO-8859-1 (Windows-1252) automatisch. */
+/** Liest die Datei und wählt UTF-8, Windows-1252 oder ISO-8859-1 automatisch. */
 export async function readTextAuto(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
@@ -16,21 +16,52 @@ export async function readTextAuto(file: File): Promise<string> {
   try {
     return strict.decode(bytes);
   } catch {
-    return new TextDecoder("iso-8859-1").decode(bytes);
+    for (const enc of ["windows-1252", "iso-8859-15", "iso-8859-1"]) {
+      try {
+        return new TextDecoder(enc).decode(bytes);
+      } catch {
+        // nächste Kodierung versuchen
+      }
+    }
+    return new TextDecoder("utf-8").decode(bytes);
   }
 }
 
-function detectSeparator(line: string): string {
-  const counts = [";", ",", "\t", "|"].map((s) => [s, line.split(s).length - 1] as const);
-  counts.sort((a, b) => b[1] - a[1]);
-  return counts[0]![1] > 0 ? counts[0]![0] : ";";
+/** Zählt Trennzeichen außerhalb von Anführungszeichen. */
+function countOutsideQuotes(line: string, sep: string): number {
+  let quoted = false;
+  let count = 0;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]!;
+    if (ch === '"') quoted = !quoted;
+    else if (!quoted && ch === sep) count++;
+  }
+  return count;
+}
+
+/** Erkennt ; , Tab oder | anhand der ersten Datenzeilen. */
+export function detectSeparator(text: string): string {
+  const lines = text
+    .split("\n")
+    .filter((l) => l.trim())
+    .slice(0, 5);
+  if (lines.length === 0) return ";";
+  const scored = [";", ",", "\t", "|"].map((sep) => {
+    const counts = lines.map((l) => countOutsideQuotes(l, sep));
+    const total = counts.reduce((a, b) => a + b, 0);
+    const consistent = counts.every((c) => c === counts[0]) ? 1 : 0;
+    return { sep, total, consistent };
+  });
+  scored.sort((a, b) => b.consistent - a.consistent || b.total - a.total);
+  const best = scored[0]!;
+  return best.total > 0 ? best.sep : ";";
 }
 
 /** CSV-Parser mit Unterstützung für Anführungszeichen und Zeilenumbrüche in Feldern. */
 export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
   const clean = text.replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
-  const firstLine = clean.split("\n").find((l) => l.trim()) ?? "";
-  const sep = detectSeparator(firstLine);
+  const sep = detectSeparator(clean);
+
 
   const rows: string[][] = [];
   let row: string[] = [];
@@ -93,19 +124,31 @@ export function toObjects(headers: string[], rows: string[][]): Record_[] {
   });
 }
 
+/**
+ * Sucht einen Wert unabhängig von der exakten Spaltenbezeichnung:
+ * exakter Treffer > Spalte enthält den Begriff > Begriff enthält die Spalte.
+ */
 function pick(row: Record_, candidates: string[]): string {
+  const keys = Object.keys(row);
   for (const c of candidates) {
     const key = norm(c);
     if (row[key]) return row[key]!;
   }
-  // Teiltreffer (z. B. "rechnungsnummer2")
   for (const c of candidates) {
     const key = norm(c);
-    const hit = Object.keys(row).find((k) => k.includes(key));
+    if (!key) continue;
+    const hit = keys.find((k) => k.includes(key));
+    if (hit && row[hit]) return row[hit]!;
+  }
+  for (const c of candidates) {
+    const key = norm(c);
+    if (key.length < 4) continue;
+    const hit = keys.find((k) => k.length >= 4 && key.includes(k));
     if (hit && row[hit]) return row[hit]!;
   }
   return "";
 }
+
 
 /** Deutsche Zahl ("1.234,56 €") => number */
 export function parseNumber(value: string): number {
@@ -169,8 +212,10 @@ export type CustomerRow = {
 };
 
 export function mapCustomer(row: Record_): CustomerRow | null {
-  const company = pick(row, ["Firma", "Firmenname", "Company", "Unternehmen", "Name1", "Kunde"]);
-  const name = pick(row, ["Ansprechpartner", "Name", "Nachname", "Kontakt", "Vorname"]);
+  const company = pick(row, [
+    "Firma", "Firmenname", "Person/Firma", "Company", "Unternehmen", "Name1", "Kunde", "Empfänger",
+  ]);
+  const name = pick(row, ["Ansprechpartner", "Name", "Nachname", "Kontakt", "Vorname", "Person"]);
   if (!company && !name) return null;
   return {
     name,
@@ -209,12 +254,20 @@ export type DocumentRow = {
 };
 
 export function mapDocument(row: Record_): DocumentRow | null {
-  const number = pick(row, ["Rechnungsnummer", "Belegnummer", "Nummer", "Nr", "Dokumentnummer"]);
-  const date = parseDate(pick(row, ["Rechnungsdatum", "Belegdatum", "Datum", "Ausstellungsdatum"]));
-  const company = pick(row, ["Kunde", "Firma", "Empfänger", "Name1", "Kundenname"]);
+  const number = pick(row, ["Belegnummer", "Rechnungsnummer", "Nummer", "Nr", "Dokumentnummer", "Beleg"]);
+  const date = parseDate(
+    pick(row, ["Belegdatum", "Rechnungsdatum", "Datum", "Ausstellungsdatum", "Buchungsdatum"]),
+  );
+  const company = pick(row, [
+    "Kunde", "Kundenname", "Firma", "Person/Firma", "Person", "Empfänger", "Empfaenger",
+    "Name1", "Name", "Debitor", "Kontakt",
+  ]);
   let net = parseNumber(pick(row, ["Netto", "Nettobetrag", "Nettosumme", "Betrag netto"]));
   const vat = parseNumber(pick(row, ["Umsatzsteuer", "MwSt", "Steuer", "Steuerbetrag", "USt"]));
-  let gross = parseNumber(pick(row, ["Brutto", "Bruttobetrag", "Gesamtbetrag", "Gesamt", "Betrag"]));
+  let gross = parseNumber(
+    pick(row, ["Betrag brutto", "Bruttobetrag", "Brutto", "Gesamtbetrag", "Gesamt", "Endbetrag", "Betrag", "Summe"]),
+  );
+
   if (!gross && (net || vat)) gross = net + vat;
   if (!net && gross) net = gross - vat;
   if (!number && !date && !company && !gross) return null;
@@ -260,11 +313,17 @@ export type ExpenseRow = {
 };
 
 export function mapExpense(row: Record_): ExpenseRow | null {
-  const supplier = pick(row, ["Lieferant", "Kreditor", "Firma", "Name", "Empfänger", "Zahlungsempfänger"]);
+  const supplier = pick(row, [
+    "Lieferant", "Kreditor", "Person/Firma", "Person", "Firma", "Empfänger", "Empfaenger",
+    "Zahlungsempfänger", "Name1", "Name",
+  ]);
   const date = parseDate(pick(row, ["Belegdatum", "Rechnungsdatum", "Datum", "Buchungsdatum"]));
   let net = parseNumber(pick(row, ["Netto", "Nettobetrag", "Betrag netto"]));
   const vat = parseNumber(pick(row, ["Vorsteuer", "Umsatzsteuer", "MwSt", "Steuer", "Steuerbetrag"]));
-  let gross = parseNumber(pick(row, ["Brutto", "Bruttobetrag", "Gesamtbetrag", "Betrag", "Gesamt"]));
+  let gross = parseNumber(
+    pick(row, ["Betrag brutto", "Bruttobetrag", "Brutto", "Gesamtbetrag", "Gesamt", "Betrag", "Summe"]),
+  );
+
   if (!gross && (net || vat)) gross = net + vat;
   if (!net && gross) net = gross - vat;
   if (!supplier && !gross && !date) return null;
