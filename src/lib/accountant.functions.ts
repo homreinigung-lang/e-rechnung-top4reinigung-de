@@ -10,26 +10,63 @@ export type AccountantReport = {
   expenses: Row[];
 };
 
-/** Erstellt einen neuen Nur-Lese-Zugang für den Steuerberater. */
+/** Kein Ablaufdatum: Zugang gilt dauerhaft. */
+const NO_EXPIRY = "2999-12-31T00:00:00.000Z";
+
+function normalizeCode(value: string) {
+  return value.trim().toUpperCase();
+}
+
+/** Erstellt einen neuen dauerhaften Nur-Lese-Zugang für den Steuerberater. */
 export const createAccountantAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { email?: string }) => ({ email: (data.email ?? "").trim() }))
+  .inputValidator((data: { email?: string; password?: string }) => ({
+    email: (data.email ?? "").trim(),
+    password: (data.password ?? "").trim(),
+  }))
   .handler(async ({ data, context }) => {
     const token = crypto.randomUUID().replace(/-/g, "");
-    const accessCode = Array.from(crypto.getRandomValues(new Uint8Array(4)))
-      .map((b) => (b % 36).toString(36))
-      .join("")
-      .toUpperCase();
+    const accessCode = data.password
+      ? normalizeCode(data.password)
+      : Array.from(crypto.getRandomValues(new Uint8Array(4)))
+          .map((b) => (b % 36).toString(36))
+          .join("")
+          .toUpperCase();
+
+    if (data.password && accessCode.length < 4) {
+      throw new Error("Passwort muss mindestens 4 Zeichen haben.");
+    }
 
     const { error } = await context.supabase.from("accountant_access").insert({
       user_id: context.userId,
       email: data.email,
       token,
       access_code: accessCode,
+      expires_at: NO_EXPIRY,
     });
     if (error) throw new Error(error.message);
 
     return { token, accessCode };
+  });
+
+/** Setzt ein dauerhaftes, selbst gewähltes Passwort für einen bestehenden Zugang. */
+export const setAccountantPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; password: string }) => ({
+    id: data.id,
+    password: normalizeCode(data.password ?? ""),
+  }))
+  .handler(async ({ data, context }) => {
+    if (data.password.length < 4) {
+      throw new Error("Passwort muss mindestens 4 Zeichen haben.");
+    }
+    const { error } = await context.supabase
+      .from("accountant_access")
+      .update({ access_code: data.password, expires_at: NO_EXPIRY, active: true })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true, accessCode: data.password };
   });
 
 /** Prüft Token + Passwort und liefert die Auswertung des Zeitraums (nur Lesen). */
@@ -47,11 +84,11 @@ export const getAccountantReport = createServerFn({ method: "POST" })
     if (
       !access ||
       !access.active ||
-      new Date(access.expires_at).getTime() < Date.now() ||
-      access.access_code.toUpperCase() !== (data.code ?? "").trim().toUpperCase()
+      access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
     ) {
-      throw new Error("Zugang ungültig oder abgelaufen.");
+      throw new Error("Zugang ungültig.");
     }
+
 
     await supabaseAdmin
       .from("accountant_access")
