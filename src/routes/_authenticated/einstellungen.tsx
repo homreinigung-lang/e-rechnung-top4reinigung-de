@@ -161,53 +161,73 @@ function Einstellungen() {
     );
   }
 
-  async function importCustomers(file: File) {
-    const text = await file.text();
-    const [headerLine, ...lines] = text.split(/\r?\n/).filter((l) => l.trim());
-    if (!headerLine) { toast.error("Leere Datei."); return; }
-    const sep = headerLine.includes(";") ? ";" : ",";
-    const headers = headerLine.split(sep).map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
-    const map: Record<string, string> = {
-      firma: "company",
-      company: "company",
-      name: "name",
-      ansprechpartner: "name",
-      email: "email",
-      "e-mail": "email",
-      telefon: "phone",
-      phone: "phone",
-      straße: "address_line",
-      strasse: "address_line",
-      adresse: "address_line",
-      plz: "postal_code",
-      ort: "city",
-      stadt: "city",
-      land: "country",
-      "ust-idnr.": "vat_id",
-      "ust-idnr": "vat_id",
-      ustid: "vat_id",
-      notizen: "notes",
-    };
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth.user?.id;
-    if (!userId) { toast.error("Nicht angemeldet"); return; }
+  async function importFile(file: File) {
+    try {
+      const text = await readTextAuto(file);
+      const { headers, rows } = parseCsv(text);
+      if (headers.length === 0 || rows.length === 0) {
+        toast.error("Die Datei enthält keine Datenzeilen.");
+        return;
+      }
+      const objects = toObjects(headers, rows);
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) { toast.error("Nicht angemeldet"); return; }
 
-    const rows = lines.map((line) => {
-      const cells = line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
-      const row: Record<string, string> = { user_id: userId };
-      headers.forEach((h, i) => {
-        const key = map[h];
-        if (key) row[key] = cells[i] ?? "";
-      });
-      return row;
-    });
-    const valid = rows.filter((r) => r["company"] || r["name"]);
-    if (valid.length === 0) { toast.error("Keine gültigen Zeilen gefunden."); return; }
-    const { error } = await supabase.from("customers").insert(valid as never);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`${valid.length} Kunden importiert`);
-    queryClient.invalidateQueries({ queryKey: ["customers"] });
+      const kind = detectKind(file.name, headers);
+
+      if (kind === "customers") {
+        const valid = objects.map(mapCustomer).filter(Boolean) as NonNullable<
+          ReturnType<typeof mapCustomer>
+        >[];
+        if (valid.length === 0) {
+          toast.error("Keine gültigen Kundenzeilen gefunden.");
+          return;
+        }
+        const { error } = await supabase
+          .from("customers")
+          .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
+        if (error) { toast.error(error.message); return; }
+        toast.success(`${valid.length} Kunden importiert`);
+        queryClient.invalidateQueries({ queryKey: ["customers"] });
+        return;
+      }
+
+      if (kind === "expenses") {
+        const valid = objects.map(mapExpense).filter(Boolean) as NonNullable<
+          ReturnType<typeof mapExpense>
+        >[];
+        if (valid.length === 0) {
+          toast.error("Keine gültigen Ausgabenzeilen gefunden.");
+          return;
+        }
+        const { error } = await supabase
+          .from("expenses")
+          .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
+        if (error) { toast.error(error.message); return; }
+        toast.success(`${valid.length} Ausgaben importiert`);
+        queryClient.invalidateQueries({ queryKey: ["expenses"] });
+        return;
+      }
+
+      const valid = objects.map(mapDocument).filter(Boolean) as NonNullable<
+        ReturnType<typeof mapDocument>
+      >[];
+      if (valid.length === 0) {
+        toast.error("Keine gültigen Rechnungszeilen gefunden.");
+        return;
+      }
+      const { error } = await supabase
+        .from("documents")
+        .insert(valid.map((v) => ({ ...v, user_id: userId })) as never);
+      if (error) { toast.error(error.message); return; }
+      toast.success(`${valid.length} Rechnungen importiert`);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import fehlgeschlagen");
+    }
   }
+
 
   return (
     <div className="space-y-6">
