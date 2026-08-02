@@ -190,6 +190,7 @@
   }
 
   /* Zeilen, Textblöcke und Abschluss nie mitten im Umbruch zerreißen. */
+  .invoice-summary-block,
   .invoice-closing,
   .print-area footer,
   .print-area tr,
@@ -202,6 +203,14 @@
   .print-area h3 {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  /* Summen, Rechtstext, Zahlung, QR-Code und Fußzeile bleiben als eine Einheit.
+     Passt die Einheit nicht mehr auf Seite 1, verschiebt der Drucker sie komplett. */
+  .invoice-summary-block {
+    display: flow-root;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
   }
 
   /* Tabellenkopf auf Folgeseite wiederholen. */
