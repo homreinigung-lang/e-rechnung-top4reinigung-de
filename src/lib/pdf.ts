@@ -25,7 +25,11 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
       body,.paper{background-color:#ffffff !important;}
       .text-muted-foreground{color:#6b7280 !important;}
       thead tr{background-color:#f3f4f6 !important;}
-      td,th{border-color:#e5e7eb !important;}`;
+      td,th{border-color:#e5e7eb !important;}
+      .print-area{padding:14mm 15mm !important;box-shadow:none !important;border:none !important;}
+      .invoice-table{table-layout:fixed !important;width:100% !important;border-collapse:collapse !important;}
+      .invoice-table th,.invoice-table td{vertical-align:top !important;overflow-wrap:break-word !important;word-break:normal !important;letter-spacing:normal !important;}
+      .invoice-table-wrap{overflow:visible !important;}`;
       doc.head.appendChild(style);
     },
   });
