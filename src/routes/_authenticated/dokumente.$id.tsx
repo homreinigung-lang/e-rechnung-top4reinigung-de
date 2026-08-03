@@ -27,7 +27,20 @@ import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useFileUrl } from "@/hooks/useFileUrl";
-import { ArrowLeft, Copy, Mail, Plus, Printer, Save, Trash2 } from "lucide-react";
+import { archiveDocumentPdf, createStorno, finalizeDocument } from "@/lib/gobd";
+import { elementToPdfBytes } from "@/lib/pdf";
+import {
+  ArrowLeft,
+  Ban,
+  Copy,
+  Lock,
+  Mail,
+  Plus,
+  Printer,
+  Save,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
   head: () => ({
@@ -213,8 +226,17 @@ function DokumentDetail() {
         created_at: _c,
         updated_at: _u,
         sent_at: _s,
+        // GoBD-Felder dürfen niemals mitkopiert werden – die Kopie ist ein Entwurf.
+        locked_at: _l,
+        archived_at: _a,
+        pdf_path: _p,
+        pdf_sha256: _h,
+        is_storno: _st,
+        cancels_document_id: _cd,
+        cancelled_by_document_id: _cb,
         ...rest
       } = doc as unknown as Record<string, unknown>;
+
 
       const { data: created, error } = await supabase
         .from("documents")
@@ -246,14 +268,52 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // GoBD: Beleg festschreiben (unveränderbar) + revisionssicher archivieren.
+  const finalize = useMutation({
+    mutationFn: async () => {
+      await save.mutateAsync();
+      const finalized = await finalizeDocument(id);
+      await queryClient.invalidateQueries({ queryKey: ["document", id] });
+      // Kurz warten, damit die Druckansicht die neue Nummer zeigt.
+      await new Promise((r) => setTimeout(r, 400));
+      const element = document.querySelector<HTMLElement>(".print-area");
+      if (element) {
+        const bytes = await elementToPdfBytes(element);
+        await archiveDocumentPdf({ id, number: finalized.number }, bytes);
+      }
+      return finalized.number;
+    },
+    onSuccess: (number) => {
+      toast.success(`Festgeschrieben und archiviert: ${number}`);
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const storno = useMutation({
+    mutationFn: () => createStorno(id),
+    onSuccess: (newId) => {
+      toast.success("Stornorechnung erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      navigate({ to: "/dokumente/$id", params: { id: newId } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading || !data) {
     return <p className="text-muted-foreground">Wird geladen…</p>;
   }
 
   const doc = data.doc;
+  const docRecord = doc as unknown as Record<string, unknown>;
+  const lockedAt = (docRecord["locked_at"] as string | null) ?? null;
+  const locked = Boolean(lockedAt);
+  const isStorno = Boolean(docRecord["is_storno"]);
+  const cancelledBy = (docRecord["cancelled_by_document_id"] as string | null) ?? null;
   const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
-  const docNumber = String(form["number"] ?? doc.number);
+  const docNumber = locked ? doc.number : String(form["number"] ?? doc.number);
   const senderLine = [
     settings?.["company_name"] ?? "Hom Reinigung Service",
     settings?.["address_line"] ?? "Poststr 8",
@@ -351,16 +411,73 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending}>
-            <Save className="size-4" /> Speichern
-          </Button>
+          {!locked && (
+            <>
+              <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
+                <Save className="size-4" /> Speichern
+              </Button>
+              <Button
+                onClick={() => {
+                  if (
+                    confirm(
+                      "Beleg jetzt festschreiben? Danach ist er gemäß GoBD unveränderbar und kann nur noch storniert werden.",
+                    )
+                  ) {
+                    finalize.mutate();
+                  }
+                }}
+                disabled={finalize.isPending || save.isPending}
+              >
+                <Lock className="size-4" />
+                {finalize.isPending ? "Wird festgeschrieben…" : "Festschreiben (GoBD)"}
+              </Button>
+            </>
+          )}
+          {locked && isInvoice && !isStorno && !cancelledBy && (
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (
+                  confirm(
+                    "Stornorechnung erstellen? Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
+                  )
+                ) {
+                  storno.mutate();
+                }
+              }}
+              disabled={storno.isPending}
+            >
+              <Ban className="size-4" /> Stornorechnung
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="no-print surface space-y-6 p-6">
+      {locked && (
+        <div className="no-print flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+          <ShieldCheck className="size-5 text-primary" />
+          <div>
+            <p className="font-medium">Festgeschrieben – GoBD-konform unveränderbar</p>
+            <p className="text-muted-foreground">
+              Festgeschrieben am {formatDate(lockedAt)}
+              {docRecord["pdf_sha256"]
+                ? ` · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
+                : " · PDF-Archivierung ausstehend"}
+              {cancelledBy ? " · Diese Rechnung wurde storniert." : ""}
+              {isStorno ? " · Stornorechnung" : ""}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <fieldset
+        disabled={locked}
+        className="no-print surface space-y-6 p-6 disabled:opacity-90"
+      >
         <h2 className="font-display text-xl font-semibold">
-          {DOC_TYPE_LABEL[doc.type]} {docNumber} bearbeiten
+          {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
         </h2>
+
 
         <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
           <Label>Steuer-Art</Label>
@@ -592,7 +709,8 @@ function DokumentDetail() {
           </div>
         </div>
 
-      </div>
+      </fieldset>
+
 
       {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto w-full max-w-3xl p-9 text-sm">

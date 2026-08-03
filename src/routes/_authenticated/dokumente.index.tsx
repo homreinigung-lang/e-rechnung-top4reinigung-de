@@ -14,7 +14,7 @@ import {
   today,
   addDays,
 } from "@/lib/format";
-import { Copy, FileText, Plus, Receipt, Trash2 } from "lucide-react";
+import { Copy, FileText, Lock, Plus, Receipt, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/")({
   head: () => ({
@@ -107,7 +107,20 @@ function DokumenteListe() {
         src.type as "invoice" | "quote",
         documents.filter((d) => d.type === src.type).map((d) => d.number),
       );
-      const { id: _i, created_at: _c, updated_at: _u, sent_at: _s, ...rest } = src as unknown as Record<string, unknown>;
+      const {
+        id: _i,
+        created_at: _c,
+        updated_at: _u,
+        sent_at: _s,
+        locked_at: _l,
+        archived_at: _a,
+        pdf_path: _p,
+        pdf_sha256: _h,
+        is_storno: _st,
+        cancels_document_id: _cd,
+        cancelled_by_document_id: _cb,
+        ...rest
+      } = src as unknown as Record<string, unknown>;
       const { data: created, error: insErr } = await supabase
         .from("documents")
         .insert({ ...rest, user_id: userId, number, status: "draft" } as never)
@@ -198,8 +211,17 @@ function DokumenteListe() {
                   className="flex flex-1 flex-wrap items-center justify-between gap-3"
                 >
                   <div>
-                    <div className="font-medium">
+                    <div className="flex items-center gap-2 font-medium">
                       {DOC_TYPE_LABEL[d.type]} {d.number}
+                      {(d as unknown as Record<string, unknown>)["locked_at"] ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                          <Lock className="size-3" /> Festgeschrieben
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                          Entwurf – nicht festgeschrieben
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
@@ -219,18 +241,30 @@ function DokumenteListe() {
                 >
                   <Copy className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Löschen"
-                  onClick={() => {
-                    if (confirm(`${DOC_TYPE_LABEL[d.type]} ${d.number} wirklich löschen?`)) {
-                      remove.mutate(d.id);
-                    }
-                  }}
-                >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
+                {(d as unknown as Record<string, unknown>)["locked_at"] ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Festgeschrieben – Löschen gemäß GoBD nicht möglich"
+                    disabled
+                  >
+                    <Lock className="size-4 text-muted-foreground" />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Löschen"
+                    onClick={() => {
+                      if (confirm(`${DOC_TYPE_LABEL[d.type]} ${d.number} wirklich löschen?`)) {
+                        remove.mutate(d.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                )}
+
               </li>
             ))}
           </ul>

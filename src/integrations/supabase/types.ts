@@ -191,6 +191,36 @@ export type Database = {
         }
         Relationships: []
       }
+      document_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json
+          document_id: string | null
+          document_number: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json
+          document_id?: string | null
+          document_number?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json
+          document_id?: string | null
+          document_number?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       document_items: {
         Row: {
           created_at: string
@@ -237,8 +267,11 @@ export type Database = {
       }
       documents: {
         Row: {
+          archived_at: string | null
           attachment_text: string
           attachment_title: string
+          cancelled_by_document_id: string | null
+          cancels_document_id: string | null
           created_at: string
           customer_address_line: string
           customer_city: string
@@ -252,11 +285,15 @@ export type Database = {
           due_date: string | null
           id: string
           intro_text: string
+          is_storno: boolean
           issue_date: string
+          locked_at: string | null
           net_total: number
           notes: string
           number: string
           order_number: string
+          pdf_path: string
+          pdf_sha256: string
           reverse_charge: boolean
           sent_at: string | null
           service_period: string
@@ -270,8 +307,11 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          archived_at?: string | null
           attachment_text?: string
           attachment_title?: string
+          cancelled_by_document_id?: string | null
+          cancels_document_id?: string | null
           created_at?: string
           customer_address_line?: string
           customer_city?: string
@@ -285,11 +325,15 @@ export type Database = {
           due_date?: string | null
           id?: string
           intro_text?: string
+          is_storno?: boolean
           issue_date?: string
+          locked_at?: string | null
           net_total?: number
           notes?: string
           number: string
           order_number?: string
+          pdf_path?: string
+          pdf_sha256?: string
           reverse_charge?: boolean
           sent_at?: string | null
           service_period?: string
@@ -303,8 +347,11 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          archived_at?: string | null
           attachment_text?: string
           attachment_title?: string
+          cancelled_by_document_id?: string | null
+          cancels_document_id?: string | null
           created_at?: string
           customer_address_line?: string
           customer_city?: string
@@ -318,11 +365,15 @@ export type Database = {
           due_date?: string | null
           id?: string
           intro_text?: string
+          is_storno?: boolean
           issue_date?: string
+          locked_at?: string | null
           net_total?: number
           notes?: string
           number?: string
           order_number?: string
+          pdf_path?: string
+          pdf_sha256?: string
           reverse_charge?: boolean
           sent_at?: string | null
           service_period?: string
@@ -336,6 +387,20 @@ export type Database = {
           vat_rate?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_cancelled_by_document_id_fkey"
+            columns: ["cancelled_by_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_cancels_document_id_fkey"
+            columns: ["cancels_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_customer_id_fkey"
             columns: ["customer_id"]
@@ -390,6 +455,33 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vat_amount?: number
+        }
+        Relationships: []
+      }
+      number_sequences: {
+        Row: {
+          created_at: string
+          kind: string
+          last_value: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          kind: string
+          last_value?: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          kind?: string
+          last_value?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
         }
         Relationships: []
       }
@@ -452,7 +544,57 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_storno: { Args: { _id: string }; Returns: string }
+      finalize_document: {
+        Args: { _id: string }
+        Returns: {
+          archived_at: string | null
+          attachment_text: string
+          attachment_title: string
+          cancelled_by_document_id: string | null
+          cancels_document_id: string | null
+          created_at: string
+          customer_address_line: string
+          customer_city: string
+          customer_company: string
+          customer_country: string
+          customer_email: string
+          customer_id: string | null
+          customer_name: string
+          customer_postal_code: string
+          customer_vat_id: string
+          due_date: string | null
+          id: string
+          intro_text: string
+          is_storno: boolean
+          issue_date: string
+          locked_at: string | null
+          net_total: number
+          notes: string
+          number: string
+          order_number: string
+          pdf_path: string
+          pdf_sha256: string
+          reverse_charge: boolean
+          sent_at: string | null
+          service_period: string
+          status: Database["public"]["Enums"]["doc_status"]
+          tax_mode: string
+          total: number
+          type: Database["public"]["Enums"]["doc_type"]
+          updated_at: string
+          user_id: string
+          vat_amount: number
+          vat_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "documents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      next_document_number: { Args: { _kind: string }; Returns: string }
     }
     Enums: {
       doc_status:
