@@ -12,12 +12,18 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as RechtlichesRouteImport } from './routes/rechtliches'
 import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
+import { Route as RechtlichesIndexRouteImport } from './routes/rechtliches.index'
+import { Route as RechtlichesAgbRouteImport } from './routes/rechtliches.agb'
+import { Route as RechtlichesBibliothekenRouteImport } from './routes/rechtliches.bibliotheken'
+import { Route as RechtlichesDatenschutzRouteImport } from './routes/rechtliches.datenschutz'
+import { Route as RechtlichesImpressumRouteImport } from './routes/rechtliches.impressum'
 import { Route as StbTokenRouteImport } from './routes/stb.$token'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
@@ -34,6 +40,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RechtlichesRoute = RechtlichesRouteImport.update({
+  id: '/rechtliches',
+  path: '/rechtliches',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAusgabenRoute = AuthenticatedAusgabenRouteImport.update({
@@ -68,6 +79,31 @@ const AuthenticatedSteuerberaterRoute =
     path: '/steuerberater',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const RechtlichesIndexRoute = RechtlichesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RechtlichesRoute,
+} as any)
+const RechtlichesAgbRoute = RechtlichesAgbRouteImport.update({
+  id: '/agb',
+  path: '/agb',
+  getParentRoute: () => RechtlichesRoute,
+} as any)
+const RechtlichesBibliothekenRoute = RechtlichesBibliothekenRouteImport.update({
+  id: '/bibliotheken',
+  path: '/bibliotheken',
+  getParentRoute: () => RechtlichesRoute,
+} as any)
+const RechtlichesDatenschutzRoute = RechtlichesDatenschutzRouteImport.update({
+  id: '/datenschutz',
+  path: '/datenschutz',
+  getParentRoute: () => RechtlichesRoute,
+} as any)
+const RechtlichesImpressumRoute = RechtlichesImpressumRouteImport.update({
+  id: '/impressum',
+  path: '/impressum',
+  getParentRoute: () => RechtlichesRoute,
+} as any)
 const StbTokenRoute = StbTokenRouteImport.update({
   id: '/stb/$token',
   path: '/stb/$token',
@@ -89,13 +125,19 @@ const AuthenticatedDokumenteIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/rechtliches': typeof RechtlichesRouteWithChildren
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/rechtliches/agb': typeof RechtlichesAgbRoute
+  '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
+  '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
+  '/rechtliches/impressum': typeof RechtlichesImpressumRoute
   '/stb/$token': typeof StbTokenRoute
+  '/rechtliches/': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -108,7 +150,12 @@ export interface FileRoutesByTo {
   '/kunden': typeof AuthenticatedKundenRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/rechtliches/agb': typeof RechtlichesAgbRoute
+  '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
+  '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
+  '/rechtliches/impressum': typeof RechtlichesImpressumRoute
   '/stb/$token': typeof StbTokenRoute
+  '/rechtliches': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -117,13 +164,19 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/rechtliches': typeof RechtlichesRouteWithChildren
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/rechtliches/agb': typeof RechtlichesAgbRoute
+  '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
+  '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
+  '/rechtliches/impressum': typeof RechtlichesImpressumRoute
   '/stb/$token': typeof StbTokenRoute
+  '/rechtliches/': typeof RechtlichesIndexRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
 }
@@ -132,13 +185,19 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/rechtliches'
     | '/ausgaben'
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
     | '/profil'
     | '/steuerberater'
+    | '/rechtliches/agb'
+    | '/rechtliches/bibliotheken'
+    | '/rechtliches/datenschutz'
+    | '/rechtliches/impressum'
     | '/stb/$token'
+    | '/rechtliches/'
     | '/dokumente/$id'
     | '/dokumente/'
   fileRoutesByTo: FileRoutesByTo
@@ -151,7 +210,12 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/profil'
     | '/steuerberater'
+    | '/rechtliches/agb'
+    | '/rechtliches/bibliotheken'
+    | '/rechtliches/datenschutz'
+    | '/rechtliches/impressum'
     | '/stb/$token'
+    | '/rechtliches'
     | '/dokumente/$id'
     | '/dokumente'
   id:
@@ -159,13 +223,19 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/rechtliches'
     | '/_authenticated/ausgaben'
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
     | '/_authenticated/kunden'
     | '/_authenticated/profil'
     | '/_authenticated/steuerberater'
+    | '/rechtliches/agb'
+    | '/rechtliches/bibliotheken'
+    | '/rechtliches/datenschutz'
+    | '/rechtliches/impressum'
     | '/stb/$token'
+    | '/rechtliches/'
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/dokumente/'
   fileRoutesById: FileRoutesById
@@ -174,6 +244,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  RechtlichesRoute: typeof RechtlichesRouteWithChildren
   StbTokenRoute: typeof StbTokenRoute
 }
 
@@ -198,6 +269,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rechtliches': {
+      id: '/rechtliches'
+      path: '/rechtliches'
+      fullPath: '/rechtliches'
+      preLoaderRoute: typeof RechtlichesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/ausgaben': {
@@ -241,6 +319,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/steuerberater'
       preLoaderRoute: typeof AuthenticatedSteuerberaterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/rechtliches/': {
+      id: '/rechtliches/'
+      path: '/'
+      fullPath: '/rechtliches/'
+      preLoaderRoute: typeof RechtlichesIndexRouteImport
+      parentRoute: typeof RechtlichesRoute
+    }
+    '/rechtliches/agb': {
+      id: '/rechtliches/agb'
+      path: '/agb'
+      fullPath: '/rechtliches/agb'
+      preLoaderRoute: typeof RechtlichesAgbRouteImport
+      parentRoute: typeof RechtlichesRoute
+    }
+    '/rechtliches/bibliotheken': {
+      id: '/rechtliches/bibliotheken'
+      path: '/bibliotheken'
+      fullPath: '/rechtliches/bibliotheken'
+      preLoaderRoute: typeof RechtlichesBibliothekenRouteImport
+      parentRoute: typeof RechtlichesRoute
+    }
+    '/rechtliches/datenschutz': {
+      id: '/rechtliches/datenschutz'
+      path: '/datenschutz'
+      fullPath: '/rechtliches/datenschutz'
+      preLoaderRoute: typeof RechtlichesDatenschutzRouteImport
+      parentRoute: typeof RechtlichesRoute
+    }
+    '/rechtliches/impressum': {
+      id: '/rechtliches/impressum'
+      path: '/impressum'
+      fullPath: '/rechtliches/impressum'
+      preLoaderRoute: typeof RechtlichesImpressumRouteImport
+      parentRoute: typeof RechtlichesRoute
     }
     '/stb/$token': {
       id: '/stb/$token'
@@ -291,12 +404,43 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface RechtlichesRouteChildren {
+  RechtlichesAgbRoute: typeof RechtlichesAgbRoute
+  RechtlichesBibliothekenRoute: typeof RechtlichesBibliothekenRoute
+  RechtlichesDatenschutzRoute: typeof RechtlichesDatenschutzRoute
+  RechtlichesImpressumRoute: typeof RechtlichesImpressumRoute
+  RechtlichesIndexRoute: typeof RechtlichesIndexRoute
+}
+
+const RechtlichesRouteChildren: RechtlichesRouteChildren = {
+  RechtlichesAgbRoute: RechtlichesAgbRoute,
+  RechtlichesBibliothekenRoute: RechtlichesBibliothekenRoute,
+  RechtlichesDatenschutzRoute: RechtlichesDatenschutzRoute,
+  RechtlichesImpressumRoute: RechtlichesImpressumRoute,
+  RechtlichesIndexRoute: RechtlichesIndexRoute,
+}
+
+const RechtlichesRouteWithChildren = RechtlichesRoute._addFileChildren(
+  RechtlichesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  RechtlichesRoute: RechtlichesRouteWithChildren,
   StbTokenRoute: StbTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -100,10 +100,25 @@ function Landing() {
       </main>
 
       <footer className="border-t py-8">
-        <div className="mx-auto max-w-6xl px-6 text-sm text-muted-foreground">
-          Hom Reinigung Service · Völklingen · USt-IdNr. DE458492078
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 text-sm text-muted-foreground">
+          <span>Hom Reinigung Service · Völklingen · USt-IdNr. DE458492078</span>
+          <nav className="flex flex-wrap gap-x-4 gap-y-2">
+            <Link to="/rechtliches/impressum" className="hover:text-foreground hover:underline">
+              Impressum
+            </Link>
+            <Link to="/rechtliches/agb" className="hover:text-foreground hover:underline">
+              AGB
+            </Link>
+            <Link to="/rechtliches/datenschutz" className="hover:text-foreground hover:underline">
+              Datenschutz
+            </Link>
+            <Link to="/rechtliches/bibliotheken" className="hover:text-foreground hover:underline">
+              Bibliotheken
+            </Link>
+          </nav>
         </div>
       </footer>
+
     </div>
   );
 }
