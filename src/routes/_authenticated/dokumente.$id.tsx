@@ -472,6 +472,17 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-4" /> Drucken / PDF
           </Button>
+          {isInvoice && (
+            <>
+              <Button variant="outline" onClick={() => void exportXRechnung()}>
+                <FileCode2 className="size-4" /> XRechnung (XML)
+              </Button>
+              <Button variant="outline" onClick={() => void exportZugferd()}>
+                <FileDown className="size-4" /> ZUGFeRD-PDF
+              </Button>
+            </>
+          )}
+
           <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
