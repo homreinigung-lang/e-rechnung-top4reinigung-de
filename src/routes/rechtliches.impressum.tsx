@@ -30,7 +30,7 @@ function Impressum() {
           <br />
           Inhaber: Herr Hom
           <br />
-          Rathausstraße 1
+          Poststraße 8
           <br />
           66333 Völklingen
           <br />
