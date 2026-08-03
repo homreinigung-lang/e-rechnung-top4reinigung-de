@@ -326,7 +326,7 @@ function DokumentDetail() {
   const docNumber = locked ? doc.number : String(form["number"] ?? doc.number);
   const senderLine = [
     settings?.["company_name"] ?? "Hom Reinigung Service",
-    settings?.["address_line"] ?? "Poststr 8",
+    settings?.["address_line"] ?? "Poststraße 8",
     `${settings?.["postal_code"] ?? "66333"} ${settings?.["city"] ?? "Völklingen"}`.trim(),
   ]
     .filter(Boolean)
