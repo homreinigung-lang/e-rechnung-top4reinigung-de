@@ -27,7 +27,7 @@ import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useFileUrl } from "@/hooks/useFileUrl";
-import { archiveDocumentPdf, createStorno, finalizeDocument } from "@/lib/gobd";
+import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
 import { elementToPdfBytes } from "@/lib/pdf";
 import {
   ArrowLeft,
