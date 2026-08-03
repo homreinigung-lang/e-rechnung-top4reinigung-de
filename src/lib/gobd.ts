@@ -215,6 +215,39 @@ export async function buildGobdExport(from: string, to: string): Promise<Blob> {
     if (file) pdfFolder.file(`${d.number}.pdf`, await file.arrayBuffer());
   }
 
+  // E-Rechnung: für jede Rechnung zusätzlich die XRechnung-XML (EN 16931) beilegen.
+  const { data: settings } = await supabase.from("company_settings").select("*").maybeSingle();
+  const xmlFolder = zip.folder("xrechnung");
+  const itemsByDoc = new Map<string, typeof itemsData>();
+  for (const i of itemsData ?? []) {
+    const list = itemsByDoc.get(i.document_id) ?? [];
+    list.push(i);
+    itemsByDoc.set(i.document_id, list);
+  }
+  for (const d of documents) {
+    if (d.type !== "invoice" || !xmlFolder) continue;
+    const r = d as unknown as Record<string, unknown>;
+    const docItems = (itemsByDoc.get(d.id) ?? []).map((i) => ({
+      position: i.position,
+      description: i.description,
+      quantity: Number(i.quantity),
+      unit: i.unit,
+      unit_price: Number(i.unit_price),
+    }));
+    const xml = buildXRechnungXml({
+      doc: r,
+      items: docItems,
+      settings: settings as Record<string, unknown> | null,
+      netTotal: Number(r["net_total"] ?? d.total) || 0,
+      vatAmount: Number(r["vat_amount"]) || 0,
+      grossTotal: Number(d.total) || 0,
+      vatRate: Number(r["vat_rate"]) || 0,
+      number: d.number,
+    });
+    xmlFolder.file(`${d.number}.xml`, "\uFEFF" + xml);
+  }
+
+
   await logAudit("gobd_export", { number: `${from}_${to}` }, { from, to, count: documents.length });
 
   return zip.generateAsync({ type: "blob" });
