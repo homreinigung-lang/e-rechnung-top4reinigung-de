@@ -62,7 +62,7 @@ function Impressum() {
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
         <p className="text-sm text-muted-foreground">
-          Herr Hom, Rathausstraße 1, 66333 Völklingen
+          Herr Hom, Poststraße 8, 66333 Völklingen
         </p>
       </section>
 
