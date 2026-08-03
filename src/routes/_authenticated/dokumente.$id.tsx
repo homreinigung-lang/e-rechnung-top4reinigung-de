@@ -28,11 +28,21 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
-import { elementToPdfBytes } from "@/lib/pdf";
+import { elementToPdfBytes, downloadBytes } from "@/lib/pdf";
+import {
+  buildXRechnungXml,
+  buildZugferdXml,
+  downloadXml,
+  embedZugferdXml,
+  validateERechnung,
+  type ERechnungInput,
+} from "@/lib/erechnung";
 import {
   ArrowLeft,
   Ban,
   Copy,
+  FileCode2,
+  FileDown,
   Lock,
   Mail,
   Plus,
@@ -393,8 +403,62 @@ function DokumentDetail() {
       })
     : null;
 
+  // ---- E-Rechnung (XRechnung / ZUGFeRD) ----------------------------------
+  function eRechnungInput(): ERechnungInput {
+    return {
+      doc: { ...docRecord, ...form, number: docNumber },
+      items,
+      settings: settings as Record<string, unknown> | null,
+      netTotal,
+      vatAmount,
+      grossTotal,
+      vatRate,
+      number: docNumber,
+    };
+  }
+
+  function warnIfIncomplete(input: ERechnungInput) {
+    const problems = validateERechnung(input);
+    if (problems.length > 0) {
+      toast.warning("Pflichtangaben unvollständig", { description: problems.join(" ") });
+    }
+  }
+
+  async function exportXRechnung() {
+    try {
+      const input = eRechnungInput();
+      warnIfIncomplete(input);
+      downloadXml(buildXRechnungXml(input), `XRechnung_${docNumber.replace(/\W+/g, "_")}.xml`);
+      await logAudit("xrechnung_export", { id, number: docNumber }, { format: "XRechnung 3.0 (UBL)" });
+      toast.success("XRechnung (XML) erstellt");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function exportZugferd() {
+    const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
+    try {
+      const input = eRechnungInput();
+      warnIfIncomplete(input);
+      const element = document.querySelector<HTMLElement>(".print-area");
+      if (!element) throw new Error("Druckansicht nicht gefunden.");
+      const pdfBytes = await elementToPdfBytes(element);
+      const hybrid = await embedZugferdXml(pdfBytes, buildZugferdXml(input), {
+        number: docNumber,
+        title: DOC_TYPE_LABEL[doc.type] ?? "Rechnung",
+      });
+      downloadBytes(hybrid, `ZUGFeRD_${docNumber.replace(/\W+/g, "_")}.pdf`);
+      await logAudit("zugferd_export", { id, number: docNumber }, { format: "ZUGFeRD 2.3 / Factur-X (EN 16931)" });
+      toast.success("ZUGFeRD-PDF (hybride E-Rechnung) erstellt", { id: toastId });
+    } catch (e) {
+      toast.error((e as Error).message, { id: toastId });
+    }
+  }
+
   return (
     <div className="space-y-6">
+
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm">
           <Link to="/dokumente">
@@ -408,6 +472,17 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-4" /> Drucken / PDF
           </Button>
+          {isInvoice && (
+            <>
+              <Button variant="outline" onClick={() => void exportXRechnung()}>
+                <FileCode2 className="size-4" /> XRechnung (XML)
+              </Button>
+              <Button variant="outline" onClick={() => void exportZugferd()}>
+                <FileDown className="size-4" /> ZUGFeRD-PDF
+              </Button>
+            </>
+          )}
+
           <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
           </Button>

@@ -222,6 +222,8 @@ function Steuerberater() {
     cancelled: "Storniert",
     sent: "Versendet",
     gobd_export: "GoBD-Export",
+    xrechnung_export: "XRechnung (XML) erstellt",
+    zugferd_export: "ZUGFeRD-PDF erstellt",
   };
 
   const auditRows: Row[] = auditLog.map((a) => ({
