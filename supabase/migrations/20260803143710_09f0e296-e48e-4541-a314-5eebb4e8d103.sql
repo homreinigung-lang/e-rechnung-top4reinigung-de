@@ -1,0 +1,1 @@
+UPDATE public.company_settings SET address_line = 'Poststraße 8', postal_code = '66333', city = 'Völklingen', country = 'Deutschland' WHERE company_name = 'Hom Reinigung Service';

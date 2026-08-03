@@ -284,7 +284,7 @@ function Einstellungen() {
             rows={5}
             value={form["email_signature"] ?? ""}
             onChange={(e) => setForm({ ...form, email_signature: e.target.value })}
-            placeholder={"Mit freundlichen Grüßen\nHom Reinigung Service\nPoststr 8, 66333 Völklingen"}
+            placeholder={"Mit freundlichen Grüßen\nHom Reinigung Service\nPoststraße 8, 66333 Völklingen"}
           />
           <p className="text-xs text-muted-foreground">
             Die Signatur wird automatisch unter jede Rechnungs- und Angebots-E-Mail gesetzt.

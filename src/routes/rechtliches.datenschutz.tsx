@@ -30,7 +30,7 @@ function Datenschutz() {
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">1. Verantwortlicher</h2>
         <p className="text-sm text-muted-foreground">
-          Hom Reinigung Service, Rathausstraße 1, 66333 Völklingen, E-Mail: info@top4reinigung.de
+          Hom Reinigung Service, Poststraße 8, 66333 Völklingen, E-Mail: info@top4reinigung.de
         </p>
       </section>
 
