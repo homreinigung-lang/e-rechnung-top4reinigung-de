@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Download, FileSpreadsheet, Printer } from "lucide-react";
+import { buildGobdExport, downloadBlob } from "@/lib/gobd";
+import { Archive, Download, FileSpreadsheet, Printer, ShieldCheck } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 
 export const Route = createFileRoute("/_authenticated/steuerberater")({
@@ -121,6 +122,32 @@ function Steuerberater() {
     },
   });
 
+  const { data: auditLog = [] } = useQuery({
+    queryKey: ["stb_audit", from, to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_audit_log")
+        .select("*")
+        .gte("created_at", `${from}T00:00:00Z`)
+        .lte("created_at", `${to}T23:59:59Z`)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const gobdExport = useMutation({
+    mutationFn: async () => {
+      const blob = await buildGobdExport(from, to);
+      downloadBlob(blob, `GoBD-Pruefexport_${from}_${to}.zip`);
+    },
+    onSuccess: () => toast.success("GoBD-Export erstellt."),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
+
   const totals = useMemo(() => {
     const net = documents.reduce(
       (s, d) => s + num((d as Record<string, unknown>)["net_total"] ?? d.total),
@@ -187,6 +214,22 @@ function Steuerberater() {
       Buchungstext: e.supplier.slice(0, 60),
     })),
   ];
+
+  const AUDIT_LABEL: Record<string, string> = {
+    finalized: "Festgeschrieben",
+    archived: "PDF archiviert",
+    storno_created: "Stornorechnung erstellt",
+    cancelled: "Storniert",
+    sent: "Versendet",
+    gobd_export: "GoBD-Export",
+  };
+
+  const auditRows: Row[] = auditLog.map((a) => ({
+    Zeitpunkt: new Date(a.created_at).toLocaleString("de-DE-u-ca-gregory-nu-latn"),
+    Beleg: a.document_number,
+    Vorgang: AUDIT_LABEL[a.action] ?? a.action,
+    Details: JSON.stringify(a.details),
+  }));
 
   const period = `${from}_${to}`;
 
@@ -267,6 +310,30 @@ function Steuerberater() {
           <Printer className="size-4" /> Als PDF drucken
         </Button>
       </section>
+
+      <section className="no-print rounded-lg border bg-card p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+              <ShieldCheck className="size-4 text-primary" /> GoBD-Prüfexport (Betriebsprüfung)
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enthält Belegdaten, Positionen, das unveränderbare Prüfprotokoll (Audit-Log) sowie
+              alle archivierten Original-PDF-Dateien des gewählten Zeitraums als ZIP-Archiv.
+            </p>
+          </div>
+          <Button onClick={() => gobdExport.mutate()} disabled={gobdExport.isPending}>
+            <Archive className="size-4" />
+            {gobdExport.isPending ? "Export wird erstellt…" : "GoBD-Export herunterladen"}
+          </Button>
+        </div>
+
+        <h3 className="mt-5 font-display text-sm font-semibold">
+          Prüfprotokoll (letzte Einträge im Zeitraum)
+        </h3>
+        <Table rows={auditRows} empty="Noch keine protokollierten Vorgänge im Zeitraum." />
+      </section>
+
 
       <section className="print-area rounded-lg border bg-card p-6">
         <h2 className="font-display text-lg font-semibold">
