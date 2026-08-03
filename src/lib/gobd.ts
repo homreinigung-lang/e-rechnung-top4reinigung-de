@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { FILES_BUCKET } from "@/lib/storage";
 import { formatDate, formatMoney } from "@/lib/format";
+import { buildXRechnungXml } from "@/lib/erechnung";
 
 /** SHA-256-Prüfsumme (Hex) der archivierten PDF-Datei – GoBD: Revisionssicherheit. */
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
