@@ -205,6 +205,7 @@ export async function buildGobdExport(from: string, to: string): Promise<Blob> {
       "- positionen.csv      Einzelpositionen je Beleg",
       "- pruefprotokoll.csv  Unveränderbares Audit-Log (GoBD)",
       "- pdf/                Archivierte Original-PDF-Dateien",
+      "- xrechnung/          XRechnung-XML je Rechnung (EN 16931 / UBL)",
     ].join("\r\n"),
   );
 
