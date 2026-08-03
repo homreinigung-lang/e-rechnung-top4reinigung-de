@@ -28,7 +28,15 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
-import { elementToPdfBytes } from "@/lib/pdf";
+import { elementToPdfBytes, downloadBytes } from "@/lib/pdf";
+import {
+  buildXRechnungXml,
+  buildZugferdXml,
+  downloadXml,
+  embedZugferdXml,
+  validateERechnung,
+  type ERechnungInput,
+} from "@/lib/erechnung";
 import {
   ArrowLeft,
   Ban,
