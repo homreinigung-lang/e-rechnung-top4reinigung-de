@@ -930,6 +930,7 @@ function DokumentDetail() {
             .from("documents")
             .update({ status: "sent", sent_at: new Date().toISOString() } as never)
             .eq("id", id);
+          await logAudit("sent", { id, number: docNumber }, { to: mail.to });
           queryClient.invalidateQueries({ queryKey: ["document", id] });
           queryClient.invalidateQueries({ queryKey: ["documents"] });
         }}
