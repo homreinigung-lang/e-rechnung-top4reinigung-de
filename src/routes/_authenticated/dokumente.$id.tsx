@@ -41,6 +41,8 @@ import {
   ArrowLeft,
   Ban,
   Copy,
+  FileCode2,
+  FileDown,
   Lock,
   Mail,
   Plus,
