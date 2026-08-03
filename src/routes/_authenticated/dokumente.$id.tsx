@@ -403,8 +403,62 @@ function DokumentDetail() {
       })
     : null;
 
+  // ---- E-Rechnung (XRechnung / ZUGFeRD) ----------------------------------
+  function eRechnungInput(): ERechnungInput {
+    return {
+      doc: { ...docRecord, ...form, number: docNumber },
+      items,
+      settings: settings as Record<string, unknown> | null,
+      netTotal,
+      vatAmount,
+      grossTotal,
+      vatRate,
+      number: docNumber,
+    };
+  }
+
+  function warnIfIncomplete(input: ERechnungInput) {
+    const problems = validateERechnung(input);
+    if (problems.length > 0) {
+      toast.warning("Pflichtangaben unvollständig", { description: problems.join(" ") });
+    }
+  }
+
+  async function exportXRechnung() {
+    try {
+      const input = eRechnungInput();
+      warnIfIncomplete(input);
+      downloadXml(buildXRechnungXml(input), `XRechnung_${docNumber.replace(/\W+/g, "_")}.xml`);
+      await logAudit("xrechnung_export", { id, number: docNumber }, { format: "XRechnung 3.0 (UBL)" });
+      toast.success("XRechnung (XML) erstellt");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function exportZugferd() {
+    const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
+    try {
+      const input = eRechnungInput();
+      warnIfIncomplete(input);
+      const element = document.querySelector<HTMLElement>(".print-area");
+      if (!element) throw new Error("Druckansicht nicht gefunden.");
+      const pdfBytes = await elementToPdfBytes(element);
+      const hybrid = await embedZugferdXml(pdfBytes, buildZugferdXml(input), {
+        number: docNumber,
+        title: DOC_TYPE_LABEL[doc.type] ?? "Rechnung",
+      });
+      downloadBytes(hybrid, `ZUGFeRD_${docNumber.replace(/\W+/g, "_")}.pdf`);
+      await logAudit("zugferd_export", { id, number: docNumber }, { format: "ZUGFeRD 2.3 / Factur-X (EN 16931)" });
+      toast.success("ZUGFeRD-PDF (hybride E-Rechnung) erstellt", { id: toastId });
+    } catch (e) {
+      toast.error((e as Error).message, { id: toastId });
+    }
+  }
+
   return (
     <div className="space-y-6">
+
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm">
           <Link to="/dokumente">
