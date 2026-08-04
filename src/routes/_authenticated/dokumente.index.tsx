@@ -312,7 +312,7 @@ function DokumenteListe() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="In Rechnung umwandeln"
+                        title="In Auftrag umwandeln"
                         onClick={() => convert.mutate(d.id)}
                         disabled={convert.isPending}
                       >
