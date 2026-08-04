@@ -537,10 +537,44 @@ function DokumentDetail() {
             doc.status !== "paid" &&
             doc.status !== "cancelled" &&
             doc.status !== "draft" && (
-              <Button variant="outline" onClick={() => mahnen.mutate()} disabled={mahnen.isPending}>
-                <BellRing className="size-4" />
-                {reminderLevel > 0 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Freundliche Zahlungserinnerung jetzt erfassen und versenden?\n\n[Jetzt senden] bestätigen.",
+                      )
+                    ) {
+                      reminder.mutate("erinnerung");
+                    }
+                  }}
+                  disabled={reminder.isPending}
+                >
+                  <BellRing className="size-4" /> Zahlungserinnerung
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Offizielle ${mahnLabel(Math.max(2, reminderLevel + 1))} jetzt senden? Dieser Schritt wird GoBD-konform protokolliert.\n\n[Jetzt senden] bestätigen.`,
+                      )
+                    ) {
+                      reminder.mutate("mahnung");
+                    }
+                  }}
+                  disabled={reminder.isPending || !canMahnen}
+                  title={
+                    canMahnen
+                      ? undefined
+                      : "Erst möglich, wenn die Zahlungsfrist (14 Tage) vollständig abgelaufen ist."
+                  }
+                >
+                  <BellRing className="size-4" />
+                  {reminderLevel > 1 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
+                </Button>
+              </>
             )}
 
           {!isInvoice && (
@@ -557,34 +591,18 @@ function DokumentDetail() {
               )}
               {!convertedId && (
                 <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
-                  <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
+                  <ArrowRightLeft className="size-4" /> In Auftrag umwandeln
                 </Button>
               )}
             </>
           )}
 
           {!locked && (
-            <>
-              <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
-                <Save className="size-4" /> Speichern
-              </Button>
-              <Button
-                onClick={() => {
-                  if (
-                    confirm(
-                      "Beleg jetzt festschreiben? Danach ist er gemäß GoBD unveränderbar und kann nur noch storniert werden.",
-                    )
-                  ) {
-                    finalize.mutate();
-                  }
-                }}
-                disabled={finalize.isPending || save.isPending}
-              >
-                <Lock className="size-4" />
-                {finalize.isPending ? "Wird festgeschrieben…" : "Festschreiben (GoBD)"}
-              </Button>
-            </>
+            <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
+              <Save className="size-4" /> Speichern
+            </Button>
           )}
+
           {locked && isInvoice && !isStorno && !cancelledBy && (
             <Button
               variant="destructive"
