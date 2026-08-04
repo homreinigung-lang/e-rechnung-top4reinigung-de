@@ -79,8 +79,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CleanInvoice – Rechnungen & Angebote" },
-      { property: "og:site_name", content: "CleanInvoice" },
+      { title: "Hom R Office – Rechnungen & Angebote" },
+      { property: "og:site_name", content: "Hom R Office" },
       {
         name: "description",
         content:

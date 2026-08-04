@@ -28,6 +28,13 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
+import {
+  convertQuoteToInvoice,
+  dueInfo,
+  mahnLabel,
+  sendMahnung,
+  setQuoteDecision,
+} from "@/lib/workflow";
 import { elementToPdfBytes, downloadBytes } from "@/lib/pdf";
 import {
   buildXRechnungXml,
@@ -39,7 +46,10 @@ import {
 } from "@/lib/erechnung";
 import {
   ArrowLeft,
+  ArrowRightLeft,
   Ban,
+  BellRing,
+  Check,
   Copy,
   FileCode2,
   FileDown,
@@ -50,6 +60,7 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
@@ -166,8 +177,9 @@ function DokumentDetail() {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
-      const number = String(form["number"] ?? "").trim();
-      if (!number) throw new Error("Bitte eine Rechnungs-/Angebotsnummer eingeben.");
+      // Nummern werden automatisch/fortlaufend vergeben und nie aus dem Formular übernommen.
+      const number = String((data?.doc as { number?: string } | undefined)?.number ?? "").trim();
+      if (!number) throw new Error("Beleg konnte nicht geladen werden.");
 
       const payload = {
         ...form,
@@ -311,6 +323,36 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const mahnen = useMutation({
+    mutationFn: () => sendMahnung(id),
+    onSuccess: (level) => {
+      toast.success(`${mahnLabel(level)} erfasst`);
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const decide = useMutation({
+    mutationFn: (decision: "accepted" | "declined") => setQuoteDecision(id, decision),
+    onSuccess: () => {
+      toast.success("Angebotsstatus aktualisiert");
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const convert = useMutation({
+    mutationFn: () => convertQuoteToInvoice(id),
+    onSuccess: (newId) => {
+      toast.success("Rechnung aus Angebot erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      navigate({ to: "/dokumente/$id", params: { id: newId } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading || !data) {
     return <p className="text-muted-foreground">Wird geladen…</p>;
   }
@@ -323,7 +365,10 @@ function DokumentDetail() {
   const cancelledBy = (docRecord["cancelled_by_document_id"] as string | null) ?? null;
   const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
-  const docNumber = locked ? doc.number : String(form["number"] ?? doc.number);
+  const reminderLevel = Number(docRecord["reminder_level"] ?? 0);
+  const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
+  const due = dueInfo(doc.due_date, doc.status);
+  const docNumber = doc.number;
   const senderLine = [
     settings?.["company_name"] ?? "Hom Reinigung Service",
     settings?.["address_line"] ?? "Poststraße 8",
@@ -486,6 +531,38 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
+
+          {isInvoice &&
+            !isStorno &&
+            doc.status !== "paid" &&
+            doc.status !== "cancelled" &&
+            doc.status !== "draft" && (
+              <Button variant="outline" onClick={() => mahnen.mutate()} disabled={mahnen.isPending}>
+                <BellRing className="size-4" />
+                {reminderLevel > 0 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
+              </Button>
+            )}
+
+          {!isInvoice && (
+            <>
+              {doc.status !== "accepted" && doc.status !== "declined" && (
+                <>
+                  <Button variant="outline" onClick={() => decide.mutate("accepted")}>
+                    <Check className="size-4" /> Angebot annehmen
+                  </Button>
+                  <Button variant="outline" onClick={() => decide.mutate("declined")}>
+                    <X className="size-4" /> Angebot ablehnen
+                  </Button>
+                </>
+              )}
+              {!convertedId && (
+                <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
+                  <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
+                </Button>
+              )}
+            </>
+          )}
+
           {!locked && (
             <>
               <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
@@ -545,6 +622,29 @@ function DokumentDetail() {
         </div>
       )}
 
+      {(due || reminderLevel > 0) && (
+        <div
+          className={`no-print rounded-lg border p-4 text-sm ${
+            due?.overdue ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/40"
+          }`}
+        >
+          <span className={due?.overdue ? "font-medium text-destructive" : "font-medium"}>
+            {due?.label ?? "Offener Posten"}
+          </span>
+          {reminderLevel > 0 && (
+            <span className="text-muted-foreground">
+              {" "}
+              · {mahnLabel(reminderLevel)}
+              {docRecord["last_reminder_at"]
+                ? ` vom ${formatDate(String(docRecord["last_reminder_at"]))}`
+                : ""}
+            </span>
+          )}
+        </div>
+      )}
+
+
+
       <fieldset
         disabled={locked}
         className="no-print surface space-y-6 p-6 disabled:opacity-90"
@@ -577,13 +677,13 @@ function DokumentDetail() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="number">
-              {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"} (frei änderbar)
+              {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"} (automatisch)
             </Label>
-            <Input
-              id="number"
-              value={String(form["number"] ?? "")}
-              onChange={(e) => setField("number", e.target.value)}
-            />
+            <Input id="number" value={docNumber} readOnly disabled className="bg-muted" />
+            <p className="text-xs text-muted-foreground">
+              Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle
+              Änderung ist nicht möglich.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="order_number">Bestellnummer des Kunden</Label>

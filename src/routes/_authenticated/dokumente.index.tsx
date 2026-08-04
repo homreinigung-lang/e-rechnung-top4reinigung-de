@@ -14,7 +14,14 @@ import {
   today,
   addDays,
 } from "@/lib/format";
-import { Copy, FileText, Lock, Plus, Receipt, Trash2 } from "lucide-react";
+import {
+  convertQuoteToInvoice,
+  dueInfo,
+  mahnLabel,
+  sendMahnung,
+  setQuoteDecision,
+} from "@/lib/workflow";
+import { ArrowRightLeft, BellRing, Check, Copy, FileText, Plus, Receipt, Trash2, X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/")({
   head: () => ({
@@ -153,13 +160,48 @@ function DokumenteListe() {
 
   const remove = useMutation({
     mutationFn: async (docId: string) => {
+      const doc = documents.find((d) => d.id === docId) as unknown as Record<string, unknown>;
+      if (doc?.["locked_at"] || (doc?.["status"] && doc["status"] !== "draft")) {
+        throw new Error(
+          "Versendete oder festgeschriebene Belege dürfen aus rechtlichen Gründen (GoBD, § 14b UStG) nicht gelöscht werden. Bitte stattdessen eine Stornorechnung erstellen – der Beleg bleibt als „storniert“ im System erhalten.",
+        );
+      }
       await supabase.from("document_items").delete().eq("document_id", docId);
       const { error } = await supabase.from("documents").delete().eq("id", docId);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Dokument gelöscht");
+      toast.success("Entwurf gelöscht");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
+  const mahnen = useMutation({
+    mutationFn: (docId: string) => sendMahnung(docId),
+    onSuccess: (level) => {
+      toast.success(`${mahnLabel(level)} erfasst`);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const decide = useMutation({
+    mutationFn: ({ docId, decision }: { docId: string; decision: "accepted" | "declined" }) =>
+      setQuoteDecision(docId, decision),
+    onSuccess: () => {
+      toast.success("Angebotsstatus aktualisiert");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const convert = useMutation({
+    mutationFn: (docId: string) => convertQuoteToInvoice(docId),
+    onSuccess: (newId) => {
+      toast.success("Rechnung aus Angebot erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      navigate({ to: "/dokumente/$id", params: { id: newId } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -172,7 +214,8 @@ function DokumenteListe() {
         <div>
           <h1 className="text-3xl font-bold">Rechnungen & Angebote</h1>
           <p className="mt-1 text-muted-foreground">
-            Fortlaufende Nummerierung gemäß § 14 UStG – Nummern bleiben frei änderbar.
+            Automatische, fortlaufende Nummerierung gemäß § 14 UStG – lückenlos und
+            manipulationssicher.
           </p>
         </div>
         <div className="flex gap-2">
@@ -203,73 +246,128 @@ function DokumenteListe() {
           </p>
         ) : (
           <ul className="divide-y">
-            {list.map((d) => (
-              <li key={d.id} className="flex items-center gap-2 px-5 py-4 hover:bg-muted/60">
-                <Link
-                  to="/dokumente/$id"
-                  params={{ id: d.id }}
-                  className="flex flex-1 flex-wrap items-center justify-between gap-3"
-                >
-                  <div>
-                    <div className="flex items-center gap-2 font-medium">
-                      {DOC_TYPE_LABEL[d.type]} {d.number}
-                      {(d as unknown as Record<string, unknown>)["locked_at"] ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                          <Lock className="size-3" /> Festgeschrieben
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                          Entwurf – nicht festgeschrieben
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
-                      {formatDate(d.issue_date)}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">{formatMoney(Number(d.total))}</div>
-                    <div className="text-xs text-muted-foreground">{STATUS_LABEL[d.status]}</div>
-                  </div>
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Duplizieren"
-                  onClick={() => duplicate.mutate(d.id)}
-                >
-                  <Copy className="size-4" />
-                </Button>
-                {(d as unknown as Record<string, unknown>)["locked_at"] ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Festgeschrieben – Löschen gemäß GoBD nicht möglich"
-                    disabled
+            {list.map((d) => {
+              const r = d as unknown as Record<string, unknown>;
+              const due = dueInfo(d.due_date, d.status);
+              const level = Number(r["reminder_level"] ?? 0);
+              const deletable = !r["locked_at"] && d.status === "draft";
+              return (
+                <li key={d.id} className="flex items-center gap-2 px-5 py-4 hover:bg-muted/60">
+                  <Link
+                    to="/dokumente/$id"
+                    params={{ id: d.id }}
+                    className="flex flex-1 flex-wrap items-center justify-between gap-3"
                   >
-                    <Lock className="size-4 text-muted-foreground" />
-                  </Button>
-                ) : (
+                    <div>
+                      <div className="font-medium">
+                        {DOC_TYPE_LABEL[d.type]} {d.number}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
+                        {formatDate(d.issue_date)}
+                        {due ? (
+                          <>
+                            {" · "}
+                            <span className={due.overdue ? "font-medium text-destructive" : ""}>
+                              {due.label}
+                            </span>
+                          </>
+                        ) : null}
+                        {level > 0 ? ` · ${mahnLabel(level)}` : ""}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">{formatMoney(Number(d.total))}</div>
+                      <div className="text-xs text-muted-foreground">{STATUS_LABEL[d.status]}</div>
+                    </div>
+                  </Link>
+
+                  {d.type === "quote" && d.status !== "declined" && !r["converted_document_id"] && (
+                    <>
+                      {d.status !== "accepted" && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Angebot annehmen"
+                            onClick={() => decide.mutate({ docId: d.id, decision: "accepted" })}
+                          >
+                            <Check className="size-4 text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Angebot ablehnen"
+                            onClick={() => decide.mutate({ docId: d.id, decision: "declined" })}
+                          >
+                            <X className="size-4 text-destructive" />
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="In Rechnung umwandeln"
+                        onClick={() => convert.mutate(d.id)}
+                        disabled={convert.isPending}
+                      >
+                        <ArrowRightLeft className="size-4" />
+                      </Button>
+                    </>
+                  )}
+
+                  {d.type === "invoice" && d.status !== "paid" && d.status !== "cancelled" && d.status !== "draft" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Mahnung erfassen"
+                      onClick={() => mahnen.mutate(d.id)}
+                      disabled={mahnen.isPending}
+                    >
+                      <BellRing className="size-4" />
+                    </Button>
+                  )}
+
                   <Button
                     variant="ghost"
                     size="icon"
-                    title="Löschen"
+                    title="Duplizieren"
+                    onClick={() => duplicate.mutate(d.id)}
+                  >
+                    <Copy className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={
+                      deletable
+                        ? "Entwurf löschen"
+                        : "Löschen rechtlich nicht zulässig – bitte stornieren"
+                    }
                     onClick={() => {
+                      if (!deletable) {
+                        toast.error(
+                          "Löschen nicht zulässig: Versendete bzw. festgeschriebene Belege müssen gemäß GoBD erhalten bleiben. Bitte eine Stornorechnung erstellen – der Beleg bleibt als „storniert“ archiviert.",
+                          { duration: 8000 },
+                        );
+                        return;
+                      }
                       if (confirm(`${DOC_TYPE_LABEL[d.type]} ${d.number} wirklich löschen?`)) {
                         remove.mutate(d.id);
                       }
                     }}
                   >
-                    <Trash2 className="size-4 text-destructive" />
+                    <Trash2
+                      className={deletable ? "size-4 text-destructive" : "size-4 text-muted-foreground"}
+                    />
                   </Button>
-                )}
-
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
     </div>
   );
 }
+

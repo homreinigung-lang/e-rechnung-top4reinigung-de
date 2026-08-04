@@ -272,6 +272,7 @@ export type Database = {
           attachment_title: string
           cancelled_by_document_id: string | null
           cancels_document_id: string | null
+          converted_document_id: string | null
           created_at: string
           customer_address_line: string
           customer_city: string
@@ -287,6 +288,7 @@ export type Database = {
           intro_text: string
           is_storno: boolean
           issue_date: string
+          last_reminder_at: string | null
           locked_at: string | null
           net_total: number
           notes: string
@@ -294,6 +296,7 @@ export type Database = {
           order_number: string
           pdf_path: string
           pdf_sha256: string
+          reminder_level: number
           reverse_charge: boolean
           sent_at: string | null
           service_period: string
@@ -312,6 +315,7 @@ export type Database = {
           attachment_title?: string
           cancelled_by_document_id?: string | null
           cancels_document_id?: string | null
+          converted_document_id?: string | null
           created_at?: string
           customer_address_line?: string
           customer_city?: string
@@ -327,6 +331,7 @@ export type Database = {
           intro_text?: string
           is_storno?: boolean
           issue_date?: string
+          last_reminder_at?: string | null
           locked_at?: string | null
           net_total?: number
           notes?: string
@@ -334,6 +339,7 @@ export type Database = {
           order_number?: string
           pdf_path?: string
           pdf_sha256?: string
+          reminder_level?: number
           reverse_charge?: boolean
           sent_at?: string | null
           service_period?: string
@@ -352,6 +358,7 @@ export type Database = {
           attachment_title?: string
           cancelled_by_document_id?: string | null
           cancels_document_id?: string | null
+          converted_document_id?: string | null
           created_at?: string
           customer_address_line?: string
           customer_city?: string
@@ -367,6 +374,7 @@ export type Database = {
           intro_text?: string
           is_storno?: boolean
           issue_date?: string
+          last_reminder_at?: string | null
           locked_at?: string | null
           net_total?: number
           notes?: string
@@ -374,6 +382,7 @@ export type Database = {
           order_number?: string
           pdf_path?: string
           pdf_sha256?: string
+          reminder_level?: number
           reverse_charge?: boolean
           sent_at?: string | null
           service_period?: string
@@ -397,6 +406,13 @@ export type Database = {
           {
             foreignKeyName: "documents_cancels_document_id_fkey"
             columns: ["cancels_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_converted_document_id_fkey"
+            columns: ["converted_document_id"]
             isOneToOne: false
             referencedRelation: "documents"
             referencedColumns: ["id"]
@@ -553,6 +569,7 @@ export type Database = {
           attachment_title: string
           cancelled_by_document_id: string | null
           cancels_document_id: string | null
+          converted_document_id: string | null
           created_at: string
           customer_address_line: string
           customer_city: string
@@ -568,6 +585,7 @@ export type Database = {
           intro_text: string
           is_storno: boolean
           issue_date: string
+          last_reminder_at: string | null
           locked_at: string | null
           net_total: number
           notes: string
@@ -575,6 +593,7 @@ export type Database = {
           order_number: string
           pdf_path: string
           pdf_sha256: string
+          reminder_level: number
           reverse_charge: boolean
           sent_at: string | null
           service_period: string

@@ -3,13 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/rechtliches/datenschutz")({
   head: () => ({
     meta: [
-      { title: "Datenschutzbestimmungen (DSGVO) – CleanInvoice" },
+      { title: "Datenschutzbestimmungen (DSGVO) – Hom R Office" },
       {
         name: "description",
         content:
           "Datenschutzerklärung nach DSGVO: verarbeitete Daten, Rechtsgrundlagen, Speicherdauer, Auftragsverarbeiter und Ihre Betroffenenrechte.",
       },
-      { property: "og:title", content: "Datenschutzbestimmungen – CleanInvoice" },
+      { property: "og:title", content: "Datenschutzbestimmungen – Hom R Office" },
       { property: "og:description", content: "Informationen zur Verarbeitung personenbezogener Daten nach Art. 13 DSGVO." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
