@@ -367,6 +367,8 @@ function DokumentDetail() {
   const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
   const reminderLevel = Number(docRecord["reminder_level"] ?? 0);
+  const canMahnen = mahnungAllowed(docRecord["due_date"] as string | null);
+
   const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
