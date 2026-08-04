@@ -312,6 +312,36 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const mahnen = useMutation({
+    mutationFn: () => sendMahnung(id),
+    onSuccess: (level) => {
+      toast.success(`${mahnLabel(level)} erfasst`);
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const decide = useMutation({
+    mutationFn: (decision: "accepted" | "declined") => setQuoteDecision(id, decision),
+    onSuccess: () => {
+      toast.success("Angebotsstatus aktualisiert");
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const convert = useMutation({
+    mutationFn: () => convertQuoteToInvoice(id),
+    onSuccess: (newId) => {
+      toast.success("Rechnung aus Angebot erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      navigate({ to: "/dokumente/$id", params: { id: newId } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading || !data) {
     return <p className="text-muted-foreground">Wird geladen…</p>;
   }
