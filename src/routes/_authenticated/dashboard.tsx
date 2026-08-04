@@ -30,7 +30,7 @@ function Dashboard() {
         supabase
           .from("documents")
           .select(
-            "id, type, number, status, issue_date, total, net_total, vat_amount, customer_name, customer_company",
+            "id, type, number, status, issue_date, due_date, reminder_level, total, net_total, vat_amount, customer_name, customer_company",
           )
           .order("issue_date", { ascending: false }),
         supabase.from("customers").select("id", { count: "exact", head: true }),
