@@ -166,8 +166,9 @@ function DokumentDetail() {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
-      const number = String(form["number"] ?? "").trim();
-      if (!number) throw new Error("Bitte eine Rechnungs-/Angebotsnummer eingeben.");
+      // Nummern werden automatisch/fortlaufend vergeben und nie aus dem Formular übernommen.
+      const number = String((data?.doc as { number?: string } | undefined)?.number ?? "").trim();
+      if (!number) throw new Error("Beleg konnte nicht geladen werden.");
 
       const payload = {
         ...form,
