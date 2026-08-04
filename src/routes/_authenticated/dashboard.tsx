@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
-import { FileText, Plus, Receipt, TrendingDown, Users } from "lucide-react";
+import { dueInfo, mahnLabel } from "@/lib/workflow";
+import { AlertTriangle, FileText, Plus, Receipt, TrendingDown, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
