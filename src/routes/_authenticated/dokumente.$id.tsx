@@ -528,6 +528,38 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
+
+          {isInvoice &&
+            !isStorno &&
+            doc.status !== "paid" &&
+            doc.status !== "cancelled" &&
+            doc.status !== "draft" && (
+              <Button variant="outline" onClick={() => mahnen.mutate()} disabled={mahnen.isPending}>
+                <BellRing className="size-4" />
+                {reminderLevel > 0 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
+              </Button>
+            )}
+
+          {!isInvoice && (
+            <>
+              {doc.status !== "accepted" && doc.status !== "declined" && (
+                <>
+                  <Button variant="outline" onClick={() => decide.mutate("accepted")}>
+                    <Check className="size-4" /> Angebot annehmen
+                  </Button>
+                  <Button variant="outline" onClick={() => decide.mutate("declined")}>
+                    <X className="size-4" /> Angebot ablehnen
+                  </Button>
+                </>
+              )}
+              {!convertedId && (
+                <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
+                  <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
+                </Button>
+              )}
+            </>
+          )}
+
           {!locked && (
             <>
               <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
