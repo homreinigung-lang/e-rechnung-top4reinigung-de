@@ -317,16 +317,40 @@ function DokumenteListe() {
                   )}
 
                   {d.type === "invoice" && d.status !== "paid" && d.status !== "cancelled" && d.status !== "draft" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Mahnung erfassen"
-                      onClick={() => mahnen.mutate(d.id)}
-                      disabled={mahnen.isPending}
-                    >
-                      <BellRing className="size-4" />
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Zahlungserinnerung erfassen"
+                        onClick={() => {
+                          if (confirm("Freundliche Zahlungserinnerung jetzt senden?")) {
+                            reminder.mutate({ docId: d.id, kind: "erinnerung" });
+                          }
+                        }}
+                        disabled={reminder.isPending}
+                      >
+                        <BellRing className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={
+                          mahnungAllowed(d.due_date)
+                            ? "Offizielle Mahnung senden"
+                            : "Mahnung erst nach Ablauf der Zahlungsfrist (14 Tage) möglich"
+                        }
+                        onClick={() => {
+                          if (confirm("Offizielle Mahnung jetzt senden? [Jetzt senden]")) {
+                            reminder.mutate({ docId: d.id, kind: "mahnung" });
+                          }
+                        }}
+                        disabled={reminder.isPending || !mahnungAllowed(d.due_date)}
+                      >
+                        <Gavel className="size-4" />
+                      </Button>
+                    </>
                   )}
+
 
                   <Button
                     variant="ghost"
