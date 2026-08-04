@@ -18,10 +18,13 @@ import {
   convertQuoteToInvoice,
   dueInfo,
   mahnLabel,
-  sendMahnung,
+  mahnungAllowed,
+  sendReminder,
   setQuoteDecision,
+  type ReminderKind,
 } from "@/lib/workflow";
-import { ArrowRightLeft, BellRing, Check, Copy, FileText, Plus, Receipt, Trash2, X } from "lucide-react";
+import { ArrowRightLeft, BellRing, Check, Copy, FileText, Gavel, Plus, Receipt, Trash2, X } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/dokumente/")({
   head: () => ({
