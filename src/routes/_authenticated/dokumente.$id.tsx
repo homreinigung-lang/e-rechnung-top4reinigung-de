@@ -1106,9 +1106,18 @@ function DokumentDetail() {
             .update({ status: "sent", sent_at: new Date().toISOString() } as never)
             .eq("id", id);
           await logAudit("sent", { id, number: docNumber }, { to: mail.to });
+          // Rechnungen werden beim Versand automatisch festgeschrieben (GoBD).
+          if (isInvoice && !locked) {
+            try {
+              await finalize.mutateAsync();
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Festschreiben fehlgeschlagen");
+            }
+          }
           queryClient.invalidateQueries({ queryKey: ["document", id] });
           queryClient.invalidateQueries({ queryKey: ["documents"] });
         }}
+
       />
 
     </div>
