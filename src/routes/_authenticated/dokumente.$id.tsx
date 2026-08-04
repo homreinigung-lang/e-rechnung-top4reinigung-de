@@ -323,8 +323,8 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const mahnen = useMutation({
-    mutationFn: () => sendMahnung(id),
+  const reminder = useMutation({
+    mutationFn: (kind: ReminderKind) => sendReminder(id, kind),
     onSuccess: (level) => {
       toast.success(`${mahnLabel(level)} erfasst`);
       queryClient.invalidateQueries({ queryKey: ["document", id] });
@@ -332,6 +332,7 @@ function DokumentDetail() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const decide = useMutation({
     mutationFn: (decision: "accepted" | "declined") => setQuoteDecision(id, decision),
