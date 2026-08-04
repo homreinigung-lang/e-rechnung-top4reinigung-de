@@ -18,10 +18,23 @@ import {
   convertQuoteToInvoice,
   dueInfo,
   mahnLabel,
-  sendMahnung,
+  mahnungAllowed,
+  sendReminder,
   setQuoteDecision,
+  type ReminderKind,
 } from "@/lib/workflow";
-import { ArrowRightLeft, BellRing, Check, Copy, FileText, Plus, Receipt, Trash2, X } from "lucide-react";
+import {
+  ArrowRightLeft,
+  BellRing,
+  Check,
+  Copy,
+  FileText,
+  Gavel,
+  Plus,
+  Receipt,
+  Trash2,
+  X,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/")({
   head: () => ({
@@ -32,7 +45,10 @@ export const Route = createFileRoute("/_authenticated/dokumente/")({
         content: "Alle Rechnungen und Angebote der Reinigungsfirma an einem Ort verwalten.",
       },
       { property: "og:title", content: "Rechnungen & Angebote verwalten" },
-      { property: "og:description", content: "Dokumente erstellen, duplizieren, löschen und versenden." },
+      {
+        property: "og:description",
+        content: "Dokumente erstellen, duplizieren, löschen und versenden.",
+      },
     ],
   }),
   component: DokumenteListe,
@@ -177,13 +193,14 @@ function DokumenteListe() {
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
-  const mahnen = useMutation({
-    mutationFn: (docId: string) => sendMahnung(docId),
+  const reminder = useMutation({
+    mutationFn: ({ docId, kind }: { docId: string; kind: ReminderKind }) =>
+      sendReminder(docId, kind),
     onSuccess: (level) => {
       toast.success(`${mahnLabel(level)} erfasst`);
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
   const decide = useMutation({
@@ -307,7 +324,7 @@ function DokumenteListe() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="In Rechnung umwandeln"
+                        title="In Auftrag umwandeln"
                         onClick={() => convert.mutate(d.id)}
                         disabled={convert.isPending}
                       >
@@ -316,17 +333,43 @@ function DokumenteListe() {
                     </>
                   )}
 
-                  {d.type === "invoice" && d.status !== "paid" && d.status !== "cancelled" && d.status !== "draft" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Mahnung erfassen"
-                      onClick={() => mahnen.mutate(d.id)}
-                      disabled={mahnen.isPending}
-                    >
-                      <BellRing className="size-4" />
-                    </Button>
-                  )}
+                  {d.type === "invoice" &&
+                    d.status !== "paid" &&
+                    d.status !== "cancelled" &&
+                    d.status !== "draft" && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Zahlungserinnerung erfassen"
+                          onClick={() => {
+                            if (confirm("Freundliche Zahlungserinnerung jetzt senden?")) {
+                              reminder.mutate({ docId: d.id, kind: "erinnerung" });
+                            }
+                          }}
+                          disabled={reminder.isPending}
+                        >
+                          <BellRing className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={
+                            mahnungAllowed(d.due_date)
+                              ? "Offizielle Mahnung senden"
+                              : "Mahnung erst nach Ablauf der Zahlungsfrist (14 Tage) möglich"
+                          }
+                          onClick={() => {
+                            if (confirm("Offizielle Mahnung jetzt senden? [Jetzt senden]")) {
+                              reminder.mutate({ docId: d.id, kind: "mahnung" });
+                            }
+                          }}
+                          disabled={reminder.isPending || !mahnungAllowed(d.due_date)}
+                        >
+                          <Gavel className="size-4" />
+                        </Button>
+                      </>
+                    )}
 
                   <Button
                     variant="ghost"
@@ -358,7 +401,9 @@ function DokumenteListe() {
                     }}
                   >
                     <Trash2
-                      className={deletable ? "size-4 text-destructive" : "size-4 text-muted-foreground"}
+                      className={
+                        deletable ? "size-4 text-destructive" : "size-4 text-muted-foreground"
+                      }
                     />
                   </Button>
                 </li>
@@ -370,4 +415,3 @@ function DokumenteListe() {
     </div>
   );
 }
-

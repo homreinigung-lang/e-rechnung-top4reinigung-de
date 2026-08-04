@@ -19,6 +19,7 @@ import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authen
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
+import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
 import { Route as RechtlichesIndexRouteImport } from './routes/rechtliches.index'
 import { Route as RechtlichesAgbRouteImport } from './routes/rechtliches.agb'
 import { Route as RechtlichesBibliothekenRouteImport } from './routes/rechtliches.bibliotheken'
@@ -79,6 +80,12 @@ const AuthenticatedSteuerberaterRoute =
     path: '/steuerberater',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedWiederkehrendRoute =
+  AuthenticatedWiederkehrendRouteImport.update({
+    id: '/wiederkehrend',
+    path: '/wiederkehrend',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const RechtlichesIndexRoute = RechtlichesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -132,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/kunden': typeof AuthenticatedKundenRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -150,6 +158,7 @@ export interface FileRoutesByTo {
   '/kunden': typeof AuthenticatedKundenRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -171,6 +180,7 @@ export interface FileRoutesById {
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/profil'
     | '/steuerberater'
+    | '/wiederkehrend'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/profil'
     | '/steuerberater'
+    | '/wiederkehrend'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -230,6 +242,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kunden'
     | '/_authenticated/profil'
     | '/_authenticated/steuerberater'
+    | '/_authenticated/wiederkehrend'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -320,6 +333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSteuerberaterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/wiederkehrend': {
+      id: '/_authenticated/wiederkehrend'
+      path: '/wiederkehrend'
+      fullPath: '/wiederkehrend'
+      preLoaderRoute: typeof AuthenticatedWiederkehrendRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/rechtliches/': {
       id: '/rechtliches/'
       path: '/'
@@ -386,6 +406,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
+  AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
 }
@@ -397,6 +418,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
+  AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,
 }

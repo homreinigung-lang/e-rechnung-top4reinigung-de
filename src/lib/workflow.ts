@@ -36,25 +36,55 @@ export function mahnLabel(level: number): string {
   return MAHN_STUFE[level] ?? `${level}. Mahnung`;
 }
 
-/** Nächste Mahnstufe setzen (GoBD-konform protokolliert, Beleg bleibt unverändert). */
-export async function sendMahnung(id: string): Promise<number> {
+export type ReminderKind = "erinnerung" | "mahnung";
+
+/** Prüft, ob die Zahlungsfrist (Zahlungsziel) vollständig abgelaufen ist. */
+export function mahnungAllowed(dueDate?: string | null): boolean {
+  if (!dueDate) return false;
+  const due = new Date(`${dueDate}T00:00:00`);
+  if (Number.isNaN(due.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today.getTime() > due.getTime();
+}
+
+/** Zahlungserinnerung oder Mahnung erfassen (GoBD-konform protokolliert). */
+export async function sendReminder(id: string, kind: ReminderKind): Promise<number> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number, status, reminder_level")
+    .select("id, number, status, reminder_level, due_date")
     .eq("id", id)
     .single();
   if (error) throw error;
   if (doc.status === "paid" || doc.status === "cancelled") {
     throw new Error("Für bezahlte oder stornierte Rechnungen ist keine Mahnung möglich.");
   }
-  const level = Number(doc.reminder_level ?? 0) + 1;
+  if (kind === "mahnung" && !mahnungAllowed(doc.due_date)) {
+    throw new Error(
+      "Eine Mahnung ist erst zulässig, wenn die Zahlungsfrist (14 Tage) vollständig abgelaufen ist. Bitte zunächst eine Zahlungserinnerung senden.",
+    );
+  }
+  const current = Number(doc.reminder_level ?? 0);
+  const level = kind === "erinnerung" ? Math.max(1, current) : Math.max(2, current + 1);
   const { error: updateError } = await supabase
     .from("documents")
     .update({ reminder_level: level, last_reminder_at: new Date().toISOString() } as never)
     .eq("id", id);
   if (updateError) throw updateError;
-  await logAudit("mahnung", { id, number: doc.number }, { level, stufe: mahnLabel(level) });
+  await logAudit(
+    kind === "erinnerung" ? "zahlungserinnerung" : "mahnung",
+    { id, number: doc.number },
+    {
+      level,
+      stufe: mahnLabel(level),
+    },
+  );
   return level;
+}
+
+/** @deprecated – nutze sendReminder(id, "mahnung"). */
+export async function sendMahnung(id: string): Promise<number> {
+  return sendReminder(id, "mahnung");
 }
 
 /** Angebot annehmen oder ablehnen. */

@@ -32,9 +32,12 @@ import {
   convertQuoteToInvoice,
   dueInfo,
   mahnLabel,
-  sendMahnung,
+  mahnungAllowed,
+  sendReminder,
   setQuoteDecision,
+  type ReminderKind,
 } from "@/lib/workflow";
+
 import { elementToPdfBytes, downloadBytes } from "@/lib/pdf";
 import {
   buildXRechnungXml,
@@ -120,7 +123,6 @@ function DokumentDetail() {
   const [items, setItems] = useState<Item[]>([]);
   const [mailOpen, setMailOpen] = useState(false);
 
-
   useEffect(() => {
     if (!data) return;
     const d = data.doc as Record<string, unknown>;
@@ -165,7 +167,6 @@ function DokumentDetail() {
   );
 
   const netTotal = useMemo(
-
     () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
@@ -259,7 +260,6 @@ function DokumentDetail() {
         ...rest
       } = doc as unknown as Record<string, unknown>;
 
-
       const { data: created, error } = await supabase
         .from("documents")
         .insert({ ...rest, user_id: userId, number: nextNr, status: "draft" } as never)
@@ -323,8 +323,8 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const mahnen = useMutation({
-    mutationFn: () => sendMahnung(id),
+  const reminder = useMutation({
+    mutationFn: (kind: ReminderKind) => sendReminder(id, kind),
     onSuccess: (level) => {
       toast.success(`${mahnLabel(level)} erfasst`);
       queryClient.invalidateQueries({ queryKey: ["document", id] });
@@ -366,6 +366,8 @@ function DokumentDetail() {
   const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
   const reminderLevel = Number(docRecord["reminder_level"] ?? 0);
+  const canMahnen = mahnungAllowed(docRecord["due_date"] as string | null);
+
   const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
@@ -474,7 +476,11 @@ function DokumentDetail() {
       const input = eRechnungInput();
       warnIfIncomplete(input);
       downloadXml(buildXRechnungXml(input), `XRechnung_${docNumber.replace(/\W+/g, "_")}.xml`);
-      await logAudit("xrechnung_export", { id, number: docNumber }, { format: "XRechnung 3.0 (UBL)" });
+      await logAudit(
+        "xrechnung_export",
+        { id, number: docNumber },
+        { format: "XRechnung 3.0 (UBL)" },
+      );
       toast.success("XRechnung (XML) erstellt");
     } catch (e) {
       toast.error((e as Error).message);
@@ -494,7 +500,11 @@ function DokumentDetail() {
         title: DOC_TYPE_LABEL[doc.type] ?? "Rechnung",
       });
       downloadBytes(hybrid, `ZUGFeRD_${docNumber.replace(/\W+/g, "_")}.pdf`);
-      await logAudit("zugferd_export", { id, number: docNumber }, { format: "ZUGFeRD 2.3 / Factur-X (EN 16931)" });
+      await logAudit(
+        "zugferd_export",
+        { id, number: docNumber },
+        { format: "ZUGFeRD 2.3 / Factur-X (EN 16931)" },
+      );
       toast.success("ZUGFeRD-PDF (hybride E-Rechnung) erstellt", { id: toastId });
     } catch (e) {
       toast.error((e as Error).message, { id: toastId });
@@ -503,7 +513,6 @@ function DokumentDetail() {
 
   return (
     <div className="space-y-6">
-
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm">
           <Link to="/dokumente">
@@ -511,7 +520,11 @@ function DokumentDetail() {
           </Link>
         </Button>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => duplicate.mutate()} disabled={duplicate.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => duplicate.mutate()}
+            disabled={duplicate.isPending}
+          >
             <Copy className="size-4" /> Duplizieren
           </Button>
           <Button variant="outline" onClick={() => window.print()}>
@@ -537,10 +550,44 @@ function DokumentDetail() {
             doc.status !== "paid" &&
             doc.status !== "cancelled" &&
             doc.status !== "draft" && (
-              <Button variant="outline" onClick={() => mahnen.mutate()} disabled={mahnen.isPending}>
-                <BellRing className="size-4" />
-                {reminderLevel > 0 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Freundliche Zahlungserinnerung jetzt erfassen und versenden?\n\n[Jetzt senden] bestätigen.",
+                      )
+                    ) {
+                      reminder.mutate("erinnerung");
+                    }
+                  }}
+                  disabled={reminder.isPending}
+                >
+                  <BellRing className="size-4" /> Zahlungserinnerung
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Offizielle ${mahnLabel(Math.max(2, reminderLevel + 1))} jetzt senden? Dieser Schritt wird GoBD-konform protokolliert.\n\n[Jetzt senden] bestätigen.`,
+                      )
+                    ) {
+                      reminder.mutate("mahnung");
+                    }
+                  }}
+                  disabled={reminder.isPending || !canMahnen}
+                  title={
+                    canMahnen
+                      ? undefined
+                      : "Erst möglich, wenn die Zahlungsfrist (14 Tage) vollständig abgelaufen ist."
+                  }
+                >
+                  <BellRing className="size-4" />
+                  {reminderLevel > 1 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
+                </Button>
+              </>
             )}
 
           {!isInvoice && (
@@ -557,34 +604,18 @@ function DokumentDetail() {
               )}
               {!convertedId && (
                 <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
-                  <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
+                  <ArrowRightLeft className="size-4" /> In Auftrag umwandeln
                 </Button>
               )}
             </>
           )}
 
           {!locked && (
-            <>
-              <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
-                <Save className="size-4" /> Speichern
-              </Button>
-              <Button
-                onClick={() => {
-                  if (
-                    confirm(
-                      "Beleg jetzt festschreiben? Danach ist er gemäß GoBD unveränderbar und kann nur noch storniert werden.",
-                    )
-                  ) {
-                    finalize.mutate();
-                  }
-                }}
-                disabled={finalize.isPending || save.isPending}
-              >
-                <Lock className="size-4" />
-                {finalize.isPending ? "Wird festgeschrieben…" : "Festschreiben (GoBD)"}
-              </Button>
-            </>
+            <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
+              <Save className="size-4" /> Speichern
+            </Button>
           )}
+
           {locked && isInvoice && !isStorno && !cancelledBy && (
             <Button
               variant="destructive"
@@ -643,16 +674,10 @@ function DokumentDetail() {
         </div>
       )}
 
-
-
-      <fieldset
-        disabled={locked}
-        className="no-print surface space-y-6 p-6 disabled:opacity-90"
-      >
+      <fieldset disabled={locked} className="no-print surface space-y-6 p-6 disabled:opacity-90">
         <h2 className="font-display text-xl font-semibold">
           {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
         </h2>
-
 
         <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
           <Label>Steuer-Art</Label>
@@ -852,9 +877,7 @@ function DokumentDetail() {
               <span>{formatMoney(netTotal)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                Umsatzsteuer {formatNumber(vatRate)} %
-              </span>
+              <span className="text-muted-foreground">Umsatzsteuer {formatNumber(vatRate)} %</span>
               <span>{formatMoney(vatAmount)}</span>
             </div>
             <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
@@ -883,140 +906,140 @@ function DokumentDetail() {
             />
           </div>
         </div>
-
       </fieldset>
-
 
       {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto w-full max-w-3xl p-9 text-sm">
         <div>
-        <header className="flex items-start justify-between gap-6">
-          <div className="flex items-start gap-4">
-            {logoSrc ? (
-              <img
-                src={logoSrc}
-                alt="Firmenlogo"
-                crossOrigin="anonymous"
-                referrerPolicy="no-referrer"
-                className="invoice-logo w-auto max-w-56 object-contain"
-              />
-            ) : (
-              <div className="invoice-logo flex h-14 w-14 items-center justify-center rounded-md border border-border bg-muted font-display text-lg font-bold text-muted-foreground">
-                {String(settings?.["company_name"] ?? "Hom Reinigung Service")
-                  .split(/\s+/)
-                  .slice(0, 2)
-                  .map((w) => w.charAt(0).toUpperCase())
-                  .join("")}
-              </div>
-            )}
-            <div>
-              <h1 className="font-display text-2xl font-bold">
-                {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
-              </h1>
-              {settings?.["owner_name"] && (
-                <p className="text-xs text-muted-foreground">
-                  Inhaber: {String(settings["owner_name"])}
-                </p>
+          <header className="flex items-start justify-between gap-6">
+            <div className="flex items-start gap-4">
+              {logoSrc ? (
+                <img
+                  src={logoSrc}
+                  alt="Firmenlogo"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  className="invoice-logo w-auto max-w-56 object-contain"
+                />
+              ) : (
+                <div className="invoice-logo flex h-14 w-14 items-center justify-center rounded-md border border-border bg-muted font-display text-lg font-bold text-muted-foreground">
+                  {String(settings?.["company_name"] ?? "Hom Reinigung Service")
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((w) => w.charAt(0).toUpperCase())
+                    .join("")}
+                </div>
               )}
+              <div>
+                <h1 className="font-display text-2xl font-bold">
+                  {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
+                </h1>
+                {settings?.["owner_name"] && (
+                  <p className="text-xs text-muted-foreground">
+                    Inhaber: {String(settings["owner_name"])}
+                  </p>
+                )}
+              </div>
             </div>
+            <div className="text-right text-xs text-muted-foreground">
+              {settings?.["email"] && <div>{String(settings["email"])}</div>}
+              {settings?.["phone"] && <div>{String(settings["phone"])}</div>}
+            </div>
+          </header>
+
+          <div className="mt-7 grid gap-8 sm:grid-cols-2">
+            <address className="not-italic">
+              <div className="border-b pb-1 text-[10px] text-muted-foreground">{senderLine}</div>
+              <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
+              <div>{String(form["customer_name"] ?? "")}</div>
+              <div>{String(form["customer_address_line"] ?? "")}</div>
+              <div>
+                {String(form["customer_postal_code"] ?? "")} {String(form["customer_city"] ?? "")}
+              </div>
+              <div>{String(form["customer_country"] ?? "")}</div>
+              {form["customer_vat_id"] && (
+                <div className="mt-1 text-xs">USt-IdNr.: {String(form["customer_vat_id"])}</div>
+              )}
+            </address>
+            <dl className="space-y-1 text-right">
+              <div>
+                <dt className="inline text-muted-foreground">
+                  {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"}:{" "}
+                </dt>
+                <dd className="inline font-medium">{docNumber}</dd>
+              </div>
+              <div>
+                <dt className="inline text-muted-foreground">
+                  {isInvoice ? "Rechnungsdatum" : "Datum"}:{" "}
+                </dt>
+                <dd className="inline">{formatDate(String(form["issue_date"] ?? ""))}</dd>
+              </div>
+              {form["service_period"] && (
+                <div>
+                  <dt className="inline text-muted-foreground">Leistungszeitraum: </dt>
+                  <dd className="inline">{String(form["service_period"])}</dd>
+                </div>
+              )}
+              {isInvoice && form["due_date"] && (
+                <div>
+                  <dt className="inline text-muted-foreground">Fällig am: </dt>
+                  <dd className="inline">{formatDate(String(form["due_date"]))}</dd>
+                </div>
+              )}
+              {form["order_number"] && (
+                <div>
+                  <dt className="inline text-muted-foreground">Bestellnummer: </dt>
+                  <dd className="inline font-medium">{String(form["order_number"])}</dd>
+                </div>
+              )}
+            </dl>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
-            {settings?.["email"] && <div>{String(settings["email"])}</div>}
-            {settings?.["phone"] && <div>{String(settings["phone"])}</div>}
-          </div>
-        </header>
 
-        <div className="mt-7 grid gap-8 sm:grid-cols-2">
-          <address className="not-italic">
-            <div className="border-b pb-1 text-[10px] text-muted-foreground">{senderLine}</div>
-            <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
-            <div>{String(form["customer_name"] ?? "")}</div>
-            <div>{String(form["customer_address_line"] ?? "")}</div>
-            <div>
-              {String(form["customer_postal_code"] ?? "")} {String(form["customer_city"] ?? "")}
-            </div>
-            <div>{String(form["customer_country"] ?? "")}</div>
-            {form["customer_vat_id"] && (
-              <div className="mt-1 text-xs">USt-IdNr.: {String(form["customer_vat_id"])}</div>
-            )}
-          </address>
-          <dl className="space-y-1 text-right">
-            <div>
-              <dt className="inline text-muted-foreground">
-                {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"}:{" "}
-              </dt>
-              <dd className="inline font-medium">{docNumber}</dd>
-            </div>
-            <div>
-              <dt className="inline text-muted-foreground">
-                {isInvoice ? "Rechnungsdatum" : "Datum"}:{" "}
-              </dt>
-              <dd className="inline">{formatDate(String(form["issue_date"] ?? ""))}</dd>
-            </div>
-            {form["service_period"] && (
-              <div>
-                <dt className="inline text-muted-foreground">Leistungszeitraum: </dt>
-                <dd className="inline">{String(form["service_period"])}</dd>
-              </div>
-            )}
-            {isInvoice && form["due_date"] && (
-              <div>
-                <dt className="inline text-muted-foreground">Fällig am: </dt>
-                <dd className="inline">{formatDate(String(form["due_date"]))}</dd>
-              </div>
-            )}
-            {form["order_number"] && (
-              <div>
-                <dt className="inline text-muted-foreground">Bestellnummer: </dt>
-                <dd className="inline font-medium">{String(form["order_number"])}</dd>
-              </div>
-            )}
-          </dl>
-        </div>
+          <h2 className="mt-7 font-display text-xl font-semibold">
+            {DOC_TYPE_LABEL[doc.type]} {docNumber}
+          </h2>
+          {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
 
-        <h2 className="mt-7 font-display text-xl font-semibold">
-          {DOC_TYPE_LABEL[doc.type]} {docNumber}
-        </h2>
-        {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
-
-        <div className="invoice-table-wrap mt-4 overflow-x-auto">
-          <table className="invoice-table w-full border-collapse text-left text-sm">
-            <colgroup>
-              <col style={{ width: "7%" }} />
-              <col style={{ width: "43%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "15%" }} />
-            </colgroup>
-            <thead>
-              <tr className="bg-muted text-[11px] tracking-normal text-muted-foreground uppercase">
-                <th className="px-2 py-2 font-medium">Pos.</th>
-                <th className="px-2 py-2 font-medium">Bezeichnung</th>
-                <th className="px-2 py-2 text-right font-medium">Menge</th>
-                <th className="px-2 py-2 font-medium">Einheit</th>
-                <th className="px-2 py-2 text-right font-medium">Einzelpreis €</th>
-                <th className="px-2 py-2 text-right font-medium">Gesamtpreis €</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((i, n) => (
-                <tr key={i.id} className="border-b border-border align-top">
-                  <td className="px-2 py-2 tabular-nums">{n + 1}</td>
-                  <td className="px-2 py-2 break-words whitespace-pre-line">{i.description}</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{formatNumber(i.quantity)}</td>
-                  <td className="px-2 py-2">{i.unit}</td>
-                  <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">
-                    {formatMoney(i.unit_price)}
-                  </td>
-                  <td className="px-2 py-2 text-right font-medium tabular-nums whitespace-nowrap">
-                    {formatMoney(i.quantity * i.unit_price)}
-                  </td>
+          <div className="invoice-table-wrap mt-4 overflow-x-auto">
+            <table className="invoice-table w-full border-collapse text-left text-sm">
+              <colgroup>
+                <col style={{ width: "7%" }} />
+                <col style={{ width: "43%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "15%" }} />
+              </colgroup>
+              <thead>
+                <tr className="bg-muted text-[11px] tracking-normal text-muted-foreground uppercase">
+                  <th className="px-2 py-2 font-medium">Pos.</th>
+                  <th className="px-2 py-2 font-medium">Bezeichnung</th>
+                  <th className="px-2 py-2 text-right font-medium">Menge</th>
+                  <th className="px-2 py-2 font-medium">Einheit</th>
+                  <th className="px-2 py-2 text-right font-medium">Einzelpreis €</th>
+                  <th className="px-2 py-2 text-right font-medium">Gesamtpreis €</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {items.map((i, n) => (
+                  <tr key={i.id} className="border-b border-border align-top">
+                    <td className="px-2 py-2 tabular-nums">{n + 1}</td>
+                    <td className="px-2 py-2 break-words whitespace-pre-line">{i.description}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">
+                      {formatNumber(i.quantity)}
+                    </td>
+                    <td className="px-2 py-2">{i.unit}</td>
+                    <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">
+                      {formatMoney(i.unit_price)}
+                    </td>
+                    <td className="px-2 py-2 text-right font-medium tabular-nums whitespace-nowrap">
+                      {formatMoney(i.quantity * i.unit_price)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="invoice-summary-block">
@@ -1087,7 +1110,6 @@ function DokumentDetail() {
             </div>
           </footer>
         </div>
-
       </article>
 
       <SendEmailDialog
@@ -1106,11 +1128,18 @@ function DokumentDetail() {
             .update({ status: "sent", sent_at: new Date().toISOString() } as never)
             .eq("id", id);
           await logAudit("sent", { id, number: docNumber }, { to: mail.to });
+          // Rechnungen werden beim Versand automatisch festgeschrieben (GoBD).
+          if (isInvoice && !locked) {
+            try {
+              await finalize.mutateAsync();
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Festschreiben fehlgeschlagen");
+            }
+          }
           queryClient.invalidateQueries({ queryKey: ["document", id] });
           queryClient.invalidateQueries({ queryKey: ["documents"] });
         }}
       />
-
     </div>
   );
 }
