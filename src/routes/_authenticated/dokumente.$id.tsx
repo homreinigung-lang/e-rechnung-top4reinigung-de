@@ -577,13 +577,13 @@ function DokumentDetail() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="number">
-              {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"} (frei änderbar)
+              {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"} (automatisch)
             </Label>
-            <Input
-              id="number"
-              value={String(form["number"] ?? "")}
-              onChange={(e) => setField("number", e.target.value)}
-            />
+            <Input id="number" value={docNumber} readOnly disabled className="bg-muted" />
+            <p className="text-xs text-muted-foreground">
+              Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle
+              Änderung ist nicht möglich.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
