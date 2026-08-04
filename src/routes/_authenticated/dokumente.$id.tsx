@@ -365,7 +365,10 @@ function DokumentDetail() {
   const cancelledBy = (docRecord["cancelled_by_document_id"] as string | null) ?? null;
   const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
-  const docNumber = locked ? doc.number : String(form["number"] ?? doc.number);
+  const reminderLevel = Number(docRecord["reminder_level"] ?? 0);
+  const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
+  const due = dueInfo(doc.due_date, doc.status);
+  const docNumber = doc.number;
   const senderLine = [
     settings?.["company_name"] ?? "Hom Reinigung Service",
     settings?.["address_line"] ?? "Poststraße 8",
