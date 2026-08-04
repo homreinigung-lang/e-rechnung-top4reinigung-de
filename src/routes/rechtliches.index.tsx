@@ -4,13 +4,13 @@ import { BookOpen, FileText, Scale, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/rechtliches/")({
   head: () => ({
     meta: [
-      { title: "Rechtliches – CleanInvoice" },
+      { title: "Rechtliches – Hom R Office" },
       {
         name: "description",
         content:
-          "Impressum, AGB, Datenschutzbestimmungen (DSGVO) und Open-Source-Lizenzen der CleanInvoice Rechnungssoftware.",
+          "Impressum, AGB, Datenschutzbestimmungen (DSGVO) und Open-Source-Lizenzen der Hom R Office Rechnungssoftware.",
       },
-      { property: "og:title", content: "Rechtliches – CleanInvoice" },
+      { property: "og:title", content: "Rechtliches – Hom R Office" },
       {
         property: "og:description",
         content: "Impressum, AGB, Datenschutz und verwendete Open-Source-Bibliotheken.",
