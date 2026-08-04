@@ -55,6 +55,14 @@ function Dashboard() {
   const paidTotal = invoices
     .filter((d) => d.status === "paid")
     .reduce((sum, d) => sum + Number(d.total), 0);
+  const openItems = invoices
+    .filter((d) => d.status !== "paid" && d.status !== "draft")
+    .map((d) => ({
+      d,
+      due: dueInfo(d.due_date, d.status),
+      level: Number((d as unknown as Record<string, unknown>)["reminder_level"] ?? 0),
+    }))
+    .sort((a, b) => String(a.d.due_date ?? "").localeCompare(String(b.d.due_date ?? "")));
   const quotes = docs.filter((d) => d.type === "quote");
   const expenseTotal = expenses.reduce((s, e) => s + Number(e.gross_amount), 0);
 
