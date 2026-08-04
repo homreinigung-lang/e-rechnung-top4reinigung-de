@@ -177,14 +177,16 @@ function DokumenteListe() {
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
-  const mahnen = useMutation({
-    mutationFn: (docId: string) => sendMahnung(docId),
+  const reminder = useMutation({
+    mutationFn: ({ docId, kind }: { docId: string; kind: ReminderKind }) =>
+      sendReminder(docId, kind),
     onSuccess: (level) => {
       toast.success(`${mahnLabel(level)} erfasst`);
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
+
 
   const decide = useMutation({
     mutationFn: ({ docId, decision }: { docId: string; decision: "accepted" | "declined" }) =>
