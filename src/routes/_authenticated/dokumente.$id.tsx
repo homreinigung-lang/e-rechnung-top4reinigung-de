@@ -46,7 +46,10 @@ import {
 } from "@/lib/erechnung";
 import {
   ArrowLeft,
+  ArrowRightLeft,
   Ban,
+  BellRing,
+  Check,
   Copy,
   FileCode2,
   FileDown,
@@ -57,6 +60,7 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
