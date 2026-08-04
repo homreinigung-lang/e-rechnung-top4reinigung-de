@@ -107,6 +107,54 @@ function Dashboard() {
       </div>
 
       <div className="surface overflow-hidden">
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <h2 className="font-semibold">Offene Posten</h2>
+          <span className="text-sm text-muted-foreground">
+            {openItems.length} offen · {openItems.filter((o) => o.due?.overdue).length} überfällig
+          </span>
+        </div>
+        {openItems.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+            Keine offenen Rechnungen – alles bezahlt.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {openItems.map(({ d, due, level }) => (
+              <li key={d.id}>
+                <Link
+                  to="/dokumente/$id"
+                  params={{ id: d.id }}
+                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-muted/60"
+                >
+                  <div>
+                    <div className="font-medium">Rechnung {d.number}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {d.customer_company || d.customer_name || "Ohne Kunde"} · fällig{" "}
+                      {formatDate(d.due_date)}
+                      {level > 0 ? ` · ${mahnLabel(level)}` : ""}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium">{formatMoney(Number(d.total))}</div>
+                    <div
+                      className={`inline-flex items-center gap-1 text-xs ${
+                        due?.overdue ? "font-medium text-destructive" : "text-muted-foreground"
+                      }`}
+                    >
+                      {due?.overdue && <AlertTriangle className="size-3" />}
+                      {due?.label ?? "Ohne Fälligkeitsdatum"}
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+
+
+      <div className="surface overflow-hidden">
         <div className="border-b px-5 py-4">
           <h2 className="font-semibold">Quartale {year} – Umsatz & Umsatzsteuer</h2>
         </div>
