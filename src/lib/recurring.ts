@@ -112,10 +112,14 @@ export async function runRecurring(recurringId: string): Promise<string> {
     .update({ next_run: addMonths(base, Number(rec.interval_months) || 1) } as never)
     .eq("id", recurringId);
 
-  await logAudit("recurring_created", { id: created.id as string, number }, {
-    recurring: rec.title,
-    interval_months: rec.interval_months,
-  });
+  await logAudit(
+    "recurring_created",
+    { id: created.id as string, number },
+    {
+      recurring: rec.title,
+      interval_months: rec.interval_months,
+    },
+  );
 
   return created.id as string;
 }

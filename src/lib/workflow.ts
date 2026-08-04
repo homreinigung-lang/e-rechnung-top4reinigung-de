@@ -71,10 +71,14 @@ export async function sendReminder(id: string, kind: ReminderKind): Promise<numb
     .update({ reminder_level: level, last_reminder_at: new Date().toISOString() } as never)
     .eq("id", id);
   if (updateError) throw updateError;
-  await logAudit(kind === "erinnerung" ? "zahlungserinnerung" : "mahnung", { id, number: doc.number }, {
-    level,
-    stufe: mahnLabel(level),
-  });
+  await logAudit(
+    kind === "erinnerung" ? "zahlungserinnerung" : "mahnung",
+    { id, number: doc.number },
+    {
+      level,
+      stufe: mahnLabel(level),
+    },
+  );
   return level;
 }
 
@@ -82,7 +86,6 @@ export async function sendReminder(id: string, kind: ReminderKind): Promise<numb
 export async function sendMahnung(id: string): Promise<number> {
   return sendReminder(id, "mahnung");
 }
-
 
 /** Angebot annehmen oder ablehnen. */
 export async function setQuoteDecision(id: string, decision: "accepted" | "declined") {

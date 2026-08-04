@@ -4,7 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Calculator, FileText, LayoutDashboard, LogOut, Repeat, Settings, TrendingDown, UserCircle, Users } from "lucide-react";
+import {
+  Calculator,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Repeat,
+  Settings,
+  TrendingDown,
+  UserCircle,
+  Users,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 const nav = [
@@ -17,9 +27,6 @@ const nav = [
   { to: "/profil", label: "Mein Profil", icon: UserCircle },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ] as const;
-
-
-
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -51,13 +58,22 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <Link to="/dashboard" className="flex items-center gap-2">
             {logoSrc ? (
-              <img src={logoSrc} alt={`Logo ${companyName}`} className="h-8 w-auto max-w-28 object-contain" />
+              <img
+                src={logoSrc}
+                alt={`Logo ${companyName}`}
+                className="h-8 w-auto max-w-28 object-contain"
+              />
             ) : (
-              <img src="/app-icon-192.png" alt="Hom R Office Logo" width={32} height={32} className="size-8 rounded-lg" />
+              <img
+                src="/app-icon-192.png"
+                alt="Hom R Office Logo"
+                width={32}
+                height={32}
+                className="size-8 rounded-lg"
+              />
             )}
             <span className="font-display text-sm font-semibold">{companyName}</span>
           </Link>
-
 
           <nav className="flex flex-1 flex-wrap items-center gap-1">
             {nav.map((item) => {
@@ -108,4 +124,3 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
