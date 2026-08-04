@@ -622,6 +622,29 @@ function DokumentDetail() {
         </div>
       )}
 
+      {(due || reminderLevel > 0) && (
+        <div
+          className={`no-print rounded-lg border p-4 text-sm ${
+            due?.overdue ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/40"
+          }`}
+        >
+          <span className={due?.overdue ? "font-medium text-destructive" : "font-medium"}>
+            {due?.label ?? "Offener Posten"}
+          </span>
+          {reminderLevel > 0 && (
+            <span className="text-muted-foreground">
+              {" "}
+              · {mahnLabel(reminderLevel)}
+              {docRecord["last_reminder_at"]
+                ? ` vom ${formatDate(String(docRecord["last_reminder_at"]))}`
+                : ""}
+            </span>
+          )}
+        </div>
+      )}
+
+
+
       <fieldset
         disabled={locked}
         className="no-print surface space-y-6 p-6 disabled:opacity-90"
