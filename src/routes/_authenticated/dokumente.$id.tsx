@@ -32,9 +32,12 @@ import {
   convertQuoteToInvoice,
   dueInfo,
   mahnLabel,
-  sendMahnung,
+  mahnungAllowed,
+  sendReminder,
   setQuoteDecision,
+  type ReminderKind,
 } from "@/lib/workflow";
+
 import { elementToPdfBytes, downloadBytes } from "@/lib/pdf";
 import {
   buildXRechnungXml,
