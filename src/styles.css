@@ -196,6 +196,8 @@
   .invoice-closing,
   .print-area footer,
   .print-area tr,
+  .print-area td,
+  .print-area th,
   .print-area thead,
   .print-area p,
   .print-area li,
