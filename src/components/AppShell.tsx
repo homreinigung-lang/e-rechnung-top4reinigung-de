@@ -87,31 +87,42 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="font-display text-sm font-semibold">{companyName}</span>
           </Link>
 
-          <nav className="flex flex-1 flex-wrap items-center gap-1">
-            {nav.map((item) => {
-              const active = pathname.startsWith(item.to);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <item.icon className="size-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="ml-auto flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Menü öffnen">
+                  <MoreVertical className="size-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Menü</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {nav.map((item) => {
+                  const active = pathname.startsWith(item.to);
+                  return (
+                    <DropdownMenuItem key={item.to} asChild>
+                      <Link
+                        to={item.to}
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2",
+                          active && "bg-secondary text-secondary-foreground",
+                        )}
+                      >
+                        <item.icon className="size-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void signOut()}>
+                  <LogOut className="size-4" />
+                  <span>Abmelden</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-          <Button variant="ghost" size="sm" onClick={signOut}>
-            <LogOut className="size-4" />
-            <span className="hidden sm:inline">Abmelden</span>
-          </Button>
         </div>
       </header>
 
