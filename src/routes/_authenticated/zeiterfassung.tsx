@@ -22,8 +22,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Check, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { Check, Download, FileText, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { formatMoney, formatDate } from "@/lib/format";
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function de(n: number) {
+  return n.toFixed(2).replace(".", ",");
+}
 
 export const Route = createFileRoute("/_authenticated/zeiterfassung")({
   head: () => ({
@@ -272,6 +285,136 @@ function Zeiterfassung() {
     ? num(form.hours)
     : computeHours(form.start_time, form.end_time, form.break_minutes);
 
+  const exportCsv = () => {
+    if (monthEntries.length === 0) {
+      toast.error("Keine Einträge in diesem Monat.");
+      return;
+    }
+    const head = [
+      "Mitarbeiter",
+      "Datum",
+      "Von",
+      "Bis",
+      "Pause (Min.)",
+      "Stunden",
+      "Stundensatz",
+      "Betrag",
+      "Einsatzort",
+      "Notiz",
+      "Abgerechnet",
+    ];
+    const rows = monthEntries.map((e) => [
+      (e.employee_name as string) || "Ohne Zuordnung",
+      formatDate(e.work_date as string),
+      e.start_time ? String(e.start_time).slice(0, 5) : "",
+      e.end_time ? String(e.end_time).slice(0, 5) : "",
+      String(e.break_minutes ?? 0),
+      de(Number(e.hours || 0)),
+      de(Number(e.hourly_rate || 0)),
+      de(Number(e.hours || 0) * Number(e.hourly_rate || 0)),
+      (e.location as string) || "",
+      (e.note as string) || "",
+      e.billed ? "Ja" : "Nein",
+    ]);
+    const summary = totals.perEmployee.map(([name, v]) => [
+      name,
+      "SUMME",
+      "",
+      "",
+      "",
+      de(v.hours),
+      "",
+      de(v.amount),
+      "",
+      "",
+      "",
+    ]);
+    const csv = [head, ...rows, [], ...summary]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
+      .join("\r\n");
+    downloadBlob(
+      new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }),
+      `Lohnabrechnung_${month}.csv`,
+    );
+    toast.success("CSV-Export erstellt");
+  };
+
+  const exportPdf = async () => {
+    if (monthEntries.length === 0) {
+      toast.error("Keine Einträge in diesem Monat.");
+      return;
+    }
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const [y0, m0] = month.split("-");
+    let y = 18;
+    doc.setFontSize(15);
+    doc.text(`Lohnabrechnung ${m0}/${y0}`, 15, y);
+    y += 7;
+    doc.setFontSize(9);
+    doc.text("Hom Reinigung Service · Stundenübersicht je Mitarbeiter", 15, y);
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.text("Mitarbeiter", 15, y);
+    doc.text("Stunden", 120, y, { align: "right" });
+    doc.text("Vergütung", 195, y, { align: "right" });
+    y += 2;
+    doc.line(15, y, 195, y);
+    y += 6;
+    doc.setFontSize(9);
+    for (const [name, v] of totals.perEmployee) {
+      doc.text(String(name).slice(0, 45), 15, y);
+      doc.text(`${de(v.hours)} Std.`, 120, y, { align: "right" });
+      doc.text(formatMoney(v.amount), 195, y, { align: "right" });
+      y += 6;
+      if (y > 275) {
+        doc.addPage();
+        y = 20;
+      }
+    }
+    y += 1;
+    doc.line(15, y, 195, y);
+    y += 6;
+    doc.setFontSize(10);
+    doc.text("Gesamt", 15, y);
+    doc.text(`${de(totals.hours)} Std.`, 120, y, { align: "right" });
+    doc.text(formatMoney(totals.amount), 195, y, { align: "right" });
+
+    y += 12;
+    doc.setFontSize(11);
+    doc.text("Einzelnachweis", 15, y);
+    y += 6;
+    doc.setFontSize(8);
+    for (const e of monthEntries) {
+      if (y > 282) {
+        doc.addPage();
+        y = 20;
+      }
+      const time =
+        e.start_time && e.end_time
+          ? `${String(e.start_time).slice(0, 5)}–${String(e.end_time).slice(0, 5)}`
+          : "-";
+      doc.text(
+        `${formatDate(e.work_date as string)}  ${((e.employee_name as string) || "Ohne Zuordnung").slice(0, 28)}  ${time}  Pause ${e.break_minutes} Min.`,
+        15,
+        y,
+      );
+      doc.text(`${de(Number(e.hours || 0))} Std.`, 150, y, { align: "right" });
+      doc.text(
+        formatMoney(Number(e.hours || 0) * Number(e.hourly_rate || 0)),
+        195,
+        y,
+        { align: "right" },
+      );
+      y += 5;
+    }
+    doc.save(`Lohnabrechnung_${month}.pdf`);
+    toast.success("PDF-Export erstellt");
+  };
+
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -282,6 +425,12 @@ function Zeiterfassung() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={exportCsv}>
+            <Download className="size-4" /> Lohn-CSV
+          </Button>
+          <Button variant="outline" onClick={exportPdf}>
+            <FileText className="size-4" /> Lohn-PDF
+          </Button>
           <Dialog
             open={empOpen}
             onOpenChange={(o) => {
