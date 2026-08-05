@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Check, Pencil, Plus, Trash2, Users } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatMoney, formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/zeiterfassung")({
   head: () => ({
@@ -92,8 +92,8 @@ function num(v: string) {
 
 function computeHours(start: string, end: string, breakMinutes: string) {
   if (!start || !end) return 0;
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
+  const [sh = NaN, sm = NaN] = start.split(":").map(Number);
+  const [eh = NaN, em = NaN] = end.split(":").map(Number);
   if ([sh, sm, eh, em].some((x) => Number.isNaN(x))) return 0;
   let minutes = eh * 60 + em - (sh * 60 + sm);
   if (minutes < 0) minutes += 24 * 60;
@@ -340,7 +340,7 @@ function Zeiterfassung() {
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium">{e.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {[e.role, `${formatCurrency(Number(e.hourly_rate))}/Std.`]
+                        {[e.role, `${formatMoney(Number(e.hourly_rate))}/Std.`]
                           .filter(Boolean)
                           .join(" · ")}
                       </div>
@@ -541,7 +541,7 @@ function Zeiterfassung() {
         </div>
         <div className="surface p-5">
           <div className="text-sm text-muted-foreground">Lohnwert (Stunden × Satz)</div>
-          <div className="mt-2 text-2xl font-bold">{formatCurrency(totals.amount)}</div>
+          <div className="mt-2 text-2xl font-bold">{formatMoney(totals.amount)}</div>
         </div>
       </div>
 
@@ -553,7 +553,7 @@ function Zeiterfassung() {
               <li key={name} className="flex items-center justify-between py-2 text-sm">
                 <span>{name}</span>
                 <span className="text-muted-foreground">
-                  {v.hours.toFixed(2)} Std. · {formatCurrency(v.amount)}
+                  {v.hours.toFixed(2)} Std. · {formatMoney(v.amount)}
                 </span>
               </li>
             ))}
@@ -590,7 +590,7 @@ function Zeiterfassung() {
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
                 </div>
                 <div className="text-right text-sm">
-                  {formatCurrency(Number(e.hours) * Number(e.hourly_rate || 0))}
+                  {formatMoney(Number(e.hours) * Number(e.hourly_rate || 0))}
                 </div>
                 <Button
                   variant={e.billed ? "secondary" : "ghost"}
@@ -603,7 +603,7 @@ function Zeiterfassung() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() =>
+                  onClick={() => {
                     setForm({
                       id: e.id as string,
                       employee_id: (e.employee_id as string) ?? "",
@@ -617,8 +617,9 @@ function Zeiterfassung() {
                       hourly_rate: String(e.hourly_rate ?? ""),
                       location: (e.location as string) ?? "",
                       note: (e.note as string) ?? "",
-                    }) || setEntryOpen(true)
-                  }
+                    });
+                    setEntryOpen(true);
+                  }}
                 >
                   <Pencil className="size-4" />
                 </Button>
