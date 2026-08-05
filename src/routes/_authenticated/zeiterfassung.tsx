@@ -22,8 +22,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Check, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { Check, Download, FileText, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { formatMoney, formatDate } from "@/lib/format";
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function de(n: number) {
+  return n.toFixed(2).replace(".", ",");
+}
 
 export const Route = createFileRoute("/_authenticated/zeiterfassung")({
   head: () => ({
