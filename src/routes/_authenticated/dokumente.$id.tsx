@@ -909,7 +909,7 @@ function DokumentDetail() {
       </fieldset>
 
       {/* Druckansicht – DIN 5008 */}
-      <article className="paper print-area mx-auto w-full max-w-3xl p-9 text-sm">
+      <article className="paper print-area mx-auto text-sm">
         <div>
           <header className="flex items-start justify-between gap-6">
             <div className="flex items-start gap-4">

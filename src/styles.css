@@ -185,7 +185,8 @@
     border: none !important;
     margin: 0 auto !important;
     padding: 14mm 15mm !important;
-    max-width: none !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
     font-size: 11pt;
   }
 
@@ -316,6 +317,20 @@
 }
 .print-area a[href]::after {
   content: "" !important;
+}
+/* Externe Plattform-/Web-Verweise werden in der Rechnung nie dargestellt. */
+.print-area a[href^="http"],
+.print-area a[href^="//"],
+.print-area a[href^="mailto:http"] {
+  display: none !important;
+}
+
+/* WYSIWYG: Bildschirmansicht exakt in DIN-A4-Maßen mit festen Rändern. */
+.print-area {
+  box-sizing: border-box;
+  width: 210mm;
+  max-width: 100%;
+  padding: 14mm 15mm;
 }
 
 
