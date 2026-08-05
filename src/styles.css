@@ -301,6 +301,22 @@
   letter-spacing: 0;
   border-bottom: 1.5px solid var(--color-muted-foreground);
 }
+.invoice-table thead {
+  display: table-header-group;
+}
+.invoice-table tfoot {
+  display: table-footer-group;
+}
+
+/* In der Rechnung erscheinen keine Links/URLs – weder am Bildschirm noch im PDF. */
+.print-area a {
+  color: inherit !important;
+  text-decoration: none !important;
+  pointer-events: none;
+}
+.print-area a[href]::after {
+  content: "" !important;
+}
 
 
 /* Firmenlogo im Rechnungskopf: feste, professionelle Höhe. */
