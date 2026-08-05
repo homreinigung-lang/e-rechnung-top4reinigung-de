@@ -185,7 +185,8 @@
     border: none !important;
     margin: 0 auto !important;
     padding: 14mm 15mm !important;
-    max-width: none !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
     font-size: 11pt;
   }
 
