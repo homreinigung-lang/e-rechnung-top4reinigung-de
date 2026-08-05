@@ -257,11 +257,12 @@
 }
 
 
-/* Rechnungstabelle: klar getrennte, ausgerichtete Spalten (Bildschirm + Druck). */
+/* Rechnungstabelle: sauberes Grid mit klaren Rahmenlinien (Bildschirm + Druck). */
 .invoice-table {
   table-layout: fixed;
   width: 100%;
   border-collapse: collapse;
+  border: 1px solid var(--color-border);
 }
 .invoice-table th,
 .invoice-table td {
@@ -270,12 +271,20 @@
   overflow-wrap: break-word;
   hyphens: none;
   line-height: 1.35;
+  border: 1px solid var(--color-border);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.invoice-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .invoice-table th {
   white-space: normal;
   letter-spacing: 0;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1.5px solid var(--color-muted-foreground);
 }
+
 
 /* Firmenlogo im Rechnungskopf: feste, professionelle Höhe. */
 .invoice-logo {
