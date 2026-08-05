@@ -248,8 +248,23 @@
     margin: 0;
   }
 
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
 
+  /* Keine URLs hinter Links ausgeben. */
+  a,
+  a:visited {
+    text-decoration: none !important;
+  }
+  a[href]::after,
+  abbr[title]::after {
+    content: "" !important;
+  }
 }
+
 
 /* Das Lovable-Badge auch in der Bildschirm-Vorschau der Rechnung ausblenden. */
 #lovable-badge,
