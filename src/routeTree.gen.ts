@@ -20,6 +20,7 @@ import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
 import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
+import { Route as AuthenticatedZeiterfassungRouteImport } from './routes/_authenticated/zeiterfassung'
 import { Route as RechtlichesIndexRouteImport } from './routes/rechtliches.index'
 import { Route as RechtlichesAgbRouteImport } from './routes/rechtliches.agb'
 import { Route as RechtlichesBibliothekenRouteImport } from './routes/rechtliches.bibliotheken'
@@ -86,6 +87,12 @@ const AuthenticatedWiederkehrendRoute =
     path: '/wiederkehrend',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedZeiterfassungRoute =
+  AuthenticatedZeiterfassungRouteImport.update({
+    id: '/zeiterfassung',
+    path: '/zeiterfassung',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const RechtlichesIndexRoute = RechtlichesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -140,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
+  '/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -159,6 +167,7 @@ export interface FileRoutesByTo {
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
+  '/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -181,6 +190,7 @@ export interface FileRoutesById {
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
+  '/_authenticated/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/profil'
     | '/steuerberater'
     | '/wiederkehrend'
+    | '/zeiterfassung'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/profil'
     | '/steuerberater'
     | '/wiederkehrend'
+    | '/zeiterfassung'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -243,6 +255,7 @@ export interface FileRouteTypes {
     | '/_authenticated/profil'
     | '/_authenticated/steuerberater'
     | '/_authenticated/wiederkehrend'
+    | '/_authenticated/zeiterfassung'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -340,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWiederkehrendRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/zeiterfassung': {
+      id: '/_authenticated/zeiterfassung'
+      path: '/zeiterfassung'
+      fullPath: '/zeiterfassung'
+      preLoaderRoute: typeof AuthenticatedZeiterfassungRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/rechtliches/': {
       id: '/rechtliches/'
       path: '/'
@@ -407,6 +427,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
+  AuthenticatedZeiterfassungRoute: typeof AuthenticatedZeiterfassungRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
 }
@@ -419,6 +440,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
+  AuthenticatedZeiterfassungRoute: AuthenticatedZeiterfassungRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,
 }
@@ -456,13 +478,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

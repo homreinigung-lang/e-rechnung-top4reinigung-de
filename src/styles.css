@@ -345,3 +345,15 @@
 img.invoice-logo {
   max-height: 50px;
 }
+
+/* Zahlenfelder ohne Spinbuttons (Pfeile hoch/runter) – reine Eingabefelder. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}

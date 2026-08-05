@@ -426,6 +426,39 @@ export type Database = {
           },
         ]
       }
+      employees: {
+        Row: {
+          active: boolean
+          created_at: string
+          hourly_rate: number
+          id: string
+          name: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          hourly_rate?: number
+          id?: string
+          name: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          hourly_rate?: number
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           category: string
@@ -551,6 +584,78 @@ export type Database = {
             columns: ["template_document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entries: {
+        Row: {
+          billed: boolean
+          break_minutes: number
+          created_at: string
+          customer_id: string | null
+          employee_id: string | null
+          employee_name: string
+          end_time: string | null
+          hourly_rate: number
+          hours: number
+          id: string
+          location: string
+          note: string
+          start_time: string | null
+          updated_at: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          billed?: boolean
+          break_minutes?: number
+          created_at?: string
+          customer_id?: string | null
+          employee_id?: string | null
+          employee_name?: string
+          end_time?: string | null
+          hourly_rate?: number
+          hours?: number
+          id?: string
+          location?: string
+          note?: string
+          start_time?: string | null
+          updated_at?: string
+          user_id: string
+          work_date?: string
+        }
+        Update: {
+          billed?: boolean
+          break_minutes?: number
+          created_at?: string
+          customer_id?: string | null
+          employee_id?: string | null
+          employee_name?: string
+          end_time?: string | null
+          hourly_rate?: number
+          hours?: number
+          id?: string
+          location?: string
+          note?: string
+          start_time?: string | null
+          updated_at?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]

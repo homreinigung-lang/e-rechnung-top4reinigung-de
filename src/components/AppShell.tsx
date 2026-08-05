@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Calculator,
+  Clock,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -22,6 +23,7 @@ const nav = [
   { to: "/dokumente", label: "Rechnungen & Angebote", icon: FileText },
   { to: "/wiederkehrend", label: "Wiederkehrend", icon: Repeat },
   { to: "/kunden", label: "Kunden", icon: Users },
+  { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock },
   { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
   { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
   { to: "/profil", label: "Mein Profil", icon: UserCircle },
