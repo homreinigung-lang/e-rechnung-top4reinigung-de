@@ -28,15 +28,16 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
       body,.paper{background-color:#ffffff !important;}
       .text-muted-foreground{color:#6b7280 !important;}
       thead tr{background-color:#f3f4f6 !important;}
-      td,th{border-color:#e5e7eb !important;}
       .print-area{padding:14mm 15mm !important;box-shadow:none !important;border:none !important;}
-      .invoice-table{table-layout:fixed !important;width:100% !important;border-collapse:collapse !important;}
-      .invoice-table th,.invoice-table td{vertical-align:top !important;overflow-wrap:break-word !important;word-break:normal !important;letter-spacing:normal !important;}
+      .invoice-table{table-layout:fixed !important;width:100% !important;border-collapse:collapse !important;border:1px solid #9ca3af !important;}
+      .invoice-table th,.invoice-table td{vertical-align:top !important;overflow-wrap:break-word !important;word-break:normal !important;letter-spacing:normal !important;border:1px solid #9ca3af !important;padding:5px 7px !important;}
+      .invoice-table thead th{background-color:#f3f4f6 !important;border-bottom:1.5px solid #6b7280 !important;}
       .invoice-table-wrap{overflow:visible !important;}
       .invoice-logo{max-height:50px !important;width:auto !important;object-fit:contain !important;display:block !important;}`;
       doc.head.appendChild(style);
     },
   });
+
 
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageWidth = pdf.internal.pageSize.getWidth();
