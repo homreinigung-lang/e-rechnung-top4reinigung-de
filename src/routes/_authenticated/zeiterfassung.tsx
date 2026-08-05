@@ -594,6 +594,9 @@ function Zeiterfassung() {
                   <Input
                     id="work_date"
                     type="date"
+                    lang="de-DE"
+                    dir="ltr"
+                    className="text-left [direction:ltr]"
                     value={form.work_date}
                     onChange={(e) => setForm({ ...form, work_date: e.target.value })}
                   />
@@ -611,6 +614,10 @@ function Zeiterfassung() {
                   <Input
                     id="start_time"
                     type="time"
+                    lang="de-DE"
+                    dir="ltr"
+                    step={60}
+                    className="text-left [direction:ltr]"
                     value={form.start_time}
                     onChange={(e) => setForm({ ...form, start_time: e.target.value })}
                   />
@@ -620,10 +627,15 @@ function Zeiterfassung() {
                   <Input
                     id="end_time"
                     type="time"
+                    lang="de-DE"
+                    dir="ltr"
+                    step={60}
+                    className="text-left [direction:ltr]"
                     value={form.end_time}
                     onChange={(e) => setForm({ ...form, end_time: e.target.value })}
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="break_minutes">Pause (Minuten)</Label>
                   <Input
