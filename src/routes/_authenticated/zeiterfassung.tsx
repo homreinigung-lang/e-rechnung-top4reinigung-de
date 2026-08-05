@@ -286,7 +286,10 @@ function Zeiterfassung() {
     : computeHours(form.start_time, form.end_time, form.break_minutes);
 
   const exportCsv = () => {
-    if (monthEntries.length === 0) return toast.error("Keine Einträge in diesem Monat.");
+    if (monthEntries.length === 0) {
+      toast.error("Keine Einträge in diesem Monat.");
+      return;
+    }
     const head = [
       "Mitarbeiter",
       "Datum",
@@ -337,7 +340,10 @@ function Zeiterfassung() {
   };
 
   const exportPdf = async () => {
-    if (monthEntries.length === 0) return toast.error("Keine Einträge in diesem Monat.");
+    if (monthEntries.length === 0) {
+      toast.error("Keine Einträge in diesem Monat.");
+      return;
+    }
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const [y0, m0] = month.split("-");
