@@ -425,6 +425,12 @@ function Zeiterfassung() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={exportCsv}>
+            <Download className="size-4" /> Lohn-CSV
+          </Button>
+          <Button variant="outline" onClick={exportPdf}>
+            <FileText className="size-4" /> Lohn-PDF
+          </Button>
           <Dialog
             open={empOpen}
             onOpenChange={(o) => {
