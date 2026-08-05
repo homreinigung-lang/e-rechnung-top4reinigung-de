@@ -3,6 +3,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   Calculator,
@@ -10,6 +18,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  MoreVertical,
   Repeat,
   Settings,
   TrendingDown,
@@ -17,6 +26,7 @@ import {
   Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
+
 
 const nav = [
   { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
