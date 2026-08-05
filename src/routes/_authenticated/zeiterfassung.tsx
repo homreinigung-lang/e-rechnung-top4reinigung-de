@@ -591,14 +591,10 @@ function Zeiterfassung() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="work_date">Datum</Label>
-                  <Input
+                  <GermanDateInput
                     id="work_date"
-                    type="date"
-                    lang="de-DE"
-                    dir="ltr"
-                    className="text-left [direction:ltr]"
                     value={form.work_date}
-                    onChange={(e) => setForm({ ...form, work_date: e.target.value })}
+                    onChange={(iso) => setForm({ ...form, work_date: iso })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -611,30 +607,21 @@ function Zeiterfassung() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="start_time">Von</Label>
-                  <Input
+                  <GermanTimeInput
                     id="start_time"
-                    type="time"
-                    lang="de-DE"
-                    dir="ltr"
-                    step={60}
-                    className="text-left [direction:ltr]"
                     value={form.start_time}
-                    onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+                    onChange={(t) => setForm({ ...form, start_time: t })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="end_time">Bis</Label>
-                  <Input
+                  <GermanTimeInput
                     id="end_time"
-                    type="time"
-                    lang="de-DE"
-                    dir="ltr"
-                    step={60}
-                    className="text-left [direction:ltr]"
                     value={form.end_time}
-                    onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+                    onChange={(t) => setForm({ ...form, end_time: t })}
                   />
                 </div>
+
 
                 <div className="space-y-2">
                   <Label htmlFor="break_minutes">Pause (Minuten)</Label>
