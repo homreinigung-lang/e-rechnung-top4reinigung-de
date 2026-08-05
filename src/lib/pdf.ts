@@ -52,7 +52,7 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   const blocks: Array<{ top: number; bottom: number }> = [];
   element
     .querySelectorAll<HTMLElement>(
-      "header, tr, .invoice-summary-block, .invoice-closing, footer, p, h1, h2, h3",
+      "header, tr, td, th, .invoice-summary-block, .invoice-closing, footer, p, h1, h2, h3",
     )
     .forEach((node) => {
       const rect = node.getBoundingClientRect();
@@ -63,11 +63,55 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
       });
     });
 
+  // Tabellenkopf vermessen, damit er auf Folgeseiten wiederholt werden kann.
+  const theadEl = element.querySelector<HTMLElement>(".invoice-table thead");
+  const tableEl = element.querySelector<HTMLElement>(".invoice-table");
+  let header: { top: number; bottom: number; tableBottom: number } | null = null;
+  if (theadEl && tableEl) {
+    const hr = theadEl.getBoundingClientRect();
+    const tr = tableEl.getBoundingClientRect();
+    if (hr.height > 0) {
+      header = {
+        top: (hr.top - elementRect.top) * renderScale,
+        bottom: (hr.bottom - elementRect.top) * renderScale,
+        tableBottom: (tr.bottom - elementRect.top) * renderScale,
+      };
+    }
+  }
+
   // Breite erst nach dem Vermessen zurücksetzen.
   element.setAttribute("style", previousStyle);
 
-  const nextBreak = (start: number) => {
-    const limit = Math.min(canvas.height, start + pagePx);
+  const headerHeight = header ? Math.round(header.bottom - header.top) : 0;
+
+  // Kopfzeilen-Ausschnitt einmalig als eigenes Canvas vorbereiten.
+  let headerCanvas: HTMLCanvasElement | null = null;
+  if (header && headerHeight > 0) {
+    headerCanvas = document.createElement("canvas");
+    headerCanvas.width = canvas.width;
+    headerCanvas.height = headerHeight;
+    const hctx = headerCanvas.getContext("2d");
+    if (hctx) {
+      hctx.fillStyle = "#ffffff";
+      hctx.fillRect(0, 0, headerCanvas.width, headerCanvas.height);
+      hctx.drawImage(
+        canvas,
+        0,
+        Math.round(header.top),
+        canvas.width,
+        headerHeight,
+        0,
+        0,
+        canvas.width,
+        headerHeight,
+      );
+    } else {
+      headerCanvas = null;
+    }
+  }
+
+  const nextBreak = (start: number, available: number) => {
+    const limit = Math.min(canvas.height, start + available);
     if (limit >= canvas.height) return canvas.height;
     let cut = limit;
     for (const b of blocks) {
@@ -80,15 +124,17 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
     return cut <= start + 1 ? limit : cut;
   };
 
-  const addSlice = (startY: number, endY: number, addPage: boolean) => {
+  const addSlice = (startY: number, endY: number, addPage: boolean, withHeader: boolean) => {
     const sliceHeight = Math.max(1, Math.round(endY - startY));
+    const extra = withHeader && headerCanvas ? headerHeight : 0;
     const slice = document.createElement("canvas");
     slice.width = canvas.width;
-    slice.height = sliceHeight;
+    slice.height = sliceHeight + extra;
     const context = slice.getContext("2d");
     if (!context) return;
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, slice.width, slice.height);
+    if (extra && headerCanvas) context.drawImage(headerCanvas, 0, 0);
     context.drawImage(
       canvas,
       0,
@@ -96,23 +142,28 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
       canvas.width,
       sliceHeight,
       0,
-      0,
+      extra,
       canvas.width,
       sliceHeight,
     );
     if (addPage) pdf.addPage();
-    const renderedHeight = (sliceHeight * pageWidth) / canvas.width;
+    const renderedHeight = (slice.height * pageWidth) / canvas.width;
     pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pageWidth, renderedHeight);
   };
 
   let cursor = 0;
   let first = true;
   while (cursor < canvas.height) {
-    const end = nextBreak(cursor);
-    addSlice(cursor, end, !first);
+    // Kopf wiederholen, solange die Seite noch Tabellenzeilen enthält.
+    const repeatHeader =
+      !first && !!header && cursor > header.bottom && cursor < header.tableBottom - 1;
+    const available = pagePx - (repeatHeader ? headerHeight : 0);
+    const end = nextBreak(cursor, available);
+    addSlice(cursor, end, !first, repeatHeader);
     first = false;
     cursor = end;
   }
+
 
   return new Uint8Array(pdf.output("arraybuffer"));
 }
