@@ -83,6 +83,10 @@ export function LoginMethodsCard() {
           <span className="text-muted-foreground">Aktive Anmeldemethoden: </span>
           {providers.map((p) => labels[p] ?? p).join(", ") || "—"}
         </p>
+        <p className="text-muted-foreground">
+          Diese E-Mail-Adresse ist fest mit Ihrem Konto verknüpft und wird nicht geändert. Melden
+          Sie sich damit entweder über Google oder mit Ihrem Passwort an.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
