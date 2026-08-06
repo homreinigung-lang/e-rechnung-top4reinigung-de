@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Download, FileSpreadsheet, Lock, Printer } from "lucide-react";
 import { PasswordInput } from "@/components/PasswordInput";
+import { saveFile } from "@/lib/download";
 
 export const Route = createFileRoute("/stb/$token")({
   head: () => ({
@@ -41,12 +42,7 @@ function csvEscape(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 function download(name: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  void saveFile(blob, name);
 }
 function downloadCsv(name: string, rows: Table[]) {
   if (rows.length === 0) {
