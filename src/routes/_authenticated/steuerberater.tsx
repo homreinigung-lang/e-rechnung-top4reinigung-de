@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { buildGobdExport, downloadBlob } from "@/lib/gobd";
 import { saveFile } from "@/lib/download";
-import { Archive, Download, FileSpreadsheet, Printer, ShieldCheck } from "lucide-react";
+import { Archive, Calculator, Download, FileSpreadsheet, FileText, Printer, ShieldCheck } from "lucide-react";
+import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 
 export const Route = createFileRoute("/_authenticated/steuerberater")({
@@ -142,6 +143,33 @@ function Steuerberater() {
   });
 
 
+
+  const { data: settings } = useQuery({
+    queryKey: ["stb_settings"],
+    queryFn: async () => {
+      const { data } = await supabase.from("company_settings").select("company_name").maybeSingle();
+      return data ?? null;
+    },
+  });
+
+  const euer = useMemo(
+    () =>
+      computeEuer(
+        documents as unknown as Record<string, unknown>[],
+        expenses as unknown as Record<string, unknown>[],
+        from,
+        to,
+      ),
+    [documents, expenses, from, to],
+  );
+
+  const euerPdf = useMutation({
+    mutationFn: async () => {
+      const blob = await buildEuerPdf(euer, settings?.company_name ?? "Hom Reinigung Service");
+      await saveFile(blob, `EUER_${from}_${to}.pdf`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const totals = useMemo(() => {
     const net = documents.reduce(
@@ -331,6 +359,65 @@ function Steuerberater() {
         <Table rows={auditRows} empty="Noch keine protokollierten Vorgänge im Zeitraum." />
       </section>
 
+
+      <section className="print-area rounded-lg border bg-card p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+              <Calculator className="size-5 text-primary" /> EÜR – Einnahmenüberschussrechnung
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Gewinnermittlung nach § 4 Abs. 3 EStG für {formatDate(from)} – {formatDate(to)}.
+              Entwürfe bleiben unberücksichtigt, Stornorechnungen mindern die Einnahmen.
+            </p>
+          </div>
+          <div className="no-print flex flex-wrap gap-2">
+            <Button onClick={() => euerPdf.mutate()} disabled={euerPdf.isPending}>
+              <FileText className="size-4" />
+              {euerPdf.isPending ? "PDF wird erstellt…" : "EÜR als PDF"}
+            </Button>
+            <Button variant="outline" onClick={() => download(`EUER_${period}.csv`, buildEuerCsv(euer))}>
+              <Download className="size-4" /> EÜR als CSV
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Kpi label="Betriebseinnahmen (netto)" value={formatMoney(euer.incomeNet)} />
+          <Kpi label="Betriebsausgaben (netto)" value={formatMoney(euer.expenseNet)} />
+          <Kpi
+            label={euer.profit >= 0 ? "Gewinn (netto)" : "Verlust (netto)"}
+            value={formatMoney(euer.profit)}
+          />
+        </div>
+
+        <Table
+          rows={[
+            { Position: "Betriebseinnahmen (netto)", Betrag: formatMoney(euer.incomeNet) },
+            { Position: "Vereinnahmte Umsatzsteuer", Betrag: formatMoney(euer.incomeVat) },
+            { Position: "Betriebseinnahmen (brutto)", Betrag: formatMoney(euer.incomeGross) },
+            { Position: "Betriebsausgaben (netto)", Betrag: formatMoney(euer.expenseNet) },
+            { Position: "Gezahlte Vorsteuer", Betrag: formatMoney(euer.expenseVat) },
+            { Position: "Betriebsausgaben (brutto)", Betrag: formatMoney(euer.expenseGross) },
+            {
+              Position: euer.profit >= 0 ? "Gewinn (netto)" : "Verlust (netto)",
+              Betrag: formatMoney(euer.profit),
+            },
+          ]}
+          empty=""
+        />
+
+        <h3 className="mt-6 font-display text-sm font-semibold">Betriebsausgaben je Kategorie</h3>
+        <Table
+          rows={euer.expensesByCategory.map((c) => ({
+            Kategorie: c.category,
+            Netto: formatMoney(c.net),
+            Vorsteuer: formatMoney(c.vat),
+            Brutto: formatMoney(c.gross),
+          }))}
+          empty="Keine Ausgaben im Zeitraum."
+        />
+      </section>
 
       <section className="print-area rounded-lg border bg-card p-6">
         <h2 className="font-display text-lg font-semibold">
