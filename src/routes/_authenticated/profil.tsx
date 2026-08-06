@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { useMyEmployee, type MyEmployee } from "@/lib/employee";
+import { LoginMethodsCard } from "@/components/LoginMethodsCard";
 
 
 
@@ -131,6 +132,8 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
           Speichern
         </Button>
       </div>
+
+      <LoginMethodsCard />
     </div>
   );
 }
@@ -252,6 +255,8 @@ function CompanyProfil() {
       <Button onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         Speichern
       </Button>
+
+      <LoginMethodsCard />
     </div>
   );
 }
