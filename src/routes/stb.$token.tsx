@@ -100,6 +100,7 @@ function AccountantPortal() {
   const data = report.data;
   const documents: Row[] = data?.documents ?? [];
   const expenses: Row[] = data?.expenses ?? [];
+  const timeEntries: Row[] = data?.timeEntries ?? [];
 
   const docRows: Table[] = documents.map((d) => ({
     Belegdatum: formatDate(String(d["issue_date"] ?? "")),
@@ -123,6 +124,20 @@ function AccountantPortal() {
     Brutto: de(num(e["gross_amount"])),
   }));
 
+  const timeRows: Table[] = timeEntries.map((t) => ({
+    Datum: formatDate(String(t["work_date"] ?? "")),
+    Mitarbeiter: String(t["employee_name"] ?? ""),
+    Von: String(t["start_time"] ?? "").slice(0, 5),
+    Bis: String(t["end_time"] ?? "").slice(0, 5),
+    "Pause (Min.)": String(t["break_minutes"] ?? 0),
+    Stunden: de(num(t["hours"])),
+    Stundensatz: de(num(t["hourly_rate"])),
+    Lohn: de(num(t["hours"]) * num(t["hourly_rate"])),
+    Einsatzort: String(t["location"] ?? ""),
+    Notiz: String(t["note"] ?? ""),
+  }));
+  const hoursTotal = timeEntries.reduce((s, t) => s + num(t["hours"]), 0);
+
   const netTotal = documents.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const vatTotal = documents.reduce((s, d) => s + num(d["vat_amount"]), 0);
   const expVat = expenses.reduce((s, e) => s + num(e["vat_amount"]), 0);
@@ -136,7 +151,7 @@ function AccountantPortal() {
           Steuerberater-Zugang {data?.companyName ? `– ${data.companyName}` : ""}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Nur-Lese-Zugriff auf Rechnungen und Ausgaben inkl. DATEV- und Excel-Export.
+          Nur-Lese-Zugriff auf Rechnungen, Ausgaben und Stundenzettel aller Mitarbeiter inkl. DATEV- und Excel-Export.
         </p>
       </header>
 
@@ -176,10 +191,17 @@ function AccountantPortal() {
             </Button>
             <Button
               variant="outline"
+              onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows)}
+            >
+              <Download className="size-4" /> Stundenzettel (CSV)
+            </Button>
+            <Button
+              variant="outline"
               onClick={() =>
                 downloadExcel(`Steuerauswertung_${period}.xls`, [
                   { title: "Rechnungen", rows: docRows },
                   { title: "Ausgaben", rows: expenseRows },
+                  { title: "Stundenzettel", rows: timeRows },
                 ])
               }
             >
@@ -199,12 +221,17 @@ function AccountantPortal() {
               <Kpi label="Umsatzsteuer" value={formatMoney(vatTotal)} />
               <Kpi label="Ausgaben netto" value={formatMoney(expNet)} />
               <Kpi label="USt-Zahllast" value={formatMoney(vatTotal - expVat)} />
+              <Kpi label="Arbeitsstunden" value={`${de(hoursTotal)} Std.`} />
             </div>
 
             <h3 className="mt-6 font-display text-sm font-semibold">Rechnungen</h3>
             <DataTable rows={docRows} empty="Keine Rechnungen im Zeitraum." />
             <h3 className="mt-6 font-display text-sm font-semibold">Ausgaben</h3>
             <DataTable rows={expenseRows} empty="Keine Ausgaben im Zeitraum." />
+            <h3 className="mt-6 font-display text-sm font-semibold">
+              Stundenzettel (alle Mitarbeiter)
+            </h3>
+            <DataTable rows={timeRows} empty="Keine Arbeitszeiten im Zeitraum." />
           </section>
         </>
       )}
