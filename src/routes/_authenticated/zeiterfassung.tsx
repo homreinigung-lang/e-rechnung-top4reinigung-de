@@ -131,11 +131,19 @@ function monthKey(d: string) {
 
 function Zeiterfassung() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { data: myEmployee } = useMyEmployee();
   const [entryOpen, setEntryOpen] = useState(false);
   const [empOpen, setEmpOpen] = useState(false);
   const [form, setForm] = useState<EntryForm>(emptyEntry());
   const [emp, setEmp] = useState(emptyEmployee);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+
+  // Mitarbeiterkonten haben keinen Zugriff auf die Verwaltungsansicht.
+  useEffect(() => {
+    if (myEmployee) navigate({ to: "/meine-zeiten", replace: true });
+  }, [myEmployee, navigate]);
+
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
