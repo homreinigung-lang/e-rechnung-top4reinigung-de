@@ -23,12 +23,16 @@ export function useMyEmployee() {
       const uid = auth.user?.id;
       if (!uid) return null;
 
+      // Inhaber/Administrator: niemals auf die Mitarbeiteransicht einschränken.
+      const asEmployee = (row: MyEmployee | null) =>
+        row && row.user_id !== uid ? row : null;
+
       const { data: existing } = await supabase
         .from("employees")
         .select("id,name,role,hourly_rate,email,user_id")
         .eq("auth_user_id", uid)
         .maybeSingle();
-      if (existing) return existing as MyEmployee;
+      if (existing) return asEmployee(existing as MyEmployee);
 
       const { data: linkedId } = await supabase.rpc("link_employee_account");
       if (!linkedId) return null;
@@ -38,7 +42,7 @@ export function useMyEmployee() {
         .select("id,name,role,hourly_rate,email,user_id")
         .eq("id", linkedId as string)
         .maybeSingle();
-      return (linked as MyEmployee | null) ?? null;
+      return asEmployee((linked as MyEmployee | null) ?? null);
     },
   });
 }
