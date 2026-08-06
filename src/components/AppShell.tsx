@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <header className="no-print sticky top-0 z-30 border-b bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <Link to={menu[0].to} className="flex items-center gap-2">
             {logoSrc ? (
               <img
                 src={logoSrc}
