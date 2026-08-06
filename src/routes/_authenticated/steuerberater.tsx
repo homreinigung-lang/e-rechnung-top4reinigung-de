@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { buildGobdExport, downloadBlob } from "@/lib/gobd";
+import { saveFile } from "@/lib/download";
 import { Archive, Download, FileSpreadsheet, Printer, ShieldCheck } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 
@@ -39,12 +40,7 @@ function csvEscape(value: unknown) {
 }
 
 function download(name: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  void saveFile(blob, name);
 }
 
 function downloadCsv(name: string, rows: Row[]) {
@@ -140,9 +136,8 @@ function Steuerberater() {
   const gobdExport = useMutation({
     mutationFn: async () => {
       const blob = await buildGobdExport(from, to);
-      downloadBlob(blob, `GoBD-Pruefexport_${from}_${to}.zip`);
+      await downloadBlob(blob, `GoBD-Pruefexport_${from}_${to}.zip`);
     },
-    onSuccess: () => toast.success("GoBD-Export erstellt."),
     onError: (e: Error) => toast.error(e.message),
   });
 
