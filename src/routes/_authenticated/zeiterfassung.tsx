@@ -355,7 +355,7 @@ function Zeiterfassung() {
     const [y0, m0] = month.split("-");
     let y = 18;
     doc.setFontSize(15);
-    doc.text(`Lohnabrechnung ${m0}/${y0}`, 15, y);
+    doc.text(`Stundenzettel ${m0}/${y0}`, 15, y);
     y += 7;
     doc.setFontSize(9);
     doc.text("Hom Reinigung Service · Stundenübersicht je Mitarbeiter", 15, y);
