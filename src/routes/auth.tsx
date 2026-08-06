@@ -143,6 +143,14 @@ function AuthPage() {
                 <Button type="submit" className="w-full" disabled={loading}>
                   Anmelden
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => void forgotPassword()}
+                  className="w-full text-center text-sm text-muted-foreground underline"
+                >
+                  Passwort vergessen?
+                </button>
+
               </form>
             </TabsContent>
 
