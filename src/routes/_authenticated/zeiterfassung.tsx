@@ -100,7 +100,14 @@ const emptyEntry = (): EntryForm => ({
   note: "",
 });
 
-const emptyEmployee = { id: undefined as string | undefined, name: "", role: "", hourly_rate: "" };
+const emptyEmployee = {
+  id: undefined as string | undefined,
+  name: "",
+  role: "",
+  email: "",
+  hourly_rate: "",
+};
+
 
 function num(v: string) {
   const n = Number(String(v).replace(",", "."));
