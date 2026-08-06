@@ -429,7 +429,9 @@ export type Database = {
       employees: {
         Row: {
           active: boolean
+          auth_user_id: string | null
           created_at: string
+          email: string
           hourly_rate: number
           id: string
           name: string
@@ -439,7 +441,9 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          auth_user_id?: string | null
           created_at?: string
+          email?: string
           hourly_rate?: number
           id?: string
           name: string
@@ -449,7 +453,9 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          auth_user_id?: string | null
           created_at?: string
+          email?: string
           hourly_rate?: number
           id?: string
           name?: string
@@ -718,6 +724,9 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      link_employee_account: { Args: never; Returns: string }
+      my_employee_id: { Args: never; Returns: string }
+      my_employee_owner: { Args: never; Returns: string }
       next_document_number: { Args: { _kind: string }; Returns: string }
     }
     Enums: {

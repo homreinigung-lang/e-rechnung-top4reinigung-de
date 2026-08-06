@@ -2,6 +2,8 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
+import { useMyEmployee } from "@/lib/employee";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -40,10 +42,20 @@ const nav = [
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ] as const;
 
+// Menü für Mitarbeiterkonten (nur eigene Zeiten)
+const employeeNav = [
+  { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
+  { to: "/profil", label: "Mein Profil", icon: UserCircle },
+] as const;
+
+
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data: myEmployee } = useMyEmployee();
+  const menu = myEmployee ? employeeNav : nav;
+
 
   const { data: settings } = useQuery({
     queryKey: ["company_settings"],
@@ -68,7 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <header className="no-print sticky top-0 z-30 border-b bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <Link to={menu[0].to} className="flex items-center gap-2">
             {logoSrc ? (
               <img
                 src={logoSrc}
@@ -97,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Menü</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {nav.map((item) => {
+                {menu.map((item) => {
                   const active = pathname.startsWith(item.to);
                   return (
                     <DropdownMenuItem key={item.to} asChild>

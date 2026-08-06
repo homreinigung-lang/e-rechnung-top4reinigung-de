@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useMyEmployee } from "@/lib/employee";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,7 +68,10 @@ type Employee = {
   role: string;
   hourly_rate: number;
   active: boolean;
+  email: string;
+  auth_user_id: string | null;
 };
+
 
 type EntryForm = {
   id?: string;
@@ -97,7 +102,14 @@ const emptyEntry = (): EntryForm => ({
   note: "",
 });
 
-const emptyEmployee = { id: undefined as string | undefined, name: "", role: "", hourly_rate: "" };
+const emptyEmployee = {
+  id: undefined as string | undefined,
+  name: "",
+  role: "",
+  email: "",
+  hourly_rate: "",
+};
+
 
 function num(v: string) {
   const n = Number(String(v).replace(",", "."));
@@ -121,11 +133,19 @@ function monthKey(d: string) {
 
 function Zeiterfassung() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { data: myEmployee } = useMyEmployee();
   const [entryOpen, setEntryOpen] = useState(false);
   const [empOpen, setEmpOpen] = useState(false);
   const [form, setForm] = useState<EntryForm>(emptyEntry());
   const [emp, setEmp] = useState(emptyEmployee);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+
+  // Mitarbeiterkonten haben keinen Zugriff auf die Verwaltungsansicht.
+  useEffect(() => {
+    if (myEmployee) navigate({ to: "/meine-zeiten", replace: true });
+  }, [myEmployee, navigate]);
+
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
@@ -158,9 +178,13 @@ function Zeiterfassung() {
   });
 
   const monthEntries = useMemo(
-    () => entries.filter((e) => monthKey(e.work_date as string) === month),
+    () =>
+      entries
+        .filter((e) => monthKey(e.work_date as string) === month)
+        .sort((a, b) => String(a.work_date).localeCompare(String(b.work_date))),
     [entries, month],
   );
+
 
   const totals = useMemo(() => {
     const hours = monthEntries.reduce((s, e) => s + Number(e.hours || 0), 0);
@@ -188,8 +212,10 @@ function Zeiterfassung() {
       const payload = {
         name: values.name.trim(),
         role: values.role,
+        email: values.email.trim().toLowerCase(),
         hourly_rate: num(values.hourly_rate),
       };
+
       if (values.id) {
         const { error } = await supabase.from("employees").update(payload).eq("id", values.id);
         if (error) throw error;
@@ -335,9 +361,10 @@ function Zeiterfassung() {
       .join("\r\n");
     downloadBlob(
       new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }),
-      `Lohnabrechnung_${month}.csv`,
+      `Stundenzettel_${month}.csv`,
     );
     toast.success("CSV-Export erstellt");
+
   };
 
   const exportPdf = async () => {
@@ -350,7 +377,7 @@ function Zeiterfassung() {
     const [y0, m0] = month.split("-");
     let y = 18;
     doc.setFontSize(15);
-    doc.text(`Lohnabrechnung ${m0}/${y0}`, 15, y);
+    doc.text(`Stundenzettel ${m0}/${y0}`, 15, y);
     y += 7;
     doc.setFontSize(9);
     doc.text("Hom Reinigung Service · Stundenübersicht je Mitarbeiter", 15, y);
@@ -410,7 +437,7 @@ function Zeiterfassung() {
       );
       y += 5;
     }
-    doc.save(`Lohnabrechnung_${month}.pdf`);
+    doc.save(`Stundenzettel_${month}.pdf`);
     toast.success("PDF-Export erstellt");
   };
 
@@ -427,11 +454,12 @@ function Zeiterfassung() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={exportCsv}>
-            <Download className="size-4" /> Lohn-CSV
+            <Download className="size-4" /> Stundenzettel-CSV
           </Button>
           <Button variant="outline" onClick={exportPdf}>
-            <FileText className="size-4" /> Lohn-PDF
+            <FileText className="size-4" /> Stundenzettel-PDF
           </Button>
+
           <Dialog
             open={empOpen}
             onOpenChange={(o) => {
@@ -474,6 +502,20 @@ function Zeiterfassung() {
                     onChange={(e) => setEmp({ ...emp, hourly_rate: e.target.value })}
                   />
                 </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="emp-email">E-Mail (Login für Mitarbeiter)</Label>
+                  <Input
+                    id="emp-email"
+                    type="email"
+                    dir="ltr"
+                    value={emp.email}
+                    onChange={(e) => setEmp({ ...emp, email: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Mit dieser E-Mail kann sich der Mitarbeiter selbst registrieren und danach
+                    unter „Meine Zeiten“ nur die eigenen Arbeitszeiten erfassen.
+                  </p>
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -490,7 +532,12 @@ function Zeiterfassung() {
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium">{e.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {[e.role, `${formatMoney(Number(e.hourly_rate))}/Std.`]
+                        {[
+                          e.role,
+                          `${formatMoney(Number(e.hourly_rate))}/Std.`,
+                          e.email || null,
+                          e.auth_user_id ? "Login aktiv" : "Kein Login",
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                       </div>
@@ -503,10 +550,12 @@ function Zeiterfassung() {
                           id: e.id,
                           name: e.name,
                           role: e.role,
+                          email: e.email ?? "",
                           hourly_rate: String(e.hourly_rate ?? ""),
                         })
                       }
                     >
+
                       <Pencil className="size-4" />
                     </Button>
                     <Button
