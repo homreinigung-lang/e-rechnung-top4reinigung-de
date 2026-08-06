@@ -177,11 +177,7 @@ function DokumenteListe() {
   const remove = useMutation({
     mutationFn: async (docId: string) => {
       const doc = documents.find((d) => d.id === docId) as unknown as Record<string, unknown>;
-      if (doc?.["locked_at"] || (doc?.["status"] && doc["status"] !== "draft")) {
-        throw new Error(
-          "Versendete oder festgeschriebene Belege dürfen aus rechtlichen Gründen (GoBD, § 14b UStG) nicht gelöscht werden. Bitte stattdessen eine Stornorechnung erstellen – der Beleg bleibt als „storniert“ im System erhalten.",
-        );
-      }
+      if (isLockedDocument(doc)) throw new Error(deleteBlockedMessage(doc));
       await supabase.from("document_items").delete().eq("document_id", docId);
       const { error } = await supabase.from("documents").delete().eq("id", docId);
       if (error) throw error;
@@ -190,8 +186,9 @@ function DokumenteListe() {
       toast.success("Entwurf gelöscht");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
-    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+    onError: (e: Error) => toast.error(describeGobdError(e), { duration: 9000 }),
   });
+
 
   const reminder = useMutation({
     mutationFn: ({ docId, kind }: { docId: string; kind: ReminderKind }) =>
