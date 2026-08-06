@@ -8,6 +8,7 @@ export type AccountantReport = {
   companyName: string;
   documents: Row[];
   expenses: Row[];
+  timeEntries: Row[];
 };
 
 /** Kein Ablaufdatum: Zugang gilt dauerhaft. */
@@ -95,7 +96,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", access.id);
 
-    const [documents, expenses, settings] = await Promise.all([
+    const [documents, expenses, timeEntries, settings] = await Promise.all([
       supabaseAdmin
         .from("documents")
         .select("*")
@@ -112,6 +113,13 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .lte("expense_date", data.to)
         .order("expense_date"),
       supabaseAdmin
+        .from("time_entries")
+        .select("*")
+        .eq("user_id", access.user_id)
+        .gte("work_date", data.from)
+        .lte("work_date", data.to)
+        .order("work_date"),
+      supabaseAdmin
         .from("company_settings")
         .select("company_name")
         .eq("user_id", access.user_id)
@@ -122,5 +130,6 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       companyName: settings.data?.company_name ?? "",
       documents: (documents.data ?? []) as unknown as Row[],
       expenses: (expenses.data ?? []) as unknown as Row[],
+      timeEntries: (timeEntries.data ?? []) as unknown as Row[],
     };
   });
