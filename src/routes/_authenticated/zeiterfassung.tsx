@@ -462,6 +462,38 @@ function Zeiterfassung() {
 
   return (
     <div className="space-y-6">
+      <div className="surface space-y-2 p-4">
+        <h2 className="font-semibold">So melden sich Mitarbeiter an</h2>
+        <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+          <li>Hier unter „Mitarbeiter“ den Mitarbeiter mit seiner E-Mail-Adresse anlegen.</li>
+          <li>
+            Mitarbeiter öffnet die Anmeldeseite, wählt „Registrieren“ und legt mit genau dieser
+            E-Mail ein Passwort an (Bestätigungs-Link in der E-Mail anklicken).
+          </li>
+          <li>
+            Nach dem Login erscheint der Bereich „Meine Zeiten“ – dort erfasst er nur seine eigenen
+            Arbeitszeiten.
+          </li>
+        </ol>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button variant="outline" size="sm" asChild>
+            <a href="/auth" target="_blank" rel="noopener">
+              Anmeldeseite öffnen
+            </a>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void navigator.clipboard.writeText(`${window.location.origin}/auth`);
+              toast.success("Registrierungs-Link kopiert");
+            }}
+          >
+            Registrierungs-Link kopieren
+          </Button>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Mitarbeiter-Zeiterfassung</h1>
