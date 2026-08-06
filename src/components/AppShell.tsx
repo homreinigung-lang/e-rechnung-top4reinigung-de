@@ -40,6 +40,13 @@ const nav = [
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ] as const;
 
+// Menü für Mitarbeiterkonten (nur eigene Zeiten)
+const employeeNav = [
+  { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
+  { to: "/profil", label: "Mein Profil", icon: UserCircle },
+] as const;
+
+
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
