@@ -339,9 +339,10 @@ function Zeiterfassung() {
       .join("\r\n");
     downloadBlob(
       new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }),
-      `Lohnabrechnung_${month}.csv`,
+      `Stundenzettel_${month}.csv`,
     );
     toast.success("CSV-Export erstellt");
+
   };
 
   const exportPdf = async () => {
