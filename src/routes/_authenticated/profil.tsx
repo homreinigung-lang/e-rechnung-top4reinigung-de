@@ -255,6 +255,8 @@ function CompanyProfil() {
       <Button onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         Speichern
       </Button>
+
+      <LoginMethodsCard />
     </div>
   );
 }
