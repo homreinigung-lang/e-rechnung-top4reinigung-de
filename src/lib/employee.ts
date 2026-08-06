@@ -7,6 +7,7 @@ export type MyEmployee = {
   role: string;
   hourly_rate: number;
   email: string;
+  phone?: string;
   user_id: string;
 };
 
