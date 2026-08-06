@@ -192,8 +192,10 @@ function Zeiterfassung() {
       const payload = {
         name: values.name.trim(),
         role: values.role,
+        email: values.email.trim().toLowerCase(),
         hourly_rate: num(values.hourly_rate),
       };
+
       if (values.id) {
         const { error } = await supabase.from("employees").update(payload).eq("id", values.id);
         if (error) throw error;
