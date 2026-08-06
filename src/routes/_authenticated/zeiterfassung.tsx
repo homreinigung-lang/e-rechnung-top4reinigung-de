@@ -415,7 +415,7 @@ function Zeiterfassung() {
       );
       y += 5;
     }
-    doc.save(`Lohnabrechnung_${month}.pdf`);
+    doc.save(`Stundenzettel_${month}.pdf`);
     toast.success("PDF-Export erstellt");
   };
 
