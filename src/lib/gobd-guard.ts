@@ -1,0 +1,37 @@
+/**
+ * Zentraler Schutz für echte (versendete bzw. festgeschriebene) Belege.
+ * GoBD / § 14b UStG: Solche Belege dürfen weder gelöscht noch überschrieben werden.
+ */
+
+type DocLike = Record<string, unknown> | null | undefined;
+
+export function isLockedDocument(doc: DocLike): boolean {
+  if (!doc) return false;
+  const status = String(doc["status"] ?? "");
+  return Boolean(doc["locked_at"]) || (status !== "" && status !== "draft");
+}
+
+export function documentLabel(doc: DocLike): string {
+  const number = String(doc?.["number"] ?? "").trim();
+  const type = doc?.["type"] === "quote" ? "Angebot" : "Rechnung";
+  return number ? `${type} ${number}` : type;
+}
+
+/** Klare Warnung beim Versuch, einen geschützten Beleg zu löschen. */
+export function deleteBlockedMessage(doc: DocLike): string {
+  return `Löschen gesperrt: ${documentLabel(doc)} ist ein echter, festgeschriebener Beleg und muss gemäß GoBD und § 14b UStG dauerhaft erhalten bleiben. Korrekturen sind nur über eine Stornorechnung möglich.`;
+}
+
+/** Klare Warnung beim Versuch, einen geschützten Beleg zu überschreiben. */
+export function editBlockedMessage(doc: DocLike): string {
+  return `Änderung gesperrt: ${documentLabel(doc)} ist festgeschrieben und darf nicht überschrieben werden (GoBD, § 14 UStG). Bitte eine Stornorechnung erstellen und anschließend einen neuen Beleg ausstellen.`;
+}
+
+/** Übersetzt Datenbank-Fehler der GoBD-Trigger in eine verständliche Warnung. */
+export function describeGobdError(error: unknown, doc?: DocLike): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/GoBD|unveränderbar|festgeschrieben/i.test(message)) {
+    return `${message}${doc ? ` (${documentLabel(doc)})` : ""}`;
+  }
+  return message || "Unbekannter Fehler";
+}
