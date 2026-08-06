@@ -230,7 +230,10 @@ function DokumentDetail() {
       queryClient.invalidateQueries({ queryKey: ["document", id] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) =>
+      toast.error(describeGobdError(e, data?.doc as unknown as Record<string, unknown>), {
+        duration: 9000,
+      }),
   });
 
   const duplicate = useMutation({
