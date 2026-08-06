@@ -255,11 +255,7 @@ export async function buildGobdExport(from: string, to: string): Promise<Blob> {
   return zip.generateAsync({ type: "blob" });
 }
 
-export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+export async function downloadBlob(blob: Blob, filename: string) {
+  const { saveFile } = await import("@/lib/download");
+  return saveFile(blob, filename);
 }
