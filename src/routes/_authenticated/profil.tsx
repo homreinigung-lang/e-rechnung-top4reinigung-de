@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { FileUploadButton } from "@/components/FileUploadButton";
+import { useMyEmployee, type MyEmployee } from "@/lib/employee";
+
 
 
 export const Route = createFileRoute("/_authenticated/profil")({
