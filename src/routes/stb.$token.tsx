@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Download, FileSpreadsheet, Lock, Printer } from "lucide-react";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export const Route = createFileRoute("/stb/$token")({
   head: () => ({
@@ -158,7 +159,7 @@ function AccountantPortal() {
       <section className="no-print grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-3">
         <div className="space-y-1">
           <Label htmlFor="code">Zugangspasswort</Label>
-          <Input
+          <PasswordInput
             id="code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
