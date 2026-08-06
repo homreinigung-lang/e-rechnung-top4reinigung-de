@@ -656,6 +656,10 @@ function DokumentDetail() {
               {cancelledBy ? " · Diese Rechnung wurde storniert." : ""}
               {isStorno ? " · Stornorechnung" : ""}
             </p>
+            <p className="mt-1 font-medium text-destructive">
+              Löschen und Überschreiben sind für diesen Beleg gesperrt. Korrekturen ausschließlich
+              per Stornorechnung.
+            </p>
           </div>
         </div>
       )}
