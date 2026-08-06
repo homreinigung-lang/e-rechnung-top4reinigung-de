@@ -175,6 +175,9 @@ function DokumentDetail() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const current = data?.doc as unknown as Record<string, unknown> | undefined;
+      // Schutz: echte Belege (versendet/festgeschrieben) dürfen nie überschrieben werden.
+      if (isLockedDocument(current)) throw new Error(editBlockedMessage(current));
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
