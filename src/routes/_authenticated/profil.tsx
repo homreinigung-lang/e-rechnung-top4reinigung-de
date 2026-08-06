@@ -132,6 +132,8 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
           Speichern
         </Button>
       </div>
+
+      <LoginMethodsCard />
     </div>
   );
 }
