@@ -28,6 +28,7 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
+import { describeGobdError, editBlockedMessage, isLockedDocument } from "@/lib/gobd-guard";
 import {
   convertQuoteToInvoice,
   dueInfo,
