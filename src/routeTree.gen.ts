@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RechtlichesRouteImport } from './routes/rechtliches'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
@@ -48,6 +49,11 @@ const AuthRoute = AuthRouteImport.update({
 const RechtlichesRoute = RechtlichesRouteImport.update({
   id: '/rechtliches',
   path: '/rechtliches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAusgabenRoute = AuthenticatedAusgabenRouteImport.update({
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/rechtliches'
+    | '/reset-password'
     | '/ausgaben'
     | '/dashboard'
     | '/einstellungen'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/reset-password'
     | '/ausgaben'
     | '/dashboard'
     | '/einstellungen'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/rechtliches'
+    | '/reset-password'
     | '/_authenticated/ausgaben'
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
@@ -284,6 +296,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   RechtlichesRoute: typeof RechtlichesRouteWithChildren
+  ResetPasswordRoute: typeof ResetPasswordRoute
   StbTokenRoute: typeof StbTokenRoute
 }
 
@@ -315,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/rechtliches'
       fullPath: '/rechtliches'
       preLoaderRoute: typeof RechtlichesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/ausgaben': {
@@ -495,6 +515,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   RechtlichesRoute: RechtlichesRouteWithChildren,
+  ResetPasswordRoute: ResetPasswordRoute,
   StbTokenRoute: StbTokenRoute,
 }
 export const routeTree = rootRouteImport

@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { FileUploadButton } from "@/components/FileUploadButton";
+import { useMyEmployee, type MyEmployee } from "@/lib/employee";
+
 
 
 export const Route = createFileRoute("/_authenticated/profil")({
@@ -66,6 +68,75 @@ const ALL_KEYS = [...GROUPS.flatMap((g) => g.fields.map((f) => f.key)), "logo_ur
 
 
 function Profil() {
+  const { data: myEmployee, isPending } = useMyEmployee();
+  if (isPending) return <p className="text-muted-foreground">Wird geladen …</p>;
+  if (myEmployee) return <EmployeeProfil employee={myEmployee} />;
+  return <CompanyProfil />;
+}
+
+function EmployeeProfil({ employee }: { employee: MyEmployee }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState(employee.name ?? "");
+  const [phone, setPhone] = useState(employee.phone ?? "");
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("employees")
+        .update({ name: name.trim(), phone: phone.trim() })
+        .eq("id", employee.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Profil gespeichert");
+      queryClient.invalidateQueries({ queryKey: ["my_employee"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Mein Profil</h1>
+        <p className="mt-1 text-muted-foreground">
+          Ihre persönlichen Kontaktdaten. Firmendaten sind dem Inhaber vorbehalten.
+        </p>
+      </div>
+
+      <div className="surface space-y-4 p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="emp_name">Name</Label>
+            <Input id="emp_name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="emp_phone">Telefon</Label>
+            <Input
+              id="emp_phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              dir="ltr"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="emp_mail">E-Mail</Label>
+            <Input id="emp_mail" value={employee.email ?? ""} readOnly disabled dir="ltr" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="emp_role">Funktion</Label>
+            <Input id="emp_role" value={employee.role ?? ""} readOnly disabled />
+          </div>
+        </div>
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          Speichern
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CompanyProfil() {
+
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
 
