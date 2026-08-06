@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
+  deleteBlockedMessage,
+  describeGobdError,
+  isLockedDocument,
+} from "@/lib/gobd-guard";
+import {
   DOC_TYPE_LABEL,
   STATUS_LABEL,
   formatDate,
@@ -177,11 +182,7 @@ function DokumenteListe() {
   const remove = useMutation({
     mutationFn: async (docId: string) => {
       const doc = documents.find((d) => d.id === docId) as unknown as Record<string, unknown>;
-      if (doc?.["locked_at"] || (doc?.["status"] && doc["status"] !== "draft")) {
-        throw new Error(
-          "Versendete oder festgeschriebene Belege dürfen aus rechtlichen Gründen (GoBD, § 14b UStG) nicht gelöscht werden. Bitte stattdessen eine Stornorechnung erstellen – der Beleg bleibt als „storniert“ im System erhalten.",
-        );
-      }
+      if (isLockedDocument(doc)) throw new Error(deleteBlockedMessage(doc));
       await supabase.from("document_items").delete().eq("document_id", docId);
       const { error } = await supabase.from("documents").delete().eq("id", docId);
       if (error) throw error;
@@ -190,8 +191,9 @@ function DokumenteListe() {
       toast.success("Entwurf gelöscht");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
-    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+    onError: (e: Error) => toast.error(describeGobdError(e), { duration: 9000 }),
   });
+
 
   const reminder = useMutation({
     mutationFn: ({ docId, kind }: { docId: string; kind: ReminderKind }) =>
@@ -267,7 +269,7 @@ function DokumenteListe() {
               const r = d as unknown as Record<string, unknown>;
               const due = dueInfo(d.due_date, d.status);
               const level = Number(r["reminder_level"] ?? 0);
-              const deletable = !r["locked_at"] && d.status === "draft";
+              const deletable = !isLockedDocument(r);
               return (
                 <li key={d.id} className="flex items-center gap-2 px-5 py-4 hover:bg-muted/60">
                   <Link
@@ -389,10 +391,7 @@ function DokumenteListe() {
                     }
                     onClick={() => {
                       if (!deletable) {
-                        toast.error(
-                          "Löschen nicht zulässig: Versendete bzw. festgeschriebene Belege müssen gemäß GoBD erhalten bleiben. Bitte eine Stornorechnung erstellen – der Beleg bleibt als „storniert“ archiviert.",
-                          { duration: 8000 },
-                        );
+                        toast.error(deleteBlockedMessage(r), { duration: 9000 });
                         return;
                       }
                       if (confirm(`${DOC_TYPE_LABEL[d.type]} ${d.number} wirklich löschen?`)) {

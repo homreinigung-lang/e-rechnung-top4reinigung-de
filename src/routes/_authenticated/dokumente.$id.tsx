@@ -28,6 +28,7 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
+import { describeGobdError, editBlockedMessage, isLockedDocument } from "@/lib/gobd-guard";
 import {
   convertQuoteToInvoice,
   dueInfo,
@@ -175,6 +176,9 @@ function DokumentDetail() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const current = data?.doc as unknown as Record<string, unknown> | undefined;
+      // Schutz: echte Belege (versendet/festgeschrieben) dürfen nie überschrieben werden.
+      if (isLockedDocument(current)) throw new Error(editBlockedMessage(current));
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
@@ -226,7 +230,10 @@ function DokumentDetail() {
       queryClient.invalidateQueries({ queryKey: ["document", id] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) =>
+      toast.error(describeGobdError(e, data?.doc as unknown as Record<string, unknown>), {
+        duration: 9000,
+      }),
   });
 
   const duplicate = useMutation({
@@ -648,6 +655,10 @@ function DokumentDetail() {
                 : " · PDF-Archivierung ausstehend"}
               {cancelledBy ? " · Diese Rechnung wurde storniert." : ""}
               {isStorno ? " · Stornorechnung" : ""}
+            </p>
+            <p className="mt-1 font-medium text-destructive">
+              Löschen und Überschreiben sind für diesen Beleg gesperrt. Korrekturen ausschließlich
+              per Stornorechnung.
             </p>
           </div>
         </div>
