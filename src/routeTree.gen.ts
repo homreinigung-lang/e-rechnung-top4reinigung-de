@@ -17,6 +17,7 @@ import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
+import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
 import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
@@ -70,6 +71,12 @@ const AuthenticatedKundenRoute = AuthenticatedKundenRouteImport.update({
   path: '/kunden',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMeineZeitenRoute =
+  AuthenticatedMeineZeitenRouteImport.update({
+    id: '/meine-zeiten',
+    path: '/meine-zeiten',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
+  '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -164,6 +172,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
+  '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -187,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
+  '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
+    | '/meine-zeiten'
     | '/profil'
     | '/steuerberater'
     | '/wiederkehrend'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
+    | '/meine-zeiten'
     | '/profil'
     | '/steuerberater'
     | '/wiederkehrend'
@@ -252,6 +264,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
     | '/_authenticated/kunden'
+    | '/_authenticated/meine-zeiten'
     | '/_authenticated/profil'
     | '/_authenticated/steuerberater'
     | '/_authenticated/wiederkehrend'
@@ -330,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/kunden'
       fullPath: '/kunden'
       preLoaderRoute: typeof AuthenticatedKundenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/meine-zeiten': {
+      id: '/_authenticated/meine-zeiten'
+      path: '/meine-zeiten'
+      fullPath: '/meine-zeiten'
+      preLoaderRoute: typeof AuthenticatedMeineZeitenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/profil': {
@@ -424,6 +444,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
+  AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
@@ -437,6 +458,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
+  AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
@@ -478,13 +500,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

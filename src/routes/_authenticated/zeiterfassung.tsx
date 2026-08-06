@@ -158,9 +158,13 @@ function Zeiterfassung() {
   });
 
   const monthEntries = useMemo(
-    () => entries.filter((e) => monthKey(e.work_date as string) === month),
+    () =>
+      entries
+        .filter((e) => monthKey(e.work_date as string) === month)
+        .sort((a, b) => String(a.work_date).localeCompare(String(b.work_date))),
     [entries, month],
   );
+
 
   const totals = useMemo(() => {
     const hours = monthEntries.reduce((s, e) => s + Number(e.hours || 0), 0);
