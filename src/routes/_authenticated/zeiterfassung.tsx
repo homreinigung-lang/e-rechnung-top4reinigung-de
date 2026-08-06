@@ -492,6 +492,20 @@ function Zeiterfassung() {
                     onChange={(e) => setEmp({ ...emp, hourly_rate: e.target.value })}
                   />
                 </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="emp-email">E-Mail (Login für Mitarbeiter)</Label>
+                  <Input
+                    id="emp-email"
+                    type="email"
+                    dir="ltr"
+                    value={emp.email}
+                    onChange={(e) => setEmp({ ...emp, email: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Mit dieser E-Mail kann sich der Mitarbeiter selbst registrieren und danach
+                    unter „Meine Zeiten“ nur die eigenen Arbeitszeiten erfassen.
+                  </p>
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -508,7 +522,12 @@ function Zeiterfassung() {
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium">{e.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {[e.role, `${formatMoney(Number(e.hourly_rate))}/Std.`]
+                        {[
+                          e.role,
+                          `${formatMoney(Number(e.hourly_rate))}/Std.`,
+                          e.email || null,
+                          e.auth_user_id ? "Login aktiv" : "Kein Login",
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                       </div>
@@ -521,10 +540,12 @@ function Zeiterfassung() {
                           id: e.id,
                           name: e.name,
                           role: e.role,
+                          email: e.email ?? "",
                           hourly_rate: String(e.hourly_rate ?? ""),
                         })
                       }
                     >
+
                       <Pencil className="size-4" />
                     </Button>
                     <Button
