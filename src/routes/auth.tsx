@@ -132,9 +132,8 @@ function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Passwort</Label>
-                  <Input
+                  <PasswordInput
                     id="password"
-                    type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -168,9 +167,8 @@ function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password2">Passwort (min. 6 Zeichen)</Label>
-                  <Input
+                  <PasswordInput
                     id="password2"
-                    type="password"
                     required
                     minLength={6}
                     value={password}

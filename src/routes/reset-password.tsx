@@ -55,9 +55,8 @@ function ResetPasswordPage() {
         <form onSubmit={submit} className="surface space-y-4 p-6">
           <div className="space-y-2">
             <Label htmlFor="pw1">Neues Passwort (min. 6 Zeichen)</Label>
-            <Input
+            <PasswordInput
               id="pw1"
-              type="password"
               required
               minLength={6}
               value={password}
@@ -66,9 +65,8 @@ function ResetPasswordPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="pw2">Passwort wiederholen</Label>
-            <Input
+            <PasswordInput
               id="pw2"
-              type="password"
               required
               minLength={6}
               value={confirm}

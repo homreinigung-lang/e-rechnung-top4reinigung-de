@@ -94,9 +94,8 @@ export function LoginMethodsCard() {
           <Label htmlFor="new_pw">
             {hasPassword ? "Neues Passwort" : "Passwort festlegen"} (min. 6 Zeichen)
           </Label>
-          <Input
+          <PasswordInput
             id="new_pw"
-            type="password"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -105,9 +104,8 @@ export function LoginMethodsCard() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="new_pw2">Passwort wiederholen</Label>
-          <Input
+          <PasswordInput
             id="new_pw2"
-            type="password"
             autoComplete="new-password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
