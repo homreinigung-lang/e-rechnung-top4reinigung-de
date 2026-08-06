@@ -47,7 +47,25 @@ function AuthPage() {
     navigate({ to: "/dashboard", replace: true });
   }
 
+  async function forgotPassword() {
+    if (!email) {
+      toast.error("Bitte zuerst Ihre E-Mail-Adresse eingeben.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error("E-Mail konnte nicht gesendet werden: " + error.message);
+      return;
+    }
+    toast.success("Wir haben Ihnen einen Link zum Zurücksetzen des Passworts geschickt.");
+  }
+
   async function signUp(e: React.FormEvent) {
+
     e.preventDefault();
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
