@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
+import { saveFile } from "@/lib/download";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { DomainDnsCheckCard } from "@/components/DomainDnsCheckCard";
@@ -65,12 +66,8 @@ function downloadCsv(name: string, rows: Record<string, unknown>[]) {
     headers.join(";"),
     ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(";")),
   ].join("\n");
-  const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
+  void saveFile(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), name);
+
 }
 
 function Einstellungen() {
