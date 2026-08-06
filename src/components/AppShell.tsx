@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Menü</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {nav.map((item) => {
+                {menu.map((item) => {
                   const active = pathname.startsWith(item.to);
                   return (
                     <DropdownMenuItem key={item.to} asChild>
