@@ -437,23 +437,24 @@ function Zeiterfassung() {
       );
       y += 5;
     }
-    // Direkter Download bzw. Öffnen im Browser (doc.save wird teils blockiert)
+    // Die PDF bleibt vollständig im Browser: kein Plattform- oder externer Link.
     const filename = `Stundenzettel_${month}.pdf`;
     const blob = doc.output("blob") as Blob;
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
-    a.rel = "noopener";
-    a.target = "_blank";
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 20000);
+    // Die URL muss für die Toast-Aktion verfügbar bleiben.
+    setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
     toast.success("Stundenzettel-PDF wird heruntergeladen", {
       action: {
         label: "Öffnen",
-        onClick: () => window.open(URL.createObjectURL(blob), "_blank", "noopener"),
+        onClick: () => {
+          window.location.assign(url);
+        },
       },
     });
   };
