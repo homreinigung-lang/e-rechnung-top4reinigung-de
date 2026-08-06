@@ -51,6 +51,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data: myEmployee } = useMyEmployee();
+  const menu = myEmployee ? employeeNav : nav;
+
 
   const { data: settings } = useQuery({
     queryKey: ["company_settings"],
