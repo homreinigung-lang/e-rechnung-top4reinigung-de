@@ -5,6 +5,7 @@ const schema = z.object({
   to: z.string().email(),
   subject: z.string().min(1).max(300),
   body: z.string().min(1).max(20000),
+  html: z.string().max(100000).optional(),
   filename: z.string().min(1).max(200),
   pdfBase64: z.string().min(1),
 });
@@ -35,6 +36,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
         reply_to: COMPANY_COPY,
         subject: data.subject,
         text: data.body,
+        ...(data.html ? { html: data.html } : {}),
         attachments: [{ filename: data.filename, content: data.pdfBase64 }],
       }),
     });

@@ -64,6 +64,8 @@ export type Database = {
           created_at: string
           email: string
           email_signature: string
+          email_signature_html: string
+          email_signature_logo_url: string
           facebook_url: string
           iban: string
           id: string
@@ -92,6 +94,8 @@ export type Database = {
           created_at?: string
           email?: string
           email_signature?: string
+          email_signature_html?: string
+          email_signature_logo_url?: string
           facebook_url?: string
           iban?: string
           id?: string
@@ -120,6 +124,8 @@ export type Database = {
           created_at?: string
           email?: string
           email_signature?: string
+          email_signature_html?: string
+          email_signature_logo_url?: string
           facebook_url?: string
           iban?: string
           id?: string
