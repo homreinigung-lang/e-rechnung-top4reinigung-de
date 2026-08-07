@@ -1143,6 +1143,7 @@ function DokumentDetail() {
           to: mail.to,
           subject: mail.subject,
           body: mail.body,
+          html: mail.html,
           fileBaseName: `${DOC_TYPE_LABEL[doc.type]}-${docNumber}`,
         }}
         onSent={async () => {
