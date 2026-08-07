@@ -23,6 +23,7 @@ export type SendEmailDefaults = {
   to: string;
   subject: string;
   body: string;
+  html?: string;
   fileBaseName: string;
 };
 
@@ -90,6 +91,7 @@ export function SendEmailDialog({
           to: to.trim(),
           subject,
           body,
+          ...(defaults.html ? { html: defaults.html } : {}),
           filename: `${defaults.fileBaseName}.pdf`,
           pdfBase64: toBase64(bytes),
         },

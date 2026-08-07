@@ -26,6 +26,7 @@ import { buildEpcPayload } from "@/lib/epc";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
+import { buildEmailHtml, buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
 import { describeGobdError, editBlockedMessage, isLockedDocument } from "@/lib/gobd-guard";
