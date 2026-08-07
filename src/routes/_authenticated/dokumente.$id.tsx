@@ -415,7 +415,7 @@ function DokumentDetail() {
     const to = String(form["customer_email"] ?? "");
     const label = DOC_TYPE_LABEL[doc.type];
     const subject = `${label} ${docNumber} – ${settings?.["company_name"] ?? "Hom Reinigung Service"}`;
-    const lines = [
+    const baseLines = [
       `Sehr geehrte Damen und Herren,`,
       ``,
       isInvoice
@@ -428,15 +428,28 @@ function DokumentDetail() {
       `Alle Einzelheiten entnehmen Sie bitte dem beigefügten PDF. Für Rückfragen stehen wir Ihnen gerne zur Verfügung.`,
       ``,
       `Mit freundlichen Grüßen`,
+    ].filter(Boolean);
+
+    const signatureText = [
       String(settings?.["email_signature"] ?? "") ||
         [settings?.["company_name"] ?? "Hom Reinigung Service", settings?.["phone"] ?? ""]
           .filter(Boolean)
           .join("\n"),
       settings?.["website_url"] ? String(settings["website_url"]) : "",
       settings?.["facebook_url"] ? String(settings["facebook_url"]) : "",
-    ].filter(Boolean);
+    ]
+      .filter(Boolean)
+      .join("\n");
 
-    return { to, subject, body: lines.join("\n") };
+    const baseText = baseLines.join("\n");
+    const signatureHtml = buildSignatureHtml(settings as Record<string, unknown>);
+
+    return {
+      to,
+      subject,
+      body: [baseText, signatureText].filter(Boolean).join("\n"),
+      html: buildEmailHtml(baseText, signatureHtml),
+    };
   }
 
   const mail = buildMail();
