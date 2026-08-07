@@ -36,6 +36,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
         reply_to: COMPANY_COPY,
         subject: data.subject,
         text: data.body,
+        ...(data.html ? { html: data.html } : {}),
         attachments: [{ filename: data.filename, content: data.pdfBase64 }],
       }),
     });
