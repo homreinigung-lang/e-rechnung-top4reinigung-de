@@ -17,13 +17,15 @@ import { Loader2, Mail, Paperclip } from "lucide-react";
 import { elementToPdfBytes, mergePdfs } from "@/lib/pdf";
 import { useServerFn } from "@tanstack/react-start";
 import { sendInvoiceEmail } from "@/lib/email.functions";
+import { buildEmailHtml } from "@/lib/signature";
 
 
 export type SendEmailDefaults = {
   to: string;
   subject: string;
   body: string;
-  html?: string;
+  signatureText?: string;
+  signatureHtml?: string;
   fileBaseName: string;
 };
 
@@ -90,8 +92,8 @@ export function SendEmailDialog({
         data: {
           to: to.trim(),
           subject,
-          body,
-          ...(defaults.html ? { html: defaults.html } : {}),
+          body: [body, defaults.signatureText].filter(Boolean).join("\n"),
+          html: buildEmailHtml(body, defaults.signatureHtml ?? ""),
           filename: `${defaults.fileBaseName}.pdf`,
           pdfBase64: toBase64(bytes),
         },
@@ -140,6 +142,9 @@ export function SendEmailDialog({
               value={body}
               onChange={(e) => setBody(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              Ihre Signatur inkl. Logo wird automatisch unter die Nachricht gesetzt.
+            </p>
           </div>
 
           <div className="space-y-3 rounded-lg border p-4">

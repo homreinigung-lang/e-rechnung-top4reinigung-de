@@ -26,7 +26,7 @@ import { buildEpcPayload } from "@/lib/epc";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
-import { buildEmailHtml, buildSignatureHtml } from "@/lib/signature";
+import { buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
 import { describeGobdError, editBlockedMessage, isLockedDocument } from "@/lib/gobd-guard";
@@ -443,13 +443,13 @@ function DokumentDetail() {
       .join("\n");
 
     const baseText = baseLines.join("\n");
-    const signatureHtml = buildSignatureHtml(settings as Record<string, unknown>);
 
     return {
       to,
       subject,
-      body: [baseText, signatureText].filter(Boolean).join("\n"),
-      html: buildEmailHtml(baseText, signatureHtml),
+      body: baseText,
+      signatureText,
+      signatureHtml: buildSignatureHtml(settings as Record<string, unknown>),
     };
   }
 
@@ -1144,7 +1144,8 @@ function DokumentDetail() {
           to: mail.to,
           subject: mail.subject,
           body: mail.body,
-          html: mail.html,
+          signatureText: mail.signatureText,
+          signatureHtml: mail.signatureHtml,
           fileBaseName: `${DOC_TYPE_LABEL[doc.type]}-${docNumber}`,
         }}
         onSent={async () => {
