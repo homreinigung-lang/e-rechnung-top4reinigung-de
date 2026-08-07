@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
+import { computeEuer } from "@/lib/euer";
 import { dueInfo, mahnLabel } from "@/lib/workflow";
 import { AlertTriangle, FileText, Plus, Receipt, TrendingDown, Users } from "lucide-react";
 
@@ -78,6 +79,14 @@ function Dashboard() {
     const expNet = exp.reduce((s, e) => s + Number(e.net_amount), 0);
     return { q, net, vat, expNet, profit: net - expNet };
   });
+
+  const inYear = (v?: string | null) => String(v ?? "").slice(0, 4) === String(year);
+  const euer = computeEuer(
+    docs.filter((d) => inYear(d.issue_date)),
+    expenses.filter((e) => inYear(e.expense_date)),
+    `${year}-01-01`,
+    `${year}-12-31`,
+  );
 
   const stats = [
     { label: "Offene Rechnungen", value: formatMoney(openTotal), icon: Receipt },
