@@ -11,6 +11,9 @@ import { formatDate } from "@/lib/format";
 import { saveFile } from "@/lib/download";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
+import { FileUploadButton } from "@/components/FileUploadButton";
+import { permanentFileUrl } from "@/lib/storage";
+import { buildSignatureHtml } from "@/lib/signature";
 import { DomainDnsCheckCard } from "@/components/DomainDnsCheckCard";
 import {
   Dialog,
@@ -101,6 +104,8 @@ function Einstellungen() {
       smtp_user: String(d["smtp_user"] ?? ""),
       smtp_from: String(d["smtp_from"] ?? ""),
       email_signature: String(d["email_signature"] ?? ""),
+      email_signature_html: String(d["email_signature_html"] ?? ""),
+      email_signature_logo_url: String(d["email_signature_logo_url"] ?? ""),
       website_url: String(d["website_url"] ?? ""),
       facebook_url: String(d["facebook_url"] ?? ""),
     });
@@ -274,8 +279,8 @@ function Einstellungen() {
             </div>
           ))}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="email_signature">E-Mail-Signatur</Label>
+        <div className="space-y-3">
+          <Label htmlFor="email_signature">E-Mail-Signatur (Text)</Label>
           <Textarea
             id="email_signature"
             rows={5}
@@ -286,6 +291,109 @@ function Einstellungen() {
           <p className="text-xs text-muted-foreground">
             Die Signatur wird automatisch unter jede Rechnungs- und Angebots-E-Mail gesetzt.
           </p>
+        </div>
+
+        <div className="space-y-3 rounded-lg border p-4">
+          <div className="space-y-1">
+            <h3 className="font-medium">Firmenlogo in der Signatur</h3>
+            <p className="text-xs text-muted-foreground">
+              Logo hochladen oder eine Bild-Adresse (URL) einfügen – es erscheint oben in der
+              Signatur jeder Rechnungs- und Angebots-E-Mail.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <FileUploadButton
+              folder="signatur"
+              accept="image/*"
+              label="Logo hochladen"
+              onUploaded={async (path) => {
+                try {
+                  const url = await permanentFileUrl(path);
+                  setForm((prev) => ({ ...prev, email_signature_logo_url: url }));
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Bild-Adresse konnte nicht erstellt werden");
+                }
+              }}
+            />
+            {form["email_signature_logo_url"] && (
+              <Button
+                variant="ghost"
+                onClick={() => setForm({ ...form, email_signature_logo_url: "" })}
+              >
+                Logo entfernen
+              </Button>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email_signature_logo_url">Bild-Adresse (URL)</Label>
+            <Input
+              id="email_signature_logo_url"
+              placeholder="https://…/logo.png"
+              value={form["email_signature_logo_url"] ?? ""}
+              onChange={(e) => setForm({ ...form, email_signature_logo_url: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-lg border p-4">
+          <div className="space-y-1">
+            <h3 className="font-medium">HTML-Signatur (optional)</h3>
+            <p className="text-xs text-muted-foreground">
+              Hier können Sie eigenen HTML-Code mit Bildern, Links und Formatierung einsetzen. Wenn
+              ausgefüllt, ersetzt dieser Block die Text-Signatur. Skripte werden aus
+              Sicherheitsgründen entfernt.
+            </p>
+          </div>
+          <Textarea
+            id="email_signature_html"
+            rows={8}
+            className="font-mono text-xs"
+            value={form["email_signature_html"] ?? ""}
+            onChange={(e) => setForm({ ...form, email_signature_html: e.target.value })}
+            placeholder={'<p><strong>Hom Reinigung Service</strong><br />Poststraße 8, 66333 Völklingen</p>\n<img src="https://…/banner.png" alt="Logo" style="max-height:70px" />'}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setForm((prev) => ({
+                  ...prev,
+                  email_signature_html:
+                    (prev["email_signature_html"] ?? "") +
+                    '\n<img src="BILD-URL-HIER" alt="Bild" style="max-height:70px" />',
+                }))
+              }
+            >
+              Bild einfügen
+            </Button>
+            <FileUploadButton
+              folder="signatur"
+              accept="image/*"
+              label="Bild hochladen & einfügen"
+              onUploaded={async (path) => {
+                try {
+                  const url = await permanentFileUrl(path);
+                  setForm((prev) => ({
+                    ...prev,
+                    email_signature_html:
+                      (prev["email_signature_html"] ?? "") +
+                      `\n<img src="${url}" alt="Bild" style="max-height:70px" />`,
+                  }));
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Bild konnte nicht eingefügt werden");
+                }
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Vorschau</Label>
+            <div
+              className="rounded-md border bg-white p-4 text-sm text-black"
+              // Vorschau der bereinigten Signatur
+              dangerouslySetInnerHTML={{ __html: buildSignatureHtml(form) || "<em>Keine Signatur hinterlegt</em>" }}
+            />
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
