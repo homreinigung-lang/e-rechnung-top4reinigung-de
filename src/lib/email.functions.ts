@@ -5,6 +5,7 @@ const schema = z.object({
   to: z.string().email(),
   subject: z.string().min(1).max(300),
   body: z.string().min(1).max(20000),
+  html: z.string().max(100000).optional(),
   filename: z.string().min(1).max(200),
   pdfBase64: z.string().min(1),
 });
