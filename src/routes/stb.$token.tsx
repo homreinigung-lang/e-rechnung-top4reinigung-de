@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Download, FileSpreadsheet, Lock, Paperclip, Printer } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Lock, Paperclip, Printer } from "lucide-react";
 
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
@@ -93,7 +93,93 @@ function downloadExcel(name: string, sheets: { title: string; rows: Table[] }[])
   );
 }
 
+/** Erstellt eine druckfertige Stundenliste als PDF für die Lohnabrechnung. */
+async function exportHoursPdf(
+  filename: string,
+  title: string,
+  companyName: string,
+  entries: Row[],
+) {
+  if (entries.length === 0) {
+    toast.error("Keine Arbeitszeiten im gewählten Zeitraum.");
+    return;
+  }
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = 18;
+  doc.setFontSize(15);
+  doc.text(title, 15, y);
+  y += 7;
+  doc.setFontSize(9);
+  doc.text(`${companyName || "Stundenübersicht"} · Stunden je Mitarbeiter`, 15, y);
+  y += 10;
+
+  const per = new Map<string, { hours: number; amount: number }>();
+  for (const e of entries) {
+    const name = String(e["employee_name"] || "Ohne Zuordnung");
+    const h = num(e["hours"]);
+    const cur = per.get(name) ?? { hours: 0, amount: 0 };
+    per.set(name, { hours: cur.hours + h, amount: cur.amount + h * num(e["hourly_rate"]) });
+  }
+
+  doc.setFontSize(10);
+  doc.text("Mitarbeiter", 15, y);
+  doc.text("Stunden", 120, y, { align: "right" });
+  doc.text("Vergütung", 195, y, { align: "right" });
+  y += 2;
+  doc.line(15, y, 195, y);
+  y += 6;
+  doc.setFontSize(9);
+  let totalH = 0;
+  let totalA = 0;
+  for (const [name, v] of per) {
+    totalH += v.hours;
+    totalA += v.amount;
+    doc.text(name.slice(0, 45), 15, y);
+    doc.text(`${de(v.hours)} Std.`, 120, y, { align: "right" });
+    doc.text(formatMoney(v.amount), 195, y, { align: "right" });
+    y += 6;
+    if (y > 275) {
+      doc.addPage();
+      y = 20;
+    }
+  }
+  y += 1;
+  doc.line(15, y, 195, y);
+  y += 6;
+  doc.setFontSize(10);
+  doc.text("Gesamt", 15, y);
+  doc.text(`${de(totalH)} Std.`, 120, y, { align: "right" });
+  doc.text(formatMoney(totalA), 195, y, { align: "right" });
+
+  y += 12;
+  doc.setFontSize(11);
+  doc.text("Einzelnachweis", 15, y);
+  y += 6;
+  doc.setFontSize(8);
+  for (const e of entries) {
+    if (y > 282) {
+      doc.addPage();
+      y = 20;
+    }
+    const time =
+      e["start_time"] && e["end_time"]
+        ? `${String(e["start_time"]).slice(0, 5)}–${String(e["end_time"]).slice(0, 5)}`
+        : "-";
+    doc.text(
+      `${formatDate(String(e["work_date"] ?? ""))}  ${String(e["employee_name"] || "Ohne Zuordnung").slice(0, 28)}  ${time}  Pause ${num(e["break_minutes"])} Min.`,
+      15,
+      y,
+    );
+    doc.text(`${de(num(e["hours"]))} Std.`, 150, y, { align: "right" });
+    doc.text(formatMoney(num(e["hours"]) * num(e["hourly_rate"])), 195, y, { align: "right" });
+    y += 5;
+  }
+  download(filename, doc.output("blob"));
+}
+
 /** Öffnet den nativen Kalender, ohne die Tastatureingabe zu blockieren. */
+
 function openPicker(input: HTMLInputElement) {
   const el = input as HTMLInputElement & { showPicker?: () => void };
   try {
@@ -250,6 +336,20 @@ function AccountantPortal() {
             >
               <Download className="size-4" /> Stundenzettel (CSV)
             </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                void exportHoursPdf(
+                  `Stundenzettel_${period}.pdf`,
+                  `Stundenliste ${formatDate(from)} – ${formatDate(to)}`,
+                  data.companyName,
+                  timeEntries,
+                )
+              }
+            >
+              <FileText className="size-4" /> Stundenliste (PDF)
+            </Button>
+
             <Button
               variant="outline"
               onClick={() =>
