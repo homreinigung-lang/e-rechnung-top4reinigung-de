@@ -99,8 +99,13 @@ type Item = {
 
 function DokumentDetail() {
   const { id } = Route.useParams();
+  const { bearbeiten } = Route.useSearch();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  // Standard ist die saubere Vorschau; Bearbeiten wird bewusst geöffnet.
+  const [editMode, setEditMode] = useState(bearbeiten);
+
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["document", id],
