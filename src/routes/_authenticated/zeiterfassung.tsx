@@ -612,8 +612,10 @@ function Zeiterfassung() {
                       <div className="text-sm font-medium">{e.name}</div>
                       <div className="text-xs text-muted-foreground">
                         {[
+                          e.personnel_number ? `Nr. ${e.personnel_number}` : null,
                           e.role,
                           `${formatMoney(Number(e.hourly_rate))}/Std.`,
+                          e.phone || null,
                           e.email || null,
                           e.auth_user_id ? "Login aktiv" : "Kein Login",
                         ]
@@ -630,6 +632,9 @@ function Zeiterfassung() {
                           name: e.name,
                           role: e.role,
                           email: e.email ?? "",
+                          phone: e.phone ?? "",
+                          personnel_number: e.personnel_number ?? "",
+
                           hourly_rate: String(e.hourly_rate ?? ""),
                         })
                       }
