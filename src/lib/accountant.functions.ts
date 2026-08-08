@@ -133,3 +133,42 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       timeEntries: (timeEntries.data ?? []) as unknown as Row[],
     };
   });
+
+/** Liefert eine zeitlich begrenzte Download-Adresse für den Beleg einer Ausgabe. */
+export const getAccountantReceiptUrl = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; code: string; expenseId: string }) => data)
+  .handler(async ({ data }): Promise<string> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: access } = await supabaseAdmin
+      .from("accountant_access")
+      .select("user_id, access_code, active")
+      .eq("token", data.token)
+      .maybeSingle();
+
+    if (
+      !access ||
+      !access.active ||
+      access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
+    ) {
+      throw new Error("Zugang ungültig.");
+    }
+
+    const { data: expense } = await supabaseAdmin
+      .from("expenses")
+      .select("receipt_url")
+      .eq("id", data.expenseId)
+      .eq("user_id", access.user_id)
+      .maybeSingle();
+
+    const path = expense?.receipt_url ?? "";
+    if (!path) throw new Error("Zu dieser Ausgabe ist kein Beleg hinterlegt.");
+    if (/^https?:/.test(path)) return path;
+
+    const { data: signed, error } = await supabaseAdmin.storage
+      .from("firmen-dateien")
+      .createSignedUrl(path, 60 * 60);
+    if (error || !signed?.signedUrl) throw new Error("Beleg konnte nicht geladen werden.");
+    return signed.signedUrl;
+  });
+

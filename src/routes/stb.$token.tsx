@@ -2,13 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAccountantReport, type Row } from "@/lib/accountant.functions";
+import {
+  getAccountantReceiptUrl,
+  getAccountantReport,
+  type Row,
+} from "@/lib/accountant.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Download, FileSpreadsheet, Lock, Printer } from "lucide-react";
+import { Download, FileSpreadsheet, Lock, Paperclip, Printer } from "lucide-react";
+
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
 
@@ -110,6 +115,21 @@ function AccountantPortal() {
     mutationFn: () => fetchReport({ data: { token, code, from, to } }),
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const fetchReceipt = useServerFn(getAccountantReceiptUrl);
+  /** Öffnet den hinterlegten Beleg in einem neuen Tab. */
+  function openReceipt(expenseId: string) {
+    void (async () => {
+      try {
+        const url = await fetchReceipt({ data: { token, code, expenseId } });
+        window.open(url, "_blank", "noopener");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Beleg konnte nicht geöffnet werden.");
+      }
+    })();
+  }
+
+
 
   const data = report.data;
   const documents: Row[] = data?.documents ?? [];
@@ -263,6 +283,39 @@ function AccountantPortal() {
             <DataTable rows={docRows} empty="Keine Rechnungen im Zeitraum." />
             <h3 className="mt-6 font-display text-sm font-semibold">Ausgaben</h3>
             <DataTable rows={expenseRows} empty="Keine Ausgaben im Zeitraum." />
+
+            <h3 className="mt-6 font-display text-sm font-semibold">Belege (PDF/Bild)</h3>
+            {expenses.filter((e) => String(e["receipt_url"] ?? "")).length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Keine hochgeladenen Belege im Zeitraum.
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y text-sm">
+                {expenses
+                  .filter((e) => String(e["receipt_url"] ?? ""))
+                  .map((e) => (
+                    <li key={String(e["id"])} className="flex items-center gap-3 py-2">
+                      <span className="flex-1">
+                        {formatDate(String(e["expense_date"] ?? ""))} ·{" "}
+                        {String(e["supplier"] || "Ohne Lieferant")}
+                        {e["document_number"] ? ` · ${String(e["document_number"])}` : ""}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {formatMoney(num(e["gross_amount"]))}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="no-print"
+                        onClick={() => openReceipt(String(e["id"]))}
+                      >
+                        <Paperclip className="size-4" /> Beleg öffnen
+                      </Button>
+                    </li>
+                  ))}
+              </ul>
+            )}
+
             <h3 className="mt-6 font-display text-sm font-semibold">
               Stundenzettel (alle Mitarbeiter)
             </h3>

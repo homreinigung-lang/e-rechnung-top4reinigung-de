@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,9 @@ import { toast } from "sonner";
 import { formatDate, formatMoney, today } from "@/lib/format";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { useFileUrl } from "@/hooks/useFileUrl";
-import { Paperclip, Plus, Trash2 } from "lucide-react";
+import { scanReceipt } from "@/lib/receipt-scan.functions";
+import { Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/ausgaben")({
   head: () => ({
@@ -58,9 +61,52 @@ const empty: Form = {
   receipt_url: "",
 };
 
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function Ausgaben() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Form>(empty);
+  const [scanning, setScanning] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const runScan = useServerFn(scanReceipt);
+
+  /** Liest den hochgeladenen Beleg aus und füllt die Felder vor. */
+  async function analyze(file: File) {
+    setScanning(true);
+    setScanned(false);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const r = await runScan({
+        data: { dataUrl, mimeType: file.type || "application/pdf" },
+      });
+      setForm((f) => ({
+        ...f,
+        supplier: r.supplier || f.supplier,
+        document_number: r.document_number || f.document_number,
+        expense_date: r.expense_date || f.expense_date,
+        net_amount: r.net_amount ? String(r.net_amount.toFixed(2)) : f.net_amount,
+        vat_amount: r.vat_amount ? String(r.vat_amount.toFixed(2)) : f.vat_amount,
+        category: CATEGORIES.includes(r.category) ? r.category : f.category,
+        notes: r.notes || f.notes,
+      }));
+      setScanned(true);
+      toast.success("Belegdaten erkannt", {
+        description: "Bitte Beträge und Datum kurz prüfen.",
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Beleg konnte nicht ausgelesen werden.");
+    } finally {
+      setScanning(false);
+    }
+  }
+
 
   const { data: rows = [] } = useQuery({
     queryKey: ["expenses"],
@@ -98,6 +144,8 @@ function Ausgaben() {
     onSuccess: () => {
       toast.success("Ausgabe erfasst");
       setForm({ ...empty, expense_date: today(), receipt_url: "" });
+      setScanned(false);
+
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
@@ -196,15 +244,29 @@ function Ausgaben() {
           <FileUploadButton
             folder="belege"
             accept="image/*,application/pdf"
-            label="Beleg anhängen (Bild oder PDF)"
-            onUploaded={(path) => setForm((f) => ({ ...f, receipt_url: path }))}
+            label="Beleg hochladen & automatisch auslesen"
+            onUploaded={(path, file) => {
+              setForm((f) => ({ ...f, receipt_url: path }));
+              void analyze(file);
+            }}
           />
-          {form.receipt_url && (
+          {scanning && (
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Beleg wird ausgelesen…
+            </span>
+          )}
+          {!scanning && form.receipt_url && (
             <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-              <Paperclip className="size-4" /> Beleg angehängt
+              <Paperclip className="size-4" /> Beleg angehängt & mit der Ausgabe verknüpft
+            </span>
+          )}
+          {!scanning && scanned && (
+            <span className="inline-flex items-center gap-1 text-sm text-primary">
+              <Sparkles className="size-4" /> Daten automatisch übernommen – bitte prüfen
             </span>
           )}
         </div>
+
         <Button onClick={() => add.mutate()} disabled={add.isPending}>
           <Plus className="size-4" /> Ausgabe speichern
         </Button>
