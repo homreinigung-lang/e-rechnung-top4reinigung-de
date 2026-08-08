@@ -991,12 +991,19 @@ function DokumentDetail() {
               )}
             </address>
             <dl className="space-y-1 text-right">
+              {form["customer_number"] && (
+                <div>
+                  <dt className="inline text-muted-foreground">Kundennummer: </dt>
+                  <dd className="inline font-medium">{String(form["customer_number"])}</dd>
+                </div>
+              )}
               <div>
                 <dt className="inline text-muted-foreground">
                   {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"}:{" "}
                 </dt>
                 <dd className="inline font-medium">{docNumber}</dd>
               </div>
+
               <div>
                 <dt className="inline text-muted-foreground">
                   {isInvoice ? "Rechnungsdatum" : "Datum"}:{" "}
