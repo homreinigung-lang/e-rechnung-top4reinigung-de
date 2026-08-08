@@ -253,6 +253,20 @@ function AccountantPortal() {
             <Button
               variant="outline"
               onClick={() =>
+                void exportHoursPdf(
+                  `Stundenzettel_${period}.pdf`,
+                  `Stundenliste ${formatDate(from)} – ${formatDate(to)}`,
+                  data.companyName,
+                  timeEntries,
+                )
+              }
+            >
+              <FileText className="size-4" /> Stundenliste (PDF)
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() =>
                 downloadExcel(`Steuerauswertung_${period}.xls`, [
                   { title: "Rechnungen", rows: docRows },
                   { title: "Ausgaben", rows: expenseRows },
