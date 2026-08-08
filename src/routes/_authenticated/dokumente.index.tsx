@@ -100,7 +100,9 @@ function DokumenteListe() {
           number,
           issue_date: issue,
           due_date: type === "invoice" ? addDays(issue, settings?.payment_terms_days ?? 14) : null,
-          reverse_charge: true,
+          reverse_charge: type === "invoice",
+          tax_mode: type === "quote" ? "domestic" : "eu_reverse_charge",
+          vat_rate: type === "quote" ? 19 : 0,
         })
         .select("id")
         .single();
