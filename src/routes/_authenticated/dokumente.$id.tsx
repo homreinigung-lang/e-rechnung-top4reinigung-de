@@ -69,20 +69,24 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    bearbeiten: search["bearbeiten"] === true || search["bearbeiten"] === "1",
+  }),
   head: () => ({
     meta: [
-      { title: "Dokument bearbeiten – Rechnungen & Angebote" },
+      { title: "Beleg-Vorschau – Rechnungen & Angebote" },
       {
         name: "description",
         content:
-          "Positionen erfassen, Steuerart wählen, Bestellnummer hinterlegen, drucken und per E-Mail senden.",
+          "Fertiges Dokument als saubere A4-Vorschau ansehen, als PDF herunterladen, drucken oder per E-Mail senden.",
       },
-      { property: "og:title", content: "Dokument bearbeiten" },
-      { property: "og:description", content: "Rechnung oder Angebot bearbeiten und versenden." },
+      { property: "og:title", content: "Beleg-Vorschau" },
+      { property: "og:description", content: "Rechnung oder Angebot ansehen, drucken und senden." },
     ],
   }),
   component: DokumentDetail,
 });
+
 
 type Item = {
   id: string;
