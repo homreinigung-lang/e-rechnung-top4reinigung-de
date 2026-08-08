@@ -223,11 +223,37 @@ function AdminDashboard() {
             Umsatz, Umsatzsteuer und Ergebnis – konform zu § 14 UStG.
           </p>
         </div>
-        <Button asChild>
-          <Link to="/dokumente">
-            <Plus className="size-4" /> Neues Dokument
-          </Link>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Plus className="size-4" /> Neues Dokument
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem
+              onSelect={() => {
+                void createDocument("invoice")
+                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId } }))
+                  .catch((e: Error) => toast.error(e.message));
+              }}
+            >
+              <Receipt className="size-4" /> Rechnung erstellen
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                void createDocument("quote")
+                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId } }))
+                  .catch((e: Error) => toast.error(e.message));
+              }}
+            >
+              <FileText className="size-4" /> Angebot erstellen
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void navigate({ to: "/ausgaben" })}>
+              <TrendingDown className="size-4" /> Beleg hinzufügen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
