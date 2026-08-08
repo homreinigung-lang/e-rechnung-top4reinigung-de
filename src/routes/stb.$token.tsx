@@ -81,6 +81,16 @@ function downloadExcel(name: string, sheets: { title: string; rows: Table[] }[])
   );
 }
 
+/** Öffnet den nativen Kalender, ohne die Tastatureingabe zu blockieren. */
+function openPicker(input: HTMLInputElement) {
+  const el = input as HTMLInputElement & { showPicker?: () => void };
+  try {
+    el.showPicker?.();
+  } catch {
+    /* Browser ohne showPicker: natives Verhalten genügt. */
+  }
+}
+
 function AccountantPortal() {
   const { token } = Route.useParams();
   const year = new Date().getFullYear();
