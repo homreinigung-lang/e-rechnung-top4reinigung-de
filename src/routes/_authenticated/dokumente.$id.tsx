@@ -399,6 +399,8 @@ function DokumentDetail() {
     setForm((f) => ({
       ...f,
       customer_id: c.id,
+      customer_number: (c as { customer_number?: string }).customer_number ?? "",
+
       customer_name: c.name,
       customer_company: c.company,
       customer_email: c.email,
