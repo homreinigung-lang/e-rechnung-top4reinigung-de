@@ -69,9 +69,9 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
-  validateSearch: (search: Record<string, unknown>): { bearbeiten?: boolean } => ({
-    bearbeiten: search["bearbeiten"] === true || search["bearbeiten"] === "1" ? true : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { bearbeiten?: boolean } =>
+    search["bearbeiten"] === true || search["bearbeiten"] === "1" ? { bearbeiten: true } : {},
+
 
   head: () => ({
     meta: [
