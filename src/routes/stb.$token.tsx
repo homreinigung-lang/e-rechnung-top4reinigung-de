@@ -164,17 +164,38 @@ function AccountantPortal() {
         </div>
         <div className="space-y-1">
           <Label htmlFor="from">Zeitraum von</Label>
-          <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <Input
+            id="from"
+            type="date"
+            lang="de-DE"
+            dir="ltr"
+            max={to || undefined}
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            onClick={(e) => openPicker(e.currentTarget)}
+            className="w-full"
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="to">Zeitraum bis</Label>
-          <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <Input
+            id="to"
+            type="date"
+            lang="de-DE"
+            dir="ltr"
+            min={from || undefined}
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            onClick={(e) => openPicker(e.currentTarget)}
+            className="w-full"
+          />
         </div>
         <div className="sm:col-span-3">
           <Button onClick={() => report.mutate()} disabled={report.isPending || !code}>
-            <Lock className="size-4" /> Daten laden
+            <Lock className="size-4" /> {report.isPending ? "Lädt…" : "Daten laden"}
           </Button>
         </div>
+
       </section>
 
       {data && (
