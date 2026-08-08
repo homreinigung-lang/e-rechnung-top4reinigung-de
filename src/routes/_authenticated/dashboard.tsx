@@ -1,11 +1,30 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
 import { computeEuer } from "@/lib/euer";
+import { createDocument } from "@/lib/create-document";
+import { useMyEmployee, type MyEmployee } from "@/lib/employee";
 import { dueInfo, mahnLabel } from "@/lib/workflow";
-import { AlertTriangle, FileText, Plus, Receipt, TrendingDown, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  Clock,
+  FileText,
+  Plus,
+  Receipt,
+  TrendingDown,
+  Users,
+} from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
