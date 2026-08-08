@@ -561,6 +561,25 @@ function Zeiterfassung() {
                     onChange={(e) => setEmp({ ...emp, hourly_rate: e.target.value })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emp-persno">Personalnummer</Label>
+                  <Input
+                    id="emp-persno"
+                    dir="ltr"
+                    value={emp.personnel_number}
+                    onChange={(e) => setEmp({ ...emp, personnel_number: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emp-phone">Telefonnummer</Label>
+                  <Input
+                    id="emp-phone"
+                    type="tel"
+                    dir="ltr"
+                    value={emp.phone}
+                    onChange={(e) => setEmp({ ...emp, phone: e.target.value })}
+                  />
+                </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="emp-email">E-Mail (Login für Mitarbeiter)</Label>
                   <Input
@@ -575,6 +594,7 @@ function Zeiterfassung() {
                     unter „Meine Zeiten“ nur die eigenen Arbeitszeiten erfassen.
                   </p>
                 </div>
+
               </div>
               <DialogFooter>
                 <Button
