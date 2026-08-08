@@ -42,6 +42,106 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
+  const { data: myEmployee, isPending } = useMyEmployee();
+  if (isPending) return <p className="text-muted-foreground">Wird geladen …</p>;
+  if (myEmployee) return <EmployeeDashboard employee={myEmployee} />;
+  return <AdminDashboard />;
+}
+
+/** Mitarbeiter-Ansicht: ausschließlich eigene Zeiterfassung und Arbeitsstunden. */
+function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
+  const { data: entries = [] } = useQuery({
+    queryKey: ["my_time_entries", employee.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("id, work_date, start_time, end_time, hours, location, note")
+        .eq("employee_id", employee.id)
+        .order("work_date", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const month = new Date().toISOString().slice(0, 7);
+  const inMonth = entries.filter((e) => String(e.work_date).startsWith(month));
+  const sum = (rows: typeof entries) => rows.reduce((s, e) => s + Number(e.hours || 0), 0);
+  const days = new Set(inMonth.map((e) => e.work_date)).size;
+  const hoursText = (h: number) => `${h.toFixed(2).replace(".", ",")} Std.`;
+
+  const stats = [
+    { label: "Stunden diesen Monat", value: hoursText(sum(inMonth)), icon: Clock },
+    { label: "Arbeitstage diesen Monat", value: String(days), icon: CalendarClock },
+    { label: "Stunden gesamt", value: hoursText(sum(entries)), icon: Clock },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Meine Übersicht</h1>
+          <p className="mt-1 text-muted-foreground">
+            {employee.name} · Ihre erfassten Arbeitszeiten und Stunden.
+          </p>
+        </div>
+        <Button asChild>
+          <Link to="/meine-zeiten">
+            <Clock className="size-4" /> Zeit erfassen
+          </Link>
+        </Button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        {stats.map((s) => (
+          <div key={s.label} className="surface p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{s.label}</span>
+              <s.icon className="size-4 text-primary" />
+            </div>
+            <div className="mt-3 font-display text-2xl font-semibold">{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="surface overflow-hidden">
+        <div className="border-b px-5 py-4">
+          <h2 className="font-semibold">Zuletzt erfasste Zeiten</h2>
+        </div>
+        {entries.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+            Noch keine Arbeitszeiten erfasst.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {entries.slice(0, 10).map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                <div>
+                  <div className="font-medium">{formatDate(String(e.work_date))}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {[
+                      e.start_time && e.end_time
+                        ? `${String(e.start_time).slice(0, 5)}–${String(e.end_time).slice(0, 5)}`
+                        : null,
+                      e.location || null,
+                      e.note || null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </div>
+                </div>
+                <div className="font-medium">{hoursText(Number(e.hours || 0))}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboard() {
+  const navigate = useNavigate();
+
   const year = new Date().getFullYear();
 
   const { data } = useQuery({
