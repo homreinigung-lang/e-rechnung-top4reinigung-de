@@ -101,6 +101,8 @@ type Item = {
 
 /** Standard-Nettostundensatz (29,41 € netto ≈ 35,00 € brutto bei 19 % MwSt.). */
 const DEFAULT_NET_RATE = 29.41;
+const UNIT_OPTIONS: string[] = ["Std.", "m²", "Pauschal", "Karton", "Kanister / Gallone"];
+
 
 
 function DokumentDetail() {
@@ -943,12 +945,33 @@ function DokumentDetail() {
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <Label className="text-xs text-muted-foreground">Einheit</Label>
-                <Input
-                  placeholder="Einheit"
-                  value={item.unit}
-                  onChange={(e) => updateItem(index, { unit: e.target.value })}
-                />
+                <Select
+                  value={UNIT_OPTIONS.includes(item.unit) ? item.unit : "__custom"}
+                  onValueChange={(v) =>
+                    updateItem(index, { unit: v === "__custom" ? "" : v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Einheit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="__custom">Andere …</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!UNIT_OPTIONS.includes(item.unit) && (
+                  <Input
+                    placeholder="Eigene Einheit"
+                    value={item.unit}
+                    onChange={(e) => updateItem(index, { unit: e.target.value })}
+                  />
+                )}
               </div>
+
               <div className="space-y-1 sm:col-span-2">
                 <Label className="text-xs text-muted-foreground">Netto-Preis / Einheit €</Label>
                 <Input
