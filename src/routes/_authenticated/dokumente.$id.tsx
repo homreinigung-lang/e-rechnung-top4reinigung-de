@@ -904,7 +904,7 @@ function DokumentDetail() {
                     description: "",
                     quantity: 1,
                     unit: "Std.",
-                    unit_price: 0,
+                    unit_price: Number(prev[prev.length - 1]?.unit_price) || DEFAULT_NET_RATE,
                   },
                 ])
               }
