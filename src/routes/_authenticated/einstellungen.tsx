@@ -86,6 +86,28 @@ function downloadCsv(name: string, rows: Record<string, unknown>[]) {
 function Einstellungen() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
+  const signatureImageInput = useRef<HTMLInputElement>(null);
+
+  /** Fügt ein Bild-Tag an die HTML-Signatur an. */
+  function appendSignatureImage(url: string) {
+    setForm((prev) => ({
+      ...prev,
+      email_signature_html:
+        (prev["email_signature_html"] ?? "") +
+        `\n<img src="${url}" alt="Bild" style="max-height:70px" />`,
+    }));
+  }
+
+  /** Lädt eine Bilddatei hoch und fügt sie in die HTML-Signatur ein. */
+  async function insertSignatureImage(file: File) {
+    try {
+      const path = await uploadUserFile(file, "signatur");
+      appendSignatureImage(await permanentFileUrl(path));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Bild konnte nicht eingefügt werden");
+    }
+  }
+
   const [preview, setPreview] = useState<{
     kind: "documents" | "expenses" | "customers";
     fileName: string;
