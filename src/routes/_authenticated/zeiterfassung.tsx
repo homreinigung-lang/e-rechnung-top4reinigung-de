@@ -69,8 +69,11 @@ type Employee = {
   hourly_rate: number;
   active: boolean;
   email: string;
+  phone: string;
+  personnel_number: string;
   auth_user_id: string | null;
 };
+
 
 
 type EntryForm = {
