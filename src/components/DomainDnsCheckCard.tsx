@@ -108,9 +108,10 @@ export function DomainDnsCheckCard() {
         <h2 className="font-display text-base font-semibold">Domain- & DNS-Prüfung</h2>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Vergleicht den beim Host hinterlegten TXT-Record <code>_lovable</code> live mit dem Wert aus
-        dem Connect-Domain-Dialog und meldet jede Abweichung.
+        Vergleicht den beim Host hinterlegten Verifizierungs-TXT-Record live mit dem erwarteten Wert
+        und meldet jede Abweichung.
       </p>
+
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
