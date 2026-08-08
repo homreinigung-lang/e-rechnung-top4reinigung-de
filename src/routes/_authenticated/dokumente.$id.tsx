@@ -980,7 +980,31 @@ function DokumentDetail() {
             />
           </div>
         </div>
+
+        {!isInvoice && (
+          <div className="space-y-2">
+            <Label htmlFor="service_description">Detaillierte Leistungsbeschreibung (optional)</Label>
+            <Textarea
+              id="service_description"
+              rows={8}
+              value={String(form["service_description"] ?? "")}
+              onChange={(e) => setField("service_description", e.target.value)}
+              placeholder={
+                "Beschreiben Sie hier ausführlich, welche Reinigungsleistungen enthalten sind, z. B.:\n" +
+                "- Unterhaltsreinigung Büroflächen (Staubwischen, Böden, Papierkörbe)\n" +
+                "- Sanitärreinigung inkl. Desinfektion und Auffüllen der Verbrauchsmaterialien\n" +
+                "- Glasreinigung innen, monatlich\n" +
+                "- Alle Reinigungsmittel und Geräte inklusive"
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Erscheint übersichtlich im PDF-Angebot unter „Leistungsbeschreibung“. Jede Zeile wird
+              als eigener Punkt dargestellt (Zeilen mit „-“ oder „•“ werden als Liste formatiert).
+            </p>
+          </div>
+        )}
       </fieldset>
+
 
       {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto text-sm">
