@@ -104,7 +104,7 @@ function DokumentDetail() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   // Standard ist die saubere Vorschau; Bearbeiten wird bewusst geöffnet.
-  const [editMode, setEditMode] = useState(bearbeiten);
+  const [editMode, setEditMode] = useState(Boolean(bearbeiten));
 
 
 
