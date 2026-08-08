@@ -127,6 +127,17 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
             <Label htmlFor="emp_role">Funktion</Label>
             <Input id="emp_role" value={employee.role ?? ""} readOnly disabled />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="emp_persno">Personalnummer</Label>
+            <Input
+              id="emp_persno"
+              value={employee.personnel_number ?? ""}
+              readOnly
+              disabled
+              dir="ltr"
+            />
+          </div>
+
         </div>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           Speichern
