@@ -110,8 +110,11 @@ const emptyEmployee = {
   name: "",
   role: "",
   email: "",
+  phone: "",
+  personnel_number: "",
   hourly_rate: "",
 };
+
 
 
 function num(v: string) {
