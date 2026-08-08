@@ -60,6 +60,7 @@ import {
   FileDown,
   Lock,
   Mail,
+  Pencil,
   Plus,
   Printer,
   Save,
@@ -69,20 +70,25 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
+  validateSearch: (search: Record<string, unknown>): { bearbeiten?: boolean } =>
+    search["bearbeiten"] === true || search["bearbeiten"] === "1" ? { bearbeiten: true } : {},
+
+
   head: () => ({
     meta: [
-      { title: "Dokument bearbeiten – Rechnungen & Angebote" },
+      { title: "Beleg-Vorschau – Rechnungen & Angebote" },
       {
         name: "description",
         content:
-          "Positionen erfassen, Steuerart wählen, Bestellnummer hinterlegen, drucken und per E-Mail senden.",
+          "Fertiges Dokument als saubere A4-Vorschau ansehen, als PDF herunterladen, drucken oder per E-Mail senden.",
       },
-      { property: "og:title", content: "Dokument bearbeiten" },
-      { property: "og:description", content: "Rechnung oder Angebot bearbeiten und versenden." },
+      { property: "og:title", content: "Beleg-Vorschau" },
+      { property: "og:description", content: "Rechnung oder Angebot ansehen, drucken und senden." },
     ],
   }),
   component: DokumentDetail,
 });
+
 
 type Item = {
   id: string;
@@ -95,8 +101,13 @@ type Item = {
 
 function DokumentDetail() {
   const { id } = Route.useParams();
+  const { bearbeiten } = Route.useSearch();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  // Standard ist die saubere Vorschau; Bearbeiten wird bewusst geöffnet.
+  const [editMode, setEditMode] = useState(Boolean(bearbeiten));
+
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["document", id],
@@ -148,6 +159,8 @@ function DokumentDetail() {
       customer_country: String(d["customer_country"] ?? ""),
       customer_vat_id: String(d["customer_vat_id"] ?? ""),
       intro_text: String(d["intro_text"] ?? ""),
+      service_description: String(d["service_description"] ?? ""),
+
       notes: String(d["notes"] ?? ""),
       attachment_title: String(d["attachment_title"] ?? ""),
       attachment_text: String(d["attachment_text"] ?? ""),
@@ -295,7 +308,7 @@ function DokumentDetail() {
     onSuccess: (newId) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Kopie erstellt");
-      navigate({ to: "/dokumente/$id", params: { id: newId } });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -328,7 +341,7 @@ function DokumentDetail() {
     onSuccess: (newId) => {
       toast.success("Stornorechnung erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      navigate({ to: "/dokumente/$id", params: { id: newId } });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -358,7 +371,7 @@ function DokumentDetail() {
     onSuccess: (newId) => {
       toast.success("Rechnung aus Angebot erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      navigate({ to: "/dokumente/$id", params: { id: newId } });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -536,6 +549,23 @@ function DokumentDetail() {
     }
   }
 
+  /** Fertiges Dokument direkt als A4-PDF herunterladen. */
+  async function downloadPdf() {
+    const toastId = toast.loading("PDF wird erzeugt…");
+    try {
+      const element = document.querySelector<HTMLElement>(".print-area");
+      if (!element) throw new Error("Druckansicht nicht gefunden.");
+      const bytes = await elementToPdfBytes(element);
+      downloadBytes(
+        bytes,
+        `${DOC_TYPE_LABEL[doc.type]}-${docNumber.replace(/\W+/g, "_")}.pdf`.replace(/\s+/g, "-"),
+      );
+      toast.success("PDF heruntergeladen", { id: toastId });
+    } catch (e) {
+      toast.error((e as Error).message, { id: toastId });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
@@ -545,15 +575,32 @@ function DokumentDetail() {
           </Link>
         </Button>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void downloadPdf()}>
+            <FileDown className="size-4" /> PDF herunterladen
+          </Button>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="size-4" /> Drucken
+          </Button>
+          <Button variant="outline" onClick={() => setMailOpen(true)}>
+            <Mail className="size-4" /> Per E-Mail senden
+          </Button>
+          {!locked && (
+            <Button variant={editMode ? "secondary" : "default"} onClick={() => setEditMode((v) => !v)}>
+              <Pencil className="size-4" /> {editMode ? "Vorschau" : "Bearbeiten"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="no-print flex flex-wrap items-center justify-end gap-2">
+        {editMode && (
+          <>
           <Button
             variant="outline"
             onClick={() => duplicate.mutate()}
             disabled={duplicate.isPending}
           >
             <Copy className="size-4" /> Duplizieren
-          </Button>
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" /> Drucken / PDF
           </Button>
           {isInvoice && (
             <>
@@ -565,10 +612,10 @@ function DokumentDetail() {
               </Button>
             </>
           )}
+          </>
+        )}
 
-          <Button variant="outline" onClick={() => setMailOpen(true)}>
-            <Mail className="size-4" /> Per E-Mail senden
-          </Button>
+
 
           {isInvoice &&
             !isStorno &&
@@ -635,7 +682,7 @@ function DokumentDetail() {
             </>
           )}
 
-          {!locked && (
+          {!locked && editMode && (
             <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
               <Save className="size-4" /> Speichern
             </Button>
@@ -658,8 +705,8 @@ function DokumentDetail() {
               <Ban className="size-4" /> Stornorechnung
             </Button>
           )}
-        </div>
       </div>
+
 
       {locked && (
         <div className="no-print flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
@@ -703,7 +750,12 @@ function DokumentDetail() {
         </div>
       )}
 
-      <fieldset disabled={locked} className="no-print surface space-y-6 p-6 disabled:opacity-90">
+      <fieldset
+        disabled={locked}
+        hidden={!editMode}
+        className="no-print surface space-y-6 p-6 disabled:opacity-90"
+      >
+
         <h2 className="font-display text-xl font-semibold">
           {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
         </h2>
@@ -935,7 +987,31 @@ function DokumentDetail() {
             />
           </div>
         </div>
+
+        {!isInvoice && (
+          <div className="space-y-2">
+            <Label htmlFor="service_description">Detaillierte Leistungsbeschreibung (optional)</Label>
+            <Textarea
+              id="service_description"
+              rows={8}
+              value={String(form["service_description"] ?? "")}
+              onChange={(e) => setField("service_description", e.target.value)}
+              placeholder={
+                "Beschreiben Sie hier ausführlich, welche Reinigungsleistungen enthalten sind, z. B.:\n" +
+                "- Unterhaltsreinigung Büroflächen (Staubwischen, Böden, Papierkörbe)\n" +
+                "- Sanitärreinigung inkl. Desinfektion und Auffüllen der Verbrauchsmaterialien\n" +
+                "- Glasreinigung innen, monatlich\n" +
+                "- Alle Reinigungsmittel und Geräte inklusive"
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Erscheint übersichtlich im PDF-Angebot unter „Leistungsbeschreibung“. Jede Zeile wird
+              als eigener Punkt dargestellt (Zeilen mit „-“ oder „•“ werden als Liste formatiert).
+            </p>
+          </div>
+        )}
       </fieldset>
+
 
       {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto text-sm">
@@ -1076,7 +1152,34 @@ function DokumentDetail() {
               </tbody>
             </table>
           </div>
+
+          {!isInvoice && form["service_description"] && (
+            <section className="invoice-description mt-6">
+              <h3 className="font-display text-base font-semibold">Leistungsbeschreibung</h3>
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {String(form["service_description"])
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                  .map((line, index) => {
+                    const bullet = /^[-•*]\s*/.test(line);
+                    const text = line.replace(/^[-•*]\s*/, "");
+                    return bullet ? (
+                      <li key={index} className="flex gap-2">
+                        <span aria-hidden="true">•</span>
+                        <span className="break-words">{text}</span>
+                      </li>
+                    ) : (
+                      <li key={index} className="list-none font-medium break-words">
+                        {text}
+                      </li>
+                    );
+                  })}
+              </ul>
+            </section>
+          )}
         </div>
+
 
         <div className="invoice-summary-block">
           <div className="invoice-closing">

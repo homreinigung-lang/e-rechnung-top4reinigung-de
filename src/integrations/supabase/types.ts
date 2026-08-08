@@ -309,6 +309,7 @@ export type Database = {
           reminder_level: number
           reverse_charge: boolean
           sent_at: string | null
+          service_description: string
           service_period: string
           status: Database["public"]["Enums"]["doc_status"]
           tax_mode: string
@@ -353,6 +354,7 @@ export type Database = {
           reminder_level?: number
           reverse_charge?: boolean
           sent_at?: string | null
+          service_description?: string
           service_period?: string
           status?: Database["public"]["Enums"]["doc_status"]
           tax_mode?: string
@@ -397,6 +399,7 @@ export type Database = {
           reminder_level?: number
           reverse_charge?: boolean
           sent_at?: string | null
+          service_description?: string
           service_period?: string
           status?: Database["public"]["Enums"]["doc_status"]
           tax_mode?: string
@@ -726,6 +729,7 @@ export type Database = {
           reminder_level: number
           reverse_charge: boolean
           sent_at: string | null
+          service_description: string
           service_period: string
           status: Database["public"]["Enums"]["doc_status"]
           tax_mode: string

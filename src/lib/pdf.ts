@@ -52,8 +52,9 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
   const blocks: Array<{ top: number; bottom: number }> = [];
   element
     .querySelectorAll<HTMLElement>(
-      "header, tr, td, th, .invoice-summary-block, .invoice-closing, footer, p, h1, h2, h3",
+      "header, tr, td, th, .invoice-summary-block, .invoice-closing, .invoice-description, .invoice-description li, li, footer, p, h1, h2, h3",
     )
+
     .forEach((node) => {
       const rect = node.getBoundingClientRect();
       if (rect.height <= 0) return;

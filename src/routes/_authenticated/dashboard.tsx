@@ -233,7 +233,7 @@ function AdminDashboard() {
             <DropdownMenuItem
               onSelect={() => {
                 void createDocument("invoice")
-                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId } }))
+                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId }, search: { bearbeiten: true } }))
                   .catch((e: Error) => toast.error(e.message));
               }}
             >
@@ -242,7 +242,7 @@ function AdminDashboard() {
             <DropdownMenuItem
               onSelect={() => {
                 void createDocument("quote")
-                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId } }))
+                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId }, search: { bearbeiten: true } }))
                   .catch((e: Error) => toast.error(e.message));
               }}
             >
