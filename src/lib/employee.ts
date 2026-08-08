@@ -8,8 +8,10 @@ export type MyEmployee = {
   hourly_rate: number;
   email: string;
   phone?: string;
+  personnel_number?: string;
   user_id: string;
 };
+
 
 /**
  * Verknüpft das angemeldete Konto (per E-Mail) mit dem Mitarbeiter-Stammsatz
