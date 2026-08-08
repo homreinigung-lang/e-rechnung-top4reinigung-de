@@ -153,6 +153,7 @@ export type Database = {
           company: string
           country: string
           created_at: string
+          customer_number: string
           email: string
           id: string
           name: string
@@ -169,6 +170,7 @@ export type Database = {
           company?: string
           country?: string
           created_at?: string
+          customer_number?: string
           email?: string
           id?: string
           name: string
@@ -185,6 +187,7 @@ export type Database = {
           company?: string
           country?: string
           created_at?: string
+          customer_number?: string
           email?: string
           id?: string
           name?: string
@@ -287,6 +290,7 @@ export type Database = {
           customer_email: string
           customer_id: string | null
           customer_name: string
+          customer_number: string
           customer_postal_code: string
           customer_vat_id: string
           due_date: string | null
@@ -330,6 +334,7 @@ export type Database = {
           customer_email?: string
           customer_id?: string | null
           customer_name?: string
+          customer_number?: string
           customer_postal_code?: string
           customer_vat_id?: string
           due_date?: string | null
@@ -373,6 +378,7 @@ export type Database = {
           customer_email?: string
           customer_id?: string | null
           customer_name?: string
+          customer_number?: string
           customer_postal_code?: string
           customer_vat_id?: string
           due_date?: string | null
@@ -441,6 +447,7 @@ export type Database = {
           hourly_rate: number
           id: string
           name: string
+          personnel_number: string
           phone: string
           role: string
           updated_at: string
@@ -454,6 +461,7 @@ export type Database = {
           hourly_rate?: number
           id?: string
           name: string
+          personnel_number?: string
           phone?: string
           role?: string
           updated_at?: string
@@ -467,6 +475,7 @@ export type Database = {
           hourly_rate?: number
           id?: string
           name?: string
+          personnel_number?: string
           phone?: string
           role?: string
           updated_at?: string
@@ -698,6 +707,7 @@ export type Database = {
           customer_email: string
           customer_id: string | null
           customer_name: string
+          customer_number: string
           customer_postal_code: string
           customer_vat_id: string
           due_date: string | null
@@ -736,6 +746,7 @@ export type Database = {
       link_employee_account: { Args: never; Returns: string }
       my_employee_id: { Args: never; Returns: string }
       my_employee_owner: { Args: never; Returns: string }
+      next_customer_number: { Args: never; Returns: string }
       next_document_number: { Args: { _kind: string }; Returns: string }
     }
     Enums: {
