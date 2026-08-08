@@ -715,28 +715,42 @@ function DokumentDetail() {
 
 
       {locked && lockedAt && (
-        <div className="no-print flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
-          <ShieldCheck className="size-5 text-primary" />
-          <div>
-            <p className="font-medium">Festgeschrieben – GoBD-konform unveränderbar</p>
+        <div className="no-print flex flex-wrap items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+          <ShieldCheck className="mt-0.5 size-5 text-primary" />
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium">Festgeschrieben – GoBD-konform unveränderbar</p>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                  docRecord["archived_at"] || docRecord["pdf_sha256"]
+                    ? "bg-primary/15 text-primary"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {docRecord["archived_at"] || docRecord["pdf_sha256"]
+                  ? "GoBD-Archiviert"
+                  : "PDF-Archivierung ausstehend"}
+              </span>
+            </div>
             <p className="text-muted-foreground">
               Festgeschrieben am {formatDate(lockedAt)}
-              {docRecord["pdf_sha256"] && docRecord["archived_at"]
-                ? ` · GoBD-Archiviert am ${formatDate(String(docRecord["archived_at"]))} · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
-                : docRecord["pdf_sha256"]
-                  ? ` · GoBD-Archiviert · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
-                  : " · PDF-Archivierung ausstehend"}
+              {docRecord["archived_at"]
+                ? ` · GoBD-Archiviert am ${formatDate(String(docRecord["archived_at"]))}`
+                : ""}
+              {docRecord["pdf_sha256"]
+                ? ` · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
+                : ""}
               {cancelledBy ? " · Diese Rechnung wurde storniert." : ""}
               {isStorno ? " · Stornorechnung" : ""}
             </p>
-            <p className="mt-1 font-medium text-destructive">
+            <p className="font-medium text-destructive">
               Löschen und Überschreiben sind für diesen Beleg gesperrt. Korrekturen ausschließlich
               per Stornorechnung.
             </p>
           </div>
         </div>
-
       )}
+
 
       {(due || reminderLevel > 0) && (
         <div
