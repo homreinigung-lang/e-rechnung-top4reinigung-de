@@ -32,7 +32,7 @@ export function useMyEmployee() {
 
       const { data: existing } = await supabase
         .from("employees")
-        .select("id,name,role,hourly_rate,email,phone,user_id")
+        .select("id,name,role,hourly_rate,email,phone,personnel_number,user_id")
         .eq("auth_user_id", uid)
         .maybeSingle();
       if (existing) return asEmployee(existing as MyEmployee);
@@ -42,7 +42,7 @@ export function useMyEmployee() {
 
       const { data: linked } = await supabase
         .from("employees")
-        .select("id,name,role,hourly_rate,email,phone,user_id")
+        .select("id,name,role,hourly_rate,email,phone,personnel_number,user_id")
         .eq("id", linkedId as string)
         .maybeSingle();
       return asEmployee((linked as MyEmployee | null) ?? null);
