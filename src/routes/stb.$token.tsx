@@ -116,6 +116,21 @@ function AccountantPortal() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const fetchReceipt = useServerFn(getAccountantReceiptUrl);
+  /** Öffnet den hinterlegten Beleg in einem neuen Tab. */
+  function openReceipt(expenseId: string) {
+    void (async () => {
+      try {
+        const url = await fetchReceipt({ data: { token, code, expenseId } });
+        window.open(url, "_blank", "noopener");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Beleg konnte nicht geöffnet werden.");
+      }
+    })();
+  }
+
+
+
   const data = report.data;
   const documents: Row[] = data?.documents ?? [];
   const expenses: Row[] = data?.expenses ?? [];
