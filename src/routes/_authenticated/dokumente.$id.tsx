@@ -546,6 +546,23 @@ function DokumentDetail() {
     }
   }
 
+  /** Fertiges Dokument direkt als A4-PDF herunterladen. */
+  async function downloadPdf() {
+    const toastId = toast.loading("PDF wird erzeugt…");
+    try {
+      const element = document.querySelector<HTMLElement>(".print-area");
+      if (!element) throw new Error("Druckansicht nicht gefunden.");
+      const bytes = await elementToPdfBytes(element);
+      downloadBytes(
+        bytes,
+        `${DOC_TYPE_LABEL[doc.type]}-${docNumber.replace(/\W+/g, "_")}.pdf`.replace(/\s+/g, "-"),
+      );
+      toast.success("PDF heruntergeladen", { id: toastId });
+    } catch (e) {
+      toast.error((e as Error).message, { id: toastId });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
@@ -555,15 +572,32 @@ function DokumentDetail() {
           </Link>
         </Button>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void downloadPdf()}>
+            <FileDown className="size-4" /> PDF herunterladen
+          </Button>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="size-4" /> Drucken
+          </Button>
+          <Button variant="outline" onClick={() => setMailOpen(true)}>
+            <Mail className="size-4" /> Per E-Mail senden
+          </Button>
+          {!locked && (
+            <Button variant={editMode ? "secondary" : "default"} onClick={() => setEditMode((v) => !v)}>
+              <Pencil className="size-4" /> {editMode ? "Vorschau" : "Bearbeiten"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="no-print flex flex-wrap items-center justify-end gap-2">
+        {editMode && (
+          <>
           <Button
             variant="outline"
             onClick={() => duplicate.mutate()}
             disabled={duplicate.isPending}
           >
             <Copy className="size-4" /> Duplizieren
-          </Button>
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" /> Drucken / PDF
           </Button>
           {isInvoice && (
             <>
@@ -575,6 +609,9 @@ function DokumentDetail() {
               </Button>
             </>
           )}
+          </>
+        )}
+
 
           <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
