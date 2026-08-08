@@ -361,7 +361,8 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
-/* Datums-/Zeitfelder immer LTR und im deutschen 24h-Format anzeigen */
+/* Datums-/Zeitfelder immer LTR anzeigen und nativ bedienbar halten
+   (Tastatur-Eingabe + funktionierendes Kalender-Symbol). */
 input[type="date"],
 input[type="time"],
 input[type="datetime-local"] {
@@ -369,5 +370,30 @@ input[type="datetime-local"] {
   text-align: left;
   unicode-bidi: isolate;
   font-variant-numeric: lining-nums tabular-nums;
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 2.25rem;
+  position: relative;
 }
+
+/* Natives Kalender-Symbol sichtbar, korrekt eingefärbt und klickbar lassen. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: 0.75;
+  cursor: pointer;
+  filter: none;
+}
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit {
+  padding: 0;
+  line-height: normal;
+}
+input[type="date"]::-webkit-inner-spin-button,
+input[type="time"]::-webkit-inner-spin-button,
+input[type="datetime-local"]::-webkit-inner-spin-button {
+  display: none;
+}
+
 
