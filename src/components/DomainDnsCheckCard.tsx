@@ -124,12 +124,12 @@ export function DomainDnsCheckCard() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="dns-expected">Erwarteter TXT-Wert (aus dem Dialog)</Label>
+          <Label htmlFor="dns-expected">Erwarteter TXT-Wert</Label>
           <Input
             id="dns-expected"
             value={expected}
             onChange={(e) => setExpected(e.target.value)}
-            placeholder="lovable_verify=…"
+            placeholder="Verifizierungswert einfügen"
           />
         </div>
       </div>
