@@ -1153,8 +1153,8 @@ function DokumentDetail() {
                   <th className="px-2 py-2 font-medium">Bezeichnung</th>
                   <th className="px-2 py-2 text-right font-medium">Menge</th>
                   <th className="px-2 py-2 font-medium">Einheit</th>
-                  <th className="px-2 py-2 text-right font-medium">Einzelpreis €</th>
-                  <th className="px-2 py-2 text-right font-medium">Gesamtpreis €</th>
+                  <th className="px-2 py-2 text-right font-medium">Einzelpreis netto €</th>
+                  <th className="px-2 py-2 text-right font-medium">Gesamtpreis netto €</th>
                 </tr>
               </thead>
               <tbody>
