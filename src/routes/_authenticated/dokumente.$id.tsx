@@ -679,7 +679,7 @@ function DokumentDetail() {
             </>
           )}
 
-          {!locked && (
+          {!locked && editMode && (
             <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
               <Save className="size-4" /> Speichern
             </Button>
@@ -702,8 +702,8 @@ function DokumentDetail() {
               <Ban className="size-4" /> Stornorechnung
             </Button>
           )}
-        </div>
       </div>
+
 
       {locked && (
         <div className="no-print flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
