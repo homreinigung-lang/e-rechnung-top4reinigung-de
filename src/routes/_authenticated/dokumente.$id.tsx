@@ -1211,17 +1211,17 @@ function DokumentDetail() {
             <div className="mt-3 flex justify-end">
               <div className="w-72 space-y-0.5">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Zwischensumme netto</span>
+                  <span className="text-muted-foreground">Nettobetrag (Summe netto)</span>
                   <span>{formatMoney(netTotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    Umsatzsteuer {formatNumber(vatRate)} %
+                    zzgl. Umsatzsteuer {formatNumber(vatRate)} %
                   </span>
                   <span>{formatMoney(vatAmount)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
-                  <span>Gesamtbetrag</span>
+                  <span>{vatRate > 0 ? "Bruttobetrag (inkl. MwSt.)" : "Gesamtbetrag"}</span>
                   <span>{formatMoney(grossTotal)}</span>
                 </div>
               </div>
