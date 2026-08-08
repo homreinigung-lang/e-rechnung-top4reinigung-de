@@ -18,6 +18,7 @@ import {
   Calculator,
   Clock,
   FileText,
+  Landmark,
   LayoutDashboard,
   LogOut,
   MoreVertical,
@@ -37,10 +38,12 @@ const nav = [
   { to: "/kunden", label: "Kunden", icon: Users },
   { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock },
   { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
+  { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
   { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
   { to: "/profil", label: "Mein Profil", icon: UserCircle },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
 ] as const;
+
 
 // Menü für Mitarbeiterkonten (nur eigene Zeiten)
 const employeeNav = [
