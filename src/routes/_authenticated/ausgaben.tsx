@@ -199,15 +199,29 @@ function Ausgaben() {
           <FileUploadButton
             folder="belege"
             accept="image/*,application/pdf"
-            label="Beleg anhängen (Bild oder PDF)"
-            onUploaded={(path) => setForm((f) => ({ ...f, receipt_url: path }))}
+            label="Beleg hochladen & automatisch auslesen"
+            onUploaded={(path, file) => {
+              setForm((f) => ({ ...f, receipt_url: path }));
+              void analyze(file);
+            }}
           />
-          {form.receipt_url && (
+          {scanning && (
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Beleg wird ausgelesen…
+            </span>
+          )}
+          {!scanning && form.receipt_url && (
             <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-              <Paperclip className="size-4" /> Beleg angehängt
+              <Paperclip className="size-4" /> Beleg angehängt & mit der Ausgabe verknüpft
+            </span>
+          )}
+          {!scanning && scanned && (
+            <span className="inline-flex items-center gap-1 text-sm text-primary">
+              <Sparkles className="size-4" /> Daten automatisch übernommen – bitte prüfen
             </span>
           )}
         </div>
+
         <Button onClick={() => add.mutate()} disabled={add.isPending}>
           <Plus className="size-4" /> Ausgabe speichern
         </Button>
