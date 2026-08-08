@@ -155,7 +155,22 @@ function Kunden() {
               <DialogTitle>{form.id ? "Kunde bearbeiten" : "Neuer Kunde"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="customer_number">Kundennummer (automatisch)</Label>
+                <Input
+                  id="customer_number"
+                  readOnly
+                  disabled
+                  className="bg-muted"
+                  value={
+                    form.id
+                      ? (customers.find((c) => c.id === form.id)?.customer_number ?? "")
+                      : "Wird beim Speichern automatisch vergeben"
+                  }
+                />
+              </div>
               {field("name", "Ansprechpartner / Name")}
+
               {field("company", "Firma")}
               {field("email", "E-Mail", "email")}
               {field("phone", "Telefon")}
