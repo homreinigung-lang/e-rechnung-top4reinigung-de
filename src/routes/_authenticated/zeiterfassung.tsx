@@ -219,8 +219,11 @@ function Zeiterfassung() {
         name: values.name.trim(),
         role: values.role,
         email: values.email.trim().toLowerCase(),
+        phone: values.phone.trim(),
+        personnel_number: values.personnel_number.trim(),
         hourly_rate: num(values.hourly_rate),
       };
+
 
       if (values.id) {
         const { error } = await supabase.from("employees").update(payload).eq("id", values.id);
