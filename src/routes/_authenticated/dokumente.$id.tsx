@@ -714,16 +714,18 @@ function DokumentDetail() {
       </div>
 
 
-      {locked && (
+      {locked && lockedAt && (
         <div className="no-print flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
           <ShieldCheck className="size-5 text-primary" />
           <div>
             <p className="font-medium">Festgeschrieben – GoBD-konform unveränderbar</p>
             <p className="text-muted-foreground">
               Festgeschrieben am {formatDate(lockedAt)}
-              {docRecord["pdf_sha256"]
-                ? ` · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
-                : " · PDF-Archivierung ausstehend"}
+              {docRecord["pdf_sha256"] && docRecord["archived_at"]
+                ? ` · GoBD-Archiviert am ${formatDate(String(docRecord["archived_at"]))} · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
+                : docRecord["pdf_sha256"]
+                  ? ` · GoBD-Archiviert · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
+                  : " · PDF-Archivierung ausstehend"}
               {cancelledBy ? " · Diese Rechnung wurde storniert." : ""}
               {isStorno ? " · Stornorechnung" : ""}
             </p>
@@ -733,6 +735,7 @@ function DokumentDetail() {
             </p>
           </div>
         </div>
+
       )}
 
       {(due || reminderLevel > 0) && (
