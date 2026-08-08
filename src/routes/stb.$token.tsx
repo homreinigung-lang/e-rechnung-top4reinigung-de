@@ -42,8 +42,15 @@ function csvEscape(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 function download(name: string, blob: Blob) {
-  void saveFile(blob, name);
+  void (async () => {
+    try {
+      await saveFile(blob, name);
+    } catch (e) {
+      toast.error(`Download fehlgeschlagen: ${(e as Error).message}`);
+    }
+  })();
 }
+
 function downloadCsv(name: string, rows: Table[]) {
   if (rows.length === 0) {
     toast.error("Keine Daten im gewählten Zeitraum.");
