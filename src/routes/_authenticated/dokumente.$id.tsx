@@ -60,6 +60,7 @@ import {
   FileDown,
   Lock,
   Mail,
+  Pencil,
   Plus,
   Printer,
   Save,
