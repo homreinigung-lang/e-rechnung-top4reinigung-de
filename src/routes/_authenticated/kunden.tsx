@@ -84,10 +84,16 @@ function Kunden() {
         if (error) throw error;
       } else {
         const { id: _ignored, ...rest } = values;
-        const { error } = await supabase.from("customers").insert({ ...rest, user_id: userId });
+        // Kundennummer wird automatisch fortlaufend vergeben (z. B. KU-2026-0001).
+        const { data: number, error: numberError } = await supabase.rpc("next_customer_number");
+        if (numberError) throw numberError;
+        const { error } = await supabase
+          .from("customers")
+          .insert({ ...rest, customer_number: String(number ?? ""), user_id: userId });
         if (error) throw error;
       }
     },
+
     onSuccess: () => {
       toast.success("Kunde gespeichert");
       setOpen(false);
