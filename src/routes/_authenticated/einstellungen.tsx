@@ -13,7 +13,16 @@ import { saveFile } from "@/lib/download";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { FileUploadButton } from "@/components/FileUploadButton";
-import { permanentFileUrl } from "@/lib/storage";
+import { permanentFileUrl, uploadUserFile } from "@/lib/storage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ImagePlus } from "lucide-react";
+
 import { buildSignatureHtml } from "@/lib/signature";
 import { DomainDnsCheckCard } from "@/components/DomainDnsCheckCard";
 import {
