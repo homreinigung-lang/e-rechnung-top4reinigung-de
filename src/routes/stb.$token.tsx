@@ -263,6 +263,39 @@ function AccountantPortal() {
             <DataTable rows={docRows} empty="Keine Rechnungen im Zeitraum." />
             <h3 className="mt-6 font-display text-sm font-semibold">Ausgaben</h3>
             <DataTable rows={expenseRows} empty="Keine Ausgaben im Zeitraum." />
+
+            <h3 className="mt-6 font-display text-sm font-semibold">Belege (PDF/Bild)</h3>
+            {expenses.filter((e) => String(e["receipt_url"] ?? "")).length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Keine hochgeladenen Belege im Zeitraum.
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y text-sm">
+                {expenses
+                  .filter((e) => String(e["receipt_url"] ?? ""))
+                  .map((e) => (
+                    <li key={String(e["id"])} className="flex items-center gap-3 py-2">
+                      <span className="flex-1">
+                        {formatDate(String(e["expense_date"] ?? ""))} ·{" "}
+                        {String(e["supplier"] || "Ohne Lieferant")}
+                        {e["document_number"] ? ` · ${String(e["document_number"])}` : ""}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {formatMoney(num(e["gross_amount"]))}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="no-print"
+                        onClick={() => openReceipt(String(e["id"]))}
+                      >
+                        <Paperclip className="size-4" /> Beleg öffnen
+                      </Button>
+                    </li>
+                  ))}
+              </ul>
+            )}
+
             <h3 className="mt-6 font-display text-sm font-semibold">
               Stundenzettel (alle Mitarbeiter)
             </h3>
