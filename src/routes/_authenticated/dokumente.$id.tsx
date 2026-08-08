@@ -613,9 +613,6 @@ function DokumentDetail() {
         )}
 
 
-          <Button variant="outline" onClick={() => setMailOpen(true)}>
-            <Mail className="size-4" /> Per E-Mail senden
-          </Button>
 
           {isInvoice &&
             !isStorno &&
