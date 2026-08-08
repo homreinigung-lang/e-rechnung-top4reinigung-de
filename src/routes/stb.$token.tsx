@@ -42,8 +42,15 @@ function csvEscape(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 function download(name: string, blob: Blob) {
-  void saveFile(blob, name);
+  void (async () => {
+    try {
+      await saveFile(blob, name);
+    } catch (e) {
+      toast.error(`Download fehlgeschlagen: ${(e as Error).message}`);
+    }
+  })();
 }
+
 function downloadCsv(name: string, rows: Table[]) {
   if (rows.length === 0) {
     toast.error("Keine Daten im gewählten Zeitraum.");
@@ -79,6 +86,16 @@ function downloadExcel(name: string, sheets: { title: string; rows: Table[] }[])
       { type: "application/vnd.ms-excel;charset=utf-8" },
     ),
   );
+}
+
+/** Öffnet den nativen Kalender, ohne die Tastatureingabe zu blockieren. */
+function openPicker(input: HTMLInputElement) {
+  const el = input as HTMLInputElement & { showPicker?: () => void };
+  try {
+    el.showPicker?.();
+  } catch {
+    /* Browser ohne showPicker: natives Verhalten genügt. */
+  }
 }
 
 function AccountantPortal() {
@@ -164,17 +181,38 @@ function AccountantPortal() {
         </div>
         <div className="space-y-1">
           <Label htmlFor="from">Zeitraum von</Label>
-          <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <Input
+            id="from"
+            type="date"
+            lang="de-DE"
+            dir="ltr"
+            max={to || undefined}
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            onClick={(e) => openPicker(e.currentTarget)}
+            className="w-full"
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="to">Zeitraum bis</Label>
-          <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <Input
+            id="to"
+            type="date"
+            lang="de-DE"
+            dir="ltr"
+            min={from || undefined}
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            onClick={(e) => openPicker(e.currentTarget)}
+            className="w-full"
+          />
         </div>
         <div className="sm:col-span-3">
           <Button onClick={() => report.mutate()} disabled={report.isPending || !code}>
-            <Lock className="size-4" /> Daten laden
+            <Lock className="size-4" /> {report.isPending ? "Lädt…" : "Daten laden"}
           </Button>
         </div>
+
       </section>
 
       {data && (
