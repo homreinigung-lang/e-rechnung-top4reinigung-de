@@ -750,7 +750,12 @@ function DokumentDetail() {
         </div>
       )}
 
-      <fieldset disabled={locked} className="no-print surface space-y-6 p-6 disabled:opacity-90">
+      <fieldset
+        disabled={locked}
+        hidden={!editMode}
+        className="no-print surface space-y-6 p-6 disabled:opacity-90"
+      >
+
         <h2 className="font-display text-xl font-semibold">
           {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
         </h2>
