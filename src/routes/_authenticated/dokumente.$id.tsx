@@ -137,6 +137,8 @@ function DokumentDetail() {
       service_period: String(d["service_period"] ?? ""),
       tax_mode: String(d["tax_mode"] ?? "eu_reverse_charge"),
       customer_id: (d["customer_id"] as string) ?? null,
+      customer_number: String(d["customer_number"] ?? ""),
+
       customer_name: String(d["customer_name"] ?? ""),
       customer_company: String(d["customer_company"] ?? ""),
       customer_email: String(d["customer_email"] ?? ""),
