@@ -210,7 +210,15 @@ function Kunden() {
             {customers.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{c.company || c.name}</div>
+                  <div className="font-medium">
+                    {c.company || c.name}
+                    {c.customer_number && (
+                      <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                        {c.customer_number}
+                      </span>
+                    )}
+                  </div>
+
                   <div className="truncate text-sm text-muted-foreground">
                     {[c.name, c.email, c.city].filter(Boolean).join(" · ")}
                   </div>
