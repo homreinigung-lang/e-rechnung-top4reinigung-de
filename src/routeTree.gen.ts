@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RechtlichesRouteImport } from './routes/rechtliches'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
+import { Route as AuthenticatedBankverbindungRouteImport } from './routes/_authenticated/bankverbindung'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
@@ -61,6 +62,12 @@ const AuthenticatedAusgabenRoute = AuthenticatedAusgabenRouteImport.update({
   path: '/ausgaben',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBankverbindungRoute =
+  AuthenticatedBankverbindungRouteImport.update({
+    id: '/bankverbindung',
+    path: '/bankverbindung',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
+  '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
@@ -177,6 +185,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
+  '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kunden': typeof AuthenticatedKundenRoute
@@ -202,6 +211,7 @@ export interface FileRoutesById {
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
+  '/_authenticated/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/rechtliches'
     | '/reset-password'
     | '/ausgaben'
+    | '/bankverbindung'
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/ausgaben'
+    | '/bankverbindung'
     | '/dashboard'
     | '/einstellungen'
     | '/kunden'
@@ -273,6 +285,7 @@ export interface FileRouteTypes {
     | '/rechtliches'
     | '/reset-password'
     | '/_authenticated/ausgaben'
+    | '/_authenticated/bankverbindung'
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
     | '/_authenticated/kunden'
@@ -342,6 +355,13 @@ declare module '@tanstack/react-router' {
       path: '/ausgaben'
       fullPath: '/ausgaben'
       preLoaderRoute: typeof AuthenticatedAusgabenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/bankverbindung': {
+      id: '/_authenticated/bankverbindung'
+      path: '/bankverbindung'
+      fullPath: '/bankverbindung'
+      preLoaderRoute: typeof AuthenticatedBankverbindungRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -461,6 +481,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAusgabenRoute: typeof AuthenticatedAusgabenRoute
+  AuthenticatedBankverbindungRoute: typeof AuthenticatedBankverbindungRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
@@ -475,6 +496,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAusgabenRoute: AuthenticatedAusgabenRoute,
+  AuthenticatedBankverbindungRoute: AuthenticatedBankverbindungRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
