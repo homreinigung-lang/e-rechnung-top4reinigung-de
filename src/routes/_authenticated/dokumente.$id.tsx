@@ -101,6 +101,8 @@ type Item = {
 
 /** Standard-Nettostundensatz (29,41 € netto ≈ 35,00 € brutto bei 19 % MwSt.). */
 const DEFAULT_NET_RATE = 29.41;
+const UNIT_OPTIONS: string[] = ["Std.", "m²", "Pauschal", "Karton", "Kanister / Gallone"];
+
 
 
 function DokumentDetail() {
