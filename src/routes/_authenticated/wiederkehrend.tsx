@@ -132,7 +132,7 @@ function RecurringPage() {
       toast.success("Rechnungsentwurf aus Vorlage erzeugt");
       queryClient.invalidateQueries({ queryKey: ["recurring"] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      navigate({ to: "/dokumente/$id", params: { id: newId } });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });

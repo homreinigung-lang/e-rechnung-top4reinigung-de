@@ -305,7 +305,7 @@ function DokumentDetail() {
     onSuccess: (newId) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Kopie erstellt");
-      navigate({ to: "/dokumente/$id", params: { id: newId } });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -338,7 +338,7 @@ function DokumentDetail() {
     onSuccess: (newId) => {
       toast.success("Stornorechnung erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      navigate({ to: "/dokumente/$id", params: { id: newId } });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -368,7 +368,7 @@ function DokumentDetail() {
     onSuccess: (newId) => {
       toast.success("Rechnung aus Angebot erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      navigate({ to: "/dokumente/$id", params: { id: newId } });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
