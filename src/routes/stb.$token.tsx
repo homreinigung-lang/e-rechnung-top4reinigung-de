@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Download, FileSpreadsheet, Lock, Paperclip, Printer } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Lock, Paperclip, Printer } from "lucide-react";
 
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
