@@ -23,7 +23,7 @@ import { formatDate } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
     meta: [
-      { title: "Meine Arbeitszeiten – Hom R Office" },
+      { title: "Meine Arbeitszeiten – HomR" },
       {
         name: "description",
         content:

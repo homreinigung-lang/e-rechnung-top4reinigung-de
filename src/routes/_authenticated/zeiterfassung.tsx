@@ -44,7 +44,7 @@ function de(n: number) {
 export const Route = createFileRoute("/_authenticated/zeiterfassung")({
   head: () => ({
     meta: [
-      { title: "Mitarbeiter-Zeiterfassung – Hom R Office" },
+      { title: "Mitarbeiter-Zeiterfassung – HomR" },
       {
         name: "description",
         content:

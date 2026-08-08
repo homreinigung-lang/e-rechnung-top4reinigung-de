@@ -13,13 +13,13 @@ import { FileText, Mail, MoreVertical, Receipt, ShieldCheck } from "lucide-react
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Hom R Office – Rechnungen & Angebote für Reinigungsfirmen" },
+      { title: "HomR – Rechnungen & Angebote für Reinigungsfirmen" },
       {
         name: "description",
         content:
           "Angebote und Rechnungen ohne Umsatzsteuer (Reverse-Charge, EU) erstellen, verwalten und direkt per E-Mail versenden.",
       },
-      { property: "og:title", content: "Hom R Office – Rechnungen & Angebote" },
+      { property: "og:title", content: "HomR – Rechnungen & Angebote" },
       {
         property: "og:description",
         content:
@@ -60,12 +60,12 @@ function Landing() {
         <div className="flex items-center gap-2">
           <img
             src="/app-icon-192.png"
-            alt="Hom R Office Logo"
+            alt="HomR Logo"
             width={36}
             height={36}
             className="size-9 rounded-lg"
           />
-          <span className="font-display text-lg font-semibold">Hom R Office</span>
+          <span className="font-display text-lg font-semibold">HomR</span>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

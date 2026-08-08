@@ -16,7 +16,7 @@ import { LoginMethodsCard } from "@/components/LoginMethodsCard";
 export const Route = createFileRoute("/_authenticated/profil")({
   head: () => ({
     meta: [
-      { title: "Firmendaten – Hom R Office" },
+      { title: "Firmendaten – HomR" },
       {
         name: "description",
         content: "Firmenname, Inhaber, Anschrift, Steuernummern, Bankverbindung und Logo pflegen.",

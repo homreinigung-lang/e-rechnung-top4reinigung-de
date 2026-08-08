@@ -10,10 +10,10 @@ import { PasswordInput } from "@/components/PasswordInput";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Neues Passwort festlegen – Hom R Office" },
+      { title: "Neues Passwort festlegen – HomR" },
       {
         name: "description",
-        content: "Legen Sie ein neues Passwort für Ihren Zugang zu Hom R Office fest.",
+        content: "Legen Sie ein neues Passwort für Ihren Zugang zu HomR fest.",
       },
       { property: "og:title", content: "Neues Passwort festlegen" },
       { property: "og:description", content: "Passwort sicher zurücksetzen." },

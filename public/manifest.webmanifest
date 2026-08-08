@@ -1,6 +1,6 @@
 {
-  "name": "Hom R Office – Rechnungen & Angebote",
-  "short_name": "Hom R Office",
+  "name": "HomR – Rechnungen & Angebote",
+  "short_name": "HomR",
   "lang": "de",
   "start_url": "/dashboard",
   "display": "standalone",

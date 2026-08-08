@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const logoSrc = useFileUrl((settings as { logo_url?: string } | null)?.logo_url);
   const companyName =
-    (settings as { company_name?: string } | null)?.company_name || "Hom R Office";
+    (settings as { company_name?: string } | null)?.company_name || "HomR";
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : (
               <img
                 src="/app-icon-192.png"
-                alt="Hom R Office Logo"
+                alt="HomR Logo"
                 width={32}
                 height={32}
                 className="size-8 rounded-lg"

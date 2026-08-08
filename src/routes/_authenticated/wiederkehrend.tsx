@@ -22,13 +22,13 @@ export const Route = createFileRoute("/_authenticated/wiederkehrend")({
   component: RecurringPage,
   head: () => ({
     meta: [
-      { title: "Wiederkehrende Rechnungen – Hom R Office" },
+      { title: "Wiederkehrende Rechnungen – HomR" },
       {
         name: "description",
         content:
           "Wiederkehrende Rechnungen automatisch in festen Intervallen aus einer Vorlage erzeugen.",
       },
-      { property: "og:title", content: "Wiederkehrende Rechnungen – Hom R Office" },
+      { property: "og:title", content: "Wiederkehrende Rechnungen – HomR" },
       {
         property: "og:description",
         content: "Abonnements und Wartungsverträge periodisch abrechnen.",
