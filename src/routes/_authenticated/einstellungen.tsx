@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,16 @@ import { saveFile } from "@/lib/download";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { FileUploadButton } from "@/components/FileUploadButton";
-import { permanentFileUrl } from "@/lib/storage";
+import { permanentFileUrl, uploadUserFile } from "@/lib/storage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ImagePlus } from "lucide-react";
+
 import { buildSignatureHtml } from "@/lib/signature";
 import { DomainDnsCheckCard } from "@/components/DomainDnsCheckCard";
 import {
@@ -76,6 +86,28 @@ function downloadCsv(name: string, rows: Record<string, unknown>[]) {
 function Einstellungen() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
+  const signatureImageInput = useRef<HTMLInputElement>(null);
+
+  /** Fügt ein Bild-Tag an die HTML-Signatur an. */
+  function appendSignatureImage(url: string) {
+    setForm((prev) => ({
+      ...prev,
+      email_signature_html:
+        (prev["email_signature_html"] ?? "") +
+        `\n<img src="${url}" alt="Bild" style="max-height:70px" />`,
+    }));
+  }
+
+  /** Lädt eine Bilddatei hoch und fügt sie in die HTML-Signatur ein. */
+  async function insertSignatureImage(file: File) {
+    try {
+      const path = await uploadUserFile(file, "signatur");
+      appendSignatureImage(await permanentFileUrl(path));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Bild konnte nicht eingefügt werden");
+    }
+  }
+
   const [preview, setPreview] = useState<{
     kind: "documents" | "expenses" | "customers";
     fileName: string;
@@ -353,39 +385,57 @@ function Einstellungen() {
             placeholder={'<p><strong>Hom Reinigung Service</strong><br />Poststraße 8, 66333 Völklingen</p>\n<img src="https://…/banner.png" alt="Logo" style="max-height:70px" />'}
           />
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setForm((prev) => ({
-                  ...prev,
-                  email_signature_html:
-                    (prev["email_signature_html"] ?? "") +
-                    '\n<img src="BILD-URL-HIER" alt="Bild" style="max-height:70px" />',
-                }))
-              }
-            >
-              Bild einfügen
-            </Button>
-            <FileUploadButton
-              folder="signatur"
+            <input
+              ref={signatureImageInput}
+              type="file"
               accept="image/*"
-              label="Bild hochladen & einfügen"
-              onUploaded={async (path) => {
-                try {
-                  const url = await permanentFileUrl(path);
-                  setForm((prev) => ({
-                    ...prev,
-                    email_signature_html:
-                      (prev["email_signature_html"] ?? "") +
-                      `\n<img src="${url}" alt="Bild" style="max-height:70px" />`,
-                  }));
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Bild konnte nicht eingefügt werden");
-                }
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void insertSignatureImage(file);
               }}
             />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <ImagePlus className="size-4" /> Bild-Optionen
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuItem onSelect={() => signatureImageInput.current?.click()}>
+                  Bild hochladen &amp; einfügen
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    const url = window.prompt("Bild-Adresse (URL) eingeben:", "https://");
+                    if (!url || !/^https?:\/\//i.test(url)) return;
+                    appendSignatureImage(url);
+                  }}
+                >
+                  Bild per URL einfügen
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => appendSignatureImage("BILD-URL-HIER")}>
+                  Platzhalter einfügen
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      email_signature_html: String(prev["email_signature_html"] ?? "").replace(
+                        /\n?<img[^>]*>/gi,
+                        "",
+                      ),
+                    }))
+                  }
+                >
+                  Alle Bilder entfernen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+
           <div className="space-y-2">
             <Label>Vorschau</Label>
             <div

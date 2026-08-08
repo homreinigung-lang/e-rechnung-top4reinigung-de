@@ -84,10 +84,16 @@ function Kunden() {
         if (error) throw error;
       } else {
         const { id: _ignored, ...rest } = values;
-        const { error } = await supabase.from("customers").insert({ ...rest, user_id: userId });
+        // Kundennummer wird automatisch fortlaufend vergeben (z. B. KU-2026-0001).
+        const { data: number, error: numberError } = await supabase.rpc("next_customer_number");
+        if (numberError) throw numberError;
+        const { error } = await supabase
+          .from("customers")
+          .insert({ ...rest, customer_number: String(number ?? ""), user_id: userId });
         if (error) throw error;
       }
     },
+
     onSuccess: () => {
       toast.success("Kunde gespeichert");
       setOpen(false);
@@ -149,7 +155,22 @@ function Kunden() {
               <DialogTitle>{form.id ? "Kunde bearbeiten" : "Neuer Kunde"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="customer_number">Kundennummer (automatisch)</Label>
+                <Input
+                  id="customer_number"
+                  readOnly
+                  disabled
+                  className="bg-muted"
+                  value={
+                    form.id
+                      ? (customers.find((c) => c.id === form.id)?.customer_number ?? "")
+                      : "Wird beim Speichern automatisch vergeben"
+                  }
+                />
+              </div>
               {field("name", "Ansprechpartner / Name")}
+
               {field("company", "Firma")}
               {field("email", "E-Mail", "email")}
               {field("phone", "Telefon")}
@@ -189,7 +210,15 @@ function Kunden() {
             {customers.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{c.company || c.name}</div>
+                  <div className="font-medium">
+                    {c.company || c.name}
+                    {c.customer_number && (
+                      <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                        {c.customer_number}
+                      </span>
+                    )}
+                  </div>
+
                   <div className="truncate text-sm text-muted-foreground">
                     {[c.name, c.email, c.city].filter(Boolean).join(" · ")}
                   </div>

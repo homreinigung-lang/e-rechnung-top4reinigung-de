@@ -44,7 +44,7 @@ function de(n: number) {
 export const Route = createFileRoute("/_authenticated/zeiterfassung")({
   head: () => ({
     meta: [
-      { title: "Mitarbeiter-Zeiterfassung – Hom R Office" },
+      { title: "Mitarbeiter-Zeiterfassung – HomR" },
       {
         name: "description",
         content:
@@ -69,8 +69,11 @@ type Employee = {
   hourly_rate: number;
   active: boolean;
   email: string;
+  phone: string;
+  personnel_number: string;
   auth_user_id: string | null;
 };
+
 
 
 type EntryForm = {
@@ -107,8 +110,11 @@ const emptyEmployee = {
   name: "",
   role: "",
   email: "",
+  phone: "",
+  personnel_number: "",
   hourly_rate: "",
 };
+
 
 
 function num(v: string) {
@@ -213,8 +219,11 @@ function Zeiterfassung() {
         name: values.name.trim(),
         role: values.role,
         email: values.email.trim().toLowerCase(),
+        phone: values.phone.trim(),
+        personnel_number: values.personnel_number.trim(),
         hourly_rate: num(values.hourly_rate),
       };
+
 
       if (values.id) {
         const { error } = await supabase.from("employees").update(payload).eq("id", values.id);
@@ -552,6 +561,25 @@ function Zeiterfassung() {
                     onChange={(e) => setEmp({ ...emp, hourly_rate: e.target.value })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emp-persno">Personalnummer</Label>
+                  <Input
+                    id="emp-persno"
+                    dir="ltr"
+                    value={emp.personnel_number}
+                    onChange={(e) => setEmp({ ...emp, personnel_number: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emp-phone">Telefonnummer</Label>
+                  <Input
+                    id="emp-phone"
+                    type="tel"
+                    dir="ltr"
+                    value={emp.phone}
+                    onChange={(e) => setEmp({ ...emp, phone: e.target.value })}
+                  />
+                </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="emp-email">E-Mail (Login für Mitarbeiter)</Label>
                   <Input
@@ -566,6 +594,7 @@ function Zeiterfassung() {
                     unter „Meine Zeiten“ nur die eigenen Arbeitszeiten erfassen.
                   </p>
                 </div>
+
               </div>
               <DialogFooter>
                 <Button
@@ -583,8 +612,10 @@ function Zeiterfassung() {
                       <div className="text-sm font-medium">{e.name}</div>
                       <div className="text-xs text-muted-foreground">
                         {[
+                          e.personnel_number ? `Nr. ${e.personnel_number}` : null,
                           e.role,
                           `${formatMoney(Number(e.hourly_rate))}/Std.`,
+                          e.phone || null,
                           e.email || null,
                           e.auth_user_id ? "Login aktiv" : "Kein Login",
                         ]
@@ -601,6 +632,9 @@ function Zeiterfassung() {
                           name: e.name,
                           role: e.role,
                           email: e.email ?? "",
+                          phone: e.phone ?? "",
+                          personnel_number: e.personnel_number ?? "",
+
                           hourly_rate: String(e.hourly_rate ?? ""),
                         })
                       }

@@ -1,11 +1,30 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
 import { computeEuer } from "@/lib/euer";
+import { createDocument } from "@/lib/create-document";
+import { useMyEmployee, type MyEmployee } from "@/lib/employee";
 import { dueInfo, mahnLabel } from "@/lib/workflow";
-import { AlertTriangle, FileText, Plus, Receipt, TrendingDown, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  Clock,
+  FileText,
+  Plus,
+  Receipt,
+  TrendingDown,
+  Users,
+} from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -23,6 +42,106 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
+  const { data: myEmployee, isPending } = useMyEmployee();
+  if (isPending) return <p className="text-muted-foreground">Wird geladen …</p>;
+  if (myEmployee) return <EmployeeDashboard employee={myEmployee} />;
+  return <AdminDashboard />;
+}
+
+/** Mitarbeiter-Ansicht: ausschließlich eigene Zeiterfassung und Arbeitsstunden. */
+function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
+  const { data: entries = [] } = useQuery({
+    queryKey: ["my_time_entries", employee.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("id, work_date, start_time, end_time, hours, location, note")
+        .eq("employee_id", employee.id)
+        .order("work_date", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const month = new Date().toISOString().slice(0, 7);
+  const inMonth = entries.filter((e) => String(e.work_date).startsWith(month));
+  const sum = (rows: typeof entries) => rows.reduce((s, e) => s + Number(e.hours || 0), 0);
+  const days = new Set(inMonth.map((e) => e.work_date)).size;
+  const hoursText = (h: number) => `${h.toFixed(2).replace(".", ",")} Std.`;
+
+  const stats = [
+    { label: "Stunden diesen Monat", value: hoursText(sum(inMonth)), icon: Clock },
+    { label: "Arbeitstage diesen Monat", value: String(days), icon: CalendarClock },
+    { label: "Stunden gesamt", value: hoursText(sum(entries)), icon: Clock },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Meine Übersicht</h1>
+          <p className="mt-1 text-muted-foreground">
+            {employee.name} · Ihre erfassten Arbeitszeiten und Stunden.
+          </p>
+        </div>
+        <Button asChild>
+          <Link to="/meine-zeiten">
+            <Clock className="size-4" /> Zeit erfassen
+          </Link>
+        </Button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        {stats.map((s) => (
+          <div key={s.label} className="surface p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{s.label}</span>
+              <s.icon className="size-4 text-primary" />
+            </div>
+            <div className="mt-3 font-display text-2xl font-semibold">{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="surface overflow-hidden">
+        <div className="border-b px-5 py-4">
+          <h2 className="font-semibold">Zuletzt erfasste Zeiten</h2>
+        </div>
+        {entries.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+            Noch keine Arbeitszeiten erfasst.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {entries.slice(0, 10).map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                <div>
+                  <div className="font-medium">{formatDate(String(e.work_date))}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {[
+                      e.start_time && e.end_time
+                        ? `${String(e.start_time).slice(0, 5)}–${String(e.end_time).slice(0, 5)}`
+                        : null,
+                      e.location || null,
+                      e.note || null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </div>
+                </div>
+                <div className="font-medium">{hoursText(Number(e.hours || 0))}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboard() {
+  const navigate = useNavigate();
+
   const year = new Date().getFullYear();
 
   const { data } = useQuery({
@@ -104,11 +223,37 @@ function Dashboard() {
             Umsatz, Umsatzsteuer und Ergebnis – konform zu § 14 UStG.
           </p>
         </div>
-        <Button asChild>
-          <Link to="/dokumente">
-            <Plus className="size-4" /> Neues Dokument
-          </Link>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Plus className="size-4" /> Neues Dokument
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem
+              onSelect={() => {
+                void createDocument("invoice")
+                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId } }))
+                  .catch((e: Error) => toast.error(e.message));
+              }}
+            >
+              <Receipt className="size-4" /> Rechnung erstellen
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                void createDocument("quote")
+                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId } }))
+                  .catch((e: Error) => toast.error(e.message));
+              }}
+            >
+              <FileText className="size-4" /> Angebot erstellen
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void navigate({ to: "/ausgaben" })}>
+              <TrendingDown className="size-4" /> Beleg hinzufügen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

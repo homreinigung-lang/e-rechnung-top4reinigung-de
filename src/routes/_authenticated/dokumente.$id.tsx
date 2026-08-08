@@ -137,6 +137,8 @@ function DokumentDetail() {
       service_period: String(d["service_period"] ?? ""),
       tax_mode: String(d["tax_mode"] ?? "eu_reverse_charge"),
       customer_id: (d["customer_id"] as string) ?? null,
+      customer_number: String(d["customer_number"] ?? ""),
+
       customer_name: String(d["customer_name"] ?? ""),
       customer_company: String(d["customer_company"] ?? ""),
       customer_email: String(d["customer_email"] ?? ""),
@@ -397,6 +399,8 @@ function DokumentDetail() {
     setForm((f) => ({
       ...f,
       customer_id: c.id,
+      customer_number: (c as { customer_number?: string }).customer_number ?? "",
+
       customer_name: c.name,
       customer_company: c.company,
       customer_email: c.email,
@@ -987,12 +991,19 @@ function DokumentDetail() {
               )}
             </address>
             <dl className="space-y-1 text-right">
+              {form["customer_number"] && (
+                <div>
+                  <dt className="inline text-muted-foreground">Kundennummer: </dt>
+                  <dd className="inline font-medium">{String(form["customer_number"])}</dd>
+                </div>
+              )}
               <div>
                 <dt className="inline text-muted-foreground">
                   {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"}:{" "}
                 </dt>
                 <dd className="inline font-medium">{docNumber}</dd>
               </div>
+
               <div>
                 <dt className="inline text-muted-foreground">
                   {isInvoice ? "Rechnungsdatum" : "Datum"}:{" "}
