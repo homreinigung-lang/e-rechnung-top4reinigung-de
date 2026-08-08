@@ -159,6 +159,8 @@ function DokumentDetail() {
       customer_country: String(d["customer_country"] ?? ""),
       customer_vat_id: String(d["customer_vat_id"] ?? ""),
       intro_text: String(d["intro_text"] ?? ""),
+      service_description: String(d["service_description"] ?? ""),
+
       notes: String(d["notes"] ?? ""),
       attachment_title: String(d["attachment_title"] ?? ""),
       attachment_text: String(d["attachment_text"] ?? ""),
