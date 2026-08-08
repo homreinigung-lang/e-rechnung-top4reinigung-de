@@ -1152,7 +1152,34 @@ function DokumentDetail() {
               </tbody>
             </table>
           </div>
+
+          {!isInvoice && form["service_description"] && (
+            <section className="invoice-description mt-6">
+              <h3 className="font-display text-base font-semibold">Leistungsbeschreibung</h3>
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {String(form["service_description"])
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                  .map((line, index) => {
+                    const bullet = /^[-•*]\s*/.test(line);
+                    const text = line.replace(/^[-•*]\s*/, "");
+                    return bullet ? (
+                      <li key={index} className="flex gap-2">
+                        <span aria-hidden="true">•</span>
+                        <span className="break-words">{text}</span>
+                      </li>
+                    ) : (
+                      <li key={index} className="list-none font-medium break-words">
+                        {text}
+                      </li>
+                    );
+                  })}
+              </ul>
+            </section>
+          )}
         </div>
+
 
         <div className="invoice-summary-block">
           <div className="invoice-closing">
