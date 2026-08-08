@@ -69,9 +69,10 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    bearbeiten: search["bearbeiten"] === true || search["bearbeiten"] === "1",
+  validateSearch: (search: Record<string, unknown>): { bearbeiten?: boolean } => ({
+    bearbeiten: search["bearbeiten"] === true || search["bearbeiten"] === "1" ? true : undefined,
   }),
+
   head: () => ({
     meta: [
       { title: "Beleg-Vorschau – Rechnungen & Angebote" },
