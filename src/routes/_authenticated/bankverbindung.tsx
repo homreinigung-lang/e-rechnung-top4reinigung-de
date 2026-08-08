@@ -55,6 +55,8 @@ type BankForm = {
 
 function BankverbindungPage() {
   const queryClient = useQueryClient();
+  const [bankingOpen, setBankingOpen] = useState(false);
+
   const [form, setForm] = useState<BankForm>({
     bank_name: "",
     iban: "",
@@ -195,9 +197,38 @@ function BankverbindungPage() {
             Die Anbindung ist noch nicht aktiv. Zugangsdaten werden ausschließlich
             verschlüsselt gespeichert, sobald die Funktion freigeschaltet wird.
           </div>
-          <Button variant="outline" disabled>
-            Bankkonto verbinden (bald verfügbar)
+          <Button variant="outline" onClick={() => setBankingOpen(true)}>
+            Bankkonto verbinden
           </Button>
+
+          <Dialog open={bankingOpen} onOpenChange={setBankingOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Link2 className="size-4" /> Live-Banking wird eingerichtet
+                </DialogTitle>
+                <DialogDescription>
+                  Die direkte Bankkonto-Anbindung (PSD2 / FinTS) wird demnächst
+                  freigeschaltet.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  Sobald die Funktion aktiv ist, können Sie Ihr Geschäftskonto
+                  sicher verbinden. Kontoumsätze werden dann automatisch
+                  abgerufen und offenen Rechnungen zugeordnet.
+                </p>
+                <p>
+                  Bis dahin gelten die oben hinterlegten Bankdaten – sie
+                  erscheinen weiterhin auf Rechnungen und im GiroCode.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setBankingOpen(false)}>Verstanden</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
         </CardContent>
       </Card>
     </div>
