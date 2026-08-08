@@ -913,56 +913,81 @@ function DokumentDetail() {
             </Button>
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            Alle Preise werden als <strong>Netto-Beträge</strong> (z. B. Netto-Stundensatz)
+            eingegeben. Die Umsatzsteuer wird automatisch berechnet.
+          </p>
+
           {items.map((item, index) => (
             <div key={item.id} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-12">
-              <Input
-                className="sm:col-span-5"
-                placeholder="Bezeichnung (z. B. Unterhaltsreinigung Büro)"
-                value={item.description}
-                onChange={(e) => updateItem(index, { description: e.target.value })}
-              />
-              <Input
-                className="sm:col-span-2"
-                type="number"
-                step="0.01"
-                value={item.quantity}
-                onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-              />
-              <Input
-                className="sm:col-span-2"
-                placeholder="Einheit"
-                value={item.unit}
-                onChange={(e) => updateItem(index, { unit: e.target.value })}
-              />
-              <Input
-                className="sm:col-span-2"
-                type="number"
-                step="0.01"
-                value={item.unit_price}
-                onChange={(e) => updateItem(index, { unit_price: Number(e.target.value) })}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="sm:col-span-1"
-                onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-              >
-                <Trash2 className="size-4 text-destructive" />
-              </Button>
+              <div className="space-y-1 sm:col-span-5">
+                <Label className="text-xs text-muted-foreground">Bezeichnung</Label>
+                <Input
+                  placeholder="Bezeichnung (z. B. Unterhaltsreinigung Büro)"
+                  value={item.description}
+                  onChange={(e) => updateItem(index, { description: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">Menge</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={item.quantity}
+                  onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">Einheit</Label>
+                <Input
+                  placeholder="Einheit"
+                  value={item.unit}
+                  onChange={(e) => updateItem(index, { unit: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">Netto-Preis / Einheit €</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={item.unit_price}
+                  onChange={(e) => updateItem(index, { unit_price: Number(e.target.value) })}
+                />
+              </div>
+              <div className="flex items-end sm:col-span-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground sm:col-span-12">
+                Netto {formatMoney(item.quantity * item.unit_price)}
+                {vatRate > 0 && (
+                  <>
+                    {" · "}Brutto inkl. {formatNumber(vatRate)} % MwSt.{" "}
+                    {formatMoney(item.quantity * item.unit_price * (1 + vatRate / 100))}
+                  </>
+                )}
+              </p>
             </div>
           ))}
 
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Zwischensumme netto</span>
+              <span className="text-muted-foreground">Nettobetrag</span>
               <span>{formatMoney(netTotal)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Umsatzsteuer {formatNumber(vatRate)} %</span>
+              <span className="text-muted-foreground">
+                zzgl. Umsatzsteuer {formatNumber(vatRate)} %
+              </span>
               <span>{formatMoney(vatAmount)}</span>
             </div>
             <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
-              <span>Gesamtbetrag</span>
+              <span>Bruttobetrag</span>
               <span>{formatMoney(grossTotal)}</span>
             </div>
           </div>
@@ -1128,8 +1153,8 @@ function DokumentDetail() {
                   <th className="px-2 py-2 font-medium">Bezeichnung</th>
                   <th className="px-2 py-2 text-right font-medium">Menge</th>
                   <th className="px-2 py-2 font-medium">Einheit</th>
-                  <th className="px-2 py-2 text-right font-medium">Einzelpreis €</th>
-                  <th className="px-2 py-2 text-right font-medium">Gesamtpreis €</th>
+                  <th className="px-2 py-2 text-right font-medium">Einzelpreis netto €</th>
+                  <th className="px-2 py-2 text-right font-medium">Gesamtpreis netto €</th>
                 </tr>
               </thead>
               <tbody>
@@ -1186,17 +1211,17 @@ function DokumentDetail() {
             <div className="mt-3 flex justify-end">
               <div className="w-72 space-y-0.5">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Zwischensumme netto</span>
+                  <span className="text-muted-foreground">Nettobetrag (Summe netto)</span>
                   <span>{formatMoney(netTotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    Umsatzsteuer {formatNumber(vatRate)} %
+                    zzgl. Umsatzsteuer {formatNumber(vatRate)} %
                   </span>
                   <span>{formatMoney(vatAmount)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
-                  <span>Gesamtbetrag</span>
+                  <span>{vatRate > 0 ? "Bruttobetrag (inkl. MwSt.)" : "Gesamtbetrag"}</span>
                   <span>{formatMoney(grossTotal)}</span>
                 </div>
               </div>
