@@ -195,6 +195,8 @@
   .print-area header,
   .invoice-summary-block,
   .invoice-closing,
+  .invoice-description,
+  .invoice-description li,
   .print-area footer,
   .print-area tr,
   .print-area td,
@@ -209,6 +211,7 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
+
 
   .invoice-summary-block {
     display: flow-root;
