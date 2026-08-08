@@ -2,13 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAccountantReport, type Row } from "@/lib/accountant.functions";
+import {
+  getAccountantReceiptUrl,
+  getAccountantReport,
+  type Row,
+} from "@/lib/accountant.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Download, FileSpreadsheet, Lock, Printer } from "lucide-react";
+import { Download, FileSpreadsheet, Lock, Paperclip, Printer } from "lucide-react";
+
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
 
