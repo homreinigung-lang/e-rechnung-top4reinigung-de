@@ -61,9 +61,52 @@ const empty: Form = {
   receipt_url: "",
 };
 
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function Ausgaben() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Form>(empty);
+  const [scanning, setScanning] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const runScan = useServerFn(scanReceipt);
+
+  /** Liest den hochgeladenen Beleg aus und füllt die Felder vor. */
+  async function analyze(file: File) {
+    setScanning(true);
+    setScanned(false);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const r = await runScan({
+        data: { dataUrl, mimeType: file.type || "application/pdf" },
+      });
+      setForm((f) => ({
+        ...f,
+        supplier: r.supplier || f.supplier,
+        document_number: r.document_number || f.document_number,
+        expense_date: r.expense_date || f.expense_date,
+        net_amount: r.net_amount ? String(r.net_amount.toFixed(2)) : f.net_amount,
+        vat_amount: r.vat_amount ? String(r.vat_amount.toFixed(2)) : f.vat_amount,
+        category: CATEGORIES.includes(r.category) ? r.category : f.category,
+        notes: r.notes || f.notes,
+      }));
+      setScanned(true);
+      toast.success("Belegdaten erkannt", {
+        description: "Bitte Beträge und Datum kurz prüfen.",
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Beleg konnte nicht ausgelesen werden.");
+    } finally {
+      setScanning(false);
+    }
+  }
+
 
   const { data: rows = [] } = useQuery({
     queryKey: ["expenses"],
