@@ -99,6 +99,10 @@ type Item = {
   unit_price: number;
 };
 
+/** Standard-Nettostundensatz (29,41 € netto ≈ 35,00 € brutto bei 19 % MwSt.). */
+const DEFAULT_NET_RATE = 29.41;
+
+
 function DokumentDetail() {
   const { id } = Route.useParams();
   const { bearbeiten } = Route.useSearch();
@@ -904,7 +908,7 @@ function DokumentDetail() {
                     description: "",
                     quantity: 1,
                     unit: "Std.",
-                    unit_price: 0,
+                    unit_price: Number(prev[prev.length - 1]?.unit_price) || DEFAULT_NET_RATE,
                   },
                 ])
               }
