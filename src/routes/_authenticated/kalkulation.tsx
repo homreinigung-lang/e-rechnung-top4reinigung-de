@@ -582,9 +582,23 @@ function KalkulationPage() {
               )}
             </div>
 
+            <div className="space-y-3 rounded-md border border-dashed p-3">
+              <p className="text-xs text-muted-foreground">
+                Diese Kalkulation ist ein interner Entwurf. Bitte alle Angaben prüfen und final
+                bestätigen – erst danach kann ein Angebot erstellt werden.
+              </p>
+              <label className="flex cursor-pointer items-start gap-2 text-sm font-medium">
+                <Checkbox
+                  checked={confirmed}
+                  onCheckedChange={(checked) => setConfirmed(Boolean(checked))}
+                />
+                <span>Kalkulation geprüft und final bestätigt</span>
+              </label>
+            </div>
+
             <Button
               className="w-full"
-              disabled={toQuote.isPending || endNet <= 0}
+              disabled={toQuote.isPending || endNet <= 0 || !confirmed}
               onClick={() => toQuote.mutate()}
             >
               <FileSignature className="size-4" />
