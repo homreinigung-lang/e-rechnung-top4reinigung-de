@@ -169,11 +169,14 @@ function DokumentDetail() {
       customer_vat_id: String(d["customer_vat_id"] ?? ""),
       intro_text: String(d["intro_text"] ?? ""),
       service_description: String(d["service_description"] ?? ""),
+      discount_percent: String(d["discount_percent"] ?? "0"),
+      discount_reason: String(d["discount_reason"] ?? ""),
 
       notes: String(d["notes"] ?? ""),
       attachment_title: String(d["attachment_title"] ?? ""),
       attachment_text: String(d["attachment_text"] ?? ""),
     });
+
     setItems(
       data.items.map((i) => ({
         ...i,
