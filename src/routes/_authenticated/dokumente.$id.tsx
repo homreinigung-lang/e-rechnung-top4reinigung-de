@@ -21,6 +21,7 @@ import {
   formatDate,
   formatMoney,
   formatNumber,
+  today,
 } from "@/lib/format";
 import { buildEpcPayload } from "@/lib/epc";
 import { GiroCode } from "@/components/GiroCode";
@@ -35,6 +36,7 @@ import {
   dueInfo,
   mahnLabel,
   mahnungAllowed,
+  markInvoicePaid,
   sendReminder,
   setQuoteDecision,
   type ReminderKind,
@@ -52,6 +54,7 @@ import {
 import {
   ArrowLeft,
   ArrowRightLeft,
+  BadgeEuro,
   Ban,
   BellRing,
   Check,
@@ -212,6 +215,7 @@ function DokumentDetail() {
         ...form,
         number,
         due_date: form["due_date"] ? form["due_date"] : null,
+        paid_at: form["status"] === "paid" ? form["paid_at"] || today() : null,
         customer_id: form["customer_id"] || null,
         vat_rate: vatRate,
         reverse_charge: taxMode !== "domestic",
@@ -352,6 +356,17 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const markPaid = useMutation({
+    mutationFn: (date: string) => markInvoicePaid(id, date),
+    onSuccess: (paid) => {
+      setForm((f) => ({ ...f, status: "paid", paid_at: paid }));
+      toast.success(`Als bezahlt markiert (${formatDate(paid)})`);
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
   const reminder = useMutation({
     mutationFn: (kind: ReminderKind) => sendReminder(id, kind),
     onSuccess: (level) => {
@@ -409,7 +424,16 @@ function DokumentDetail() {
     .join(", ");
 
   function setField(key: string, value: string | boolean | null) {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      // Status "Bezahlt" und Zahlungsdatum bleiben automatisch synchron.
+      if (key === "status") {
+        if (value === "paid" && !next["paid_at"]) next["paid_at"] = today();
+        if (value !== "paid") next["paid_at"] = null;
+      }
+      if (key === "paid_at" && value) next["status"] = "paid";
+      return next;
+    });
   }
 
   function pickCustomer(customerId: string) {
@@ -621,6 +645,27 @@ function DokumentDetail() {
           </>
         )}
 
+          {isInvoice && !isStorno && doc.status !== "paid" && doc.status !== "cancelled" && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const date = window.prompt(
+                  "Zahlungsdatum (JJJJ-MM-TT) bestätigen:",
+                  String(form["paid_at"] ?? today()),
+                );
+                if (!date) return;
+                markPaid.mutate(date);
+              }}
+              disabled={markPaid.isPending}
+            >
+              <BadgeEuro className="size-4" /> Als bezahlt markieren
+            </Button>
+          )}
+          {isInvoice && doc.status === "paid" && (
+            <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+              Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
+            </span>
+          )}
 
 
           {isInvoice &&
@@ -860,6 +905,20 @@ function DokumentDetail() {
                 value={String(form["due_date"] ?? "")}
                 onChange={(e) => setField("due_date", e.target.value)}
               />
+            </div>
+          )}
+          {isInvoice && (
+            <div className="space-y-2">
+              <Label>Zahlungsdatum (bezahlt am)</Label>
+              <Input
+                type="date"
+                value={String(form["paid_at"] ?? "")}
+                onChange={(e) => setField("paid_at", e.target.value || null)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Sobald ein Zahlungsdatum eingetragen ist, wechselt der Status automatisch auf
+                „Bezahlt" und die Rechnung verlässt die offenen Posten.
+              </p>
             </div>
           )}
           <div className="space-y-2">

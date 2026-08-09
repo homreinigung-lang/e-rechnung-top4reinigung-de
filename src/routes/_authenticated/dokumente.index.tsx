@@ -16,6 +16,7 @@ import {
   formatDate,
   formatMoney,
   nextNumber,
+  parseGermanDate,
   today,
   addDays,
 } from "@/lib/format";
@@ -24,12 +25,14 @@ import {
   dueInfo,
   mahnLabel,
   mahnungAllowed,
+  markInvoicePaid,
   sendReminder,
   setQuoteDecision,
   type ReminderKind,
 } from "@/lib/workflow";
 import {
   ArrowRightLeft,
+  BadgeEuro,
   BellRing,
   Check,
   Copy,
@@ -196,6 +199,15 @@ function DokumenteListe() {
     onError: (e: Error) => toast.error(describeGobdError(e), { duration: 9000 }),
   });
 
+
+  const markPaid = useMutation({
+    mutationFn: ({ docId, date }: { docId: string; date: string }) => markInvoicePaid(docId, date),
+    onSuccess: () => {
+      toast.success("Rechnung als bezahlt markiert");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
 
   const reminder = useMutation({
     mutationFn: ({ docId, kind }: { docId: string; kind: ReminderKind }) =>
@@ -372,8 +384,30 @@ function DokumenteListe() {
                         >
                           <Gavel className="size-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Als bezahlt markieren (Zahlungsdatum erfassen)"
+                          onClick={() => {
+                            const input = prompt(
+                              "Zahlungsdatum (TT.MM.JJJJ) eingeben:",
+                              formatDate(today()),
+                            );
+                            if (!input) return;
+                            const iso = parseGermanDate(input);
+                            if (!iso) {
+                              toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+                              return;
+                            }
+                            markPaid.mutate({ docId: d.id, date: iso });
+                          }}
+                          disabled={markPaid.isPending}
+                        >
+                          <BadgeEuro className="size-4 text-primary" />
+                        </Button>
                       </>
                     )}
+
 
                   <Button
                     variant="ghost"
