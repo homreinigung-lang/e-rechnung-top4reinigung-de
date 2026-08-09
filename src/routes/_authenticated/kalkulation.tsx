@@ -139,6 +139,11 @@ function KalkulationPage() {
     if (!finalTouched) setFinalPrice(suggested ? suggested.toFixed(2).replace(".", ",") : "0,00");
   }, [suggested, finalTouched]);
 
+  // Jede Änderung hebt die finale Bestätigung wieder auf.
+  useEffect(() => {
+    setConfirmed(false);
+  }, [suggested, finalPrice, note, discountReason, selected.value]);
+
   const endNet = num(finalPrice);
   const vat = endNet * 0.19;
 
