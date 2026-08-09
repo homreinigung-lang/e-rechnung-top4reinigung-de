@@ -196,8 +196,10 @@ function AdminDashboard() {
     const net = rows.reduce((s, d) => s + Number(d.net_total || d.total), 0);
     const vat = rows.reduce((s, d) => s + Number(d.vat_amount), 0);
     const expNet = exp.reduce((s, e) => s + Number(e.net_amount), 0);
-    return { q, net, vat, expNet, profit: net - expNet };
+    const expVat = exp.reduce((s, e) => s + Number(e.vat_amount), 0);
+    return { q, net, vat, expNet, expVat, balance: vat - expVat, profit: net - expNet };
   });
+
 
   const inYear = (v?: string | null) => String(v ?? "").slice(0, 4) === String(year);
   const euer = computeEuer(
