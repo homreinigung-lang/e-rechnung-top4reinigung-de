@@ -28,8 +28,27 @@ export function editBlockedMessage(doc: DocLike): string {
 }
 
 /** Übersetzt Datenbank-Fehler der GoBD-Trigger in eine verständliche Warnung. */
+export function errorText(error: unknown): string {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object") {
+    const e = error as Record<string, unknown>;
+    const parts = [e["message"], e["details"], e["hint"], e["code"]]
+      .filter((p) => typeof p === "string" && p.trim() !== "")
+      .map(String);
+    if (parts.length > 0) return parts.join(" – ");
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Unbekannter Fehler";
+    }
+  }
+  return String(error);
+}
+
 export function describeGobdError(error: unknown, doc?: DocLike): string {
-  const message = error instanceof Error ? error.message : String(error ?? "");
+  const message = errorText(error);
   if (/GoBD|unveränderbar|festgeschrieben/i.test(message)) {
     return `${message}${doc ? ` (${documentLabel(doc)})` : ""}`;
   }
