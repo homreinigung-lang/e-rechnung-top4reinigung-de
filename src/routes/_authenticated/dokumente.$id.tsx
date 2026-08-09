@@ -355,6 +355,17 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const markPaid = useMutation({
+    mutationFn: (date: string) => markInvoicePaid(id, date),
+    onSuccess: (paid) => {
+      setForm((f) => ({ ...f, status: "paid", paid_at: paid }));
+      toast.success(`Als bezahlt markiert (${formatDate(paid)})`);
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
   const reminder = useMutation({
     mutationFn: (kind: ReminderKind) => sendReminder(id, kind),
     onSuccess: (level) => {
