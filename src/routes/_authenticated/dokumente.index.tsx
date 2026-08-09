@@ -383,8 +383,30 @@ function DokumenteListe() {
                         >
                           <Gavel className="size-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Als bezahlt markieren (Zahlungsdatum erfassen)"
+                          onClick={() => {
+                            const input = prompt(
+                              "Zahlungsdatum (TT.MM.JJJJ) eingeben:",
+                              formatDate(today()),
+                            );
+                            if (!input) return;
+                            const iso = parseGermanDate(input);
+                            if (!iso) {
+                              toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+                              return;
+                            }
+                            markPaid.mutate({ docId: d.id, date: iso });
+                          }}
+                          disabled={markPaid.isPending}
+                        >
+                          <BadgeEuro className="size-4 text-primary" />
+                        </Button>
                       </>
                     )}
+
 
                   <Button
                     variant="ghost"
