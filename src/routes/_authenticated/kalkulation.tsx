@@ -99,6 +99,10 @@ function KalkulationPage() {
   const [finalPrice, setFinalPrice] = useState("");
   const [finalTouched, setFinalTouched] = useState(false);
   const [note, setNote] = useState("");
+  const [attachments, setAttachments] = useState<
+    { path: string; name: string; url: string; isImage: boolean }[]
+  >([]);
+  const [confirmed, setConfirmed] = useState(false);
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
 
