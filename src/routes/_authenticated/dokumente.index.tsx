@@ -24,12 +24,14 @@ import {
   dueInfo,
   mahnLabel,
   mahnungAllowed,
+  markInvoicePaid,
   sendReminder,
   setQuoteDecision,
   type ReminderKind,
 } from "@/lib/workflow";
 import {
   ArrowRightLeft,
+  BadgeEuro,
   BellRing,
   Check,
   Copy,
