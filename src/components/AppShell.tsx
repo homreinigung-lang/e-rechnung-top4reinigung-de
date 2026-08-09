@@ -34,7 +34,9 @@ import type { ReactNode } from "react";
 const nav = [
   { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
   { to: "/dokumente", label: "Rechnungen & Angebote", icon: FileText },
+  { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
   { to: "/wiederkehrend", label: "Wiederkehrend", icon: Repeat },
+
   { to: "/kunden", label: "Kunden", icon: Users },
   { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock },
   { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
