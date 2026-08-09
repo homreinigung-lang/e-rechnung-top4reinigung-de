@@ -149,9 +149,21 @@ function KalkulationPage() {
       } else {
         parts.push(`${formatNumber(num(hours))} Std. × ${formatMoney(num(hourlyRate))}/Std.`);
       }
-      if (num(frequency) > 1) parts.push(`${formatNumber(num(frequency))} Durchgänge`);
+      parts.push(
+        `${formatNumber(num(frequency))} Einsätze ${
+          frequencyUnit === "week"
+            ? `pro Woche (× 4,33 = ${formatNumber(visitsPerMonth)} pro Monat)`
+            : "pro Monat"
+        }`,
+      );
+      if (stairs) {
+        parts.push(
+          `Treppenhausreinigung: ${formatNumber(num(floors))} Etagen × ${formatMoney(num(stairRate))}/Etage`,
+        );
+      }
       const chosen = EXTRAS.filter((e) => extras.includes(e.key)).map((e) => e.label);
       if (chosen.length > 0) parts.push(`Zusatzleistungen: ${chosen.join(", ")}`);
+
       if (note.trim()) parts.push(note.trim());
 
       // Der manuell angepasste Endpreis ist bereits der Netto-Endbetrag nach Rabatt.
