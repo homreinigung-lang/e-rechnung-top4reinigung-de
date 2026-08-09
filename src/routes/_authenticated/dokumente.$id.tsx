@@ -54,6 +54,7 @@ import {
 import {
   ArrowLeft,
   ArrowRightLeft,
+  BadgeEuro,
   Ban,
   BellRing,
   Check,
