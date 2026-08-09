@@ -423,7 +423,16 @@ function DokumentDetail() {
     .join(", ");
 
   function setField(key: string, value: string | boolean | null) {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      // Status "Bezahlt" und Zahlungsdatum bleiben automatisch synchron.
+      if (key === "status") {
+        if (value === "paid" && !next["paid_at"]) next["paid_at"] = today();
+        if (value !== "paid") next["paid_at"] = null;
+      }
+      if (key === "paid_at" && value) next["status"] = "paid";
+      return next;
+    });
   }
 
   function pickCustomer(customerId: string) {
