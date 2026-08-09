@@ -886,6 +886,20 @@ function DokumentDetail() {
               />
             </div>
           )}
+          {isInvoice && (
+            <div className="space-y-2">
+              <Label>Zahlungsdatum (bezahlt am)</Label>
+              <Input
+                type="date"
+                value={String(form["paid_at"] ?? "")}
+                onChange={(e) => setField("paid_at", e.target.value || null)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Sobald ein Zahlungsdatum eingetragen ist, wechselt der Status automatisch auf
+                „Bezahlt" und die Rechnung verlässt die offenen Posten.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="service_period">Leistungszeitraum / Lieferdatum</Label>
             <DateRangeField
