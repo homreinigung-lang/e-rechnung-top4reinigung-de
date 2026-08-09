@@ -230,10 +230,14 @@ function DokumentDetail() {
         customer_id: form["customer_id"] || null,
         vat_rate: vatRate,
         reverse_charge: taxMode !== "domestic",
+        discount_percent: discountPercent,
+        discount_amount: discountAmount,
+        discount_reason: discountReason,
         net_total: netTotal,
         vat_amount: vatAmount,
         total: grossTotal,
       };
+
 
       const { error: docError } = await supabase
         .from("documents")
