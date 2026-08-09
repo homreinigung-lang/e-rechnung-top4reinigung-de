@@ -1362,10 +1362,26 @@ function DokumentDetail() {
           <div className="invoice-closing">
             <div className="mt-3 flex justify-end">
               <div className="w-72 space-y-0.5">
+                {discountPercent > 0 && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Zwischensumme (netto)</span>
+                      <span>{formatMoney(itemsTotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Rabatt {formatNumber(discountPercent)} %
+                        {discountReason ? ` – ${discountReason}` : ""}
+                      </span>
+                      <span>−{formatMoney(discountAmount)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nettobetrag (Summe netto)</span>
                   <span>{formatMoney(netTotal)}</span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
                     zzgl. Umsatzsteuer {formatNumber(vatRate)} %
