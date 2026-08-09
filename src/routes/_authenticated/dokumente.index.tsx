@@ -199,6 +199,15 @@ function DokumenteListe() {
   });
 
 
+  const markPaid = useMutation({
+    mutationFn: ({ docId, date }: { docId: string; date: string }) => markInvoicePaid(docId, date),
+    onSuccess: () => {
+      toast.success("Rechnung als bezahlt markiert");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
   const reminder = useMutation({
     mutationFn: ({ docId, kind }: { docId: string; kind: ReminderKind }) =>
       sendReminder(docId, kind),
