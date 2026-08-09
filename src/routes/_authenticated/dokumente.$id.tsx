@@ -36,6 +36,7 @@ import {
   dueInfo,
   mahnLabel,
   mahnungAllowed,
+  markInvoicePaid,
   sendReminder,
   setQuoteDecision,
   type ReminderKind,
