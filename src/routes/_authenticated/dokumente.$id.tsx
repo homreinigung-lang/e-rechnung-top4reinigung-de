@@ -1093,7 +1093,40 @@ function DokumentDetail() {
             </div>
           ))}
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Rabatt (%)</Label>
+              <Input
+                inputMode="decimal"
+                value={String(form["discount_percent"] ?? "0")}
+                onChange={(e) => setField("discount_percent", e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rabattgrund</Label>
+              <Input
+                value={String(form["discount_reason"] ?? "")}
+                onChange={(e) => setField("discount_reason", e.target.value)}
+                placeholder="z. B. Treuerabatt"
+              />
+            </div>
+          </div>
+
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Zwischensumme (netto)</span>
+              <span>{formatMoney(itemsTotal)}</span>
+            </div>
+            {discountPercent > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  Rabatt {formatNumber(discountPercent)} %
+                  {discountReason ? ` (${discountReason})` : ""}
+                </span>
+                <span>−{formatMoney(discountAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Nettobetrag</span>
               <span>{formatMoney(netTotal)}</span>
@@ -1109,6 +1142,7 @@ function DokumentDetail() {
               <span>{formatMoney(grossTotal)}</span>
             </div>
           </div>
+
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
