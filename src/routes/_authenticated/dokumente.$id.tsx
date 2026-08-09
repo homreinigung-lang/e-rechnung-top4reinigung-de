@@ -169,11 +169,14 @@ function DokumentDetail() {
       customer_vat_id: String(d["customer_vat_id"] ?? ""),
       intro_text: String(d["intro_text"] ?? ""),
       service_description: String(d["service_description"] ?? ""),
+      discount_percent: String(d["discount_percent"] ?? "0"),
+      discount_reason: String(d["discount_reason"] ?? ""),
 
       notes: String(d["notes"] ?? ""),
       attachment_title: String(d["attachment_title"] ?? ""),
       attachment_text: String(d["attachment_text"] ?? ""),
     });
+
     setItems(
       data.items.map((i) => ({
         ...i,
@@ -192,12 +195,20 @@ function DokumentDetail() {
       : "",
   );
 
-  const netTotal = useMemo(
+  const itemsTotal = useMemo(
     () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
+  const discountPercent = Math.min(
+    100,
+    Math.max(0, Number(String(form["discount_percent"] ?? "0").replace(",", ".")) || 0),
+  );
+  const discountAmount = (itemsTotal * discountPercent) / 100;
+  const discountReason = String(form["discount_reason"] ?? "");
+  const netTotal = itemsTotal - discountAmount;
   const vatAmount = (netTotal * vatRate) / 100;
   const grossTotal = netTotal + vatAmount;
+
 
   const save = useMutation({
     mutationFn: async () => {
@@ -219,10 +230,14 @@ function DokumentDetail() {
         customer_id: form["customer_id"] || null,
         vat_rate: vatRate,
         reverse_charge: taxMode !== "domestic",
+        discount_percent: discountPercent,
+        discount_amount: discountAmount,
+        discount_reason: discountReason,
         net_total: netTotal,
         vat_amount: vatAmount,
         total: grossTotal,
       };
+
 
       const { error: docError } = await supabase
         .from("documents")
@@ -1078,7 +1093,40 @@ function DokumentDetail() {
             </div>
           ))}
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Rabatt (%)</Label>
+              <Input
+                inputMode="decimal"
+                value={String(form["discount_percent"] ?? "0")}
+                onChange={(e) => setField("discount_percent", e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rabattgrund</Label>
+              <Input
+                value={String(form["discount_reason"] ?? "")}
+                onChange={(e) => setField("discount_reason", e.target.value)}
+                placeholder="z. B. Treuerabatt"
+              />
+            </div>
+          </div>
+
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Zwischensumme (netto)</span>
+              <span>{formatMoney(itemsTotal)}</span>
+            </div>
+            {discountPercent > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  Rabatt {formatNumber(discountPercent)} %
+                  {discountReason ? ` (${discountReason})` : ""}
+                </span>
+                <span>−{formatMoney(discountAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Nettobetrag</span>
               <span>{formatMoney(netTotal)}</span>
@@ -1094,6 +1142,7 @@ function DokumentDetail() {
               <span>{formatMoney(grossTotal)}</span>
             </div>
           </div>
+
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -1313,10 +1362,26 @@ function DokumentDetail() {
           <div className="invoice-closing">
             <div className="mt-3 flex justify-end">
               <div className="w-72 space-y-0.5">
+                {discountPercent > 0 && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Zwischensumme (netto)</span>
+                      <span>{formatMoney(itemsTotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Rabatt {formatNumber(discountPercent)} %
+                        {discountReason ? ` – ${discountReason}` : ""}
+                      </span>
+                      <span>−{formatMoney(discountAmount)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nettobetrag (Summe netto)</span>
                   <span>{formatMoney(netTotal)}</span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
                     zzgl. Umsatzsteuer {formatNumber(vatRate)} %

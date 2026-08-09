@@ -18,6 +18,7 @@ import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBankverbindungRouteImport } from './routes/_authenticated/bankverbindung'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
+import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenticated/kalkulation'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
@@ -77,6 +78,12 @@ const AuthenticatedEinstellungenRoute =
   AuthenticatedEinstellungenRouteImport.update({
     id: '/einstellungen',
     path: '/einstellungen',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedKalkulationRoute =
+  AuthenticatedKalkulationRouteImport.update({
+    id: '/kalkulation',
+    path: '/kalkulation',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedKundenRoute = AuthenticatedKundenRouteImport.update({
@@ -165,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
+  '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/profil': typeof AuthenticatedProfilRoute
@@ -188,6 +196,7 @@ export interface FileRoutesByTo {
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
+  '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/profil': typeof AuthenticatedProfilRoute
@@ -214,6 +223,7 @@ export interface FileRoutesById {
   '/_authenticated/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
+  '/_authenticated/kalkulation': typeof AuthenticatedKalkulationRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/bankverbindung'
     | '/dashboard'
     | '/einstellungen'
+    | '/kalkulation'
     | '/kunden'
     | '/meine-zeiten'
     | '/profil'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/bankverbindung'
     | '/dashboard'
     | '/einstellungen'
+    | '/kalkulation'
     | '/kunden'
     | '/meine-zeiten'
     | '/profil'
@@ -288,6 +300,7 @@ export interface FileRouteTypes {
     | '/_authenticated/bankverbindung'
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
+    | '/_authenticated/kalkulation'
     | '/_authenticated/kunden'
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/profil'
@@ -376,6 +389,13 @@ declare module '@tanstack/react-router' {
       path: '/einstellungen'
       fullPath: '/einstellungen'
       preLoaderRoute: typeof AuthenticatedEinstellungenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/kalkulation': {
+      id: '/_authenticated/kalkulation'
+      path: '/kalkulation'
+      fullPath: '/kalkulation'
+      preLoaderRoute: typeof AuthenticatedKalkulationRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/kunden': {
@@ -484,6 +504,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBankverbindungRoute: typeof AuthenticatedBankverbindungRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
+  AuthenticatedKalkulationRoute: typeof AuthenticatedKalkulationRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
@@ -499,6 +520,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBankverbindungRoute: AuthenticatedBankverbindungRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
+  AuthenticatedKalkulationRoute: AuthenticatedKalkulationRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,

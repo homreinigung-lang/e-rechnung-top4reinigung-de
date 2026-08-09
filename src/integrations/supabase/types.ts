@@ -293,6 +293,9 @@ export type Database = {
           customer_number: string
           customer_postal_code: string
           customer_vat_id: string
+          discount_amount: number
+          discount_percent: number
+          discount_reason: string
           due_date: string | null
           id: string
           intro_text: string
@@ -339,6 +342,9 @@ export type Database = {
           customer_number?: string
           customer_postal_code?: string
           customer_vat_id?: string
+          discount_amount?: number
+          discount_percent?: number
+          discount_reason?: string
           due_date?: string | null
           id?: string
           intro_text?: string
@@ -385,6 +391,9 @@ export type Database = {
           customer_number?: string
           customer_postal_code?: string
           customer_vat_id?: string
+          discount_amount?: number
+          discount_percent?: number
+          discount_reason?: string
           due_date?: string | null
           id?: string
           intro_text?: string
@@ -716,6 +725,9 @@ export type Database = {
           customer_number: string
           customer_postal_code: string
           customer_vat_id: string
+          discount_amount: number
+          discount_percent: number
+          discount_reason: string
           due_date: string | null
           id: string
           intro_text: string
