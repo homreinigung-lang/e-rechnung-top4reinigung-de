@@ -215,6 +215,7 @@ function DokumentDetail() {
         ...form,
         number,
         due_date: form["due_date"] ? form["due_date"] : null,
+        paid_at: form["status"] === "paid" ? form["paid_at"] || today() : null,
         customer_id: form["customer_id"] || null,
         vat_rate: vatRate,
         reverse_charge: taxMode !== "domestic",
