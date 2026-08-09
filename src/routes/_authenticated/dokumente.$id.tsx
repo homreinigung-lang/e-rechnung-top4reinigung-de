@@ -195,12 +195,20 @@ function DokumentDetail() {
       : "",
   );
 
-  const netTotal = useMemo(
+  const itemsTotal = useMemo(
     () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
+  const discountPercent = Math.min(
+    100,
+    Math.max(0, Number(String(form["discount_percent"] ?? "0").replace(",", ".")) || 0),
+  );
+  const discountAmount = (itemsTotal * discountPercent) / 100;
+  const discountReason = String(form["discount_reason"] ?? "");
+  const netTotal = itemsTotal - discountAmount;
   const vatAmount = (netTotal * vatRate) / 100;
   const grossTotal = netTotal + vatAmount;
+
 
   const save = useMutation({
     mutationFn: async () => {
