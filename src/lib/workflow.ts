@@ -87,6 +87,48 @@ export async function sendMahnung(id: string): Promise<number> {
   return sendReminder(id, "mahnung");
 }
 
+/**
+ * Rechnung als bezahlt markieren: Status wechselt automatisch auf "Bezahlt"
+ * und das Zahlungsdatum wird gespeichert. Damit verschwindet der Beleg
+ * sofort aus den offenen Posten.
+ */
+export async function markInvoicePaid(id: string, paidDate?: string): Promise<string> {
+  const paid = paidDate && paidDate.length === 10 ? paidDate : today();
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .select("id, number, status, type")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  if (doc.type !== "invoice") throw new Error("Nur Rechnungen können als bezahlt markiert werden.");
+  if (doc.status === "cancelled") throw new Error("Stornierte Rechnungen können nicht bezahlt werden.");
+
+  const { error: updateError } = await supabase
+    .from("documents")
+    .update({ status: "paid", paid_at: paid } as never)
+    .eq("id", id);
+  if (updateError) throw updateError;
+
+  await logAudit("payment_received", { id, number: doc.number }, { paid_at: paid });
+  return paid;
+}
+
+/** Zahlungsmarkierung zurücknehmen (Beleg gilt wieder als offen). */
+export async function unmarkInvoicePaid(id: string): Promise<void> {
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .select("id, number")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  const { error: updateError } = await supabase
+    .from("documents")
+    .update({ status: "sent", paid_at: null } as never)
+    .eq("id", id);
+  if (updateError) throw updateError;
+  await logAudit("payment_reverted", { id, number: doc.number }, {});
+}
+
 /** Angebot annehmen oder ablehnen. */
 export async function setQuoteDecision(id: string, decision: "accepted" | "declined") {
   const { data: doc, error } = await supabase
