@@ -72,6 +72,10 @@ function num(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** 52 Wochen / 12 Monate */
+const WEEKS_PER_MONTH = 4.33;
+const STAIR_RATE_PER_FLOOR = 12.5;
+
 function KalkulationPage() {
   const navigate = useNavigate();
 
@@ -82,8 +86,12 @@ function KalkulationPage() {
   const [hours, setHours] = useState("4");
   const [hourlyRate, setHourlyRate] = useState(String(CLEANING_TYPES[0]!.hourly));
   const [frequency, setFrequency] = useState("1");
+  const [frequencyUnit, setFrequencyUnit] = useState<"week" | "month">("month");
   const [travel, setTravel] = useState("0");
   const [extras, setExtras] = useState<string[]>([]);
+  const [stairs, setStairs] = useState(false);
+  const [floors, setFloors] = useState("1");
+  const [stairRate, setStairRate] = useState(String(STAIR_RATE_PER_FLOOR));
   const [discountPercent, setDiscountPercent] = useState("0");
   const [discountReason, setDiscountReason] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
@@ -92,22 +100,33 @@ function KalkulationPage() {
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
 
-  const base = useMemo(() => {
+  /** Einsätze umgerechnet auf den Monat (Pro Woche × 4,33). */
+  const visitsPerMonth = useMemo(() => {
     const times = Math.max(1, num(frequency) || 1);
+    return frequencyUnit === "week" ? times * WEEKS_PER_MONTH : times;
+  }, [frequency, frequencyUnit]);
+
+  const base = useMemo(() => {
     const core =
       mode === "area" ? num(area) * num(pricePerSqm) : num(hours) * num(hourlyRate);
-    return core * times;
-  }, [mode, area, pricePerSqm, hours, hourlyRate, frequency]);
+    return core * visitsPerMonth;
+  }, [mode, area, pricePerSqm, hours, hourlyRate, visitsPerMonth]);
 
   const extrasTotal = useMemo(
     () => EXTRAS.filter((e) => extras.includes(e.key)).reduce((s, e) => s + e.price, 0),
     [extras],
   );
 
-  const subtotal = base + extrasTotal + num(travel);
+  const stairsTotal = useMemo(
+    () => (stairs ? num(floors) * num(stairRate) * visitsPerMonth : 0),
+    [stairs, floors, stairRate, visitsPerMonth],
+  );
+
+  const subtotal = base + extrasTotal + stairsTotal + num(travel);
   const pct = Math.min(100, Math.max(0, num(discountPercent)));
   const discountAmount = (subtotal * pct) / 100;
   const suggested = Math.round((subtotal - discountAmount) * 100) / 100;
+
 
   // Vorschlag automatisch übernehmen, solange der Endpreis nicht manuell geändert wurde.
   useEffect(() => {
