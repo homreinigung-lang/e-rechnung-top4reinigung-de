@@ -369,7 +369,13 @@ function AdminDashboard() {
 
       <div className="surface overflow-hidden">
         <div className="border-b px-5 py-4">
-          <h2 className="font-semibold">Quartale {year} – Umsatz & Umsatzsteuer</h2>
+          <h2 className="font-semibold">
+            Quartale {year} – Umsatzsteuer-Voranmeldung
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Endabrechnung je Quartal: Umsatzsteuer abzüglich Vorsteuer ergibt Zahllast (an das
+            Finanzamt) oder Erstattung (vom Finanzamt).
+          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -378,8 +384,10 @@ function AdminDashboard() {
                 <th className="px-5 py-3">Quartal</th>
                 <th className="px-5 py-3 text-right">Umsatz netto</th>
                 <th className="px-5 py-3 text-right">Umsatzsteuer</th>
+                <th className="px-5 py-3 text-right">Vorsteuer</th>
                 <th className="px-5 py-3 text-right">Ausgaben netto</th>
                 <th className="px-5 py-3 text-right">Ergebnis</th>
+                <th className="px-5 py-3 text-right">Endabrechnung</th>
               </tr>
             </thead>
             <tbody>
@@ -388,14 +396,31 @@ function AdminDashboard() {
                   <td className="px-5 py-3 font-medium">Q{q.q}</td>
                   <td className="px-5 py-3 text-right">{formatMoney(q.net)}</td>
                   <td className="px-5 py-3 text-right">{formatMoney(q.vat)}</td>
+                  <td className="px-5 py-3 text-right">{formatMoney(q.expVat)}</td>
                   <td className="px-5 py-3 text-right">{formatMoney(q.expNet)}</td>
                   <td className="px-5 py-3 text-right font-medium">{formatMoney(q.profit)}</td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="font-semibold">{formatMoney(Math.abs(q.balance))}</div>
+                    <div
+                      className={
+                        q.balance > 0
+                          ? "text-xs font-medium text-destructive"
+                          : q.balance < 0
+                            ? "text-xs font-medium text-primary"
+                            : "text-xs text-muted-foreground"
+                      }
+                    >
+                      {q.balance > 0 ? "Zahllast" : q.balance < 0 ? "Erstattung" : "ausgeglichen"}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+
 
       <div className="surface overflow-hidden">
         <div className="border-b px-5 py-4">
