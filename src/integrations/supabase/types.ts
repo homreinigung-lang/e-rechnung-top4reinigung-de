@@ -304,6 +304,7 @@ export type Database = {
           notes: string
           number: string
           order_number: string
+          paid_at: string | null
           pdf_path: string
           pdf_sha256: string
           reminder_level: number
@@ -349,6 +350,7 @@ export type Database = {
           notes?: string
           number: string
           order_number?: string
+          paid_at?: string | null
           pdf_path?: string
           pdf_sha256?: string
           reminder_level?: number
@@ -394,6 +396,7 @@ export type Database = {
           notes?: string
           number?: string
           order_number?: string
+          paid_at?: string | null
           pdf_path?: string
           pdf_sha256?: string
           reminder_level?: number
@@ -724,6 +727,7 @@ export type Database = {
           notes: string
           number: string
           order_number: string
+          paid_at: string | null
           pdf_path: string
           pdf_sha256: string
           reminder_level: number
