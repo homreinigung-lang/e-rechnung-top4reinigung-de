@@ -435,6 +435,13 @@ function KalkulationPage() {
                 <span className="text-muted-foreground">Zusatzoptionen</span>
                 <span>{formatMoney(extrasTotal)}</span>
               </div>
+              {stairs && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Treppenhausreinigung</span>
+                  <span>{formatMoney(stairsTotal)}</span>
+                </div>
+              )}
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Anfahrt</span>
                 <span>{formatMoney(num(travel))}</span>
