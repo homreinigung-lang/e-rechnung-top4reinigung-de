@@ -47,6 +47,20 @@ export function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Wandelt eine deutsche Datumseingabe (TT.MM.JJJJ) in ISO (JJJJ-MM-TT) um. */
+export function parseGermanDate(value: string): string | null {
+  const raw = value.trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (iso) return raw;
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(raw);
+  if (!m) return null;
+  const [, d, mo, y] = m;
+  const day = Number(d);
+  const month = Number(mo);
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+  return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 export const DOC_TYPE_LABEL: Record<string, string> = {
   invoice: "Rechnung",
   quote: "Angebot",
