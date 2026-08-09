@@ -645,6 +645,27 @@ function DokumentDetail() {
           </>
         )}
 
+          {isInvoice && !isStorno && doc.status !== "paid" && doc.status !== "cancelled" && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const date = window.prompt(
+                  "Zahlungsdatum (JJJJ-MM-TT) bestätigen:",
+                  String(form["paid_at"] ?? today()),
+                );
+                if (!date) return;
+                markPaid.mutate(date);
+              }}
+              disabled={markPaid.isPending}
+            >
+              <BadgeEuro className="size-4" /> Als bezahlt markieren
+            </Button>
+          )}
+          {isInvoice && doc.status === "paid" && (
+            <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+              Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
+            </span>
+          )}
 
 
           {isInvoice &&
