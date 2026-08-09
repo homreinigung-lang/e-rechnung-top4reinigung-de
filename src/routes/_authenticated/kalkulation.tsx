@@ -72,6 +72,10 @@ function num(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** 52 Wochen / 12 Monate */
+const WEEKS_PER_MONTH = 4.33;
+const STAIR_RATE_PER_FLOOR = 12.5;
+
 function KalkulationPage() {
   const navigate = useNavigate();
 
@@ -82,8 +86,12 @@ function KalkulationPage() {
   const [hours, setHours] = useState("4");
   const [hourlyRate, setHourlyRate] = useState(String(CLEANING_TYPES[0]!.hourly));
   const [frequency, setFrequency] = useState("1");
+  const [frequencyUnit, setFrequencyUnit] = useState<"week" | "month">("month");
   const [travel, setTravel] = useState("0");
   const [extras, setExtras] = useState<string[]>([]);
+  const [stairs, setStairs] = useState(false);
+  const [floors, setFloors] = useState("1");
+  const [stairRate, setStairRate] = useState(String(STAIR_RATE_PER_FLOOR));
   const [discountPercent, setDiscountPercent] = useState("0");
   const [discountReason, setDiscountReason] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
@@ -92,22 +100,33 @@ function KalkulationPage() {
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
 
-  const base = useMemo(() => {
+  /** Einsätze umgerechnet auf den Monat (Pro Woche × 4,33). */
+  const visitsPerMonth = useMemo(() => {
     const times = Math.max(1, num(frequency) || 1);
+    return frequencyUnit === "week" ? times * WEEKS_PER_MONTH : times;
+  }, [frequency, frequencyUnit]);
+
+  const base = useMemo(() => {
     const core =
       mode === "area" ? num(area) * num(pricePerSqm) : num(hours) * num(hourlyRate);
-    return core * times;
-  }, [mode, area, pricePerSqm, hours, hourlyRate, frequency]);
+    return core * visitsPerMonth;
+  }, [mode, area, pricePerSqm, hours, hourlyRate, visitsPerMonth]);
 
   const extrasTotal = useMemo(
     () => EXTRAS.filter((e) => extras.includes(e.key)).reduce((s, e) => s + e.price, 0),
     [extras],
   );
 
-  const subtotal = base + extrasTotal + num(travel);
+  const stairsTotal = useMemo(
+    () => (stairs ? num(floors) * num(stairRate) * visitsPerMonth : 0),
+    [stairs, floors, stairRate, visitsPerMonth],
+  );
+
+  const subtotal = base + extrasTotal + stairsTotal + num(travel);
   const pct = Math.min(100, Math.max(0, num(discountPercent)));
   const discountAmount = (subtotal * pct) / 100;
   const suggested = Math.round((subtotal - discountAmount) * 100) / 100;
+
 
   // Vorschlag automatisch übernehmen, solange der Endpreis nicht manuell geändert wurde.
   useEffect(() => {
@@ -130,9 +149,21 @@ function KalkulationPage() {
       } else {
         parts.push(`${formatNumber(num(hours))} Std. × ${formatMoney(num(hourlyRate))}/Std.`);
       }
-      if (num(frequency) > 1) parts.push(`${formatNumber(num(frequency))} Durchgänge`);
+      parts.push(
+        `${formatNumber(num(frequency))} Einsätze ${
+          frequencyUnit === "week"
+            ? `pro Woche (× 4,33 = ${formatNumber(visitsPerMonth)} pro Monat)`
+            : "pro Monat"
+        }`,
+      );
+      if (stairs) {
+        parts.push(
+          `Treppenhausreinigung: ${formatNumber(num(floors))} Etagen × ${formatMoney(num(stairRate))}/Etage`,
+        );
+      }
       const chosen = EXTRAS.filter((e) => extras.includes(e.key)).map((e) => e.label);
       if (chosen.length > 0) parts.push(`Zusatzleistungen: ${chosen.join(", ")}`);
+
       if (note.trim()) parts.push(note.trim());
 
       // Der manuell angepasste Endpreis ist bereits der Netto-Endbetrag nach Rabatt.
@@ -276,7 +307,7 @@ function KalkulationPage() {
               </div>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Durchgänge / Einsätze</Label>
                 <Input
@@ -284,6 +315,21 @@ function KalkulationPage() {
                   value={frequency}
                   onChange={(e) => setFrequency(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Zeitraum</Label>
+                <Select
+                  value={frequencyUnit}
+                  onValueChange={(v) => setFrequencyUnit(v as "week" | "month")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Pro Woche</SelectItem>
+                    <SelectItem value="month">Pro Monat</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Anfahrtspauschale (netto)</Label>
@@ -294,6 +340,13 @@ function KalkulationPage() {
                 />
               </div>
             </div>
+
+            {frequencyUnit === "week" && (
+              <p className="text-xs text-muted-foreground">
+                Umrechnung auf den Monat mit 4,33 Wochen: {formatNumber(num(frequency))} × 4,33 ={" "}
+                {formatNumber(visitsPerMonth)} Einsätze pro Monat.
+              </p>
+            )}
 
             <div className="space-y-2">
               <Label>Zusatzoptionen</Label>
@@ -317,6 +370,43 @@ function KalkulationPage() {
                 ))}
               </div>
             </div>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                <Checkbox
+                  checked={stairs}
+                  onCheckedChange={(checked) => setStairs(Boolean(checked))}
+                />
+                <span>Treppenhausreinigung</span>
+              </label>
+              {stairs && (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Anzahl der Etagen</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={floors}
+                        onChange={(e) => setFloors(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Preis pro Etage (netto)</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={stairRate}
+                        onChange={(e) => setStairRate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatNumber(num(floors))} Etagen × {formatMoney(num(stairRate))} ×{" "}
+                    {formatNumber(visitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
+                  </p>
+                </>
+              )}
+            </div>
+
 
             <div className="space-y-2">
               <Label>Bemerkung zur Leistung</Label>
@@ -345,6 +435,13 @@ function KalkulationPage() {
                 <span className="text-muted-foreground">Zusatzoptionen</span>
                 <span>{formatMoney(extrasTotal)}</span>
               </div>
+              {stairs && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Treppenhausreinigung</span>
+                  <span>{formatMoney(stairsTotal)}</span>
+                </div>
+              )}
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Anfahrt</span>
                 <span>{formatMoney(num(travel))}</span>
