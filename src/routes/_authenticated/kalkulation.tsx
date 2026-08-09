@@ -307,7 +307,7 @@ function KalkulationPage() {
               </div>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Durchgänge / Einsätze</Label>
                 <Input
@@ -315,6 +315,21 @@ function KalkulationPage() {
                   value={frequency}
                   onChange={(e) => setFrequency(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Zeitraum</Label>
+                <Select
+                  value={frequencyUnit}
+                  onValueChange={(v) => setFrequencyUnit(v as "week" | "month")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Pro Woche</SelectItem>
+                    <SelectItem value="month">Pro Monat</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Anfahrtspauschale (netto)</Label>
@@ -325,6 +340,13 @@ function KalkulationPage() {
                 />
               </div>
             </div>
+
+            {frequencyUnit === "week" && (
+              <p className="text-xs text-muted-foreground">
+                Umrechnung auf den Monat mit 4,33 Wochen: {formatNumber(num(frequency))} × 4,33 ={" "}
+                {formatNumber(visitsPerMonth)} Einsätze pro Monat.
+              </p>
+            )}
 
             <div className="space-y-2">
               <Label>Zusatzoptionen</Label>
@@ -348,6 +370,43 @@ function KalkulationPage() {
                 ))}
               </div>
             </div>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                <Checkbox
+                  checked={stairs}
+                  onCheckedChange={(checked) => setStairs(Boolean(checked))}
+                />
+                <span>Treppenhausreinigung</span>
+              </label>
+              {stairs && (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Anzahl der Etagen</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={floors}
+                        onChange={(e) => setFloors(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Preis pro Etage (netto)</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={stairRate}
+                        onChange={(e) => setStairRate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatNumber(num(floors))} Etagen × {formatMoney(num(stairRate))} ×{" "}
+                    {formatNumber(visitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
+                  </p>
+                </>
+              )}
+            </div>
+
 
             <div className="space-y-2">
               <Label>Bemerkung zur Leistung</Label>
