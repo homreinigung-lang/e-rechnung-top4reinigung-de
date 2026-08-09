@@ -188,7 +188,30 @@ function DokumenteListe() {
     mutationFn: async (docId: string) => {
       const doc = documents.find((d) => d.id === docId) as unknown as Record<string, unknown>;
       if (isLockedDocument(doc)) throw new Error(deleteBlockedMessage(doc));
-      await supabase.from("document_items").delete().eq("document_id", docId);
+
+      // Verweise anderer Belege lösen, damit der Entwurf gelöscht werden kann
+      await supabase
+        .from("documents")
+        .update({ converted_document_id: null })
+        .eq("converted_document_id", docId);
+      await supabase
+        .from("documents")
+        .update({ cancels_document_id: null })
+        .eq("cancels_document_id", docId);
+      await supabase
+        .from("documents")
+        .update({ cancelled_by_document_id: null })
+        .eq("cancelled_by_document_id", docId);
+      await supabase
+        .from("recurring_invoices")
+        .update({ template_document_id: null })
+        .eq("template_document_id", docId);
+
+      const { error: itemsError } = await supabase
+        .from("document_items")
+        .delete()
+        .eq("document_id", docId);
+      if (itemsError) throw itemsError;
       const { error } = await supabase.from("documents").delete().eq("id", docId);
       if (error) throw error;
     },
@@ -196,7 +219,7 @@ function DokumenteListe() {
       toast.success("Entwurf gelöscht");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
-    onError: (e: Error) => toast.error(describeGobdError(e), { duration: 9000 }),
+    onError: (e: unknown) => toast.error(describeGobdError(e), { duration: 9000 }),
   });
 
 
