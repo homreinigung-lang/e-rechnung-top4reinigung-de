@@ -423,6 +423,71 @@ function KalkulationPage() {
                 placeholder="z. B. Reinigung wöchentlich, Zutritt nach Absprache"
               />
             </div>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div>
+                <Label>Grundrisse & Fotos</Label>
+                <p className="text-xs text-muted-foreground">
+                  PDF-Grundrisse oder Fotos (JPG, PNG) zur Kalkulation hochladen – nur intern zur
+                  Preisfindung.
+                </p>
+              </div>
+              <FileUploadButton
+                folder="kalkulation"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                label="Datei oder Foto hochladen"
+                onUploaded={(path, file) => {
+                  void (async () => {
+                    const url = await fileUrl(path);
+                    setAttachments((prev) => [
+                      ...prev,
+                      { path, name: file.name, url, isImage: file.type.startsWith("image/") },
+                    ]);
+                  })();
+                }}
+              />
+              {attachments.length > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {attachments.map((a) => (
+                    <div key={a.path} className="space-y-2 rounded-md border p-2">
+                      {a.isImage && a.url ? (
+                        <a href={a.url} target="_blank" rel="noreferrer">
+                          <img
+                            src={a.url}
+                            alt={`Vorschau ${a.name}`}
+                            className="h-32 w-full rounded object-cover"
+                            loading="lazy"
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          href={a.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex h-32 w-full items-center justify-center rounded bg-muted"
+                        >
+                          <FileText className="size-8 text-muted-foreground" />
+                        </a>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="flex-1 truncate text-xs">{a.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            setAttachments((prev) => prev.filter((x) => x.path !== a.path))
+                          }
+                          aria-label="Entfernen"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
