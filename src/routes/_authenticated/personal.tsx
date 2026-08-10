@@ -401,9 +401,44 @@ function Personal() {
 
   function hoursOnDay(employeeId: string, day: string) {
     return entries
-      .filter((e) => e.employee_id === employeeId && e.work_date === day)
+      .filter((e) => e.employee_id === employeeId && e.work_date === day && !isAbsence(e))
       .reduce((s, e) => s + Number(e.hours || 0), 0);
   }
+
+  /** Abwesenheitsgrund des Mitarbeiters an einem Tag (Krankheit hat Vorrang). */
+  function absenceOnDay(employeeId: string, day: string) {
+    const list = entries
+      .filter((e) => e.employee_id === employeeId && e.work_date === day)
+      .map(absenceReason)
+      .filter(Boolean) as ReturnType<typeof absenceReason>[];
+    if (list.length === 0) return null;
+    return list.includes("sick") ? "sick" : list[0]!;
+  }
+
+  /** Monatsabrechnung: Arbeitsstunden, Lohn und Abwesenheitstage je Mitarbeiter. */
+  const monthPrefix = `${monthCursor.getFullYear()}-${String(monthCursor.getMonth() + 1).padStart(2, "0")}`;
+  const payroll = employees.map((e) => {
+    const rows = entries.filter(
+      (t) => t.employee_id === e.id && String(t.work_date).startsWith(monthPrefix),
+    );
+    const workHours = rows
+      .filter((t) => !isAbsence(t))
+      .reduce((s, t) => s + Number(t.hours || 0), 0);
+    const days = (reason: string) =>
+      new Set(rows.filter((t) => absenceReason(t) === reason).map((t) => t.work_date)).size;
+    const rate = Number(e.hourly_rate ?? 0);
+    return {
+      id: e.id,
+      name: e.name,
+      workHours,
+      rate,
+      wage: workHours * rate,
+      vacationDays: days("vacation"),
+      sickDays: days("sick"),
+      otherDays: days("other"),
+    };
+  });
+
 
   const shiftWeek = (delta: number) => {
     const d = new Date(weekStart);
