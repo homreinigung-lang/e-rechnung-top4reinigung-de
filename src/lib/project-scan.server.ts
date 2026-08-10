@@ -81,8 +81,17 @@ Vorgehen:
 5. floor nur aus Planbeschriftung (z. B. "EG", "1. OG"), sonst "".
 6. expected_room_count = Anzahl der tatsächlich gelesenen Räume.
 7. items bleibt eine leere Liste.
+
+STRIKTE ZEILEN-REGELN (wichtigster Teil):
+- Eine Zeile = GENAU EIN Raum. Niemals Aufzählungen wie "Büro, WC, Flur" in ein Feld schreiben; solche Listen in einzelne Zeilen aufteilen.
+- Jede Zeile muss ihren EIGENEN, im Dokument stehenden Wert haben. Kopiere niemals denselben Raumnamen oder denselben m²-Wert in mehrere Zeilen.
+- Lies jede Tabellenzeile bzw. jeden Raumstempel einzeln von oben nach unten und übertrage sie 1:1 in der Reihenfolge des Dokuments.
+- Steht für einen Raum keine eigene Fläche im Dokument, setze area_sqm = 0 – niemals den Wert eines anderen Raums übernehmen und niemals einen Durchschnitts- oder Einheitswert verteilen.
+- Sind mehrere Räume im Dokument tatsächlich gleich benannt (z. B. mehrere "WC"), unterscheide sie über die im Dokument stehende Raumnummer/Etage.
+- Wiederholte identische Zeilen sind ein Fehler: gib in diesem Fall lieber nur die eine Zeile aus, die im Dokument steht.
 ${NO_GUESS}
 Antworte ausschließlich mit reinem JSON.`;
+
 
 const TENDER_SYSTEM = `Du bist ein Ausschreibungs-Experte für ein deutsches Gebäudereinigungsunternehmen.
 Lies die Ausschreibung / das Leistungsverzeichnis und extrahiere:
@@ -162,6 +171,43 @@ const SCHEMA = {
   ],
 } as const;
 
+/**
+ * Bereinigt die von der KI gelieferten Raumzeilen:
+ * - Aufzählungen ("Büro, WC, Flur") werden in einzelne Zeilen zerlegt (Fläche dann 0).
+ * - Exakte Duplikate werden entfernt.
+ * - Wird derselbe m²-Wert über alle Zeilen kopiert, gilt er als Einheitswert und wird auf 0 gesetzt.
+ */
+function sanitizeRooms(input: ScannedRoom[]): ScannedRoom[] {
+  const split: ScannedRoom[] = [];
+  for (const room of input) {
+    const parts = room.name
+      .split(/\s*[,;/]\s*|\s+\/\s+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length > 1) {
+      for (const part of parts) {
+        split.push({ ...room, name: part, area_sqm: 0 });
+      }
+    } else {
+      split.push({ ...room, name: parts[0] ?? room.name });
+    }
+  }
+
+  const seen = new Set<string>();
+  const unique = split.filter((r) => {
+    const key = `${r.name.toLowerCase()}|${r.floor.toLowerCase()}|${r.area_sqm}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const areas = unique.map((r) => r.area_sqm).filter((a) => a > 0);
+  const uniformArea =
+    areas.length >= 3 && areas.length === unique.length && new Set(areas).size === 1;
+
+  return uniformArea ? unique.map((r) => ({ ...r, area_sqm: 0 })) : unique;
+}
+
 async function toDataUrl(fileUrl: string, mimeType: string): Promise<string> {
   const res = await fetch(fileUrl);
   if (!res.ok) throw new Error("Datei konnte nicht geladen werden.");
@@ -203,7 +249,7 @@ export async function analyzeProjectFile(
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-3.1-pro-preview",
       temperature: 0,
       messages: [
         { role: "system", content: mode === "floorplan" ? FLOORPLAN_SYSTEM : TENDER_SYSTEM },
@@ -232,7 +278,7 @@ export async function analyzeProjectFile(
     return EMPTY;
   }
 
-  const rooms = Array.isArray(parsed["rooms"])
+  const rawRooms = Array.isArray(parsed["rooms"])
     ? (parsed["rooms"] as Record<string, unknown>[]).map((r) => ({
         name: String(r["name"] ?? "").trim(),
         floor: String(r["floor"] ?? "").trim(),
@@ -240,6 +286,9 @@ export async function analyzeProjectFile(
         area_sqm: num(r["area_sqm"]),
       }))
     : [];
+
+  const rooms = sanitizeRooms(rawRooms);
+
 
   const items = Array.isArray(parsed["items"])
     ? (parsed["items"] as Record<string, unknown>[]).map((i) => ({
