@@ -576,6 +576,264 @@ export type Database = {
         }
         Relationships: []
       }
+      project_assignments: {
+        Row: {
+          assignment_role: string
+          created_at: string
+          employee_id: string
+          end_date: string | null
+          hours_per_week: number
+          id: string
+          note: string
+          project_id: string
+          start_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assignment_role?: string
+          created_at?: string
+          employee_id: string
+          end_date?: string | null
+          hours_per_week?: number
+          id?: string
+          note?: string
+          project_id: string
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assignment_role?: string
+          created_at?: string
+          employee_id?: string
+          end_date?: string | null
+          hours_per_week?: number
+          id?: string
+          note?: string
+          project_id?: string
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_lv_items: {
+        Row: {
+          created_at: string
+          critical: boolean
+          deadline: string | null
+          description: string
+          done: boolean
+          evidence: string
+          id: string
+          position: number
+          project_id: string
+          quantity: number
+          section: string
+          title: string
+          unit: string
+          unit_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          critical?: boolean
+          deadline?: string | null
+          description?: string
+          done?: boolean
+          evidence?: string
+          id?: string
+          position?: number
+          project_id: string
+          quantity?: number
+          section?: string
+          title?: string
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          critical?: boolean
+          deadline?: string | null
+          description?: string
+          done?: boolean
+          evidence?: string
+          id?: string
+          position?: number
+          project_id?: string
+          quantity?: number
+          section?: string
+          title?: string
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_lv_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_rooms: {
+        Row: {
+          area_sqm: number
+          confirmed: boolean
+          created_at: string
+          floor: string
+          frequency: string
+          id: string
+          name: string
+          note: string
+          position: number
+          project_id: string
+          updated_at: string
+          usage_type: string
+          user_id: string
+        }
+        Insert: {
+          area_sqm?: number
+          confirmed?: boolean
+          created_at?: string
+          floor?: string
+          frequency?: string
+          id?: string
+          name?: string
+          note?: string
+          position?: number
+          project_id: string
+          updated_at?: string
+          usage_type?: string
+          user_id: string
+        }
+        Update: {
+          area_sqm?: number
+          confirmed?: boolean
+          created_at?: string
+          floor?: string
+          frequency?: string
+          id?: string
+          name?: string
+          note?: string
+          position?: number
+          project_id?: string
+          updated_at?: string
+          usage_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_rooms_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          address_line: string
+          city: string
+          contact_email: string
+          contact_phone: string
+          created_at: string
+          customer_id: string | null
+          customer_name: string
+          executive_summary: string
+          expected_room_count: number
+          hourly_rate: number
+          id: string
+          mode: string
+          name: string
+          notes: string
+          postal_code: string
+          source_file_name: string
+          source_file_path: string
+          sqm_per_hour: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_line?: string
+          city?: string
+          contact_email?: string
+          contact_phone?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string
+          executive_summary?: string
+          expected_room_count?: number
+          hourly_rate?: number
+          id?: string
+          mode?: string
+          name?: string
+          notes?: string
+          postal_code?: string
+          source_file_name?: string
+          source_file_path?: string
+          sqm_per_hour?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_line?: string
+          city?: string
+          contact_email?: string
+          contact_phone?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string
+          executive_summary?: string
+          expected_room_count?: number
+          hourly_rate?: number
+          id?: string
+          mode?: string
+          name?: string
+          notes?: string
+          postal_code?: string
+          source_file_name?: string
+          source_file_path?: string
+          sqm_per_hour?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_invoices: {
         Row: {
           active: boolean
