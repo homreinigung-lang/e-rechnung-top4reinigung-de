@@ -1,15 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Calculator, FileSignature, FileText, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Calculator, FileSignature, FileText, Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { fileUrl } from "@/lib/storage";
-import { scanFloorplan } from "@/lib/floorplan-scan.functions";
+
 import { FileUploadButton } from "@/components/FileUploadButton";
 
 import { Button } from "@/components/ui/button";
@@ -91,9 +90,8 @@ type Attachment = {
   rooms: string;
   floors: string;
   note: string;
-  analyzing: boolean;
-  aiFilled: boolean;
 };
+
 
 
 
@@ -122,36 +120,12 @@ function KalkulationPage() {
   const [confirmed, setConfirmed] = useState(false);
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
-  const runFloorplanScan = useServerFn(scanFloorplan);
-
 
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
 
-  /** Lässt die KI den Grundriss auslesen und füllt m², Räume und Etagen vor. */
-  async function analyzeAttachment(path: string, file: File) {
-    updateAttachment(path, { analyzing: true });
-    try {
-      const signedUrl = await fileUrl(path);
-      if (!signedUrl) throw new Error("Datei konnte nicht geladen werden.");
-      const r = await runFloorplanScan({
-        data: { fileUrl: signedUrl, mimeType: file.type || "application/pdf" },
-      });
-      updateAttachment(path, {
-        sqm: r.sqm ? String(r.sqm) : "",
-        rooms: r.rooms ? String(r.rooms) : "",
-        floors: r.floors ? String(r.floors) : "",
-        note: r.note,
-        aiFilled: true,
-      });
-      toast.success("Grundriss automatisch erkannt – bitte Werte prüfen");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Analyse fehlgeschlagen");
-    } finally {
-      updateAttachment(path, { analyzing: false });
-    }
-  }
+
 
 
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
@@ -489,11 +463,10 @@ function KalkulationPage() {
 
             <div className="space-y-3 rounded-md border p-3">
               <div>
-                <Label>Grundrisse & Fotos – KI-Analyse</Label>
+                <Label>Grundrisse & Fotos</Label>
                 <p className="text-xs text-muted-foreground">
-                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – die KI liest m², Räume und
-                  Etagen automatisch aus und schlägt realistische Werte vor. Werte bleiben
-                  jederzeit manuell änderbar.
+                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – nur zur internen Ablage und für
+                  Notizen. m², Räume und Etagen tragen Sie bitte manuell ein.
                 </p>
               </div>
               <FileUploadButton
@@ -514,11 +487,8 @@ function KalkulationPage() {
                         rooms: "",
                         floors: "",
                         note: "",
-                        analyzing: true,
-                        aiFilled: false,
                       },
                     ]);
-                    await analyzeAttachment(path, file);
                   })();
                 }}
               />
@@ -547,20 +517,7 @@ function KalkulationPage() {
                             <FileText className="size-8 text-muted-foreground" />
                           </a>
                         )}
-                        {a.analyzing ? (
-                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Loader2 className="size-3 animate-spin" />
-                            KI analysiert den Grundriss …
-                          </p>
-                        ) : a.aiFilled ? (
-                          <p className="flex items-start gap-2 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-muted-foreground">
-                            <Sparkles className="mt-0.5 size-3 shrink-0" />
-                            <span>
-                              Werte wurden automatisch durch KI erkannt. Bitte vor der Übernahme
-                              kurz auf Richtigkeit prüfen – alle Felder bleiben manuell editierbar.
-                            </span>
-                          </p>
-                        ) : null}
+
 
 
                         <div className="flex items-center gap-2">
