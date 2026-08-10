@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,17 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  MapPin,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
-import { formatDate, formatMoney } from "@/lib/format";
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/personal")({
   head: () => ({
@@ -55,9 +46,10 @@ export const Route = createFileRoute("/_authenticated/personal")({
 });
 
 const ROLES = ["Reinigungskraft", "Vorarbeiter", "Objektleiter", "Springer", "Verwaltung"];
+const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const NO_PROJECT = "__none__";
 
 type EmployeeForm = {
-  id?: string;
   name: string;
   role: string;
   email: string;
@@ -75,9 +67,7 @@ const empty: EmployeeForm = {
   hourly_rate: 0,
 };
 
-const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-
-/** Montag der Woche zum übergebenen Datum (ISO-Format JJJJ-MM-TT). */
+/** Montag der Woche zum übergebenen Datum. */
 function mondayOf(date: Date) {
   const d = new Date(date);
   const day = (d.getDay() + 6) % 7;
@@ -90,15 +80,14 @@ function isoDay(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function toNumber(value: string) {
+  return Number(String(value).replace(",", ".").trim()) || 0;
+}
+
 function Personal() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<EmployeeForm>(empty);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [assignFor, setAssignFor] = useState<string | null>(null);
-  const [assignProject, setAssignProject] = useState("");
-  const [assignRole, setAssignRole] = useState("Reinigungskraft");
-  const [assignHours, setAssignHours] = useState("");
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
 
   const invalidate = () => {
@@ -127,10 +116,7 @@ function Personal() {
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id,name,city")
-        .order("name");
+      const { data, error } = await supabase.from("projects").select("id,name,city").order("name");
       if (error) throw error;
       return data;
     },
@@ -148,26 +134,35 @@ function Personal() {
     },
   });
 
-  const save = useMutation({
+  const createEmployee = useMutation({
     mutationFn: async (values: EmployeeForm) => {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
-      const { id, ...rest } = values;
-      if (id) {
-        const { error } = await supabase.from("employees").update(rest).eq("id", id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("employees").insert({ ...rest, user_id: userId });
-        if (error) throw error;
-      }
+      const { error } = await supabase.from("employees").insert({ ...values, user_id: userId });
+      if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Mitarbeiter gespeichert");
+      toast.success("Mitarbeiter angelegt");
       setOpen(false);
       setForm(empty);
       queryClient.invalidateQueries({ queryKey: ["employees"] });
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const patchEmployee = useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: { name?: string; role?: string; hourly_rate?: number };
+    }) => {
+      const { error } = await supabase.from("employees").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -183,37 +178,59 @@ function Personal() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const assign = useMutation({
-    mutationFn: async () => {
+  /** Primäre Zuordnung (Einsatzort) eines Mitarbeiters. */
+  const primaryAssignment = (employeeId: string) =>
+    assignments.find((a) => a.employee_id === employeeId) ?? null;
+
+  const setEinsatzort = useMutation({
+    mutationFn: async ({ employeeId, projectId }: { employeeId: string; projectId: string }) => {
+      const current = primaryAssignment(employeeId);
+      if (projectId === NO_PROJECT) {
+        if (current) {
+          const { error } = await supabase
+            .from("project_assignments")
+            .delete()
+            .eq("id", current.id);
+          if (error) throw error;
+        }
+        return;
+      }
+      if (current) {
+        const { error } = await supabase
+          .from("project_assignments")
+          .update({ project_id: projectId })
+          .eq("id", current.id);
+        if (error) throw error;
+        return;
+      }
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
-      if (!assignFor || !assignProject) throw new Error("Bitte Projekt wählen.");
+      const employee = employees.find((e) => e.id === employeeId);
       const { error } = await supabase.from("project_assignments").insert({
-        project_id: assignProject,
-        employee_id: assignFor,
+        project_id: projectId,
+        employee_id: employeeId,
         user_id: userId,
-        assignment_role: assignRole,
-        hours_per_week: Number(String(assignHours).replace(",", ".")) || 0,
+        assignment_role: employee?.role || "Reinigungskraft",
+        hours_per_week: 0,
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Einsatzort zugeordnet");
-      setAssignFor(null);
-      setAssignProject("");
-      setAssignHours("");
-      invalidate();
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project_assignments"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const unassign = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("project_assignments").delete().eq("id", id);
+  const setWeeklyHours = useMutation({
+    mutationFn: async ({ employeeId, hours }: { employeeId: string; hours: number }) => {
+      const current = primaryAssignment(employeeId);
+      if (!current) throw new Error("Bitte zuerst einen Einsatzort wählen.");
+      const { error } = await supabase
+        .from("project_assignments")
+        .update({ hours_per_week: hours })
+        .eq("id", current.id);
       if (error) throw error;
     },
-    onSuccess: invalidate,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project_assignments"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -230,17 +247,10 @@ function Personal() {
   const projectName = (id: string | null | undefined) =>
     projects.find((p) => p.id === id)?.name || "";
 
-  /** Stunden je Projekt für einen Mitarbeiter. */
-  function hoursByProject(employeeId: string) {
-    const map = new Map<string, number>();
-    for (const e of entries) {
-      if (e.employee_id !== employeeId) continue;
-      const key = e.project_id
-        ? projectName(e.project_id as string) || "Projekt"
-        : (e.location as string) || "Ohne Projekt";
-      map.set(key, (map.get(key) ?? 0) + Number(e.hours || 0));
-    }
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  function trackedHours(employeeId: string) {
+    return entries
+      .filter((e) => e.employee_id === employeeId)
+      .reduce((s, e) => s + Number(e.hours || 0), 0);
   }
 
   function hoursOnDay(employeeId: string, day: string) {
@@ -261,7 +271,7 @@ function Personal() {
         <div>
           <h1 className="text-3xl font-bold">Personal</h1>
           <p className="mt-1 text-muted-foreground">
-            Mitarbeiterstamm, Einsatzorte, Projektstunden und Wochenplanung.
+            Arbeits-Tabelle: Name, Einsatzort und Stunden direkt in der Zeile bearbeiten.
           </p>
         </div>
         <Dialog
@@ -278,7 +288,7 @@ function Personal() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
-              <DialogTitle>{form.id ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}</DialogTitle>
+              <DialogTitle>Neuer Mitarbeiter</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
@@ -333,19 +343,16 @@ function Personal() {
                 <Label htmlFor="e-rate">Stundenlohn (€)</Label>
                 <Input
                   id="e-rate"
-                  type="number"
-                  step="0.01"
+                  inputMode="decimal"
                   value={form.hourly_rate}
-                  onChange={(e) =>
-                    setForm({ ...form, hourly_rate: Number(e.target.value) || 0 })
-                  }
+                  onChange={(e) => setForm({ ...form, hourly_rate: toNumber(e.target.value) })}
                 />
               </div>
             </div>
             <DialogFooter>
               <Button
-                onClick={() => save.mutate(form)}
-                disabled={!form.name.trim() || save.isPending}
+                onClick={() => createEmployee.mutate(form)}
+                disabled={!form.name.trim() || createEmployee.isPending}
               >
                 Speichern
               </Button>
@@ -354,198 +361,131 @@ function Personal() {
         </Dialog>
       </div>
 
+      {/* Direkt editierbare Arbeits-Tabelle */}
       <div className="surface overflow-x-auto">
         {employees.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">
             Noch keine Mitarbeiter angelegt.
           </p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="text-left text-muted-foreground">
               <tr className="border-b">
-                <th className="px-5 py-3">Name</th>
-                <th className="px-3 py-3">Rolle</th>
-                <th className="px-3 py-3">Kontakt</th>
-                <th className="px-3 py-3 text-right">Stundenlohn</th>
-                <th className="px-3 py-3">Einsatzorte</th>
+                <th className="px-5 py-3 w-[24%]">Mitarbeiter</th>
+                <th className="px-3 py-3 w-[16%]">Funktion</th>
+                <th className="px-3 py-3 w-[24%]">Einsatzort</th>
+                <th className="px-3 py-3 w-[13%]">Std./Woche</th>
+                <th className="px-3 py-3 w-[13%]">Stundenlohn €</th>
+                <th className="px-3 py-3 text-right w-[10%]">Erfasst</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody>
               {employees.map((e) => {
-                const mine = assignments.filter((a) => a.employee_id === e.id);
-                const isOpen = expanded === e.id;
-                const perProject = isOpen ? hoursByProject(e.id) : [];
-                const totalHours = perProject.reduce((s, [, h]) => s + h, 0);
+                const assignment = primaryAssignment(e.id);
                 return (
-                  <Fragment key={e.id}>
-                    <tr className="border-b last:border-0">
-                      <td className="px-5 py-3 font-medium">
-                        {e.name}
-                        {e.personnel_number && (
-                          <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
-                            {e.personnel_number}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">{e.role || "—"}</td>
-                      <td className="px-3 py-3 text-muted-foreground">
-                        {[e.email, e.phone].filter(Boolean).join(" · ") || "—"}
-                      </td>
-                      <td className="px-3 py-3 text-right">{formatMoney(Number(e.hourly_rate))}</td>
-                      <td className="px-3 py-3">
-                        {mine.length === 0 ? (
-                          <span className="text-muted-foreground">—</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {mine.map((a) => (
-                              <Link
-                                key={a.id}
-                                to="/projekte/$id"
-                                params={{ id: a.project_id }}
-                                className="rounded bg-secondary px-2 py-0.5 text-xs text-secondary-foreground hover:underline"
-                              >
-                                {projectName(a.project_id) || "Projekt"}
-                                {a.assignment_role ? ` · ${a.assignment_role}` : ""}
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3 text-right whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Details"
-                          onClick={() => setExpanded(isOpen ? null : e.id)}
-                        >
-                          {isOpen ? (
-                            <ChevronUp className="size-4" />
-                          ) : (
-                            <ChevronDown className="size-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setForm({
-                              id: e.id,
-                              name: e.name,
-                              role: e.role,
-                              email: e.email,
-                              phone: e.phone ?? "",
-                              personnel_number: e.personnel_number ?? "",
-                              hourly_rate: Number(e.hourly_rate),
-                            });
-                            setOpen(true);
-                          }}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => remove.mutate(e.id)}>
-                          <Trash2 className="size-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr className="border-b bg-muted/30 last:border-0">
-                        <td colSpan={6} className="px-5 py-4">
-                          <div className="grid gap-6 lg:grid-cols-2">
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <h3 className="font-semibold">Einsatzorte / Objekte</h3>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setAssignFor(e.id);
-                                    setAssignRole(e.role || "Reinigungskraft");
-                                  }}
-                                >
-                                  <Plus className="size-4" /> Zuordnen
-                                </Button>
-                              </div>
-                              {mine.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                  Noch keinem Objekt zugeordnet.
-                                </p>
-                              ) : (
-                                <ul className="divide-y rounded-md border bg-background">
-                                  {mine.map((a) => {
-                                    const p = projects.find((x) => x.id === a.project_id);
-                                    return (
-                                      <li
-                                        key={a.id}
-                                        className="flex items-center gap-3 px-3 py-2 text-sm"
-                                      >
-                                        <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                                        <div className="min-w-0 flex-1">
-                                          <Link
-                                            to="/projekte/$id"
-                                            params={{ id: a.project_id }}
-                                            className="font-medium hover:underline"
-                                          >
-                                            {p?.name || "Projekt"}
-                                          </Link>
-                                          <div className="text-xs text-muted-foreground">
-                                            {[
-                                              a.assignment_role,
-                                              p?.city,
-                                              Number(a.hours_per_week) > 0
-                                                ? `${Number(a.hours_per_week)} Std./Woche`
-                                                : "",
-                                            ]
-                                              .filter(Boolean)
-                                              .join(" · ")}
-                                          </div>
-                                        </div>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => unassign.mutate(a.id)}
-                                        >
-                                          <Trash2 className="size-4 text-destructive" />
-                                        </Button>
-                                      </li>
-                                    );
-                                  })}
-                                </ul>
-                              )}
-                            </div>
-
-                            <div className="space-y-3">
-                              <h3 className="font-semibold">Stunden pro Projekt</h3>
-                              {perProject.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                  Noch keine Arbeitszeiten erfasst.
-                                </p>
-                              ) : (
-                                <table className="w-full text-sm">
-                                  <tbody>
-                                    {perProject.map(([label, h]) => (
-                                      <tr key={label} className="border-b last:border-0">
-                                        <td className="py-2 pr-3">{label}</td>
-                                        <td className="py-2 text-right font-medium">
-                                          {h.toFixed(2)} Std.
-                                        </td>
-                                      </tr>
-                                    ))}
-                                    <tr>
-                                      <td className="py-2 pr-3 font-semibold">Gesamt</td>
-                                      <td className="py-2 text-right font-semibold">
-                                        {totalHours.toFixed(2)} Std.
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                  <tr key={e.id} className="border-b last:border-0 align-middle">
+                    <td className="px-5 py-2">
+                      <Input
+                        key={`name-${e.id}-${e.name}`}
+                        defaultValue={e.name}
+                        className="h-9"
+                        onBlur={(ev) => {
+                          const value = ev.target.value.trim();
+                          if (value && value !== e.name)
+                            patchEmployee.mutate({ id: e.id, patch: { name: value } });
+                        }}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <Select
+                        value={e.role || "Reinigungskraft"}
+                        onValueChange={(v) =>
+                          patchEmployee.mutate({ id: e.id, patch: { role: v } })
+                        }
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((r) => (
+                            <SelectItem key={r} value={r}>
+                              {r}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Select
+                        value={assignment?.project_id ?? NO_PROJECT}
+                        onValueChange={(v) =>
+                          setEinsatzort.mutate({ employeeId: e.id, projectId: v })
+                        }
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Objekt wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_PROJECT}>Kein Einsatzort</SelectItem>
+                          {projects.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name || "Ohne Namen"}
+                              {p.city ? ` · ${p.city}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {projects.length === 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Noch keine Projekte –{" "}
+                          <Link to="/projekte" className="underline">
+                            Projekt anlegen
+                          </Link>
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        key={`h-${e.id}-${assignment?.id ?? "none"}-${assignment?.hours_per_week ?? 0}`}
+                        defaultValue={assignment ? String(assignment.hours_per_week ?? 0) : ""}
+                        inputMode="decimal"
+                        placeholder="0"
+                        className="h-9"
+                        onBlur={(ev) => {
+                          const hours = toNumber(ev.target.value);
+                          if (!assignment) {
+                            if (ev.target.value.trim())
+                              toast.error("Bitte zuerst einen Einsatzort wählen.");
+                            return;
+                          }
+                          if (hours !== Number(assignment.hours_per_week ?? 0))
+                            setWeeklyHours.mutate({ employeeId: e.id, hours });
+                        }}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        key={`r-${e.id}-${e.hourly_rate}`}
+                        defaultValue={String(e.hourly_rate ?? 0)}
+                        inputMode="decimal"
+                        className="h-9"
+                        onBlur={(ev) => {
+                          const rate = toNumber(ev.target.value);
+                          if (rate !== Number(e.hourly_rate ?? 0))
+                            patchEmployee.mutate({ id: e.id, patch: { hourly_rate: rate } });
+                        }}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium">
+                      {trackedHours(e.id).toFixed(2)} Std.
+                    </td>
+                    <td className="px-5 py-2 text-right">
+                      <Button variant="ghost" size="icon" onClick={() => remove.mutate(e.id)}>
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
@@ -663,61 +603,6 @@ function Personal() {
           </ul>
         )}
       </section>
-
-      {/* Zuordnungs-Dialog */}
-      <Dialog open={assignFor !== null} onOpenChange={(o) => !o && setAssignFor(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Einsatzort zuordnen</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Projekt / Baustelle</Label>
-              <Select value={assignProject} onValueChange={setAssignProject}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Projekt wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name || "Ohne Namen"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Funktion im Einsatz</Label>
-              <Select value={assignRole} onValueChange={setAssignRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="a-hours">Stunden pro Woche (optional)</Label>
-              <Input
-                id="a-hours"
-                inputMode="decimal"
-                value={assignHours}
-                onChange={(ev) => setAssignHours(ev.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => assign.mutate()} disabled={!assignProject || assign.isPending}>
-              Zuordnen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
