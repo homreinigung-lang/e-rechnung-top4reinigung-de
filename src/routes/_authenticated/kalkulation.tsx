@@ -470,10 +470,11 @@ function KalkulationPage() {
 
             <div className="space-y-3 rounded-md border p-3">
               <div>
-                <Label>Grundrisse & Fotos – Analyse</Label>
+                <Label>Grundrisse & Fotos – KI-Analyse</Label>
                 <p className="text-xs text-muted-foreground">
-                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen, Eckdaten direkt ablesen und mit
-                  einem Klick in die Kalkulation übernehmen – nur intern zur Preisfindung.
+                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – die KI liest m², Räume und
+                  Etagen automatisch aus und schlägt realistische Werte vor. Werte bleiben
+                  jederzeit manuell änderbar.
                 </p>
               </div>
               <FileUploadButton
@@ -494,11 +495,15 @@ function KalkulationPage() {
                         rooms: "",
                         floors: "",
                         note: "",
+                        analyzing: true,
+                        aiFilled: false,
                       },
                     ]);
+                    await analyzeAttachment(path, file);
                   })();
                 }}
               />
+
               {attachments.length > 0 && (
                 <>
                   <div className="grid gap-3 sm:grid-cols-2">
