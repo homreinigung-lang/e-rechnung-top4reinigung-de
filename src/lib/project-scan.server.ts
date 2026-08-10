@@ -81,8 +81,17 @@ Vorgehen:
 5. floor nur aus Planbeschriftung (z. B. "EG", "1. OG"), sonst "".
 6. expected_room_count = Anzahl der tatsächlich gelesenen Räume.
 7. items bleibt eine leere Liste.
+
+STRIKTE ZEILEN-REGELN (wichtigster Teil):
+- Eine Zeile = GENAU EIN Raum. Niemals Aufzählungen wie "Büro, WC, Flur" in ein Feld schreiben; solche Listen in einzelne Zeilen aufteilen.
+- Jede Zeile muss ihren EIGENEN, im Dokument stehenden Wert haben. Kopiere niemals denselben Raumnamen oder denselben m²-Wert in mehrere Zeilen.
+- Lies jede Tabellenzeile bzw. jeden Raumstempel einzeln von oben nach unten und übertrage sie 1:1 in der Reihenfolge des Dokuments.
+- Steht für einen Raum keine eigene Fläche im Dokument, setze area_sqm = 0 – niemals den Wert eines anderen Raums übernehmen und niemals einen Durchschnitts- oder Einheitswert verteilen.
+- Sind mehrere Räume im Dokument tatsächlich gleich benannt (z. B. mehrere "WC"), unterscheide sie über die im Dokument stehende Raumnummer/Etage.
+- Wiederholte identische Zeilen sind ein Fehler: gib in diesem Fall lieber nur die eine Zeile aus, die im Dokument steht.
 ${NO_GUESS}
 Antworte ausschließlich mit reinem JSON.`;
+
 
 const TENDER_SYSTEM = `Du bist ein Ausschreibungs-Experte für ein deutsches Gebäudereinigungsunternehmen.
 Lies die Ausschreibung / das Leistungsverzeichnis und extrahiere:
