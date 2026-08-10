@@ -23,6 +23,8 @@ import {
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { EinsatzKalender } from "@/components/EinsatzKalender";
+
 
 export const Route = createFileRoute("/_authenticated/personal")({
   head: () => ({
@@ -165,8 +167,9 @@ function Personal() {
       patch,
     }: {
       id: string;
-      patch: { name?: string; role?: string; hourly_rate?: number };
+      patch: { name?: string; role?: string; hourly_rate?: number; work_location?: string };
     }) => {
+
       const { error } = await supabase.from("employees").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -435,7 +438,7 @@ function Personal() {
                           <SelectValue placeholder="Objekt wählen" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={NO_PROJECT}>Kein Einsatzort</SelectItem>
+                          <SelectItem value={NO_PROJECT}>Kein Projekt (Freitext)</SelectItem>
                           {projects.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.name || "Ohne Namen"}
@@ -444,15 +447,24 @@ function Personal() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {projects.length === 0 && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Noch keine Projekte –{" "}
-                          <Link to="/projekte" className="underline">
-                            Projekt anlegen
-                          </Link>
-                        </p>
+                      {!assignment && (
+                        <Input
+                          key={`loc-${e.id}-${e.work_location ?? ""}`}
+                          defaultValue={e.work_location ?? ""}
+                          placeholder="Einsatzort manuell eintragen"
+                          className="mt-1 h-9"
+                          onBlur={(ev) => {
+                            const value = ev.target.value.trim();
+                            if (value !== (e.work_location ?? ""))
+                              patchEmployee.mutate({
+                                id: e.id,
+                                patch: { work_location: value },
+                              });
+                          }}
+                        />
                       )}
                     </td>
+
                     <td className="px-3 py-2">
                       <Input
                         key={`h-${e.id}-${assignment?.id ?? "none"}-${assignment?.hours_per_week ?? 0}`}
@@ -501,7 +513,10 @@ function Personal() {
         )}
       </div>
 
+      <EinsatzKalender employees={employees} projects={projects} />
+
       {/* Wochenübersicht */}
+
       <section className="surface space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -552,7 +567,7 @@ function Personal() {
                       <td className="py-2 pr-3">
                         <div className="font-medium">{e.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {objects.join(", ") || "Kein Objekt"}
+                          {objects.join(", ") || e.work_location || "Kein Objekt"}
                         </div>
                       </td>
                       {days.map((h, i) => (

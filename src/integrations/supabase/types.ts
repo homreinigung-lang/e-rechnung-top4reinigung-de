@@ -470,6 +470,7 @@ export type Database = {
           role: string
           updated_at: string
           user_id: string
+          work_location: string
         }
         Insert: {
           active?: boolean
@@ -484,6 +485,7 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id: string
+          work_location?: string
         }
         Update: {
           active?: boolean
@@ -498,6 +500,7 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id?: string
+          work_location?: string
         }
         Relationships: []
       }
