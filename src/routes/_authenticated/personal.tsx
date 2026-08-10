@@ -511,7 +511,10 @@ function Personal() {
         )}
       </div>
 
+      <EinsatzKalender employees={employees} projects={projects} />
+
       {/* Wochenübersicht */}
+
       <section className="surface space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
