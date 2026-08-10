@@ -163,7 +163,7 @@ function ProjektDetail() {
   const planUrl = useFileUrl(project?.source_file_path);
 
   const patchProject = useMutation({
-    mutationFn: async (values: Record<string, unknown>) => {
+    mutationFn: async (values: ProjectUpdate) => {
       const { error } = await supabase.from("projects").update(values).eq("id", id);
       if (error) throw error;
     },
