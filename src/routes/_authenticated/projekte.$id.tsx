@@ -876,6 +876,15 @@ function ProjektDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ProjectScanReview
+        open={Boolean(scanResult)}
+        mode={isTender ? "tender" : "floorplan"}
+        result={scanResult}
+        saving={applyScan.isPending}
+        onCancel={() => setScanResult(null)}
+        onConfirm={(review) => applyScan.mutate(review)}
+      />
     </div>
   );
 }
