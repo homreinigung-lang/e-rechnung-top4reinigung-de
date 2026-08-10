@@ -91,7 +91,19 @@ type Attachment = {
   rooms: string;
   floors: string;
   note: string;
+  analyzing: boolean;
+  aiFilled: boolean;
 };
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
+}
+
 
 function KalkulationPage() {
   const navigate = useNavigate();
