@@ -423,6 +423,15 @@ function ProjekteIndex() {
           </ul>
         )}
       </div>
+
+      <ProjectScanReview
+        open={Boolean(scanResult)}
+        mode={mode === "tender" ? "tender" : "floorplan"}
+        result={scanResult}
+        saving={applyScan.isPending}
+        onCancel={skipScan}
+        onConfirm={(review) => applyScan.mutate(review)}
+      />
     </div>
   );
 }
