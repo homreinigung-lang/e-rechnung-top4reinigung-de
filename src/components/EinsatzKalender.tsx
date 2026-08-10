@@ -270,19 +270,35 @@ export function EinsatzKalender({
                 )}
               </div>
               <div className="mt-1 space-y-0.5">
-                {list.slice(0, 3).map((e) => (
-                  <div
-                    key={e.id}
-                    className="truncate rounded bg-primary/10 px-1 py-0.5 text-[11px] leading-tight text-primary"
-                    title={`${e.employee_name} · ${e.location || "ohne Objekt"}`}
-                  >
-                    {(e.start_time ?? "").slice(0, 5)} {e.employee_name}
-                  </div>
-                ))}
+                {list.slice(0, 3).map((e) => {
+                  const reason = absenceReason(e);
+                  return (
+                    <div
+                      key={e.id}
+                      className={`flex items-center gap-1 truncate rounded border px-1 py-0.5 text-[11px] leading-tight ${
+                        reason
+                          ? absenceClasses(reason)
+                          : "border-transparent bg-primary/10 text-primary"
+                      }`}
+                      title={
+                        reason
+                          ? `${e.employee_name} · ${absenceLabel(reason)}`
+                          : `${e.employee_name} · ${e.location || "ohne Objekt"}`
+                      }
+                    >
+                      {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
+                      <span className="truncate">
+                        {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
+                        {e.employee_name}
+                      </span>
+                    </div>
+                  );
+                })}
                 {list.length > 3 && (
                   <div className="text-[10px] text-muted-foreground">+{list.length - 3} weitere</div>
                 )}
               </div>
+
             </button>
           );
         })}
