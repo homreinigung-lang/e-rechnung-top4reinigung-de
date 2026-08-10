@@ -489,11 +489,10 @@ function KalkulationPage() {
 
             <div className="space-y-3 rounded-md border p-3">
               <div>
-                <Label>Grundrisse & Fotos – KI-Analyse</Label>
+                <Label>Grundrisse & Fotos</Label>
                 <p className="text-xs text-muted-foreground">
-                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – die KI liest m², Räume und
-                  Etagen automatisch aus und schlägt realistische Werte vor. Werte bleiben
-                  jederzeit manuell änderbar.
+                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – nur zur internen Ablage und für
+                  Notizen. m², Räume und Etagen tragen Sie bitte manuell ein.
                 </p>
               </div>
               <FileUploadButton
@@ -514,11 +513,8 @@ function KalkulationPage() {
                         rooms: "",
                         floors: "",
                         note: "",
-                        analyzing: true,
-                        aiFilled: false,
                       },
                     ]);
-                    await analyzeAttachment(path, file);
                   })();
                 }}
               />
@@ -547,20 +543,7 @@ function KalkulationPage() {
                             <FileText className="size-8 text-muted-foreground" />
                           </a>
                         )}
-                        {a.analyzing ? (
-                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Loader2 className="size-3 animate-spin" />
-                            KI analysiert den Grundriss …
-                          </p>
-                        ) : a.aiFilled ? (
-                          <p className="flex items-start gap-2 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-muted-foreground">
-                            <Sparkles className="mt-0.5 size-3 shrink-0" />
-                            <span>
-                              Werte wurden automatisch durch KI erkannt. Bitte vor der Übernahme
-                              kurz auf Richtigkeit prüfen – alle Felder bleiben manuell editierbar.
-                            </span>
-                          </p>
-                        ) : null}
+
 
 
                         <div className="flex items-center gap-2">
