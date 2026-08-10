@@ -86,6 +86,62 @@ function toNumber(value: string) {
   return Number(String(value).replace(",", ".").trim()) || 0;
 }
 
+/**
+ * Ein einziges kombiniertes Einsatzort-Feld:
+ * Freitext tippen ODER per Dropdown ein echtes Projekt wählen.
+ */
+function EinsatzortCell({
+  projects,
+  projectId,
+  freeText,
+  onSelectProject,
+  onFreeText,
+}: {
+  projects: { id: string; name: string | null; city?: string | null }[];
+  projectId: string | null;
+  freeText: string;
+  onSelectProject: (projectId: string | null) => void;
+  onFreeText: (value: string) => void;
+}) {
+  const selected = projects.find((p) => p.id === projectId) ?? null;
+  const shown = selected ? selected.name || "Ohne Namen" : freeText;
+
+  return (
+    <div className="relative">
+      <Input
+        key={`einsatzort-${projectId ?? "free"}-${shown}`}
+        defaultValue={shown}
+        placeholder="Einsatzort eintippen oder Projekt wählen"
+        className="h-9 pr-9"
+        onBlur={(ev) => {
+          const value = ev.target.value.trim();
+          if (value === shown) return;
+          onFreeText(value);
+        }}
+      />
+      <Select
+        value={projectId ?? NO_PROJECT}
+        onValueChange={(v) => onSelectProject(v === NO_PROJECT ? null : v)}
+      >
+        <SelectTrigger
+          aria-label="Projekt auswählen"
+          className="absolute right-0 top-0 h-9 w-9 justify-center border-0 bg-transparent p-0 shadow-none focus:ring-0 [&>span]:hidden"
+        />
+        <SelectContent align="end">
+          <SelectItem value={NO_PROJECT}>Freitext (kein Projekt)</SelectItem>
+          {projects.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name || "Ohne Namen"}
+              {p.city ? ` · ${p.city}` : ""}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+
 function Personal() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
