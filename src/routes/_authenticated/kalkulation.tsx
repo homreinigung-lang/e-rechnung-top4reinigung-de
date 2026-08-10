@@ -121,36 +121,12 @@ function KalkulationPage() {
   const [confirmed, setConfirmed] = useState(false);
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
-  const runFloorplanScan = useServerFn(scanFloorplan);
-
 
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
 
-  /** Lässt die KI den Grundriss auslesen und füllt m², Räume und Etagen vor. */
-  async function analyzeAttachment(path: string, file: File) {
-    updateAttachment(path, { analyzing: true });
-    try {
-      const signedUrl = await fileUrl(path);
-      if (!signedUrl) throw new Error("Datei konnte nicht geladen werden.");
-      const r = await runFloorplanScan({
-        data: { fileUrl: signedUrl, mimeType: file.type || "application/pdf" },
-      });
-      updateAttachment(path, {
-        sqm: r.sqm ? String(r.sqm) : "",
-        rooms: r.rooms ? String(r.rooms) : "",
-        floors: r.floors ? String(r.floors) : "",
-        note: r.note,
-        aiFilled: true,
-      });
-      toast.success("Grundriss automatisch erkannt – bitte Werte prüfen");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Analyse fehlgeschlagen");
-    } finally {
-      updateAttachment(path, { analyzing: false });
-    }
-  }
+
 
 
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
