@@ -96,6 +96,7 @@ function ProjektDetail() {
   const queryClient = useQueryClient();
   const runAnalyze = useServerFn(analyzeProject);
   const [analyzing, setAnalyzing] = useState(false);
+  const [scanResult, setScanResult] = useState<ScannedProject | null>(null);
   const [roomDialog, setRoomDialog] = useState<Room | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmployee, setAssignEmployee] = useState("");
