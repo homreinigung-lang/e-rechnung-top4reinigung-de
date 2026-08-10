@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -378,8 +378,8 @@ function Personal() {
                 const perProject = isOpen ? hoursByProject(e.id) : [];
                 const totalHours = perProject.reduce((s, [, h]) => s + h, 0);
                 return (
-                  <>
-                    <tr key={e.id} className="border-b last:border-0">
+                  <Fragment key={e.id}>
+                    <tr className="border-b last:border-0">
                       <td className="px-5 py-3 font-medium">
                         {e.name}
                         {e.personnel_number && (
@@ -449,7 +449,7 @@ function Personal() {
                       </td>
                     </tr>
                     {isOpen && (
-                      <tr key={`${e.id}-details`} className="border-b bg-muted/30 last:border-0">
+                      <tr className="border-b bg-muted/30 last:border-0">
                         <td colSpan={6} className="px-5 py-4">
                           <div className="grid gap-6 lg:grid-cols-2">
                             <div className="space-y-3">
@@ -545,7 +545,7 @@ function Personal() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>
