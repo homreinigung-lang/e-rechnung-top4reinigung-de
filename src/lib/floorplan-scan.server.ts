@@ -54,14 +54,20 @@ export async function extractFloorplan(
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
 
+  const task =
+    "Lies dieses Dokument systematisch aus: Zoome gedanklich auf jede Tabelle, jedes Raumbuch, jeden Raumstempel " +
+    "und jede Beschriftung (Raumnummer, Raumname, m²-Angabe). Liste jeden gefundenen Raum einzeln in rooms_detail auf " +
+    "und leite Gesamtfläche, Raumanzahl und Etagen ausschließlich aus diesen abgelesenen Angaben ab. " +
+    "Wenn im Dokument keine Flächenangaben stehen, gib 0 zurück statt zu schätzen.";
+
   const content =
     mimeType === "application/pdf"
       ? [
-          { type: "text", text: "Analysiere diesen Grundriss (PDF) für die Reinigungskalkulation." },
+          { type: "text", text: task },
           { type: "file", file: { filename: "grundriss.pdf", file_data: dataUrl } },
         ]
       : [
-          { type: "text", text: "Analysiere diesen Grundriss / dieses Foto für die Reinigungskalkulation." },
+          { type: "text", text: task },
           { type: "image_url", image_url: { url: dataUrl } },
         ];
 
@@ -70,6 +76,7 @@ export async function extractFloorplan(
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
+      temperature: 0,
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user", content },
@@ -83,12 +90,27 @@ export async function extractFloorplan(
             type: "object",
             additionalProperties: false,
             properties: {
+              source: { type: "string", enum: ["tabelle", "raumstempel", "massketten", "keine_angabe"] },
+              rooms_detail: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    label: { type: "string" },
+                    sqm: { type: "number" },
+                  },
+                  required: ["label", "sqm"],
+                },
+              },
               sqm: { type: "number" },
               rooms: { type: "number" },
               floors: { type: "number" },
+              estimated: { type: "boolean" },
+              confidence: { type: "string", enum: ["hoch", "mittel", "niedrig"] },
               note: { type: "string" },
             },
-            required: ["sqm", "rooms", "floors", "note"],
+            required: ["source", "rooms_detail", "sqm", "rooms", "floors", "estimated", "confidence", "note"],
           },
         },
       },
@@ -111,14 +133,49 @@ export async function extractFloorplan(
     return EMPTY;
   }
 
-  const sqm = Math.max(0, Math.round(num(parsed["sqm"])));
-  const rooms = Math.max(0, Math.round(num(parsed["rooms"])));
+  const detail = Array.isArray(parsed["rooms_detail"])
+    ? (parsed["rooms_detail"] as { label?: unknown; sqm?: unknown }[])
+    : [];
+  const detailSum = detail.reduce((sum, r) => sum + Math.max(0, num(r?.sqm)), 0);
+
+  let sqm = Math.max(0, Math.round(num(parsed["sqm"])));
+  // Bevorzuge die Summe der einzeln ausgelesenen Räume, wenn sie deutlich abweicht.
+  if (detailSum > 0 && (sqm === 0 || Math.abs(detailSum - sqm) / Math.max(detailSum, sqm) > 0.15)) {
+    sqm = Math.round(detailSum);
+  }
+
+  let rooms = Math.max(0, Math.round(num(parsed["rooms"])));
+  const namedRooms = detail.filter((r) => String(r?.label ?? "").trim().length > 0).length;
+  if (namedRooms > rooms) rooms = namedRooms;
+
   const floors = Math.max(0, Math.round(num(parsed["floors"])));
+
+  const source = String(parsed["source"] ?? "");
+  const confidence = String(parsed["confidence"] ?? "");
+  const estimated = parsed["estimated"] === true;
+
+  const parts: string[] = [];
+  const baseNote = String(parsed["note"] ?? "").trim();
+  if (baseNote) parts.push(baseNote);
+  if (detail.length > 0) {
+    const list = detail
+      .slice(0, 25)
+      .map((r) => `${String(r?.label ?? "Raum").trim()}${num(r?.sqm) > 0 ? `: ${num(r?.sqm)} m²` : ""}`)
+      .join(", ");
+    parts.push(`Erkannte Räume: ${list}${detail.length > 25 ? " …" : ""}`);
+  }
+  if (source === "keine_angabe" || (sqm === 0 && rooms === 0)) {
+    parts.push("Im Dokument wurden keine eindeutigen Flächenangaben gefunden – bitte manuell eintragen.");
+  } else if (estimated || confidence === "niedrig") {
+    parts.push("Achtung: Werte wurden aus Maßketten berechnet bzw. sind unsicher – bitte prüfen.");
+  } else if (confidence) {
+    parts.push(`Genauigkeit: ${confidence} (Quelle: ${source || "unbekannt"}).`);
+  }
 
   return {
     sqm,
     rooms,
-    floors: floors || 1,
-    note: String(parsed["note"] ?? "").trim(),
+    floors,
+    note: parts.join(" · "),
   };
 }
