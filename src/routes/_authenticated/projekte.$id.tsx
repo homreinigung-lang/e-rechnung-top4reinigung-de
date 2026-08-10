@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeProject } from "@/lib/project-scan.functions";
 import { fileUrl } from "@/lib/storage";
