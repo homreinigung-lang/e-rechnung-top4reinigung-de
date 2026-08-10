@@ -1,0 +1,258 @@
+export type ScannedRoom = {
+  name: string;
+  floor: string;
+  usage_type: string;
+  area_sqm: number;
+};
+
+export type ScannedLvItem = {
+  section: string;
+  title: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  deadline: string; // JJJJ-MM-TT oder ""
+  evidence: string;
+  critical: boolean;
+};
+
+export type ScannedProject = {
+  project_name: string;
+  address_line: string;
+  postal_code: string;
+  city: string;
+  customer_name: string;
+  expected_room_count: number;
+  executive_summary: string;
+  rooms: ScannedRoom[];
+  items: ScannedLvItem[];
+};
+
+const EMPTY: ScannedProject = {
+  project_name: "",
+  address_line: "",
+  postal_code: "",
+  city: "",
+  customer_name: "",
+  expected_room_count: 0,
+  executive_summary: "",
+  rooms: [],
+  items: [],
+};
+
+function num(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return 0;
+  const cleaned = value.replace(/[^\d.,-]/g, "").trim();
+  if (!cleaned) return 0;
+  const normalized =
+    cleaned.includes(",") && cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")
+      ? cleaned.replace(/\./g, "").replace(",", ".")
+      : cleaned.replace(/,/g, "");
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function isoDate(value: unknown): string {
+  const s = String(value ?? "").trim();
+  const de = s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/);
+  if (de) {
+    const [, d, m, y] = de;
+    const year = y!.length === 2 ? `20${y}` : y!;
+    return `${year}-${m!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+  }
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return iso ? iso[0]! : "";
+}
+
+const FLOORPLAN_SYSTEM = `Du bist ein Aufmaß-Experte für ein deutsches Gebäudereinigungsunternehmen.
+Lies den Grundriss bzw. das Raumbuch und erstelle eine Liste ALLER einzelnen Räume.
+Regeln:
+- Lies bevorzugt Raumstempel, Raumbücher und Flächentabellen im Dokument aus.
+- Übernimm nur Werte, die im Dokument stehen. Schätze NICHT.
+- Ist eine Fläche nicht lesbar, setze area_sqm auf 0.
+- expected_room_count = Anzahl der insgesamt erkennbaren Räume.
+- items bleibt eine leere Liste.
+Antworte ausschließlich mit reinem JSON.`;
+
+const TENDER_SYSTEM = `Du bist ein Ausschreibungs-Experte für ein deutsches Gebäudereinigungsunternehmen.
+Lies die Ausschreibung / das Leistungsverzeichnis und extrahiere:
+- alle Leistungsbereiche und Positionen (section, title, description, quantity, unit)
+- Fristen (deadline als JJJJ-MM-TT) und geforderte Nachweise (evidence, z. B. Referenzen, Unbedenklichkeitsbescheinigung, Versicherungsnachweis)
+- critical = true bei fristgebundenen oder zwingend erforderlichen Punkten
+- executive_summary: kurze deutsche Zusammenfassung (max. 6 Sätze) mit kritischen Punkten und Fristen.
+Übernimm nur, was im Dokument steht. Schätze NICHT. rooms bleibt eine leere Liste.
+Antworte ausschließlich mit reinem JSON.`;
+
+const SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    project_name: { type: "string" },
+    address_line: { type: "string" },
+    postal_code: { type: "string" },
+    city: { type: "string" },
+    customer_name: { type: "string" },
+    expected_room_count: { type: "number" },
+    executive_summary: { type: "string" },
+    rooms: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          floor: { type: "string" },
+          usage_type: { type: "string" },
+          area_sqm: { type: "number" },
+        },
+        required: ["name", "floor", "usage_type", "area_sqm"],
+      },
+    },
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          section: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          quantity: { type: "number" },
+          unit: { type: "string" },
+          deadline: { type: "string" },
+          evidence: { type: "string" },
+          critical: { type: "boolean" },
+        },
+        required: [
+          "section",
+          "title",
+          "description",
+          "quantity",
+          "unit",
+          "deadline",
+          "evidence",
+          "critical",
+        ],
+      },
+    },
+  },
+  required: [
+    "project_name",
+    "address_line",
+    "postal_code",
+    "city",
+    "customer_name",
+    "expected_room_count",
+    "executive_summary",
+    "rooms",
+    "items",
+  ],
+} as const;
+
+async function toDataUrl(fileUrl: string, mimeType: string): Promise<string> {
+  const res = await fetch(fileUrl);
+  if (!res.ok) throw new Error("Datei konnte nicht geladen werden.");
+  const buffer = new Uint8Array(await res.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < buffer.length; i += 8192) {
+    binary += String.fromCharCode(...buffer.subarray(i, i + 8192));
+  }
+  return `data:${mimeType};base64,${btoa(binary)}`;
+}
+
+/** Analysiert einen Grundriss oder eine Ausschreibung mit dem KI-Gateway. */
+export async function analyzeProjectFile(
+  fileUrl: string,
+  mimeType: string,
+  mode: "floorplan" | "tender",
+): Promise<ScannedProject> {
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
+
+  const dataUrl = await toDataUrl(fileUrl, mimeType);
+  const prompt =
+    mode === "floorplan"
+      ? "Erstelle das vollständige Raumbuch zu diesem Grundriss."
+      : "Analysiere diese Ausschreibung und erstelle das strukturierte Leistungsverzeichnis.";
+
+  const content =
+    mimeType === "application/pdf"
+      ? [
+          { type: "text", text: prompt },
+          { type: "file", file: { filename: "projekt.pdf", file_data: dataUrl } },
+        ]
+      : [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: dataUrl } },
+        ];
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      temperature: 0,
+      messages: [
+        { role: "system", content: mode === "floorplan" ? FLOORPLAN_SYSTEM : TENDER_SYSTEM },
+        { role: "user", content },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "projekt", strict: true, schema: SCHEMA },
+      },
+    }),
+  });
+
+  if (res.status === 429) throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
+  if (res.status === 402) throw new Error("KI-Guthaben aufgebraucht.");
+  if (!res.ok) throw new Error(`Datei konnte nicht analysiert werden (${res.status}).`);
+
+  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const raw = json.choices?.[0]?.message?.content ?? "";
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) return EMPTY;
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(match[0]) as Record<string, unknown>;
+  } catch {
+    return EMPTY;
+  }
+
+  const rooms = Array.isArray(parsed["rooms"])
+    ? (parsed["rooms"] as Record<string, unknown>[]).map((r) => ({
+        name: String(r["name"] ?? "").trim(),
+        floor: String(r["floor"] ?? "").trim(),
+        usage_type: String(r["usage_type"] ?? "").trim(),
+        area_sqm: num(r["area_sqm"]),
+      }))
+    : [];
+
+  const items = Array.isArray(parsed["items"])
+    ? (parsed["items"] as Record<string, unknown>[]).map((i) => ({
+        section: String(i["section"] ?? "").trim(),
+        title: String(i["title"] ?? "").trim(),
+        description: String(i["description"] ?? "").trim(),
+        quantity: num(i["quantity"]),
+        unit: String(i["unit"] ?? "").trim(),
+        deadline: isoDate(i["deadline"]),
+        evidence: String(i["evidence"] ?? "").trim(),
+        critical: Boolean(i["critical"]),
+      }))
+    : [];
+
+  const expected = Math.max(num(parsed["expected_room_count"]), rooms.length);
+
+  return {
+    project_name: String(parsed["project_name"] ?? "").trim(),
+    address_line: String(parsed["address_line"] ?? "").trim(),
+    postal_code: String(parsed["postal_code"] ?? "").trim(),
+    city: String(parsed["city"] ?? "").trim(),
+    customer_name: String(parsed["customer_name"] ?? "").trim(),
+    expected_room_count: Math.round(expected),
+    executive_summary: String(parsed["executive_summary"] ?? "").trim(),
+    rooms: rooms.filter((r) => r.name || r.area_sqm > 0),
+    items: items.filter((i) => i.title || i.section),
+  };
+}
