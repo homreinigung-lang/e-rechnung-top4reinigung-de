@@ -21,6 +21,7 @@ import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authen
 import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenticated/kalkulation'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
+import { Route as AuthenticatedPersonalRouteImport } from './routes/_authenticated/personal'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
 import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
@@ -99,6 +100,11 @@ const AuthenticatedMeineZeitenRoute =
     path: '/meine-zeiten',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPersonalRoute = AuthenticatedPersonalRouteImport.update({
+  id: '/personal',
+  path: '/personal',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -188,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/_authenticated/kalkulation': typeof AuthenticatedKalkulationRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/_authenticated/personal': typeof AuthenticatedPersonalRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
     | '/kalkulation'
     | '/kunden'
     | '/meine-zeiten'
+    | '/personal'
     | '/profil'
     | '/steuerberater'
     | '/wiederkehrend'
@@ -298,6 +308,7 @@ export interface FileRouteTypes {
     | '/kalkulation'
     | '/kunden'
     | '/meine-zeiten'
+    | '/personal'
     | '/profil'
     | '/steuerberater'
     | '/wiederkehrend'
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kalkulation'
     | '/_authenticated/kunden'
     | '/_authenticated/meine-zeiten'
+    | '/_authenticated/personal'
     | '/_authenticated/profil'
     | '/_authenticated/steuerberater'
     | '/_authenticated/wiederkehrend'
@@ -437,6 +449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMeineZeitenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/personal': {
+      id: '/_authenticated/personal'
+      path: '/personal'
+      fullPath: '/personal'
+      preLoaderRoute: typeof AuthenticatedPersonalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profil': {
       id: '/_authenticated/profil'
       path: '/profil'
@@ -546,6 +565,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKalkulationRoute: typeof AuthenticatedKalkulationRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
+  AuthenticatedPersonalRoute: typeof AuthenticatedPersonalRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
@@ -564,6 +584,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKalkulationRoute: AuthenticatedKalkulationRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
+  AuthenticatedPersonalRoute: AuthenticatedPersonalRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
