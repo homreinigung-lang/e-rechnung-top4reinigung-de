@@ -379,18 +379,20 @@ function Personal() {
             Noch keine Mitarbeiter angelegt.
           </p>
         ) : (
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1040px] text-sm">
             <thead className="text-left text-muted-foreground">
               <tr className="border-b">
-                <th className="px-5 py-3 w-[24%]">Mitarbeiter</th>
-                <th className="px-3 py-3 w-[16%]">Funktion</th>
-                <th className="px-3 py-3 w-[24%]">Einsatzort</th>
-                <th className="px-3 py-3 w-[13%]">Std./Woche</th>
-                <th className="px-3 py-3 w-[13%]">Stundenlohn €</th>
+                <th className="px-5 py-3 w-[20%]">Mitarbeiter</th>
+                <th className="px-3 py-3 w-[13%]">Funktion</th>
+                <th className="px-3 py-3 w-[18%]">Projekt (Einsatzort)</th>
+                <th className="px-3 py-3 w-[17%]">Manuelle Eingabe</th>
+                <th className="px-3 py-3 w-[11%]">Std./Woche</th>
+                <th className="px-3 py-3 w-[11%]">Stundenlohn €</th>
                 <th className="px-3 py-3 text-right w-[10%]">Erfasst</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
+
             <tbody>
               {employees.map((e) => {
                 const assignment = primaryAssignment(e.id);
