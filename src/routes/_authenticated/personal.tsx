@@ -430,6 +430,7 @@ function Personal() {
                       </Select>
                     </td>
                     <td className="px-3 py-2">
+                    <td className="px-3 py-2">
                       <Select
                         value={assignment?.project_id ?? NO_PROJECT}
                         onValueChange={(v) =>
@@ -437,10 +438,10 @@ function Personal() {
                         }
                       >
                         <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Objekt wählen" />
+                          <SelectValue placeholder="Projekt wählen" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={NO_PROJECT}>Kein Projekt (Freitext)</SelectItem>
+                          <SelectItem value={NO_PROJECT}>Kein Projekt</SelectItem>
                           {projects.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.name || "Ohne Namen"}
@@ -449,23 +450,30 @@ function Personal() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {!assignment && (
-                        <Input
-                          key={`loc-${e.id}-${e.work_location ?? ""}`}
-                          defaultValue={e.work_location ?? ""}
-                          placeholder="Einsatzort manuell eintragen"
-                          className="mt-1 h-9"
-                          onBlur={(ev) => {
-                            const value = ev.target.value.trim();
-                            if (value !== (e.work_location ?? ""))
-                              patchEmployee.mutate({
-                                id: e.id,
-                                patch: { work_location: value },
-                              });
-                          }}
-                        />
-                      )}
                     </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        key={`loc-${e.id}-${e.work_location ?? ""}`}
+                        defaultValue={e.work_location ?? ""}
+                        placeholder="Freitext-Einsatzort"
+                        className="h-9"
+                        disabled={!!assignment}
+                        title={
+                          assignment
+                            ? "Projekt zugewiesen – Freitext nur ohne Projekt möglich"
+                            : undefined
+                        }
+                        onBlur={(ev) => {
+                          const value = ev.target.value.trim();
+                          if (value !== (e.work_location ?? ""))
+                            patchEmployee.mutate({
+                              id: e.id,
+                              patch: { work_location: value },
+                            });
+                        }}
+                      />
+                    </td>
+
 
                     <td className="px-3 py-2">
                       <Input
