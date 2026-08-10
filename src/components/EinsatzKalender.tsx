@@ -143,11 +143,13 @@ export function EinsatzKalender({
       if (!userId) throw new Error("Nicht angemeldet");
       const employee = employees.find((e) => e.id === values.employeeId);
       if (!employee) throw new Error("Bitte einen Mitarbeiter wählen.");
-      const breakMinutes = Number(values.breakMinutes.replace(",", ".")) || 0;
-      const hours = hoursFromTimes(values.start, values.end, breakMinutes);
-      if (hours <= 0) throw new Error("Bitte gültige Start- und Endzeit eintragen.");
+      const absence = values.entryType === "absence";
+      const breakMinutes = absence ? 0 : Number(values.breakMinutes.replace(",", ".")) || 0;
+      const hours = absence ? 0 : hoursFromTimes(values.start, values.end, breakMinutes);
+      if (!absence && hours <= 0)
+        throw new Error("Bitte gültige Start- und Endzeit eintragen.");
       const project =
-        values.projectId === NO_PROJECT
+        absence || values.projectId === NO_PROJECT
           ? null
           : projects.find((p) => p.id === values.projectId) || null;
       const { error } = await supabase.from("time_entries").insert({
@@ -155,21 +157,24 @@ export function EinsatzKalender({
         employee_id: employee.id,
         employee_name: employee.name,
         work_date: values.workDate,
-        start_time: values.start,
-        end_time: values.end,
+        start_time: absence ? null : values.start,
+        end_time: absence ? null : values.end,
         break_minutes: breakMinutes,
         hours,
         hourly_rate: Number(employee.hourly_rate ?? 0),
         project_id: project?.id ?? null,
-        location: project?.name || values.location.trim(),
+        location: absence ? absenceLabel(values.absenceReason) : project?.name || values.location.trim(),
         note: values.note.trim(),
+        entry_type: values.entryType,
+        absence_reason: absence ? values.absenceReason : "",
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Einsatz geplant");
+    onSuccess: (_d, values) => {
+      toast.success(values.entryType === "absence" ? "Abwesenheit eingetragen" : "Einsatz geplant");
       setDay(null);
       setForm(emptyForm);
+
       refresh();
     },
     onError: (e: Error) => toast.error(e.message),
