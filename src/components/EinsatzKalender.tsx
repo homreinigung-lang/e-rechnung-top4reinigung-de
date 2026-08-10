@@ -207,6 +207,8 @@ export function EinsatzKalender({
     setMonth(new Date(first.getFullYear(), first.getMonth() + delta, 1, 12));
 
   const dayEntries = day ? (byDay.get(day) ?? []) : [];
+  const isAbsent = form.entryType === "absence";
+
 
   return (
     <section className="surface space-y-4 p-5">
