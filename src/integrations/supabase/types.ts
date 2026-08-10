@@ -893,6 +893,7 @@ export type Database = {
       }
       time_entries: {
         Row: {
+          absence_reason: string
           billed: boolean
           break_minutes: number
           created_at: string
@@ -900,6 +901,7 @@ export type Database = {
           employee_id: string | null
           employee_name: string
           end_time: string | null
+          entry_type: string
           hourly_rate: number
           hours: number
           id: string
@@ -912,6 +914,7 @@ export type Database = {
           work_date: string
         }
         Insert: {
+          absence_reason?: string
           billed?: boolean
           break_minutes?: number
           created_at?: string
@@ -919,6 +922,7 @@ export type Database = {
           employee_id?: string | null
           employee_name?: string
           end_time?: string | null
+          entry_type?: string
           hourly_rate?: number
           hours?: number
           id?: string
@@ -931,6 +935,7 @@ export type Database = {
           work_date?: string
         }
         Update: {
+          absence_reason?: string
           billed?: boolean
           break_minutes?: number
           created_at?: string
@@ -938,6 +943,7 @@ export type Database = {
           employee_id?: string | null
           employee_name?: string
           end_time?: string | null
+          entry_type?: string
           hourly_rate?: number
           hours?: number
           id?: string
