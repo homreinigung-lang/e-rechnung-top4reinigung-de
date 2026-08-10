@@ -46,6 +46,23 @@ Raumtypen, Bodenbeläge, Sanitärräume, Besonderheiten. Nenne ausdrücklich, we
 
 Antworte ausschließlich mit reinem JSON ohne Erklärung.`;
 
+/** Lädt die Datei serverseitig und analysiert sie – hält die Anfrage vom Browser klein. */
+export async function extractFloorplanFromUrl(
+  fileUrl: string,
+  mimeType: string,
+): Promise<ScannedFloorplan> {
+  const res = await fetch(fileUrl);
+  if (!res.ok) throw new Error("Datei konnte nicht geladen werden.");
+  const buf = new Uint8Array(await res.arrayBuffer());
+  if (buf.byteLength > 12_000_000) throw new Error("Datei ist zu groß (max. ca. 12 MB).");
+  let binary = "";
+  for (let i = 0; i < buf.length; i += 8192) {
+    binary += String.fromCharCode(...buf.subarray(i, i + 8192));
+  }
+  const type = mimeType || res.headers.get("content-type") || "application/pdf";
+  return extractFloorplan(`data:${type};base64,${btoa(binary)}`, type);
+}
+
 /** Analysiert Grundrisse (PDF/Bild) mit dem KI-Gateway und liefert m², Räume, Etagen. */
 export async function extractFloorplan(
   dataUrl: string,
