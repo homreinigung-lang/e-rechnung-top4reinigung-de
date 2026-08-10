@@ -285,6 +285,7 @@ function Kunden() {
                       country: c.country,
                       vat_id: c.vat_id,
                       notes: c.notes,
+                      status: c.status ?? "active",
                     });
                     setOpen(true);
                   }}
