@@ -160,6 +160,7 @@ export type Database = {
           notes: string
           phone: string
           postal_code: string
+          status: string
           updated_at: string
           user_id: string
           vat_id: string
@@ -177,6 +178,7 @@ export type Database = {
           notes?: string
           phone?: string
           postal_code?: string
+          status?: string
           updated_at?: string
           user_id: string
           vat_id?: string
@@ -194,6 +196,7 @@ export type Database = {
           notes?: string
           phone?: string
           postal_code?: string
+          status?: string
           updated_at?: string
           user_id?: string
           vat_id?: string
