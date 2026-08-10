@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
 
@@ -88,7 +88,8 @@ function toNumber(value: string) {
 
 /**
  * Ein einziges kombiniertes Einsatzort-Feld:
- * Freitext tippen ODER per Dropdown ein echtes Projekt wählen.
+ * Beim Klick/Tippen öffnet sich sofort eine Vorschlagsliste aller Projekte.
+ * Freitext, der zu keinem Projekt passt, wird direkt übernommen.
  */
 function EinsatzortCell({
   projects,
@@ -106,40 +107,118 @@ function EinsatzortCell({
   const selected = projects.find((p) => p.id === projectId) ?? null;
   const shown = selected ? selected.name || "Ohne Namen" : freeText;
 
+  const [openList, setOpenList] = useState(false);
+  const [text, setText] = useState(shown);
+  const lastShown = useRef(shown);
+  if (lastShown.current !== shown) {
+    lastShown.current = shown;
+    if (text !== shown) setText(shown);
+  }
+
+  const q = text.trim().toLowerCase();
+  const matches = projects.filter((p) =>
+    q ? `${p.name ?? ""} ${p.city ?? ""}`.toLowerCase().includes(q) : true,
+  );
+
+  const commitFreeText = (value: string) => {
+    const v = value.trim();
+    if (v === shown) return;
+    onFreeText(v);
+  };
+
   return (
     <div className="relative">
       <Input
-        key={`einsatzort-${projectId ?? "free"}-${shown}`}
-        defaultValue={shown}
+        value={text}
         placeholder="Einsatzort eintippen oder Projekt wählen"
         className="h-9 pr-9"
+        onFocus={() => setOpenList(true)}
+        onClick={() => setOpenList(true)}
+        onChange={(ev) => {
+          setText(ev.target.value);
+          setOpenList(true);
+        }}
+        onKeyDown={(ev) => {
+          if (ev.key === "Enter") {
+            ev.currentTarget.blur();
+          } else if (ev.key === "Escape") {
+            setOpenList(false);
+          }
+        }}
         onBlur={(ev) => {
-          const value = ev.target.value.trim();
-          if (value === shown) return;
-          onFreeText(value);
+          // Klick auf einen Vorschlag zuerst verarbeiten lassen
+          const next = ev.relatedTarget as HTMLElement | null;
+          if (next?.dataset?.["einsatzortOption"]) return;
+          setOpenList(false);
+          commitFreeText(text);
         }}
       />
-      <Select
-        value={projectId ?? NO_PROJECT}
-        onValueChange={(v) => onSelectProject(v === NO_PROJECT ? null : v)}
+      <button
+        type="button"
+        aria-label="Projekte anzeigen"
+        className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center text-muted-foreground"
+        onMouseDown={(ev) => ev.preventDefault()}
+        onClick={() => setOpenList((v) => !v)}
       >
-        <SelectTrigger
-          aria-label="Projekt auswählen"
-          className="absolute right-0 top-0 h-9 w-9 justify-center border-0 bg-transparent p-0 shadow-none focus:ring-0 [&>span]:hidden"
-        />
-        <SelectContent align="end">
-          <SelectItem value={NO_PROJECT}>Freitext (kein Projekt)</SelectItem>
-          {projects.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
+        <ChevronDown className="size-4" />
+      </button>
+
+      {openList && (
+        <div className="absolute left-0 top-10 z-50 max-h-64 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md">
+          {selected && (
+            <button
+              type="button"
+              data-einsatzort-option="1"
+              className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+              onClick={() => {
+                setOpenList(false);
+                setText("");
+                onSelectProject(null);
+              }}
+            >
+              Projekt-Zuordnung entfernen
+            </button>
+          )}
+          {matches.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              data-einsatzort-option="1"
+              className="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+              onClick={() => {
+                setOpenList(false);
+                setText(p.name || "Ohne Namen");
+                onSelectProject(p.id);
+              }}
+            >
               {p.name || "Ohne Namen"}
               {p.city ? ` · ${p.city}` : ""}
-            </SelectItem>
+            </button>
           ))}
-        </SelectContent>
-      </Select>
+          {matches.length === 0 && (
+            <button
+              type="button"
+              data-einsatzort-option="1"
+              className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+              onClick={() => {
+                setOpenList(false);
+                commitFreeText(text);
+              }}
+            >
+              „{text.trim()}" als Freitext übernehmen
+            </button>
+          )}
+          {projects.length === 0 && (
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">
+              Noch keine Projekte angelegt – Freitext eintippen.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
 
 
 function Personal() {
