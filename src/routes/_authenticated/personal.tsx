@@ -435,7 +435,7 @@ function Personal() {
                           <SelectValue placeholder="Objekt wählen" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={NO_PROJECT}>Kein Einsatzort</SelectItem>
+                          <SelectItem value={NO_PROJECT}>Kein Projekt (Freitext)</SelectItem>
                           {projects.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.name || "Ohne Namen"}
@@ -444,15 +444,24 @@ function Personal() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {projects.length === 0 && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Noch keine Projekte –{" "}
-                          <Link to="/projekte" className="underline">
-                            Projekt anlegen
-                          </Link>
-                        </p>
+                      {!assignment && (
+                        <Input
+                          key={`loc-${e.id}-${e.work_location ?? ""}`}
+                          defaultValue={e.work_location ?? ""}
+                          placeholder="Einsatzort manuell eintragen"
+                          className="mt-1 h-9"
+                          onBlur={(ev) => {
+                            const value = ev.target.value.trim();
+                            if (value !== (e.work_location ?? ""))
+                              patchEmployee.mutate({
+                                id: e.id,
+                                patch: { work_location: value },
+                              });
+                          }}
+                        />
                       )}
                     </td>
+
                     <td className="px-3 py-2">
                       <Input
                         key={`h-${e.id}-${assignment?.id ?? "none"}-${assignment?.hours_per_week ?? 0}`}
