@@ -737,14 +737,27 @@ function Personal() {
                           {objects.join(", ") || e.work_location || "Kein Objekt"}
                         </div>
                       </td>
-                      {days.map((h, i) => (
-                        <td
-                          key={weekDays[i]}
-                          className={`py-2 pr-3 text-right ${h > 0 ? "" : "text-muted-foreground"}`}
-                        >
-                          {h > 0 ? h.toFixed(2) : "–"}
-                        </td>
-                      ))}
+                      {days.map((h, i) => {
+                        const day = weekDays[i]!;
+                        const reason = absenceOnDay(e.id, day);
+                        return (
+                          <td key={day} className="py-2 pr-3 text-right">
+                            {reason ? (
+                              <span
+                                title={absenceLabel(reason)}
+                                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-semibold ${absenceClasses(reason)}`}
+                              >
+                                {reason === "sick" && <HeartPulse className="size-3" />}
+                                {absenceShort(reason)}
+                              </span>
+                            ) : h > 0 ? (
+                              h.toFixed(2)
+                            ) : (
+                              <span className="text-muted-foreground">–</span>
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className="py-2 text-right font-semibold">{sum.toFixed(2)}</td>
                     </tr>
                   );
@@ -753,7 +766,111 @@ function Personal() {
             </table>
           </div>
         )}
+        <p className="text-xs text-muted-foreground">
+          Legende: <span className="font-semibold text-destructive">K</span> = Krankheit ·{" "}
+          <span className="font-semibold text-amber-600">U</span> = Urlaub ·{" "}
+          <span className="font-semibold">S</span> = Sonstiges
+        </p>
       </section>
+
+      {/* Monatsabrechnung */}
+      <section className="surface space-y-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Monatsabrechnung</h2>
+            <p className="text-sm text-muted-foreground">
+              Arbeitsstunden und Lohn je Mitarbeiter – Urlaub und Krankheit separat ausgewiesen.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() =>
+                setMonthCursor(
+                  new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1, 12),
+                )
+              }
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <span className="min-w-[9rem] text-center text-sm font-medium">
+              {monthCursor.toLocaleDateString("de-DE-u-ca-gregory-nu-latn", {
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() =>
+                setMonthCursor(
+                  new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1, 12),
+                )
+              }
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        </div>
+
+        {payroll.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Noch keine Mitarbeiter vorhanden.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr className="border-b">
+                  <th className="py-2 pr-3">Mitarbeiter</th>
+                  <th className="py-2 pr-3 text-right">Arbeitsstunden</th>
+                  <th className="py-2 pr-3 text-right">Stundenlohn</th>
+                  <th className="py-2 pr-3 text-right">Lohn (brutto)</th>
+                  <th className="py-2 pr-3 text-right">Urlaubstage</th>
+                  <th className="py-2 pr-3 text-right">Krankheitstage</th>
+                  <th className="py-2 text-right">Sonstige</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payroll.map((p) => (
+                  <tr key={p.id} className="border-b last:border-0">
+                    <td className="py-2 pr-3 font-medium">{p.name}</td>
+                    <td className="py-2 pr-3 text-right">{p.workHours.toFixed(2)}</td>
+                    <td className="py-2 pr-3 text-right">{p.rate.toFixed(2)} €</td>
+                    <td className="py-2 pr-3 text-right font-semibold">{p.wage.toFixed(2)} €</td>
+                    <td className="py-2 pr-3 text-right text-amber-600">{p.vacationDays}</td>
+                    <td className="py-2 pr-3 text-right font-medium text-destructive">
+                      {p.sickDays}
+                    </td>
+                    <td className="py-2 text-right text-muted-foreground">{p.otherDays}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t font-semibold">
+                  <td className="py-2 pr-3">Gesamt</td>
+                  <td className="py-2 pr-3 text-right">
+                    {payroll.reduce((s, p) => s + p.workHours, 0).toFixed(2)}
+                  </td>
+                  <td />
+                  <td className="py-2 pr-3 text-right">
+                    {payroll.reduce((s, p) => s + p.wage, 0).toFixed(2)} €
+                  </td>
+                  <td className="py-2 pr-3 text-right">
+                    {payroll.reduce((s, p) => s + p.vacationDays, 0)}
+                  </td>
+                  <td className="py-2 pr-3 text-right">
+                    {payroll.reduce((s, p) => s + p.sickDays, 0)}
+                  </td>
+                  <td className="py-2 text-right">
+                    {payroll.reduce((s, p) => s + p.otherDays, 0)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </section>
+
 
       {/* Einsatzübersicht je Projekt */}
       <section className="surface space-y-3 p-5">
