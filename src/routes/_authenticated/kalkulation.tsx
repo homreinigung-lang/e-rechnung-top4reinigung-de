@@ -1,15 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Calculator, FileSignature, FileText, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Calculator, FileSignature, FileText, Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { fileUrl } from "@/lib/storage";
-import { scanFloorplan } from "@/lib/floorplan-scan.functions";
+
 import { FileUploadButton } from "@/components/FileUploadButton";
 
 import { Button } from "@/components/ui/button";
