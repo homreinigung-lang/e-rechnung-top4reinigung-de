@@ -567,7 +567,7 @@ function Personal() {
                       <td className="py-2 pr-3">
                         <div className="font-medium">{e.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {objects.join(", ") || "Kein Objekt"}
+                          {objects.join(", ") || e.work_location || "Kein Objekt"}
                         </div>
                       </td>
                       {days.map((h, i) => (
