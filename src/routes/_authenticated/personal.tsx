@@ -152,7 +152,13 @@ function Personal() {
   });
 
   const patchEmployee = useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Record<string, unknown> }) => {
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: { name?: string; role?: string; hourly_rate?: number };
+    }) => {
       const { error } = await supabase.from("employees").update(patch).eq("id", id);
       if (error) throw error;
     },
