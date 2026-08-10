@@ -34,6 +34,7 @@ import { Route as StbTokenRouteImport } from './routes/stb.$token'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
 import { Route as AuthenticatedProjekteIndexRouteImport } from './routes/_authenticated/projekte.index'
+import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authenticated/projekte.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -169,6 +170,11 @@ const AuthenticatedProjekteIndexRoute =
     path: '/projekte/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProjekteIdRoute = AuthenticatedProjekteIdRouteImport.update({
+  id: '/projekte/$id',
+  path: '/projekte/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -193,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
@@ -218,6 +225,7 @@ export interface FileRoutesByTo {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
   '/projekte': typeof AuthenticatedProjekteIndexRoute
 }
@@ -246,6 +254,7 @@ export interface FileRoutesById {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/_authenticated/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches/'
     | '/dokumente/$id'
+    | '/projekte/$id'
     | '/dokumente/'
     | '/projekte/'
   fileRoutesByTo: FileRoutesByTo
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches'
     | '/dokumente/$id'
+    | '/projekte/$id'
     | '/dokumente'
     | '/projekte'
   id:
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches/'
     | '/_authenticated/dokumente/$id'
+    | '/_authenticated/projekte/$id'
     | '/_authenticated/dokumente/'
     | '/_authenticated/projekte/'
   fileRoutesById: FileRoutesById
@@ -516,6 +528,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjekteIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/projekte/$id': {
+      id: '/_authenticated/projekte/$id'
+      path: '/projekte/$id'
+      fullPath: '/projekte/$id'
+      preLoaderRoute: typeof AuthenticatedProjekteIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -532,6 +551,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
   AuthenticatedZeiterfassungRoute: typeof AuthenticatedZeiterfassungRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
+  AuthenticatedProjekteIdRoute: typeof AuthenticatedProjekteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
   AuthenticatedProjekteIndexRoute: typeof AuthenticatedProjekteIndexRoute
 }
@@ -549,6 +569,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
   AuthenticatedZeiterfassungRoute: AuthenticatedZeiterfassungRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
+  AuthenticatedProjekteIdRoute: AuthenticatedProjekteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,
   AuthenticatedProjekteIndexRoute: AuthenticatedProjekteIndexRoute,
 }
