@@ -307,26 +307,42 @@ export function EinsatzKalender({
       <Dialog open={day !== null} onOpenChange={(o) => !o && setDay(null)}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Einsatz planen – {day ? formatDate(day) : ""}</DialogTitle>
+            <DialogTitle>
+              {isAbsent ? "Abwesenheit eintragen" : "Einsatz planen"} – {day ? formatDate(day) : ""}
+            </DialogTitle>
           </DialogHeader>
 
           {dayEntries.length > 0 && (
             <ul className="divide-y rounded-md border">
-              {dayEntries.map((e) => (
-                <li key={e.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                  <span className="w-24 shrink-0 text-muted-foreground">
-                    {(e.start_time ?? "").slice(0, 5)}–{(e.end_time ?? "").slice(0, 5)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">
-                    <span className="font-medium">{e.employee_name}</span>
-                    {e.location ? ` · ${e.location}` : ""}
-                  </span>
-                  <span className="shrink-0">{Number(e.hours ?? 0).toFixed(2)} Std.</span>
-                  <Button variant="ghost" size="icon" onClick={() => removePlan.mutate(e.id)}>
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
-                </li>
-              ))}
+              {dayEntries.map((e) => {
+                const reason = absenceReason(e);
+                return (
+                  <li key={e.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <span className="w-24 shrink-0 text-muted-foreground">
+                      {reason
+                        ? "ganztägig"
+                        : `${(e.start_time ?? "").slice(0, 5)}–${(e.end_time ?? "").slice(0, 5)}`}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-medium">{e.employee_name}</span>
+                      {e.location ? ` · ${e.location}` : ""}
+                    </span>
+                    {reason ? (
+                      <span
+                        className={`flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium ${absenceClasses(reason)}`}
+                      >
+                        {reason === "sick" && <HeartPulse className="size-3" />}
+                        {absenceLabel(reason)}
+                      </span>
+                    ) : (
+                      <span className="shrink-0">{Number(e.hours ?? 0).toFixed(2)} Std.</span>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => removePlan.mutate(e.id)}>
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -349,61 +365,104 @@ export function EinsatzKalender({
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
-              <Label>Objekt / Projekt</Label>
+              <Label>Art des Eintrags</Label>
               <Select
-                value={form.projectId}
-                onValueChange={(v) => setForm({ ...form, projectId: v })}
+                value={form.entryType}
+                onValueChange={(v) => setForm({ ...form, entryType: v as EntryType })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_PROJECT}>Kein Projekt (Freitext)</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name || "Ohne Namen"}
-                      {p.city ? ` · ${p.city}` : ""}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="work">Arbeitseinsatz</SelectItem>
+                  <SelectItem value="absence">Abwesenheit</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="k-loc">Einsatzort (Freitext)</Label>
-              <Input
-                id="k-loc"
-                value={form.location}
-                disabled={form.projectId !== NO_PROJECT}
-                placeholder="z. B. Musterstraße 5, Treppenhaus"
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="k-start">Von (HH:MM)</Label>
-              <Input
-                id="k-start"
-                value={form.start}
-                onChange={(e) => setForm({ ...form, start: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="k-end">Bis (HH:MM)</Label>
-              <Input
-                id="k-end"
-                value={form.end}
-                onChange={(e) => setForm({ ...form, end: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="k-break">Pause (Min.)</Label>
-              <Input
-                id="k-break"
-                inputMode="numeric"
-                value={form.breakMinutes}
-                onChange={(e) => setForm({ ...form, breakMinutes: e.target.value })}
-              />
-            </div>
+
+            {isAbsent && (
+              <div className="space-y-2">
+                <Label>Grund der Abwesenheit</Label>
+                <Select
+                  value={form.absenceReason}
+                  onValueChange={(v) => setForm({ ...form, absenceReason: v as AbsenceReason })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ABSENCE_REASONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {!isAbsent && (
+              <>
+                <div className="space-y-2">
+                  <Label>Objekt / Projekt</Label>
+                  <Select
+                    value={form.projectId}
+                    onValueChange={(v) => setForm({ ...form, projectId: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_PROJECT}>Kein Projekt (Freitext)</SelectItem>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name || "Ohne Namen"}
+                          {p.city ? ` · ${p.city}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="k-loc">Einsatzort (Freitext)</Label>
+                  <Input
+                    id="k-loc"
+                    value={form.location}
+                    disabled={form.projectId !== NO_PROJECT}
+                    placeholder="z. B. Musterstraße 5, Treppenhaus"
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="k-start">Von (HH:MM)</Label>
+                  <Input
+                    id="k-start"
+                    value={form.start}
+                    onChange={(e) => setForm({ ...form, start: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="k-end">Bis (HH:MM)</Label>
+                  <Input
+                    id="k-end"
+                    value={form.end}
+                    onChange={(e) => setForm({ ...form, end: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="k-break">Pause (Min.)</Label>
+                  <Input
+                    id="k-break"
+                    inputMode="numeric"
+                    value={form.breakMinutes}
+                    onChange={(e) => setForm({ ...form, breakMinutes: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="k-note">Notiz</Label>
               <Input
@@ -415,15 +474,27 @@ export function EinsatzKalender({
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Geplante Dauer:{" "}
-            <span className="font-medium text-foreground">
-              {hoursFromTimes(
-                form.start,
-                form.end,
-                Number(form.breakMinutes.replace(",", ".")) || 0,
-              ).toFixed(2)}{" "}
-              Std.
-            </span>
+            {isAbsent ? (
+              <>
+                Ganztägige Abwesenheit:{" "}
+                <span className="font-medium text-foreground">
+                  {absenceLabel(form.absenceReason)}
+                </span>{" "}
+                – wird ohne Arbeitsstunden erfasst und in der Monatsabrechnung separat ausgewiesen.
+              </>
+            ) : (
+              <>
+                Geplante Dauer:{" "}
+                <span className="font-medium text-foreground">
+                  {hoursFromTimes(
+                    form.start,
+                    form.end,
+                    Number(form.breakMinutes.replace(",", ".")) || 0,
+                  ).toFixed(2)}{" "}
+                  Std.
+                </span>
+              </>
+            )}
           </p>
 
           <DialogFooter>
@@ -431,9 +502,11 @@ export function EinsatzKalender({
               onClick={() => day && createPlan.mutate({ ...form, workDate: day })}
               disabled={!form.employeeId || createPlan.isPending}
             >
-              <Plus className="size-4" /> Einsatz eintragen
+              <Plus className="size-4" />{" "}
+              {isAbsent ? "Abwesenheit eintragen" : "Einsatz eintragen"}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </section>
