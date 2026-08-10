@@ -228,6 +228,10 @@ function Personal() {
   const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState<EmployeeForm>(empty);
   const [weekStart, setWeekStart] = React.useState(() => mondayOf(new Date()));
+  const [monthCursor, setMonthCursor] = React.useState(
+    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12),
+  );
+
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["employees"] });
