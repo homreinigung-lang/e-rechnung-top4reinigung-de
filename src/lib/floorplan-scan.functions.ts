@@ -7,12 +7,11 @@ export type { ScannedFloorplan };
 /** Erkennt m², Räume und Etagen aus einem hochgeladenen Grundriss oder Foto. */
 export const scanFloorplan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { dataUrl: string; mimeType: string }) => {
-    if (!data?.dataUrl?.startsWith("data:")) throw new Error("Ungültige Datei.");
-    if (data.dataUrl.length > 14_000_000) throw new Error("Datei ist zu groß (max. ca. 10 MB).");
-    return { dataUrl: data.dataUrl, mimeType: data.mimeType || "application/pdf" };
+  .inputValidator((data: { fileUrl: string; mimeType: string }) => {
+    if (!/^https?:\/\//.test(data?.fileUrl ?? "")) throw new Error("Ungültige Datei-Adresse.");
+    return { fileUrl: data.fileUrl, mimeType: data.mimeType || "application/pdf" };
   })
   .handler(async ({ data }): Promise<ScannedFloorplan> => {
-    const { extractFloorplan } = await import("@/lib/floorplan-scan.server");
-    return extractFloorplan(data.dataUrl, data.mimeType);
+    const { extractFloorplanFromUrl } = await import("@/lib/floorplan-scan.server");
+    return extractFloorplanFromUrl(data.fileUrl, data.mimeType);
   });

@@ -95,14 +95,6 @@ type Attachment = {
   aiFilled: boolean;
 };
 
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
-    reader.readAsDataURL(file);
-  });
-}
 
 
 function KalkulationPage() {
@@ -141,9 +133,10 @@ function KalkulationPage() {
   async function analyzeAttachment(path: string, file: File) {
     updateAttachment(path, { analyzing: true });
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const signedUrl = await fileUrl(path);
+      if (!signedUrl) throw new Error("Datei konnte nicht geladen werden.");
       const r = await runFloorplanScan({
-        data: { dataUrl, mimeType: file.type || "application/pdf" },
+        data: { fileUrl: signedUrl, mimeType: file.type || "application/pdf" },
       });
       updateAttachment(path, {
         sqm: r.sqm ? String(r.sqm) : "",
