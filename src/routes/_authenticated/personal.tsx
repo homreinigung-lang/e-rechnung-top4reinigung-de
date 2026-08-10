@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,9 +107,9 @@ function EinsatzortCell({
   const selected = projects.find((p) => p.id === projectId) ?? null;
   const shown = selected ? selected.name || "Ohne Namen" : freeText;
 
-  const [openList, setOpenList] = useState(false);
-  const [text, setText] = useState(shown);
-  const lastShown = useRef(shown);
+  const [openList, setOpenList] = React.useState(false);
+  const [text, setText] = React.useState(shown);
+  const lastShown = React.useRef(shown);
   if (lastShown.current !== shown) {
     lastShown.current = shown;
     if (text !== shown) setText(shown);
@@ -223,9 +223,9 @@ function EinsatzortCell({
 
 function Personal() {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<EmployeeForm>(empty);
-  const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
+  const [open, setOpen] = React.useState(false);
+  const [form, setForm] = React.useState<EmployeeForm>(empty);
+  const [weekStart, setWeekStart] = React.useState(() => mondayOf(new Date()));
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["employees"] });
@@ -380,7 +380,7 @@ function Personal() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const weekDays = useMemo(
+  const weekDays = React.useMemo(
     () =>
       Array.from({ length: 7 }, (_, i) => {
         const d = new Date(weekStart);
