@@ -902,6 +902,7 @@ export type Database = {
           id: string
           location: string
           note: string
+          project_id: string | null
           start_time: string | null
           updated_at: string
           user_id: string
@@ -920,6 +921,7 @@ export type Database = {
           id?: string
           location?: string
           note?: string
+          project_id?: string | null
           start_time?: string | null
           updated_at?: string
           user_id: string
@@ -938,6 +940,7 @@ export type Database = {
           id?: string
           location?: string
           note?: string
+          project_id?: string | null
           start_time?: string | null
           updated_at?: string
           user_id?: string
@@ -956,6 +959,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

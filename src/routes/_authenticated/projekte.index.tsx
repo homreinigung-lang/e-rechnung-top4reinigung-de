@@ -1,7 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { analyzeProject } from "@/lib/project-scan.functions";
+import { fileUrl, uploadUserFile } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FolderKanban, Plus, Trash2 } from "lucide-react";
+import { FileText, FolderKanban, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/projekte/")({
@@ -57,10 +60,15 @@ export function modeLabel(value: string | null | undefined) {
 function ProjekteIndex() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const runAnalyze = useServerFn(analyzeProject);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [mode, setMode] = useState<string>("floorplan");
   const [customerId, setCustomerId] = useState<string>("none");
+  const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [step, setStep] = useState("");
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -89,6 +97,7 @@ function ProjekteIndex() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       const customer = customers.find((c) => c.id === customerId);
+      setStep("Projekt wird angelegt …");
       const { data, error } = await supabase
         .from("projects")
         .insert({
@@ -106,16 +115,92 @@ function ProjekteIndex() {
         .select("id")
         .single();
       if (error) throw error;
-      return data.id;
+      const projectId = data.id as string;
+
+      if (file) {
+        setStep("Datei wird hochgeladen …");
+        const path = await uploadUserFile(file, "projekte");
+        await supabase
+          .from("projects")
+          .update({ source_file_path: path, source_file_name: file.name })
+          .eq("id", projectId);
+
+        setStep(
+          mode === "tender"
+            ? "Ausschreibung wird analysiert …"
+            : "Grundriss wird analysiert …",
+        );
+        try {
+          const url = await fileUrl(path);
+          const result = await runAnalyze({
+            data: { fileUrl: url, mimeType: file.type || "application/pdf", mode },
+          });
+          await supabase
+            .from("projects")
+            .update({
+              name: name.trim() || result.project_name,
+              address_line: customer?.address_line || result.address_line,
+              postal_code: customer?.postal_code || result.postal_code,
+              city: customer?.city || result.city,
+              customer_name:
+                (customer ? customer.company || customer.name : "") || result.customer_name,
+              expected_room_count: result.expected_room_count,
+              executive_summary: result.executive_summary,
+            })
+            .eq("id", projectId);
+
+          if (result.rooms.length > 0) {
+            await supabase.from("project_rooms").insert(
+              result.rooms.map((r, index) => ({
+                project_id: projectId,
+                user_id: userId,
+                position: index + 1,
+                name: r.name,
+                floor: r.floor,
+                usage_type: r.usage_type,
+                area_sqm: r.area_sqm,
+              })),
+            );
+          }
+          if (result.items.length > 0) {
+            await supabase.from("project_lv_items").insert(
+              result.items.map((it, index) => ({
+                project_id: projectId,
+                user_id: userId,
+                position: index + 1,
+                section: it.section,
+                title: it.title,
+                description: it.description,
+                quantity: it.quantity,
+                unit: it.unit,
+                deadline: it.deadline || null,
+                evidence: it.evidence,
+                critical: it.critical,
+              })),
+            );
+          }
+          toast.success("Analyse abgeschlossen – bitte Werte prüfen.");
+        } catch (e) {
+          toast.error(
+            e instanceof Error ? e.message : "Analyse fehlgeschlagen – Datei wurde gespeichert.",
+          );
+        }
+      }
+      return projectId;
     },
     onSuccess: (id) => {
+      setStep("");
       setOpen(false);
       setName("");
       setCustomerId("none");
+      setFile(null);
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       navigate({ to: "/projekte/$id", params: { id } });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setStep("");
+      toast.error(e.message);
+    },
   });
 
   const remove = useMutation({
@@ -190,10 +275,77 @@ function ProjekteIndex() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label>
+                  {mode === "tender" ? "Ausschreibung (PDF)" : "Grundriss (PDF oder Foto)"}
+                </Label>
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    const dropped = e.dataTransfer.files?.[0];
+                    if (dropped) setFile(dropped);
+                  }}
+                  onClick={() => inputRef.current?.click()}
+                  className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center text-sm transition ${
+                    dragging ? "border-primary bg-primary/5" : "border-muted-foreground/25"
+                  }`}
+                >
+                  {file ? (
+                    <>
+                      <FileText className="size-5 text-muted-foreground" />
+                      <span className="font-medium">{file.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFile(null);
+                        }}
+                      >
+                        <X className="size-4" /> Entfernen
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="size-5 text-muted-foreground" />
+                      <span>Datei hierher ziehen oder klicken zum Auswählen</span>
+                      <span className="text-xs text-muted-foreground">
+                        PDF, JPG oder PNG – die Analyse startet automatisch nach dem Anlegen.
+                      </span>
+                    </>
+                  )}
+                </div>
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="application/pdf,image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const selected = e.target.files?.[0];
+                    if (selected) setFile(selected);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="items-center gap-3 sm:justify-between">
+              {step ? (
+                <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" /> {step}
+                </span>
+              ) : (
+                <span />
+              )}
               <Button onClick={() => create.mutate()} disabled={!name.trim() || create.isPending}>
-                Projekt anlegen
+                Projekt anlegen{file ? " & analysieren" : ""}
               </Button>
             </DialogFooter>
           </DialogContent>
