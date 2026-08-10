@@ -255,6 +255,11 @@ function Kunden() {
                         {c.customer_number}
                       </span>
                     )}
+                    <span
+                      className={`ml-2 rounded px-2 py-0.5 text-xs font-medium ${statusInfo(c.status).className}`}
+                    >
+                      {statusInfo(c.status).label}
+                    </span>
                   </div>
 
                   <div className="truncate text-sm text-muted-foreground">
