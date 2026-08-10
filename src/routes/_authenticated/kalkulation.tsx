@@ -135,6 +135,30 @@ function KalkulationPage() {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
 
+  /** Lässt die KI den Grundriss auslesen und füllt m², Räume und Etagen vor. */
+  async function analyzeAttachment(path: string, file: File) {
+    updateAttachment(path, { analyzing: true });
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const r = await runFloorplanScan({
+        data: { dataUrl, mimeType: file.type || "application/pdf" },
+      });
+      updateAttachment(path, {
+        sqm: r.sqm ? String(r.sqm) : "",
+        rooms: r.rooms ? String(r.rooms) : "",
+        floors: r.floors ? String(r.floors) : "",
+        note: r.note,
+        aiFilled: true,
+      });
+      toast.success("Grundriss automatisch erkannt – bitte Werte prüfen");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Analyse fehlgeschlagen");
+    } finally {
+      updateAttachment(path, { analyzing: false });
+    }
+  }
+
+
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
   const analysisTotals = useMemo(
     () => ({
