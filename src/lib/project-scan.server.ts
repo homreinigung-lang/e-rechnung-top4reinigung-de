@@ -171,6 +171,43 @@ const SCHEMA = {
   ],
 } as const;
 
+/**
+ * Bereinigt die von der KI gelieferten Raumzeilen:
+ * - Aufzählungen ("Büro, WC, Flur") werden in einzelne Zeilen zerlegt (Fläche dann 0).
+ * - Exakte Duplikate werden entfernt.
+ * - Wird derselbe m²-Wert über alle Zeilen kopiert, gilt er als Einheitswert und wird auf 0 gesetzt.
+ */
+function sanitizeRooms(input: ScannedRoom[]): ScannedRoom[] {
+  const split: ScannedRoom[] = [];
+  for (const room of input) {
+    const parts = room.name
+      .split(/\s*[,;/]\s*|\s+\/\s+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length > 1) {
+      for (const part of parts) {
+        split.push({ ...room, name: part, area_sqm: 0 });
+      }
+    } else {
+      split.push({ ...room, name: parts[0] ?? room.name });
+    }
+  }
+
+  const seen = new Set<string>();
+  const unique = split.filter((r) => {
+    const key = `${r.name.toLowerCase()}|${r.floor.toLowerCase()}|${r.area_sqm}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const areas = unique.map((r) => r.area_sqm).filter((a) => a > 0);
+  const uniformArea =
+    areas.length >= 3 && areas.length === unique.length && new Set(areas).size === 1;
+
+  return uniformArea ? unique.map((r) => ({ ...r, area_sqm: 0 })) : unique;
+}
+
 async function toDataUrl(fileUrl: string, mimeType: string): Promise<string> {
   const res = await fetch(fileUrl);
   if (!res.ok) throw new Error("Datei konnte nicht geladen werden.");
