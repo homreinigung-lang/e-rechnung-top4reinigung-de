@@ -19,11 +19,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import {
+  ABSENCE_REASONS,
+  absenceClasses,
+  absenceLabel,
+  absenceReason,
+  absenceShort,
+  isAbsence,
+  type AbsenceReason,
+  type EntryType,
+} from "@/lib/absence";
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const NO_PROJECT = "__none__";
+
 
 export type KalenderEmployee = { id: string; name: string; hourly_rate: number | null };
 export type KalenderProject = { id: string; name: string | null; city?: string | null };
