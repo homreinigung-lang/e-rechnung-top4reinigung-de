@@ -91,9 +91,8 @@ type Attachment = {
   rooms: string;
   floors: string;
   note: string;
-  analyzing: boolean;
-  aiFilled: boolean;
 };
+
 
 
 
