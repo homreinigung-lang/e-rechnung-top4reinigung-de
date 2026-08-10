@@ -141,9 +141,10 @@ function KalkulationPage() {
   async function analyzeAttachment(path: string, file: File) {
     updateAttachment(path, { analyzing: true });
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const signedUrl = await fileUrl(path);
+      if (!signedUrl) throw new Error("Datei konnte nicht geladen werden.");
       const r = await runFloorplanScan({
-        data: { dataUrl, mimeType: file.type || "application/pdf" },
+        data: { fileUrl: signedUrl, mimeType: file.type || "application/pdf" },
       });
       updateAttachment(path, {
         sqm: r.sqm ? String(r.sqm) : "",
