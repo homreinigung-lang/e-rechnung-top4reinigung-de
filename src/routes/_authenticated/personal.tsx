@@ -430,49 +430,27 @@ function Personal() {
                       </Select>
                     </td>
                     <td className="px-3 py-2">
-
-                      <Select
-                        value={assignment?.project_id ?? NO_PROJECT}
-                        onValueChange={(v) =>
-                          setEinsatzort.mutate({ employeeId: e.id, projectId: v })
-                        }
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Projekt wählen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NO_PROJECT}>Kein Projekt</SelectItem>
-                          {projects.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.name || "Ohne Namen"}
-                              {p.city ? ` · ${p.city}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        key={`loc-${e.id}-${e.work_location ?? ""}`}
-                        defaultValue={e.work_location ?? ""}
-                        placeholder="Freitext-Einsatzort"
-                        className="h-9"
-                        disabled={!!assignment}
-                        title={
-                          assignment
-                            ? "Projekt zugewiesen – Freitext nur ohne Projekt möglich"
-                            : undefined
-                        }
-                        onBlur={(ev) => {
-                          const value = ev.target.value.trim();
+                      <EinsatzortCell
+                        projects={projects}
+                        projectId={assignment?.project_id ?? null}
+                        freeText={e.work_location ?? ""}
+                        onSelectProject={(projectId) => {
+                          setEinsatzort.mutate({
+                            employeeId: e.id,
+                            projectId: projectId ?? NO_PROJECT,
+                          });
+                          if (projectId && (e.work_location ?? ""))
+                            patchEmployee.mutate({ id: e.id, patch: { work_location: "" } });
+                        }}
+                        onFreeText={(value) => {
+                          if (value && assignment)
+                            setEinsatzort.mutate({ employeeId: e.id, projectId: NO_PROJECT });
                           if (value !== (e.work_location ?? ""))
-                            patchEmployee.mutate({
-                              id: e.id,
-                              patch: { work_location: value },
-                            });
+                            patchEmployee.mutate({ id: e.id, patch: { work_location: value } });
                         }}
                       />
                     </td>
+
 
 
                     <td className="px-3 py-2">
