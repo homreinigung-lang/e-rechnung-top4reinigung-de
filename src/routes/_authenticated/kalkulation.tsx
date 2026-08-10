@@ -78,6 +78,18 @@ function num(value: string): number {
 const WEEKS_PER_MONTH = 4.33;
 const STAIR_RATE_PER_FLOOR = 12.5;
 
+/** Hochgeladener Grundriss/Foto inkl. abgelesener Eckdaten. */
+type Attachment = {
+  path: string;
+  name: string;
+  url: string;
+  isImage: boolean;
+  sqm: string;
+  rooms: string;
+  floors: string;
+  note: string;
+};
+
 function KalkulationPage() {
   const navigate = useNavigate();
 
@@ -99,12 +111,24 @@ function KalkulationPage() {
   const [finalPrice, setFinalPrice] = useState("");
   const [finalTouched, setFinalTouched] = useState(false);
   const [note, setNote] = useState("");
-  const [attachments, setAttachments] = useState<
-    { path: string; name: string; url: string; isImage: boolean }[]
-  >([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [confirmed, setConfirmed] = useState(false);
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
+
+  function updateAttachment(path: string, patch: Partial<Attachment>) {
+    setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
+  }
+
+  /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
+  const analysisTotals = useMemo(
+    () => ({
+      sqm: attachments.reduce((s, a) => s + num(a.sqm), 0),
+      rooms: attachments.reduce((s, a) => s + num(a.rooms), 0),
+      floors: attachments.reduce((s, a) => s + num(a.floors), 0),
+    }),
+    [attachments],
+  );
 
   /** Einsätze umgerechnet auf den Monat (Pro Woche × 4,33). */
   const visitsPerMonth = useMemo(() => {
@@ -431,10 +455,10 @@ function KalkulationPage() {
 
             <div className="space-y-3 rounded-md border p-3">
               <div>
-                <Label>Grundrisse & Fotos</Label>
+                <Label>Grundrisse & Fotos – Analyse</Label>
                 <p className="text-xs text-muted-foreground">
-                  PDF-Grundrisse oder Fotos (JPG, PNG) zur Kalkulation hochladen – nur intern zur
-                  Preisfindung.
+                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen, Eckdaten direkt ablesen und mit
+                  einem Klick in die Kalkulation übernehmen – nur intern zur Preisfindung.
                 </p>
               </div>
               <FileUploadButton
@@ -446,51 +470,167 @@ function KalkulationPage() {
                     const url = await fileUrl(path);
                     setAttachments((prev) => [
                       ...prev,
-                      { path, name: file.name, url, isImage: file.type.startsWith("image/") },
+                      {
+                        path,
+                        name: file.name,
+                        url,
+                        isImage: file.type.startsWith("image/"),
+                        sqm: "",
+                        rooms: "",
+                        floors: "",
+                        note: "",
+                      },
                     ]);
                   })();
                 }}
               />
               {attachments.length > 0 && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {attachments.map((a) => (
-                    <div key={a.path} className="space-y-2 rounded-md border p-2">
-                      {a.isImage && a.url ? (
-                        <a href={a.url} target="_blank" rel="noreferrer">
-                          <img
-                            src={a.url}
-                            alt={`Vorschau ${a.name}`}
-                            className="h-32 w-full rounded object-cover"
-                            loading="lazy"
-                          />
-                        </a>
-                      ) : (
-                        <a
-                          href={a.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex h-32 w-full items-center justify-center rounded bg-muted"
-                        >
-                          <FileText className="size-8 text-muted-foreground" />
-                        </a>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <span className="flex-1 truncate text-xs">{a.name}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            setAttachments((prev) => prev.filter((x) => x.path !== a.path))
-                          }
-                          aria-label="Entfernen"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {attachments.map((a) => (
+                      <div key={a.path} className="space-y-2 rounded-md border p-2">
+                        {a.isImage && a.url ? (
+                          <a href={a.url} target="_blank" rel="noreferrer">
+                            <img
+                              src={a.url}
+                              alt={`Vorschau ${a.name}`}
+                              className="h-32 w-full rounded object-cover"
+                              loading="lazy"
+                            />
+                          </a>
+                        ) : (
+                          <a
+                            href={a.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex h-32 w-full items-center justify-center rounded bg-muted"
+                          >
+                            <FileText className="size-8 text-muted-foreground" />
+                          </a>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="flex-1 truncate text-xs">{a.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setAttachments((prev) => prev.filter((x) => x.path !== a.path))
+                            }
+                            aria-label="Entfernen"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">m²</Label>
+                            <Input
+                              inputMode="decimal"
+                              value={a.sqm}
+                              onChange={(e) => updateAttachment(a.path, { sqm: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Räume</Label>
+                            <Input
+                              inputMode="decimal"
+                              value={a.rooms}
+                              onChange={(e) => updateAttachment(a.path, { rooms: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Etagen</Label>
+                            <Input
+                              inputMode="decimal"
+                              value={a.floors}
+                              onChange={(e) => updateAttachment(a.path, { floors: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <Textarea
+                          rows={2}
+                          value={a.note}
+                          onChange={(e) => updateAttachment(a.path, { note: e.target.value })}
+                          placeholder="Notiz zum Grundriss (z. B. Bodenbelag, Sanitärräume)"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={num(a.sqm) <= 0}
+                            onClick={() => {
+                              setMode("area");
+                              setArea(a.sqm);
+                              toast.success("Fläche in die Kalkulation übernommen");
+                            }}
+                          >
+                            m² übernehmen
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={num(a.floors) <= 0}
+                            onClick={() => {
+                              setStairs(true);
+                              setFloors(a.floors);
+                              toast.success("Etagen in die Treppenhausreinigung übernommen");
+                            }}
+                          >
+                            Etagen übernehmen
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const line = [
+                                a.name,
+                                num(a.sqm) > 0 ? `${formatNumber(num(a.sqm))} m²` : "",
+                                num(a.rooms) > 0 ? `${formatNumber(num(a.rooms))} Räume` : "",
+                                num(a.floors) > 0 ? `${formatNumber(num(a.floors))} Etagen` : "",
+                                a.note.trim(),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ");
+                              setNote((prev) => (prev.trim() ? `${prev}\n${line}` : line));
+                              toast.success("Als Notiz übernommen");
+                            }}
+                          >
+                            Als Notiz übernehmen
+                          </Button>
+                        </div>
                       </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                    <div className="mb-1 font-medium">Übersicht aus Unterlagen</div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-muted-foreground">
+                      <span>Gesamtfläche: {formatNumber(analysisTotals.sqm)} m²</span>
+                      <span>Räume: {formatNumber(analysisTotals.rooms)}</span>
+                      <span>Etagen: {formatNumber(analysisTotals.floors)}</span>
                     </div>
-                  ))}
-                </div>
+                    {analysisTotals.sqm > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => {
+                          setMode("area");
+                          setArea(String(analysisTotals.sqm));
+                          toast.success("Gesamtfläche übernommen");
+                        }}
+                      >
+                        Gesamtfläche in Kalkulation übernehmen
+                      </Button>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </CardContent>

@@ -14,6 +14,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -41,7 +48,19 @@ type CustomerForm = {
   country: string;
   vat_id: string;
   notes: string;
+  status: string;
 };
+
+/** Vertragsstatus für die langfristige Verwaltung von Unterhaltsreinigungsverträgen. */
+const STATUS: { value: string; label: string; className: string }[] = [
+  { value: "active", label: "Aktiv", className: "bg-emerald-100 text-emerald-800" },
+  { value: "paused", label: "Pausiert", className: "bg-amber-100 text-amber-900" },
+  { value: "terminated", label: "Gekündigt", className: "bg-rose-100 text-rose-800" },
+];
+
+function statusInfo(value: string | null | undefined) {
+  return STATUS.find((s) => s.value === value) ?? STATUS[0]!;
+}
 
 const empty: CustomerForm = {
   name: "",
@@ -54,6 +73,7 @@ const empty: CustomerForm = {
   country: "Deutschland",
   vat_id: "",
   notes: "",
+  status: "active",
 };
 
 function Kunden() {
@@ -179,6 +199,24 @@ function Kunden() {
               {field("postal_code", "PLZ")}
               {field("city", "Ort")}
               {field("country", "Land")}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => setForm({ ...form, status: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="notes">Notizen</Label>
                 <Textarea
@@ -217,6 +255,11 @@ function Kunden() {
                         {c.customer_number}
                       </span>
                     )}
+                    <span
+                      className={`ml-2 rounded px-2 py-0.5 text-xs font-medium ${statusInfo(c.status).className}`}
+                    >
+                      {statusInfo(c.status).label}
+                    </span>
                   </div>
 
                   <div className="truncate text-sm text-muted-foreground">
@@ -242,6 +285,7 @@ function Kunden() {
                       country: c.country,
                       vat_id: c.vat_id,
                       notes: c.notes,
+                      status: c.status ?? "active",
                     });
                     setOpen(true);
                   }}
