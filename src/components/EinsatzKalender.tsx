@@ -62,6 +62,8 @@ function hoursFromTimes(start: string, end: string, breakMinutes: number) {
 
 type PlanForm = {
   employeeId: string;
+  entryType: EntryType;
+  absenceReason: AbsenceReason;
   projectId: string;
   location: string;
   start: string;
@@ -72,6 +74,8 @@ type PlanForm = {
 
 const emptyForm: PlanForm = {
   employeeId: "",
+  entryType: "work",
+  absenceReason: "vacation",
   projectId: NO_PROJECT,
   location: "",
   start: "08:00",
@@ -79,6 +83,7 @@ const emptyForm: PlanForm = {
   breakMinutes: "30",
   note: "",
 };
+
 
 export function EinsatzKalender({
   employees,
