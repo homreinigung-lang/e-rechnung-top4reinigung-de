@@ -18,6 +18,8 @@ import {
   Calculator,
   Clock,
   FileText,
+  FolderKanban,
+  HardHat,
   Landmark,
   LayoutDashboard,
   LogOut,
