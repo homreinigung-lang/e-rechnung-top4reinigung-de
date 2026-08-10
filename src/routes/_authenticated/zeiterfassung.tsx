@@ -81,6 +81,7 @@ type EntryForm = {
   employee_id: string;
   employee_name: string;
   customer_id: string;
+  project_id: string;
   work_date: string;
   start_time: string;
   end_time: string;
@@ -95,6 +96,7 @@ const emptyEntry = (): EntryForm => ({
   employee_id: "",
   employee_name: "",
   customer_id: "",
+  project_id: "",
   work_date: new Date().toISOString().slice(0, 10),
   start_time: "08:00",
   end_time: "16:00",
@@ -168,6 +170,15 @@ function Zeiterfassung() {
       const { data, error } = await supabase.from("customers").select("id,name,company").order("name");
       if (error) throw error;
       return data as { id: string; name: string; company: string }[];
+    },
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name").order("name");
+      if (error) throw error;
+      return data as { id: string; name: string }[];
     },
   });
 
@@ -268,6 +279,7 @@ function Zeiterfassung() {
         employee_name:
           employees.find((e) => e.id === values.employee_id)?.name || values.employee_name,
         customer_id: values.customer_id || null,
+        project_id: values.project_id || null,
         work_date: values.work_date,
         start_time: values.start_time || null,
         end_time: values.end_time || null,
@@ -724,6 +736,24 @@ function Zeiterfassung() {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label>Projekt / Baustelle</Label>
+                  <Select
+                    value={form.project_id}
+                    onValueChange={(v) => setForm({ ...form, project_id: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Optional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name || "Ohne Namen"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="work_date">Datum</Label>
                   <GermanDateInput
                     id="work_date"
@@ -891,6 +921,7 @@ function Zeiterfassung() {
                       employee_id: (e.employee_id as string) ?? "",
                       employee_name: (e.employee_name as string) ?? "",
                       customer_id: (e.customer_id as string) ?? "",
+                      project_id: (e.project_id as string) ?? "",
                       work_date: e.work_date as string,
                       start_time: e.start_time ? String(e.start_time).slice(0, 5) : "",
                       end_time: e.end_time ? String(e.end_time).slice(0, 5) : "",
