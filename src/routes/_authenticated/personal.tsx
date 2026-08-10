@@ -165,8 +165,9 @@ function Personal() {
       patch,
     }: {
       id: string;
-      patch: { name?: string; role?: string; hourly_rate?: number };
+      patch: { name?: string; role?: string; hourly_rate?: number; work_location?: string };
     }) => {
+
       const { error } = await supabase.from("employees").update(patch).eq("id", id);
       if (error) throw error;
     },
