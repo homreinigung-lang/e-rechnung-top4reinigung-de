@@ -18,6 +18,8 @@ import {
   Calculator,
   Clock,
   FileText,
+  FolderKanban,
+  HardHat,
   Landmark,
   LayoutDashboard,
   LogOut,
@@ -35,6 +37,8 @@ const nav = [
   { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
   { to: "/dokumente", label: "Rechnungen & Angebote", icon: FileText },
   { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
+  { to: "/projekte", label: "Projekte", icon: FolderKanban },
+  { to: "/personal", label: "Personal", icon: HardHat },
   { to: "/wiederkehrend", label: "Wiederkehrend", icon: Repeat },
 
   { to: "/kunden", label: "Kunden", icon: Users },

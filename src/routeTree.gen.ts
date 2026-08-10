@@ -21,6 +21,7 @@ import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authen
 import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenticated/kalkulation'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
+import { Route as AuthenticatedPersonalRouteImport } from './routes/_authenticated/personal'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
 import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
@@ -33,6 +34,8 @@ import { Route as RechtlichesImpressumRouteImport } from './routes/rechtliches.i
 import { Route as StbTokenRouteImport } from './routes/stb.$token'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
+import { Route as AuthenticatedProjekteIndexRouteImport } from './routes/_authenticated/projekte.index'
+import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authenticated/projekte.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -97,6 +100,11 @@ const AuthenticatedMeineZeitenRoute =
     path: '/meine-zeiten',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPersonalRoute = AuthenticatedPersonalRouteImport.update({
+  id: '/personal',
+  path: '/personal',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -162,6 +170,17 @@ const AuthenticatedDokumenteIdRoute =
     path: '/dokumente/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProjekteIndexRoute =
+  AuthenticatedProjekteIndexRouteImport.update({
+    id: '/projekte/',
+    path: '/projekte/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProjekteIdRoute = AuthenticatedProjekteIdRouteImport.update({
+  id: '/projekte/$id',
+  path: '/projekte/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -175,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -186,7 +206,9 @@ export interface FileRoutesByFullPath {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
+  '/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -199,6 +221,7 @@ export interface FileRoutesByTo {
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -210,7 +233,9 @@ export interface FileRoutesByTo {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
+  '/projekte': typeof AuthenticatedProjekteIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -226,6 +251,7 @@ export interface FileRoutesById {
   '/_authenticated/kalkulation': typeof AuthenticatedKalkulationRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/_authenticated/personal': typeof AuthenticatedPersonalRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
@@ -237,7 +263,9 @@ export interface FileRoutesById {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
+  '/_authenticated/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -253,6 +281,7 @@ export interface FileRouteTypes {
     | '/kalkulation'
     | '/kunden'
     | '/meine-zeiten'
+    | '/personal'
     | '/profil'
     | '/steuerberater'
     | '/wiederkehrend'
@@ -264,7 +293,9 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches/'
     | '/dokumente/$id'
+    | '/projekte/$id'
     | '/dokumente/'
+    | '/projekte/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -277,6 +308,7 @@ export interface FileRouteTypes {
     | '/kalkulation'
     | '/kunden'
     | '/meine-zeiten'
+    | '/personal'
     | '/profil'
     | '/steuerberater'
     | '/wiederkehrend'
@@ -288,7 +320,9 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches'
     | '/dokumente/$id'
+    | '/projekte/$id'
     | '/dokumente'
+    | '/projekte'
   id:
     | '__root__'
     | '/'
@@ -303,6 +337,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kalkulation'
     | '/_authenticated/kunden'
     | '/_authenticated/meine-zeiten'
+    | '/_authenticated/personal'
     | '/_authenticated/profil'
     | '/_authenticated/steuerberater'
     | '/_authenticated/wiederkehrend'
@@ -314,7 +349,9 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches/'
     | '/_authenticated/dokumente/$id'
+    | '/_authenticated/projekte/$id'
     | '/_authenticated/dokumente/'
+    | '/_authenticated/projekte/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -412,6 +449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMeineZeitenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/personal': {
+      id: '/_authenticated/personal'
+      path: '/personal'
+      fullPath: '/personal'
+      preLoaderRoute: typeof AuthenticatedPersonalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profil': {
       id: '/_authenticated/profil'
       path: '/profil'
@@ -496,6 +540,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDokumenteIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/projekte/': {
+      id: '/_authenticated/projekte/'
+      path: '/projekte'
+      fullPath: '/projekte/'
+      preLoaderRoute: typeof AuthenticatedProjekteIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/projekte/$id': {
+      id: '/_authenticated/projekte/$id'
+      path: '/projekte/$id'
+      fullPath: '/projekte/$id'
+      preLoaderRoute: typeof AuthenticatedProjekteIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -507,12 +565,15 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKalkulationRoute: typeof AuthenticatedKalkulationRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
+  AuthenticatedPersonalRoute: typeof AuthenticatedPersonalRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
   AuthenticatedZeiterfassungRoute: typeof AuthenticatedZeiterfassungRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
+  AuthenticatedProjekteIdRoute: typeof AuthenticatedProjekteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
+  AuthenticatedProjekteIndexRoute: typeof AuthenticatedProjekteIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -523,12 +584,15 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKalkulationRoute: AuthenticatedKalkulationRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
+  AuthenticatedPersonalRoute: AuthenticatedPersonalRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
   AuthenticatedZeiterfassungRoute: AuthenticatedZeiterfassungRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
+  AuthenticatedProjekteIdRoute: AuthenticatedProjekteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,
+  AuthenticatedProjekteIndexRoute: AuthenticatedProjekteIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
