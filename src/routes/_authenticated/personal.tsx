@@ -430,7 +430,7 @@ function Personal() {
                       </Select>
                     </td>
                     <td className="px-3 py-2">
-                    <td className="px-3 py-2">
+
                       <Select
                         value={assignment?.project_id ?? NO_PROJECT}
                         onValueChange={(v) =>
