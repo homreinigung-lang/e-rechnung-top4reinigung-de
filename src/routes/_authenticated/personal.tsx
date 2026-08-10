@@ -224,7 +224,7 @@ function EinsatzortCell({
 function Personal() {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
-  const [form, setForm] = useState<EmployeeForm>(empty);
+  const [form, setForm] = React.useState<EmployeeForm>(empty);
   const [weekStart, setWeekStart] = React.useState(() => mondayOf(new Date()));
 
   const invalidate = () => {
