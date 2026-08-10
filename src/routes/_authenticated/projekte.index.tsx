@@ -70,6 +70,8 @@ function ProjekteIndex() {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [step, setStep] = useState("");
+  const [scanResult, setScanResult] = useState<ScannedProject | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
