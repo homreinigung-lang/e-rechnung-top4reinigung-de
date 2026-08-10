@@ -241,7 +241,7 @@ export async function analyzeProjectFile(
     return EMPTY;
   }
 
-  const rooms = Array.isArray(parsed["rooms"])
+  const rawRooms = Array.isArray(parsed["rooms"])
     ? (parsed["rooms"] as Record<string, unknown>[]).map((r) => ({
         name: String(r["name"] ?? "").trim(),
         floor: String(r["floor"] ?? "").trim(),
@@ -249,6 +249,9 @@ export async function analyzeProjectFile(
         area_sqm: num(r["area_sqm"]),
       }))
     : [];
+
+  const rooms = sanitizeRooms(rawRooms);
+
 
   const items = Array.isArray(parsed["items"])
     ? (parsed["items"] as Record<string, unknown>[]).map((i) => ({
