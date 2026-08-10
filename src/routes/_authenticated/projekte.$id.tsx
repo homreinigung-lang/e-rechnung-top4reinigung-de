@@ -60,6 +60,8 @@ export const Route = createFileRoute("/_authenticated/projekte/$id")({
   component: ProjektDetail,
 });
 
+type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
+
 type Room = {
   id: string;
   position: number;
