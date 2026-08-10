@@ -554,6 +554,18 @@ function KalkulationPage() {
                             <FileText className="size-8 text-muted-foreground" />
                           </a>
                         )}
+                        {a.analyzing ? (
+                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="size-3 animate-spin" />
+                            KI analysiert den Grundriss …
+                          </p>
+                        ) : a.aiFilled ? (
+                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Sparkles className="size-3" />
+                            KI-Vorschlag – bitte prüfen
+                          </p>
+                        ) : null}
+
                         <div className="flex items-center gap-2">
                           <span className="flex-1 truncate text-xs">{a.name}</span>
                           <Button
