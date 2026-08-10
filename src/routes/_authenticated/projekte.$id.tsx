@@ -4,9 +4,10 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useServerFn } from "@tanstack/react-start";
-import { analyzeProject } from "@/lib/project-scan.functions";
+import { analyzeProject, type ScannedProject } from "@/lib/project-scan.functions";
 import { fileUrl } from "@/lib/storage";
 import { FileUploadButton } from "@/components/FileUploadButton";
+import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +96,7 @@ function ProjektDetail() {
   const queryClient = useQueryClient();
   const runAnalyze = useServerFn(analyzeProject);
   const [analyzing, setAnalyzing] = useState(false);
+  const [scanResult, setScanResult] = useState<ScannedProject | null>(null);
   const [roomDialog, setRoomDialog] = useState<Room | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmployee, setAssignEmployee] = useState("");
@@ -284,8 +286,22 @@ function ProjektDetail() {
     try {
       const url = await fileUrl(path);
       const result = await runAnalyze({
-        data: { fileUrl: url, mimeType: file.type || "application/pdf", mode: project?.mode ?? "floorplan" },
+        data: {
+          fileUrl: url,
+          mimeType: file.type || "application/pdf",
+          mode: project?.mode ?? "floorplan",
+        },
       });
+      setScanResult(result);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Analyse fehlgeschlagen");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  const applyScan = useMutation({
+    mutationFn: async (review: ReviewResult) => {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
@@ -293,19 +309,14 @@ function ProjektDetail() {
       await supabase
         .from("projects")
         .update({
-          name: project?.name || result.project_name,
-          address_line: project?.address_line || result.address_line,
-          postal_code: project?.postal_code || result.postal_code,
-          city: project?.city || result.city,
-          customer_name: project?.customer_name || result.customer_name,
-          expected_room_count: result.expected_room_count,
-          executive_summary: result.executive_summary,
+          expected_room_count: Math.max(review.expected_room_count, review.rooms.length),
+          executive_summary: review.executive_summary || project?.executive_summary || "",
         })
         .eq("id", id);
 
-      if (result.rooms.length > 0) {
-        await supabase.from("project_rooms").insert(
-          result.rooms.map((r, index) => ({
+      if (review.rooms.length > 0) {
+        const { error } = await supabase.from("project_rooms").insert(
+          review.rooms.map((r, index) => ({
             project_id: id,
             user_id: userId,
             position: rooms.length + index + 1,
@@ -315,10 +326,11 @@ function ProjektDetail() {
             area_sqm: r.area_sqm,
           })),
         );
+        if (error) throw error;
       }
-      if (result.items.length > 0) {
-        await supabase.from("project_lv_items").insert(
-          result.items.map((it, index) => ({
+      if (review.items.length > 0) {
+        const { error } = await supabase.from("project_lv_items").insert(
+          review.items.map((it, index) => ({
             project_id: id,
             user_id: userId,
             position: items.length + index + 1,
@@ -332,15 +344,17 @@ function ProjektDetail() {
             critical: it.critical,
           })),
         );
+        if (error) throw error;
       }
-      toast.success("Analyse abgeschlossen – bitte Werte prüfen.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Analyse fehlgeschlagen");
-    } finally {
-      setAnalyzing(false);
+    },
+    onSuccess: () => {
+      setScanResult(null);
+      toast.success("Daten übernommen");
       invalidate();
-    }
-  }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   if (!project) return <p className="text-muted-foreground">Projekt wird geladen …</p>;
 
@@ -862,6 +876,15 @@ function ProjektDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ProjectScanReview
+        open={Boolean(scanResult)}
+        mode={isTender ? "tender" : "floorplan"}
+        result={scanResult}
+        saving={applyScan.isPending}
+        onCancel={() => setScanResult(null)}
+        onConfirm={(review) => applyScan.mutate(review)}
+      />
     </div>
   );
 }

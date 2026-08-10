@@ -65,24 +65,36 @@ function isoDate(value: unknown): string {
   return iso ? iso[0]! : "";
 }
 
+const NO_GUESS = `ABSOLUTES VERBOT VON ERFUNDENEN DATEN:
+- Gib NIEMALS Beispiel-, Muster- oder Platzhalterdaten aus (z. B. "Raum 1", "Büro", "Position 1", "Musterstraße").
+- Übernimm ausschließlich Text und Zahlen, die wörtlich im Dokument stehen.
+- Ist etwas nicht eindeutig lesbar: Zahl = 0, Text = "" (leer). Lieber weniger Zeilen als geratene Zeilen.
+- Ist im Dokument gar nichts Verwertbares zu erkennen, gib leere Listen zurück.`;
+
 const FLOORPLAN_SYSTEM = `Du bist ein Aufmaß-Experte für ein deutsches Gebäudereinigungsunternehmen.
 Lies den Grundriss bzw. das Raumbuch und erstelle eine Liste ALLER einzelnen Räume.
-Regeln:
-- Lies bevorzugt Raumstempel, Raumbücher und Flächentabellen im Dokument aus.
-- Übernimm nur Werte, die im Dokument stehen. Schätze NICHT.
-- Ist eine Fläche nicht lesbar, setze area_sqm auf 0.
-- expected_room_count = Anzahl der insgesamt erkennbaren Räume.
-- items bleibt eine leere Liste.
+Vorgehen:
+1. Suche zuerst Raumbücher, Flächentabellen und Legenden – diese Werte haben Vorrang.
+2. Danach Raumstempel im Plan (Raumnummer, Raumname, Fläche in m²).
+3. Übernimm Raumnamen exakt in der Schreibweise des Dokuments, inkl. Raumnummer falls vorhanden.
+4. area_sqm nur aus einer im Dokument geschriebenen Zahl; nicht aus der Zeichnung schätzen oder messen.
+5. floor nur aus Planbeschriftung (z. B. "EG", "1. OG"), sonst "".
+6. expected_room_count = Anzahl der tatsächlich gelesenen Räume.
+7. items bleibt eine leere Liste.
+${NO_GUESS}
 Antworte ausschließlich mit reinem JSON.`;
 
 const TENDER_SYSTEM = `Du bist ein Ausschreibungs-Experte für ein deutsches Gebäudereinigungsunternehmen.
 Lies die Ausschreibung / das Leistungsverzeichnis und extrahiere:
-- alle Leistungsbereiche und Positionen (section, title, description, quantity, unit)
+- jede einzelne LV-Position wörtlich (section = Titel des Leistungsbereichs, title = Positionstext, description = ergänzender Text)
+- quantity und unit nur, wenn sie im Dokument stehen, sonst 0 bzw. ""
 - Fristen (deadline als JJJJ-MM-TT) und geforderte Nachweise (evidence, z. B. Referenzen, Unbedenklichkeitsbescheinigung, Versicherungsnachweis)
-- critical = true bei fristgebundenen oder zwingend erforderlichen Punkten
-- executive_summary: kurze deutsche Zusammenfassung (max. 6 Sätze) mit kritischen Punkten und Fristen.
-Übernimm nur, was im Dokument steht. Schätze NICHT. rooms bleibt eine leere Liste.
+- critical = true nur bei ausdrücklich fristgebundenen oder zwingend geforderten Punkten
+- executive_summary: kurze deutsche Zusammenfassung (max. 6 Sätze) ausschließlich auf Basis des Dokuments.
+rooms bleibt eine leere Liste.
+${NO_GUESS}
 Antworte ausschließlich mit reinem JSON.`;
+
 
 const SCHEMA = {
   type: "object",
@@ -191,7 +203,7 @@ export async function analyzeProjectFile(
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-3.5-flash",
       temperature: 0,
       messages: [
         { role: "system", content: mode === "floorplan" ? FLOORPLAN_SYSTEM : TENDER_SYSTEM },

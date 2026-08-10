@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { analyzeProject } from "@/lib/project-scan.functions";
+import { analyzeProject, type ScannedProject } from "@/lib/project-scan.functions";
+import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
 import { fileUrl, uploadUserFile } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +70,8 @@ function ProjekteIndex() {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [step, setStep] = useState("");
+  const [scanResult, setScanResult] = useState<ScannedProject | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -117,6 +120,8 @@ function ProjekteIndex() {
       if (error) throw error;
       const projectId = data.id as string;
 
+      let scan: ScannedProject | null = null;
+
       if (file) {
         setStep("Datei wird hochgeladen …");
         const path = await uploadUserFile(file, "projekte");
@@ -132,76 +137,109 @@ function ProjekteIndex() {
         );
         try {
           const url = await fileUrl(path);
-          const result = await runAnalyze({
+          scan = await runAnalyze({
             data: { fileUrl: url, mimeType: file.type || "application/pdf", mode },
           });
-          await supabase
-            .from("projects")
-            .update({
-              name: name.trim() || result.project_name,
-              address_line: customer?.address_line || result.address_line,
-              postal_code: customer?.postal_code || result.postal_code,
-              city: customer?.city || result.city,
-              customer_name:
-                (customer ? customer.company || customer.name : "") || result.customer_name,
-              expected_room_count: result.expected_room_count,
-              executive_summary: result.executive_summary,
-            })
-            .eq("id", projectId);
-
-          if (result.rooms.length > 0) {
-            await supabase.from("project_rooms").insert(
-              result.rooms.map((r, index) => ({
-                project_id: projectId,
-                user_id: userId,
-                position: index + 1,
-                name: r.name,
-                floor: r.floor,
-                usage_type: r.usage_type,
-                area_sqm: r.area_sqm,
-              })),
-            );
+          if (!name.trim() && scan.project_name) {
+            await supabase
+              .from("projects")
+              .update({ name: scan.project_name })
+              .eq("id", projectId);
           }
-          if (result.items.length > 0) {
-            await supabase.from("project_lv_items").insert(
-              result.items.map((it, index) => ({
-                project_id: projectId,
-                user_id: userId,
-                position: index + 1,
-                section: it.section,
-                title: it.title,
-                description: it.description,
-                quantity: it.quantity,
-                unit: it.unit,
-                deadline: it.deadline || null,
-                evidence: it.evidence,
-                critical: it.critical,
-              })),
-            );
-          }
-          toast.success("Analyse abgeschlossen – bitte Werte prüfen.");
         } catch (e) {
           toast.error(
             e instanceof Error ? e.message : "Analyse fehlgeschlagen – Datei wurde gespeichert.",
           );
         }
       }
-      return projectId;
+      return { projectId, scan };
     },
-    onSuccess: (id) => {
+    onSuccess: ({ projectId, scan }) => {
       setStep("");
       setOpen(false);
       setName("");
       setCustomerId("none");
       setFile(null);
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      navigate({ to: "/projekte/$id", params: { id } });
+      if (scan) {
+        setPendingId(projectId);
+        setScanResult(scan);
+        return;
+      }
+      navigate({ to: "/projekte/$id", params: { id: projectId } });
     },
     onError: (e: Error) => {
       setStep("");
       toast.error(e.message);
     },
   });
+
+  const applyScan = useMutation({
+    mutationFn: async (review: ReviewResult) => {
+      const projectId = pendingId;
+      if (!projectId) throw new Error("Kein Projekt");
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+
+      await supabase
+        .from("projects")
+        .update({
+          expected_room_count: review.expected_room_count,
+          executive_summary: review.executive_summary,
+        })
+        .eq("id", projectId);
+
+      if (review.rooms.length > 0) {
+        const { error } = await supabase.from("project_rooms").insert(
+          review.rooms.map((r, index) => ({
+            project_id: projectId,
+            user_id: userId,
+            position: index + 1,
+            name: r.name,
+            floor: r.floor,
+            usage_type: r.usage_type,
+            area_sqm: r.area_sqm,
+          })),
+        );
+        if (error) throw error;
+      }
+      if (review.items.length > 0) {
+        const { error } = await supabase.from("project_lv_items").insert(
+          review.items.map((it, index) => ({
+            project_id: projectId,
+            user_id: userId,
+            position: index + 1,
+            section: it.section,
+            title: it.title,
+            description: it.description,
+            quantity: it.quantity,
+            unit: it.unit,
+            deadline: it.deadline || null,
+            evidence: it.evidence,
+            critical: it.critical,
+          })),
+        );
+        if (error) throw error;
+      }
+      return projectId;
+    },
+    onSuccess: (projectId) => {
+      setScanResult(null);
+      setPendingId(null);
+      toast.success("Daten übernommen");
+      navigate({ to: "/projekte/$id", params: { id: projectId } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function skipScan() {
+    const projectId = pendingId;
+    setScanResult(null);
+    setPendingId(null);
+    if (projectId) navigate({ to: "/projekte/$id", params: { id: projectId } });
+  }
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -385,6 +423,15 @@ function ProjekteIndex() {
           </ul>
         )}
       </div>
+
+      <ProjectScanReview
+        open={Boolean(scanResult)}
+        mode={mode === "tender" ? "tender" : "floorplan"}
+        result={scanResult}
+        saving={applyScan.isPending}
+        onCancel={skipScan}
+        onConfirm={(review) => applyScan.mutate(review)}
+      />
     </div>
   );
 }
