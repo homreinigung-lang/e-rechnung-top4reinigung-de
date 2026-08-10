@@ -130,6 +130,8 @@ function KalkulationPage() {
   const [confirmed, setConfirmed] = useState(false);
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
+  const runFloorplanScan = useServerFn(scanFloorplan);
+
 
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
