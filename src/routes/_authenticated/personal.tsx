@@ -21,9 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
+import { absenceClasses, absenceLabel, absenceReason, absenceShort, isAbsence } from "@/lib/absence";
+
 
 
 export const Route = createFileRoute("/_authenticated/personal")({
