@@ -520,12 +520,15 @@ function Personal() {
                           const hours = toNumber(ev.target.value);
                           if (!assignment) {
                             if (ev.target.value.trim())
-                              toast.error("Bitte zuerst einen Einsatzort wählen.");
+                              toast.info(
+                                "Std./Woche werden nur für Projekt-Einsatzorte gespeichert – bitte ein Projekt wählen.",
+                              );
                             return;
                           }
                           if (hours !== Number(assignment.hours_per_week ?? 0))
                             setWeeklyHours.mutate({ employeeId: e.id, hours });
                         }}
+
                       />
                     </td>
                     <td className="px-3 py-2">
