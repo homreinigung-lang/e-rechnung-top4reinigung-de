@@ -113,10 +113,18 @@ function Personal() {
     },
   });
 
+  // Eigener Query-Key: verhindert Kollision mit anders geformten "projects"-Caches
+  // (Zeiterfassung/Projektliste) und lädt die Objektliste bei jedem Aufruf frisch.
   const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
+    queryKey: ["projects", "personal-picker"],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id,name,city").order("name");
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,city,status")
+        .order("name");
       if (error) throw error;
       return data;
     },
