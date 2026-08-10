@@ -1,14 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Calculator, FileSignature, FileText, Trash2 } from "lucide-react";
+import { Calculator, FileSignature, FileText, Loader2, Sparkles, Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { fileUrl } from "@/lib/storage";
+import { scanFloorplan } from "@/lib/floorplan-scan.functions";
 import { FileUploadButton } from "@/components/FileUploadButton";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,7 +91,19 @@ type Attachment = {
   rooms: string;
   floors: string;
   note: string;
+  analyzing: boolean;
+  aiFilled: boolean;
 };
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
+}
+
 
 function KalkulationPage() {
   const navigate = useNavigate();
@@ -115,10 +130,36 @@ function KalkulationPage() {
   const [confirmed, setConfirmed] = useState(false);
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
+  const runFloorplanScan = useServerFn(scanFloorplan);
+
 
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
+
+  /** Lässt die KI den Grundriss auslesen und füllt m², Räume und Etagen vor. */
+  async function analyzeAttachment(path: string, file: File) {
+    updateAttachment(path, { analyzing: true });
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const r = await runFloorplanScan({
+        data: { dataUrl, mimeType: file.type || "application/pdf" },
+      });
+      updateAttachment(path, {
+        sqm: r.sqm ? String(r.sqm) : "",
+        rooms: r.rooms ? String(r.rooms) : "",
+        floors: r.floors ? String(r.floors) : "",
+        note: r.note,
+        aiFilled: true,
+      });
+      toast.success("Grundriss automatisch erkannt – bitte Werte prüfen");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Analyse fehlgeschlagen");
+    } finally {
+      updateAttachment(path, { analyzing: false });
+    }
+  }
+
 
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
   const analysisTotals = useMemo(
@@ -455,10 +496,11 @@ function KalkulationPage() {
 
             <div className="space-y-3 rounded-md border p-3">
               <div>
-                <Label>Grundrisse & Fotos – Analyse</Label>
+                <Label>Grundrisse & Fotos – KI-Analyse</Label>
                 <p className="text-xs text-muted-foreground">
-                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen, Eckdaten direkt ablesen und mit
-                  einem Klick in die Kalkulation übernehmen – nur intern zur Preisfindung.
+                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – die KI liest m², Räume und
+                  Etagen automatisch aus und schlägt realistische Werte vor. Werte bleiben
+                  jederzeit manuell änderbar.
                 </p>
               </div>
               <FileUploadButton
@@ -479,11 +521,15 @@ function KalkulationPage() {
                         rooms: "",
                         floors: "",
                         note: "",
+                        analyzing: true,
+                        aiFilled: false,
                       },
                     ]);
+                    await analyzeAttachment(path, file);
                   })();
                 }}
               />
+
               {attachments.length > 0 && (
                 <>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -508,6 +554,18 @@ function KalkulationPage() {
                             <FileText className="size-8 text-muted-foreground" />
                           </a>
                         )}
+                        {a.analyzing ? (
+                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="size-3 animate-spin" />
+                            KI analysiert den Grundriss …
+                          </p>
+                        ) : a.aiFilled ? (
+                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Sparkles className="size-3" />
+                            KI-Vorschlag – bitte prüfen
+                          </p>
+                        ) : null}
+
                         <div className="flex items-center gap-2">
                           <span className="flex-1 truncate text-xs">{a.name}</span>
                           <Button
