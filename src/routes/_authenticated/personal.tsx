@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
 
