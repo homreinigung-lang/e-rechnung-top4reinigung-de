@@ -530,41 +530,17 @@ function MeineZeiten() {
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
                 </div>
-                {e.billed ? (
-                  <span className="text-xs text-muted-foreground">Abgerechnet · gesperrt</span>
-                ) : isAbsence(e) ? (
+                <span
+                  className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${approvalClasses(approvalStatus(e))}`}
+                >
+                  {isAbsence(e) ? approvalLabel(approvalStatus(e)) : "Von der Verwaltung erfasst"}
+                </span>
+                {isAbsence(e) && approvalStatus(e) === "pending" && (
                   <Button variant="ghost" size="icon" onClick={() => remove.mutate(e.id as string)}>
                     <Trash2 className="size-4" />
                   </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setForm({
-                          id: e.id as string,
-                          work_date: e.work_date as string,
-                          start_time: e.start_time ? String(e.start_time).slice(0, 5) : "",
-                          end_time: e.end_time ? String(e.end_time).slice(0, 5) : "",
-                          break_minutes: String(e.break_minutes ?? 0),
-                          location: (e.location as string) ?? "",
-                          note: (e.note as string) ?? "",
-                        });
-                        setOpen(true);
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove.mutate(e.id as string)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </>
                 )}
+
               </li>
             ))}
           </ul>
