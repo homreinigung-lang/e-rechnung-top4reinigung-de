@@ -23,10 +23,15 @@ import {
   absenceClasses,
   absenceLabel,
   absenceReason,
+  approvalClasses,
+  approvalLabel,
+  approvalStatus,
   isAbsence,
   type AbsenceReason,
 } from "@/lib/absence";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
+import { ZeitkontoCard } from "@/components/ZeitkontoCard";
+
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
