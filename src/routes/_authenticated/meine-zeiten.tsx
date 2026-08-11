@@ -508,25 +508,41 @@ function MeineZeiten() {
             {monthEntries.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{formatDate(e.work_date as string)}</div>
+                  <div className="flex flex-wrap items-center gap-2 font-medium">
+                    {formatDate(e.work_date as string)}
+                    {isAbsence(e) && (
+                      <span
+                        className={`rounded border px-2 py-0.5 text-xs font-medium ${absenceClasses(absenceReason(e))}`}
+                      >
+                        {absenceLabel(absenceReason(e))}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-sm text-muted-foreground">
-                    {[
-                      e.start_time && e.end_time
-                        ? `${String(e.start_time).slice(0, 5)}–${String(e.end_time).slice(0, 5)}`
-                        : null,
-                      `Pause ${e.break_minutes} Min.`,
-                      `${Number(e.hours).toFixed(2)} Std.`,
-                      e.location || null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    {isAbsence(e)
+                      ? "ganztägig · keine Arbeitsstunden"
+                      : [
+                          e.start_time && e.end_time
+                            ? `${String(e.start_time).slice(0, 5)}–${String(e.end_time).slice(0, 5)}`
+                            : null,
+                          `Pause ${e.break_minutes} Min.`,
+                          `${Number(e.hours).toFixed(2)} Std.`,
+                          e.location || null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
                 </div>
                 {e.billed ? (
                   <span className="text-xs text-muted-foreground">Abgerechnet · gesperrt</span>
+                ) : isAbsence(e) ? (
+                  <Button variant="ghost" size="icon" onClick={() => remove.mutate(e.id as string)}>
+                    <Trash2 className="size-4" />
+                  </Button>
                 ) : (
                   <>
+
                     <Button
                       variant="ghost"
                       size="icon"
