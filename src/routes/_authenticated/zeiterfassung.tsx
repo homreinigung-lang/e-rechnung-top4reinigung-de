@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import { Check, Download, FileText, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { formatMoney, formatDate } from "@/lib/format";
+import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -72,9 +73,10 @@ type Employee = {
   phone: string;
   personnel_number: string;
   auth_user_id: string | null;
+  contract_type?: string | null;
+  contract_start?: string | null;
+  weekly_hours?: number | null;
 };
-
-
 
 type EntryForm = {
   id?: string;
@@ -107,6 +109,8 @@ const emptyEntry = (): EntryForm => ({
   note: "",
 });
 
+const CONTRACT_TYPES = ["Vollzeit", "Teilzeit", "Minijob", "Aushilfe", "Werkstudent", "Praktikum"];
+
 const emptyEmployee = {
   id: undefined as string | undefined,
   name: "",
@@ -115,9 +119,10 @@ const emptyEmployee = {
   phone: "",
   personnel_number: "",
   hourly_rate: "",
+  contract_type: "",
+  contract_start: "",
+  weekly_hours: "",
 };
-
-
 
 function num(v: string) {
   const n = Number(String(v).replace(",", "."));
@@ -154,7 +159,6 @@ function Zeiterfassung() {
     if (myEmployee) navigate({ to: "/meine-zeiten", replace: true });
   }, [myEmployee, navigate]);
 
-
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
@@ -167,7 +171,10 @@ function Zeiterfassung() {
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("id,name,company").order("name");
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id,name,company")
+        .order("name");
       if (error) throw error;
       return data as { id: string; name: string; company: string }[];
     },
@@ -202,7 +209,6 @@ function Zeiterfassung() {
     [entries, month],
   );
 
-
   const totals = useMemo(() => {
     const hours = monthEntries.reduce((s, e) => s + Number(e.hours || 0), 0);
     const amount = monthEntries.reduce(
@@ -233,8 +239,10 @@ function Zeiterfassung() {
         phone: values.phone.trim(),
         personnel_number: values.personnel_number.trim(),
         hourly_rate: num(values.hourly_rate),
+        contract_type: values.contract_type,
+        contract_start: values.contract_start || null,
+        weekly_hours: num(values.weekly_hours),
       };
-
 
       if (values.id) {
         const { error } = await supabase.from("employees").update(payload).eq("id", values.id);
@@ -385,7 +393,6 @@ function Zeiterfassung() {
       `Stundenzettel_${month}.csv`,
     );
     toast.success("CSV-Export erstellt");
-
   };
 
   const exportPdf = async () => {
@@ -450,12 +457,9 @@ function Zeiterfassung() {
         y,
       );
       doc.text(`${de(Number(e.hours || 0))} Std.`, 150, y, { align: "right" });
-      doc.text(
-        formatMoney(Number(e.hours || 0) * Number(e.hourly_rate || 0)),
-        195,
-        y,
-        { align: "right" },
-      );
+      doc.text(formatMoney(Number(e.hours || 0) * Number(e.hourly_rate || 0)), 195, y, {
+        align: "right",
+      });
       y += 5;
     }
     // Die PDF bleibt vollständig im Browser: kein Plattform- oder externer Link.
@@ -479,8 +483,6 @@ function Zeiterfassung() {
       },
     });
   };
-
-
 
   return (
     <div className="space-y-6">
@@ -530,6 +532,8 @@ function Zeiterfassung() {
           <Button variant="outline" onClick={exportPdf}>
             <FileText className="size-4" /> Stundenzettel-PDF
           </Button>
+
+          <AbwesenheitZeitraum employees={employees.map((e) => ({ id: e.id, name: e.name }))} />
 
           <Dialog
             open={empOpen}
@@ -602,11 +606,49 @@ function Zeiterfassung() {
                     onChange={(e) => setEmp({ ...emp, email: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Mit dieser E-Mail kann sich der Mitarbeiter selbst registrieren und danach
-                    unter „Meine Zeiten“ nur die eigenen Arbeitszeiten erfassen.
+                    Mit dieser E-Mail kann sich der Mitarbeiter selbst registrieren und danach unter
+                    „Meine Zeiten“ nur die eigenen Arbeitszeiten erfassen.
                   </p>
                 </div>
 
+                <div className="space-y-2 sm:col-span-2">
+                  <div className="border-t pt-3 text-sm font-medium">Vertragsdaten</div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Vertragsart</Label>
+                  <Select
+                    value={emp.contract_type}
+                    onValueChange={(v) => setEmp({ ...emp, contract_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Vertragsart wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONTRACT_TYPES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emp-start">Vertragsbeginn</Label>
+                  <GermanDateInput
+                    id="emp-start"
+                    value={emp.contract_start}
+                    onChange={(iso) => setEmp({ ...emp, contract_start: iso })}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="emp-weekly">Wöchentliche Soll-Arbeitsstunden</Label>
+                  <Input
+                    id="emp-weekly"
+                    inputMode="decimal"
+                    value={emp.weekly_hours}
+                    onChange={(e) => setEmp({ ...emp, weekly_hours: e.target.value })}
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -646,19 +688,16 @@ function Zeiterfassung() {
                           email: e.email ?? "",
                           phone: e.phone ?? "",
                           personnel_number: e.personnel_number ?? "",
-
                           hourly_rate: String(e.hourly_rate ?? ""),
+                          contract_type: e.contract_type ?? "",
+                          contract_start: e.contract_start ?? "",
+                          weekly_hours: e.weekly_hours ? String(e.weekly_hours) : "",
                         })
                       }
                     >
-
                       <Pencil className="size-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeEmployee.mutate(e.id)}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => removeEmployee.mutate(e.id)}>
                       <Trash2 className="size-4" />
                     </Button>
                   </li>
@@ -785,7 +824,6 @@ function Zeiterfassung() {
                     onChange={(t) => setForm({ ...form, end_time: t })}
                   />
                 </div>
-
 
                 <div className="space-y-2">
                   <Label htmlFor="break_minutes">Pause (Minuten)</Label>

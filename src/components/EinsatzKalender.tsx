@@ -31,10 +31,10 @@ import {
   type AbsenceReason,
   type EntryType,
 } from "@/lib/absence";
+import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const NO_PROJECT = "__none__";
-
 
 export type KalenderEmployee = { id: string; name: string; hourly_rate: number | null };
 export type KalenderProject = { id: string; name: string | null; city?: string | null };
@@ -83,7 +83,6 @@ const emptyForm: PlanForm = {
   breakMinutes: "30",
   note: "",
 };
-
 
 export function EinsatzKalender({
   employees,
@@ -146,8 +145,7 @@ export function EinsatzKalender({
       const absence = values.entryType === "absence";
       const breakMinutes = absence ? 0 : Number(values.breakMinutes.replace(",", ".")) || 0;
       const hours = absence ? 0 : hoursFromTimes(values.start, values.end, breakMinutes);
-      if (!absence && hours <= 0)
-        throw new Error("Bitte gültige Start- und Endzeit eintragen.");
+      if (!absence && hours <= 0) throw new Error("Bitte gültige Start- und Endzeit eintragen.");
       const project =
         absence || values.projectId === NO_PROJECT
           ? null
@@ -163,7 +161,9 @@ export function EinsatzKalender({
         hours,
         hourly_rate: Number(employee.hourly_rate ?? 0),
         project_id: project?.id ?? null,
-        location: absence ? absenceLabel(values.absenceReason) : project?.name || values.location.trim(),
+        location: absence
+          ? absenceLabel(values.absenceReason)
+          : project?.name || values.location.trim(),
         note: values.note.trim(),
         entry_type: values.entryType,
         absence_reason: absence ? values.absenceReason : "",
@@ -209,7 +209,6 @@ export function EinsatzKalender({
   const dayEntries = day ? (byDay.get(day) ?? []) : [];
   const isAbsent = form.entryType === "absence";
 
-
   return (
     <section className="surface space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -236,12 +235,16 @@ export function EinsatzKalender({
           <Button variant="outline" onClick={() => setMonth(monthStart(new Date()))}>
             Heute
           </Button>
+          <AbwesenheitZeitraum employees={employees} />
         </div>
       </div>
 
       <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border bg-border text-sm">
         {WEEKDAYS.map((w) => (
-          <div key={w} className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+          <div
+            key={w}
+            className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground"
+          >
             {w}
           </div>
         ))}
@@ -297,10 +300,11 @@ export function EinsatzKalender({
                   );
                 })}
                 {list.length > 3 && (
-                  <div className="text-[10px] text-muted-foreground">+{list.length - 3} weitere</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    +{list.length - 3} weitere
+                  </div>
                 )}
               </div>
-
             </button>
           );
         })}
@@ -504,11 +508,9 @@ export function EinsatzKalender({
               onClick={() => day && createPlan.mutate({ ...form, workDate: day })}
               disabled={!form.employeeId || createPlan.isPending}
             >
-              <Plus className="size-4" />{" "}
-              {isAbsent ? "Abwesenheit eintragen" : "Einsatz eintragen"}
+              <Plus className="size-4" /> {isAbsent ? "Abwesenheit eintragen" : "Einsatz eintragen"}
             </Button>
           </DialogFooter>
-
         </DialogContent>
       </Dialog>
     </section>
