@@ -460,6 +460,8 @@ export type Database = {
         Row: {
           active: boolean
           auth_user_id: string | null
+          contract_start: string | null
+          contract_type: string
           created_at: string
           email: string
           hourly_rate: number
@@ -470,11 +472,14 @@ export type Database = {
           role: string
           updated_at: string
           user_id: string
+          weekly_hours: number
           work_location: string
         }
         Insert: {
           active?: boolean
           auth_user_id?: string | null
+          contract_start?: string | null
+          contract_type?: string
           created_at?: string
           email?: string
           hourly_rate?: number
@@ -485,11 +490,14 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id: string
+          weekly_hours?: number
           work_location?: string
         }
         Update: {
           active?: boolean
           auth_user_id?: string | null
+          contract_start?: string | null
+          contract_type?: string
           created_at?: string
           email?: string
           hourly_rate?: number
@@ -500,6 +508,7 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id?: string
+          weekly_hours?: number
           work_location?: string
         }
         Relationships: []

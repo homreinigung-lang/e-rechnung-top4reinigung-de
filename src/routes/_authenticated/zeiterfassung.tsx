@@ -72,6 +72,10 @@ type Employee = {
   phone: string;
   personnel_number: string;
   auth_user_id: string | null;
+  contract_type?: string | null;
+  contract_start?: string | null;
+  weekly_hours?: number | null;
+
 };
 
 
@@ -107,6 +111,8 @@ const emptyEntry = (): EntryForm => ({
   note: "",
 });
 
+const CONTRACT_TYPES = ["Vollzeit", "Teilzeit", "Minijob", "Aushilfe", "Werkstudent", "Praktikum"];
+
 const emptyEmployee = {
   id: undefined as string | undefined,
   name: "",
@@ -115,7 +121,11 @@ const emptyEmployee = {
   phone: "",
   personnel_number: "",
   hourly_rate: "",
+  contract_type: "",
+  contract_start: "",
+  weekly_hours: "",
 };
+
 
 
 
@@ -646,9 +656,12 @@ function Zeiterfassung() {
                           email: e.email ?? "",
                           phone: e.phone ?? "",
                           personnel_number: e.personnel_number ?? "",
-
                           hourly_rate: String(e.hourly_rate ?? ""),
+                          contract_type: e.contract_type ?? "",
+                          contract_start: e.contract_start ?? "",
+                          weekly_hours: e.weekly_hours ? String(e.weekly_hours) : "",
                         })
+
                       }
                     >
 
