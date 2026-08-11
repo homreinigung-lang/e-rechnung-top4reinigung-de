@@ -627,7 +627,7 @@ function Zeiterfassung() {
                 <div className="space-y-2">
                   <Label>Vertragsart</Label>
                   <Select
-                    value={emp.contract_type || undefined}
+                    value={emp.contract_type}
                     onValueChange={(v) => setEmp({ ...emp, contract_type: v })}
                   >
                     <SelectTrigger>
