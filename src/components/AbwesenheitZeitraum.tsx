@@ -58,11 +58,14 @@ export function AbwesenheitZeitraum({
   fixedEmployeeId,
   triggerLabel = "Abwesenheit (Zeitraum)",
   variant = "outline",
+  asRequest = false,
 }: {
   employees: AbsenceEmployee[];
   fixedEmployeeId?: string;
   triggerLabel?: string;
   variant?: "default" | "outline";
+  /** Mitarbeiter-Modus: Buchung wird nur beantragt und muss freigegeben werden. */
+  asRequest?: boolean;
 }) {
   const queryClient = useQueryClient();
   const today = isoDay(new Date());
@@ -100,13 +103,19 @@ export function AbwesenheitZeitraum({
         note: note.trim(),
         entry_type: "absence",
         absence_reason: reason,
+        billed: false,
+        approval_status: asRequest ? "pending" : "approved",
       }));
       const { error } = await supabase.from("time_entries").insert(rows);
       if (error) throw error;
       return rows.length;
     },
     onSuccess: (count) => {
-      toast.success(`${absenceLabel(reason)}: ${count} Tag(e) eingetragen`);
+      toast.success(
+        asRequest
+          ? `Antrag eingereicht: ${absenceLabel(reason)}, ${count} Tag(e) – wartet auf Genehmigung`
+          : `${absenceLabel(reason)}: ${count} Tag(e) eingetragen`,
+      );
       setOpen(false);
       setNote("");
       queryClient.invalidateQueries({ queryKey: ["time_entries"] });
@@ -114,6 +123,7 @@ export function AbwesenheitZeitraum({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

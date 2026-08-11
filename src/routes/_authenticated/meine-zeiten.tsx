@@ -5,28 +5,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { GermanDateInput, GermanTimeInput } from "@/components/GermanDateTimeInput";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import {
   absenceClasses,
   absenceLabel,
   absenceReason,
+  approvalClasses,
+  approvalLabel,
+  approvalStatus,
   isAbsence,
   type AbsenceReason,
 } from "@/lib/absence";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
+import { ZeitkontoCard } from "@/components/ZeitkontoCard";
+
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
@@ -49,46 +43,9 @@ export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   component: MeineZeiten,
 });
 
-type Form = {
-  id?: string;
-  work_date: string;
-  start_time: string;
-  end_time: string;
-  break_minutes: string;
-  location: string;
-  note: string;
-};
-
-const emptyForm = (): Form => ({
-  work_date: new Date().toISOString().slice(0, 10),
-  start_time: "08:00",
-  end_time: "16:00",
-  break_minutes: "30",
-  location: "",
-  note: "",
-});
-
-function num(v: string) {
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function computeHours(start: string, end: string, breakMinutes: string) {
-  if (!start || !end) return 0;
-  const [sh = NaN, sm = NaN] = start.split(":").map(Number);
-  const [eh = NaN, em = NaN] = end.split(":").map(Number);
-  if ([sh, sm, eh, em].some((x) => Number.isNaN(x))) return 0;
-  let minutes = eh * 60 + em - (sh * 60 + sm);
-  if (minutes < 0) minutes += 24 * 60;
-  minutes -= num(breakMinutes);
-  return Math.max(0, Math.round((minutes / 60) * 100) / 100);
-}
-
 function MeineZeiten() {
   const queryClient = useQueryClient();
   const { data: me, isLoading } = useMyEmployee();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Form>(emptyForm());
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
 
   const { data: entries = [] } = useQuery({
@@ -195,46 +152,6 @@ function MeineZeiten() {
     return { vacation, sick, other };
   }, [entries, month]);
 
-  const previewHours = computeHours(form.start_time, form.end_time, form.break_minutes);
-
-  const save = useMutation({
-    mutationFn: async (values: Form) => {
-      if (!me) throw new Error("Kein Mitarbeiterkonto verknüpft.");
-      const hours = computeHours(values.start_time, values.end_time, values.break_minutes);
-      if (hours <= 0) throw new Error("Bitte gültige Zeiten eingeben.");
-      const payload = {
-        employee_id: me.id,
-        employee_name: me.name,
-        work_date: values.work_date,
-        start_time: values.start_time || null,
-        end_time: values.end_time || null,
-        break_minutes: Math.round(num(values.break_minutes)),
-        hours,
-        hourly_rate: Number(me.hourly_rate || 0),
-        location: values.location,
-        note: values.note,
-        entry_type: "work",
-        absence_reason: "",
-      };
-      if (values.id) {
-        const { error } = await supabase.from("time_entries").update(payload).eq("id", values.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("time_entries")
-          .insert({ ...payload, user_id: me.user_id, billed: false });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success("Arbeitszeit gespeichert");
-      setOpen(false);
-      setForm(emptyForm());
-      queryClient.invalidateQueries({ queryKey: ["my_time_entries"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("time_entries").delete().eq("id", id);
@@ -274,88 +191,14 @@ function MeineZeiten() {
             {me.role ? ` · ${me.role}` : ""}
           </p>
         </div>
-        <Dialog
-          open={open}
-          onOpenChange={(o) => {
-            setOpen(o);
-            if (!o) setForm(emptyForm());
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="size-4" /> Zeit erfassen
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{form.id ? "Eintrag bearbeiten" : "Neue Arbeitszeit"}</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="work_date">Datum</Label>
-                <GermanDateInput
-                  id="work_date"
-                  value={form.work_date}
-                  onChange={(iso) => setForm({ ...form, work_date: iso })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="location">Einsatzort</Label>
-                <Input
-                  id="location"
-                  value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="start_time">Von</Label>
-                <GermanTimeInput
-                  id="start_time"
-                  value={form.start_time}
-                  onChange={(t) => setForm({ ...form, start_time: t })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="end_time">Bis</Label>
-                <GermanTimeInput
-                  id="end_time"
-                  value={form.end_time}
-                  onChange={(t) => setForm({ ...form, end_time: t })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="break_minutes">Pause (Minuten)</Label>
-                <Input
-                  id="break_minutes"
-                  inputMode="numeric"
-                  value={form.break_minutes}
-                  onChange={(e) => setForm({ ...form, break_minutes: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="note">Notiz</Label>
-                <Textarea
-                  id="note"
-                  value={form.note}
-                  onChange={(e) => setForm({ ...form, note: e.target.value })}
-                />
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Berechnete Arbeitszeit: <strong>{previewHours} Std.</strong>
-            </p>
-            <DialogFooter>
-              <Button onClick={() => save.mutate(form)} disabled={save.isPending}>
-                Speichern
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
         <AbwesenheitZeitraum
           employees={[{ id: me.id, name: me.name, user_id: me.user_id }]}
           fixedEmployeeId={me.id}
-          triggerLabel="Urlaub / Abwesenheit"
+          triggerLabel="Urlaub / Abwesenheit beantragen"
+          variant="default"
+          asRequest
         />
+
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -494,6 +337,18 @@ function MeineZeiten() {
         )}
       </section>
 
+      <ZeitkontoCard
+        employees={[{ id: me.id, name: me.name, weekly_hours: me.weekly_hours ?? 0 }]}
+        entries={entries as never}
+        month={month}
+        readOnly
+      />
+
+      <p className="text-sm text-muted-foreground">
+        Arbeitszeiten und Zeitkonto werden ausschließlich von der Verwaltung gepflegt (Nur-Lesen).
+        Urlaub und Abwesenheiten können Sie beantragen – sie gelten erst nach Genehmigung.
+      </p>
+
       <div className="surface overflow-hidden">
         {monthEntries.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">
@@ -530,41 +385,17 @@ function MeineZeiten() {
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
                 </div>
-                {e.billed ? (
-                  <span className="text-xs text-muted-foreground">Abgerechnet · gesperrt</span>
-                ) : isAbsence(e) ? (
+                <span
+                  className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${approvalClasses(approvalStatus(e))}`}
+                >
+                  {isAbsence(e) ? approvalLabel(approvalStatus(e)) : "Von der Verwaltung erfasst"}
+                </span>
+                {isAbsence(e) && approvalStatus(e) === "pending" && (
                   <Button variant="ghost" size="icon" onClick={() => remove.mutate(e.id as string)}>
                     <Trash2 className="size-4" />
                   </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setForm({
-                          id: e.id as string,
-                          work_date: e.work_date as string,
-                          start_time: e.start_time ? String(e.start_time).slice(0, 5) : "",
-                          end_time: e.end_time ? String(e.end_time).slice(0, 5) : "",
-                          break_minutes: String(e.break_minutes ?? 0),
-                          location: (e.location as string) ?? "",
-                          note: (e.note as string) ?? "",
-                        });
-                        setOpen(true);
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove.mutate(e.id as string)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </>
                 )}
+
               </li>
             ))}
           </ul>
