@@ -5,17 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { GermanDateInput, GermanTimeInput } from "@/components/GermanDateTimeInput";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
@@ -53,41 +42,6 @@ export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   }),
   component: MeineZeiten,
 });
-
-type Form = {
-  id?: string;
-  work_date: string;
-  start_time: string;
-  end_time: string;
-  break_minutes: string;
-  location: string;
-  note: string;
-};
-
-const emptyForm = (): Form => ({
-  work_date: new Date().toISOString().slice(0, 10),
-  start_time: "08:00",
-  end_time: "16:00",
-  break_minutes: "30",
-  location: "",
-  note: "",
-});
-
-function num(v: string) {
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function computeHours(start: string, end: string, breakMinutes: string) {
-  if (!start || !end) return 0;
-  const [sh = NaN, sm = NaN] = start.split(":").map(Number);
-  const [eh = NaN, em = NaN] = end.split(":").map(Number);
-  if ([sh, sm, eh, em].some((x) => Number.isNaN(x))) return 0;
-  let minutes = eh * 60 + em - (sh * 60 + sm);
-  if (minutes < 0) minutes += 24 * 60;
-  minutes -= num(breakMinutes);
-  return Math.max(0, Math.round((minutes / 60) * 100) / 100);
-}
 
 function MeineZeiten() {
   const queryClient = useQueryClient();
