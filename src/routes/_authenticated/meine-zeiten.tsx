@@ -97,17 +97,98 @@ function MeineZeiten() {
     },
   });
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["my_projects", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name,city,address_line");
+      if (error) return [];
+      return (data ?? []) as { id: string; name: string; city: string; address_line: string }[];
+    },
+  });
+
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["my_assignments", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .select("id,project_id,assignment_role,hours_per_week,start_date,end_date")
+        .eq("employee_id", me!.id);
+      if (error) return [];
+      return data ?? [];
+    },
+  });
+
+  const projectName = useMemo(() => {
+    const map = new Map(projects.map((p) => [p.id, p.name || "Projekt"]));
+    return (id: string | null | undefined) => (id ? (map.get(id) ?? "Projekt") : null);
+  }, [projects]);
+
   const monthEntries = useMemo(
     () => entries.filter((e) => String(e.work_date).slice(0, 7) === month),
     [entries, month],
   );
 
+  const workEntries = useMemo(() => monthEntries.filter((e) => !isAbsence(e)), [monthEntries]);
+
   const totalHours = useMemo(
-    () => monthEntries.reduce((s, e) => s + Number(e.hours || 0), 0),
-    [monthEntries],
+    () => workEntries.reduce((s, e) => s + Number(e.hours || 0), 0),
+    [workEntries],
   );
 
+  /** Stunden nach Objekt / Projekt gruppiert. */
+  const byProject = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of workEntries) {
+      const key = projectName(e.project_id as string | null) || e.location || "Ohne Objekt";
+      map.set(key, (map.get(key) ?? 0) + Number(e.hours || 0));
+    }
+    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  }, [workEntries, projectName]);
+
+  /** Abwesenheiten des Jahres zu zusammenhängenden Zeiträumen zusammengefasst. */
+  const absenceRanges = useMemo(() => {
+    const year = month.slice(0, 4);
+    const list = entries
+      .filter((e) => isAbsence(e) && String(e.work_date).slice(0, 4) === year)
+      .map((e) => ({ date: String(e.work_date), reason: absenceReason(e) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const out: { from: string; to: string; reason: AbsenceReason | null; days: number }[] = [];
+    for (const item of list) {
+      const last = out[out.length - 1];
+      const prevDay = last
+        ? new Date(new Date(`${last.to}T12:00:00`).getTime() + 86400000).toISOString().slice(0, 10)
+        : null;
+      if (last && last.reason === item.reason && (prevDay === item.date || last.to === item.date)) {
+        if (last.to !== item.date) {
+          last.to = item.date;
+          last.days += 1;
+        }
+      } else {
+        out.push({ from: item.date, to: item.date, reason: item.reason, days: 1 });
+      }
+    }
+    return out.reverse();
+  }, [entries, month]);
+
+  const absenceTotals = useMemo(() => {
+    const year = month.slice(0, 4);
+    let vacation = 0;
+    let sick = 0;
+    let other = 0;
+    for (const e of entries) {
+      if (!isAbsence(e) || String(e.work_date).slice(0, 4) !== year) continue;
+      const r = absenceReason(e);
+      if (r === "vacation") vacation += 1;
+      else if (r === "sick") sick += 1;
+      else other += 1;
+    }
+    return { vacation, sick, other };
+  }, [entries, month]);
+
   const previewHours = computeHours(form.start_time, form.end_time, form.break_minutes);
+
 
   const save = useMutation({
     mutationFn: async (values: Form) => {
