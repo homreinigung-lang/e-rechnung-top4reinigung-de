@@ -900,13 +900,58 @@ export type Database = {
           },
         ]
       }
+      time_account_adjustments: {
+        Row: {
+          created_at: string
+          employee_id: string
+          entry_date: string
+          hours: number
+          id: string
+          reason: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          entry_date?: string
+          hours?: number
+          id?: string
+          reason?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          entry_date?: string
+          hours?: number
+          id?: string
+          reason?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_account_adjustments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_entries: {
         Row: {
           absence_reason: string
+          approval_status: string
           billed: boolean
           break_minutes: number
           created_at: string
           customer_id: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string
           employee_id: string | null
           employee_name: string
           end_time: string | null
@@ -924,10 +969,14 @@ export type Database = {
         }
         Insert: {
           absence_reason?: string
+          approval_status?: string
           billed?: boolean
           break_minutes?: number
           created_at?: string
           customer_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string
           employee_id?: string | null
           employee_name?: string
           end_time?: string | null
@@ -945,10 +994,14 @@ export type Database = {
         }
         Update: {
           absence_reason?: string
+          approval_status?: string
           billed?: boolean
           break_minutes?: number
           created_at?: string
           customer_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string
           employee_id?: string | null
           employee_name?: string
           end_time?: string | null
