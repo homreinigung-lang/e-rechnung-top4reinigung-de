@@ -28,7 +28,6 @@ import {
 } from "@/lib/absence";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 
-
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
     meta: [
@@ -198,7 +197,6 @@ function MeineZeiten() {
 
   const previewHours = computeHours(form.start_time, form.end_time, form.break_minutes);
 
-
   const save = useMutation({
     mutationFn: async (values: Form) => {
       if (!me) throw new Error("Kein Mitarbeiterkonto verknüpft.");
@@ -219,10 +217,7 @@ function MeineZeiten() {
         absence_reason: "",
       };
       if (values.id) {
-        const { error } = await supabase
-          .from("time_entries")
-          .update(payload)
-          .eq("id", values.id);
+        const { error } = await supabase.from("time_entries").update(payload).eq("id", values.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -261,9 +256,9 @@ function MeineZeiten() {
       <div className="surface max-w-xl p-6">
         <h1 className="text-2xl font-bold">Mitarbeiterbereich</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Ihr Konto ist noch keinem Mitarbeiter zugeordnet. Bitte lassen Sie Ihre E-Mail-Adresse
-          von der Verwaltung im Mitarbeiter-Stammsatz eintragen und melden Sie sich anschließend
-          erneut an.
+          Ihr Konto ist noch keinem Mitarbeiter zugeordnet. Bitte lassen Sie Ihre E-Mail-Adresse von
+          der Verwaltung im Mitarbeiter-Stammsatz eintragen und melden Sie sich anschließend erneut
+          an.
         </p>
       </div>
     );
@@ -499,7 +494,6 @@ function MeineZeiten() {
         )}
       </section>
 
-
       <div className="surface overflow-hidden">
         {monthEntries.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">
@@ -544,7 +538,6 @@ function MeineZeiten() {
                   </Button>
                 ) : (
                   <>
-
                     <Button
                       variant="ghost"
                       size="icon"
