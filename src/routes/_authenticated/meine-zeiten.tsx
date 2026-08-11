@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import {
   absenceClasses,
@@ -92,8 +92,6 @@ function computeHours(start: string, end: string, breakMinutes: string) {
 function MeineZeiten() {
   const queryClient = useQueryClient();
   const { data: me, isLoading } = useMyEmployee();
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Form>(emptyForm());
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
 
   const { data: entries = [] } = useQuery({
@@ -199,46 +197,6 @@ function MeineZeiten() {
     }
     return { vacation, sick, other };
   }, [entries, month]);
-
-  const previewHours = computeHours(form.start_time, form.end_time, form.break_minutes);
-
-  const save = useMutation({
-    mutationFn: async (values: Form) => {
-      if (!me) throw new Error("Kein Mitarbeiterkonto verknüpft.");
-      const hours = computeHours(values.start_time, values.end_time, values.break_minutes);
-      if (hours <= 0) throw new Error("Bitte gültige Zeiten eingeben.");
-      const payload = {
-        employee_id: me.id,
-        employee_name: me.name,
-        work_date: values.work_date,
-        start_time: values.start_time || null,
-        end_time: values.end_time || null,
-        break_minutes: Math.round(num(values.break_minutes)),
-        hours,
-        hourly_rate: Number(me.hourly_rate || 0),
-        location: values.location,
-        note: values.note,
-        entry_type: "work",
-        absence_reason: "",
-      };
-      if (values.id) {
-        const { error } = await supabase.from("time_entries").update(payload).eq("id", values.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("time_entries")
-          .insert({ ...payload, user_id: me.user_id, billed: false });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success("Arbeitszeit gespeichert");
-      setOpen(false);
-      setForm(emptyForm());
-      queryClient.invalidateQueries({ queryKey: ["my_time_entries"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -424,6 +382,18 @@ function MeineZeiten() {
           </ul>
         )}
       </section>
+
+      <ZeitkontoCard
+        employees={[{ id: me.id, name: me.name, weekly_hours: me.weekly_hours ?? 0 }]}
+        entries={entries as never}
+        month={month}
+        readOnly
+      />
+
+      <p className="text-sm text-muted-foreground">
+        Arbeitszeiten und Zeitkonto werden ausschließlich von der Verwaltung gepflegt (Nur-Lesen).
+        Urlaub und Abwesenheiten können Sie beantragen – sie gelten erst nach Genehmigung.
+      </p>
 
       <div className="surface overflow-hidden">
         {monthEntries.length === 0 ? (

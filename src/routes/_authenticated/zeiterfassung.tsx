@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { Check, Download, FileText, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { formatMoney, formatDate } from "@/lib/format";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
+import { Urlaubsantraege } from "@/components/Urlaubsantraege";
+import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -551,7 +553,19 @@ function Zeiterfassung() {
               <DialogHeader>
                 <DialogTitle>Mitarbeiter verwalten</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <Urlaubsantraege />
+
+      <ZeitkontoCard
+        employees={employees.map((e) => ({
+          id: e.id,
+          name: e.name,
+          weekly_hours: (e as unknown as { weekly_hours?: number }).weekly_hours ?? 0,
+        }))}
+        entries={entries as never}
+        month={month}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="emp-name">Name</Label>
                   <Input
