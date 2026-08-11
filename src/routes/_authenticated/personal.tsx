@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
-import { absenceClasses, absenceLabel, absenceReason, absenceShort, isAbsence } from "@/lib/absence";
+import { absenceClasses, absenceLabel, absenceReason, absenceShort, isAbsence, isEffective } from "@/lib/absence";
 
 
 
@@ -414,7 +414,7 @@ function Personal() {
   /** Abwesenheitsgrund des Mitarbeiters an einem Tag (Krankheit hat Vorrang). */
   function absenceOnDay(employeeId: string, day: string) {
     const list = entries
-      .filter((e) => e.employee_id === employeeId && e.work_date === day)
+      .filter((e) => e.employee_id === employeeId && e.work_date === day && isEffective(e))
       .map(absenceReason)
       .filter(Boolean) as ReturnType<typeof absenceReason>[];
     if (list.length === 0) return null;
@@ -431,7 +431,11 @@ function Personal() {
       .filter((t) => !isAbsence(t))
       .reduce((s, t) => s + Number(t.hours || 0), 0);
     const days = (reason: string) =>
-      new Set(rows.filter((t) => absenceReason(t) === reason).map((t) => t.work_date)).size;
+      new Set(
+        rows
+          .filter((t) => absenceReason(t) === reason && isEffective(t))
+          .map((t) => t.work_date),
+      ).size;
     const rate = Number(e.hourly_rate ?? 0);
     return {
       id: e.id,
