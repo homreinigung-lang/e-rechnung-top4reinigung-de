@@ -279,88 +279,14 @@ function MeineZeiten() {
             {me.role ? ` · ${me.role}` : ""}
           </p>
         </div>
-        <Dialog
-          open={open}
-          onOpenChange={(o) => {
-            setOpen(o);
-            if (!o) setForm(emptyForm());
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="size-4" /> Zeit erfassen
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{form.id ? "Eintrag bearbeiten" : "Neue Arbeitszeit"}</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="work_date">Datum</Label>
-                <GermanDateInput
-                  id="work_date"
-                  value={form.work_date}
-                  onChange={(iso) => setForm({ ...form, work_date: iso })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="location">Einsatzort</Label>
-                <Input
-                  id="location"
-                  value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="start_time">Von</Label>
-                <GermanTimeInput
-                  id="start_time"
-                  value={form.start_time}
-                  onChange={(t) => setForm({ ...form, start_time: t })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="end_time">Bis</Label>
-                <GermanTimeInput
-                  id="end_time"
-                  value={form.end_time}
-                  onChange={(t) => setForm({ ...form, end_time: t })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="break_minutes">Pause (Minuten)</Label>
-                <Input
-                  id="break_minutes"
-                  inputMode="numeric"
-                  value={form.break_minutes}
-                  onChange={(e) => setForm({ ...form, break_minutes: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="note">Notiz</Label>
-                <Textarea
-                  id="note"
-                  value={form.note}
-                  onChange={(e) => setForm({ ...form, note: e.target.value })}
-                />
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Berechnete Arbeitszeit: <strong>{previewHours} Std.</strong>
-            </p>
-            <DialogFooter>
-              <Button onClick={() => save.mutate(form)} disabled={save.isPending}>
-                Speichern
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
         <AbwesenheitZeitraum
           employees={[{ id: me.id, name: me.name, user_id: me.user_id }]}
           fixedEmployeeId={me.id}
-          triggerLabel="Urlaub / Abwesenheit"
+          triggerLabel="Urlaub / Abwesenheit beantragen"
+          variant="default"
+          asRequest
         />
+
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
