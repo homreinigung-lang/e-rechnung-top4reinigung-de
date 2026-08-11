@@ -236,6 +236,8 @@ export function EinsatzKalender({
           <Button variant="outline" onClick={() => setMonth(monthStart(new Date()))}>
             Heute
           </Button>
+          <AbwesenheitZeitraum employees={employees} />
+
         </div>
       </div>
 
