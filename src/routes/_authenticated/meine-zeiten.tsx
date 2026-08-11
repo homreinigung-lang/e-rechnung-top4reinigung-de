@@ -19,6 +19,15 @@ import {
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import {
+  absenceClasses,
+  absenceLabel,
+  absenceReason,
+  isAbsence,
+  type AbsenceReason,
+} from "@/lib/absence";
+import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
+
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
