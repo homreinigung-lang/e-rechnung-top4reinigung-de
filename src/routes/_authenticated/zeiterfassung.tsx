@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import { Check, Download, FileText, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { formatMoney, formatDate } from "@/lib/format";
+import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -544,6 +545,8 @@ function Zeiterfassung() {
           <Button variant="outline" onClick={exportPdf}>
             <FileText className="size-4" /> Stundenzettel-PDF
           </Button>
+
+          <AbwesenheitZeitraum employees={employees.map((e) => ({ id: e.id, name: e.name }))} />
 
           <Dialog
             open={empOpen}
