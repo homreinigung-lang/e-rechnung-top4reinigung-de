@@ -31,6 +31,8 @@ import {
   type AbsenceReason,
   type EntryType,
 } from "@/lib/absence";
+import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
+
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const NO_PROJECT = "__none__";
