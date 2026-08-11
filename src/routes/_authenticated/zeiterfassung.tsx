@@ -621,6 +621,46 @@ function Zeiterfassung() {
                   </p>
                 </div>
 
+                <div className="space-y-2 sm:col-span-2">
+                  <div className="border-t pt-3 text-sm font-medium">Vertragsdaten</div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Vertragsart</Label>
+                  <Select
+                    value={emp.contract_type || undefined}
+                    onValueChange={(v) => setEmp({ ...emp, contract_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Vertragsart wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONTRACT_TYPES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emp-start">Vertragsbeginn</Label>
+                  <GermanDateInput
+                    id="emp-start"
+                    value={emp.contract_start}
+                    onChange={(iso) => setEmp({ ...emp, contract_start: iso })}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="emp-weekly">Wöchentliche Soll-Arbeitsstunden</Label>
+                  <Input
+                    id="emp-weekly"
+                    inputMode="decimal"
+                    value={emp.weekly_hours}
+                    onChange={(e) => setEmp({ ...emp, weekly_hours: e.target.value })}
+                  />
+                </div>
+
+
               </div>
               <DialogFooter>
                 <Button
