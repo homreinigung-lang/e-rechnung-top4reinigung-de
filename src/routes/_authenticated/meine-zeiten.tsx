@@ -215,6 +215,8 @@ function MeineZeiten() {
         hourly_rate: Number(me.hourly_rate || 0),
         location: values.location,
         note: values.note,
+        entry_type: "work",
+        absence_reason: "",
       };
       if (values.id) {
         const { error } = await supabase
