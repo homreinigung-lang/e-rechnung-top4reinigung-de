@@ -243,7 +243,11 @@ function Zeiterfassung() {
         phone: values.phone.trim(),
         personnel_number: values.personnel_number.trim(),
         hourly_rate: num(values.hourly_rate),
+        contract_type: values.contract_type,
+        contract_start: values.contract_start || null,
+        weekly_hours: num(values.weekly_hours),
       };
+
 
 
       if (values.id) {
