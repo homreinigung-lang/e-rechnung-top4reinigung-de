@@ -354,6 +354,11 @@ function MeineZeiten() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <AbwesenheitZeitraum
+          employees={[{ id: me.id, name: me.name, user_id: me.user_id }]}
+          fixedEmployeeId={me.id}
+          triggerLabel="Urlaub / Abwesenheit"
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -371,6 +376,127 @@ function MeineZeiten() {
           <div className="mt-2 text-2xl font-bold">{totalHours.toFixed(2)} Std.</div>
         </div>
       </div>
+
+      <section className="surface p-5">
+        <h2 className="text-lg font-semibold">Meine Vertragsdaten</h2>
+        <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-muted-foreground">Vertragsart</dt>
+            <dd className="font-medium">{me.contract_type || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Vertragsbeginn</dt>
+            <dd className="font-medium">
+              {me.contract_start ? formatDate(me.contract_start) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Soll-Stunden / Woche</dt>
+            <dd className="font-medium">
+              {me.weekly_hours ? `${Number(me.weekly_hours).toFixed(2)} Std.` : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Funktion</dt>
+            <dd className="font-medium">{me.role || "—"}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="surface p-5">
+          <h2 className="text-lg font-semibold">Meine Objekte / Einsatzorte</h2>
+          {assignments.length === 0 && !me.work_location ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Aktuell sind Ihnen keine festen Objekte zugewiesen.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y text-sm">
+              {me.work_location && (
+                <li className="py-2">
+                  <span className="font-medium">{me.work_location}</span>
+                  <span className="text-muted-foreground"> · Einsatzort (Freitext)</span>
+                </li>
+              )}
+              {assignments.map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-3 py-2">
+                  <span className="min-w-0 truncate">
+                    <span className="font-medium">
+                      {projectName(a.project_id as string) ?? "Projekt"}
+                    </span>
+                    {a.assignment_role ? ` · ${a.assignment_role}` : ""}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {Number(a.hours_per_week ?? 0) > 0
+                      ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
+                      : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="surface p-5">
+          <h2 className="text-lg font-semibold">Stunden nach Objekt</h2>
+          {byProject.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Für diesen Monat sind noch keine Arbeitsstunden erfasst.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y text-sm">
+              {byProject.map(([name, hours]) => (
+                <li key={name} className="flex items-center justify-between gap-3 py-2">
+                  <span className="min-w-0 truncate">{name}</span>
+                  <span className="shrink-0 font-medium">{hours.toFixed(2)} Std.</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <section className="surface p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">
+            Meine Urlaubs- und Abwesenheitsplanung {month.slice(0, 4)}
+          </h2>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className={`rounded border px-2 py-1 ${absenceClasses("vacation")}`}>
+              Urlaub: {absenceTotals.vacation} Tage
+            </span>
+            <span className={`rounded border px-2 py-1 ${absenceClasses("sick")}`}>
+              Krankheit: {absenceTotals.sick} Tage
+            </span>
+            <span className={`rounded border px-2 py-1 ${absenceClasses("other")}`}>
+              Sonstiges: {absenceTotals.other} Tage
+            </span>
+          </div>
+        </div>
+        {absenceRanges.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Für {month.slice(0, 4)} sind keine Abwesenheiten geplant.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y text-sm">
+            {absenceRanges.map((r) => (
+              <li key={`${r.from}-${r.reason}`} className="flex items-center gap-3 py-2">
+                <span
+                  className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${absenceClasses(r.reason)}`}
+                >
+                  {absenceLabel(r.reason)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  {formatDate(r.from)}
+                  {r.to !== r.from ? ` – ${formatDate(r.to)}` : ""}
+                </span>
+                <span className="shrink-0 text-muted-foreground">{r.days} Tag(e)</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
 
       <div className="surface overflow-hidden">
         {monthEntries.length === 0 ? (
