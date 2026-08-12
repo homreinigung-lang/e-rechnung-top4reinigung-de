@@ -308,7 +308,13 @@ function Personal() {
       patch,
     }: {
       id: string;
-      patch: { name?: string; role?: string; hourly_rate?: number; work_location?: string };
+      patch: {
+        name?: string;
+        role?: string;
+        hourly_rate?: number;
+        weekly_hours?: number;
+        work_location?: string;
+      };
     }) => {
 
       const { error } = await supabase.from("employees").update(patch).eq("id", id);
@@ -375,14 +381,23 @@ function Personal() {
   const setWeeklyHours = useMutation({
     mutationFn: async ({ employeeId, hours }: { employeeId: string; hours: number }) => {
       const current = primaryAssignment(employeeId);
-      if (!current) throw new Error("Bitte zuerst einen Einsatzort wählen.");
-      const { error } = await supabase
-        .from("project_assignments")
-        .update({ hours_per_week: hours })
-        .eq("id", current.id);
-      if (error) throw error;
+      const { error: employeeError } = await supabase
+        .from("employees")
+        .update({ weekly_hours: hours })
+        .eq("id", employeeId);
+      if (employeeError) throw employeeError;
+
+      // Bei einer Projekt-Zuordnung bleibt der projektspezifische Wert synchron.
+      // Für Freitext-Einsatzorte ist keine Zuordnung erforderlich.
+      if (current) {
+        const { error: assignmentError } = await supabase
+          .from("project_assignments")
+          .update({ hours_per_week: hours })
+          .eq("id", current.id);
+        if (assignmentError) throw assignmentError;
+      }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project_assignments"] }),
+    onSuccess: () => invalidate(),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -635,21 +650,14 @@ function Personal() {
 
                     <td className="px-3 py-2">
                       <Input
-                        key={`h-${e.id}-${assignment?.id ?? "none"}-${assignment?.hours_per_week ?? 0}`}
-                        defaultValue={assignment ? String(assignment.hours_per_week ?? 0) : ""}
+                        key={`h-${e.id}-${e.weekly_hours ?? 0}`}
+                        defaultValue={String(e.weekly_hours ?? assignment?.hours_per_week ?? 0)}
                         inputMode="decimal"
                         placeholder="0"
                         className="h-9"
                         onBlur={(ev) => {
                           const hours = toNumber(ev.target.value);
-                          if (!assignment) {
-                            if (ev.target.value.trim())
-                              toast.info(
-                                "Std./Woche werden nur für Projekt-Einsatzorte gespeichert – bitte ein Projekt wählen.",
-                              );
-                            return;
-                          }
-                          if (hours !== Number(assignment.hours_per_week ?? 0))
+                          if (hours !== Number(e.weekly_hours ?? assignment?.hours_per_week ?? 0))
                             setWeeklyHours.mutate({ employeeId: e.id, hours });
                         }}
 
