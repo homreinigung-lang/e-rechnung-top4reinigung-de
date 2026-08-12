@@ -384,6 +384,14 @@ function MeineZeiten() {
                           .join(" · ")}
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
+                  {!isAbsence(e) && (
+                    <ArbeitsnachweisFotos
+                      entryId={e.id as string}
+                      paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
+                      canUpload
+                      invalidateKey="my_time_entries"
+                    />
+                  )}
                 </div>
                 <span
                   className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${approvalClasses(approvalStatus(e))}`}
