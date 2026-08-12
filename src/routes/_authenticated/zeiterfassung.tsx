@@ -30,6 +30,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { Urlaubsantraege } from "@/components/Urlaubsantraege";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
+import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -952,6 +953,11 @@ function Zeiterfassung() {
                       .join(" · ")}
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
+                  <ArbeitsnachweisFotos
+                    entryId={e.id as string}
+                    paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
+                    invalidateKey="time_entries"
+                  />
                 </div>
                 <div className="text-right text-sm">
                   {formatMoney(Number(e.hours) * Number(e.hourly_rate || 0))}

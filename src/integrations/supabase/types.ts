@@ -961,6 +961,7 @@ export type Database = {
           id: string
           location: string
           note: string
+          photo_paths: string[]
           project_id: string | null
           start_time: string | null
           updated_at: string
@@ -986,6 +987,7 @@ export type Database = {
           id?: string
           location?: string
           note?: string
+          photo_paths?: string[]
           project_id?: string | null
           start_time?: string | null
           updated_at?: string
@@ -1011,6 +1013,7 @@ export type Database = {
           id?: string
           location?: string
           note?: string
+          photo_paths?: string[]
           project_id?: string | null
           start_time?: string | null
           updated_at?: string
