@@ -20,6 +20,7 @@ import {
 } from "@/lib/absence";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
+import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
