@@ -30,6 +30,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { Urlaubsantraege } from "@/components/Urlaubsantraege";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
+import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
