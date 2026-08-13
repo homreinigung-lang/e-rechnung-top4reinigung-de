@@ -19,6 +19,7 @@ import {
   CalendarClock,
   Clock,
   FileText,
+  LayoutDashboard,
   Plus,
   Receipt,
   TrendingDown,

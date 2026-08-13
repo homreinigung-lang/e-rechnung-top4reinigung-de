@@ -37,7 +37,7 @@ import type { ReactNode } from "react";
 
 
 const nav = [
-  { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Startseite", icon: LayoutDashboard },
   { to: "/dokumente", label: "Rechnungen & Angebote", icon: FileText },
   { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
   { to: "/projekte", label: "Projekte", icon: FolderKanban },
