@@ -863,20 +863,21 @@ export function EinsatzKalender({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="k-start">Von (HH:MM)</Label>
-                  <Input
+                  <GermanTimeInput
                     id="k-start"
                     value={form.start}
-                    onChange={(e) => setForm({ ...form, start: e.target.value })}
+                    onChange={(v) => setForm({ ...form, start: v })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="k-end">Bis (HH:MM)</Label>
-                  <Input
+                  <GermanTimeInput
                     id="k-end"
                     value={form.end}
-                    onChange={(e) => setForm({ ...form, end: e.target.value })}
+                    onChange={(v) => setForm({ ...form, end: v })}
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="k-break">Pause (Min.)</Label>
                   <Input
