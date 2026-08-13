@@ -37,8 +37,14 @@ import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const NO_PROJECT = "__none__";
+const ALL = "__all__";
 
-export type KalenderEmployee = { id: string; name: string; hourly_rate: number | null };
+export type KalenderEmployee = {
+  id: string;
+  name: string;
+  hourly_rate: number | null;
+  weekly_hours?: number | null;
+};
 export type KalenderProject = { id: string; name: string | null; city?: string | null };
 
 function isoDay(d: Date) {
@@ -94,32 +100,47 @@ export function EinsatzKalender({
   projects: KalenderProject[];
 }) {
   const queryClient = useQueryClient();
-  const [month, setMonth] = useState(() => monthStart(new Date()));
+  const [view, setView] = useState<"month" | "week">("month");
+  const [anchor, setAnchor] = useState(() => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  });
+  const [filterEmployee, setFilterEmployee] = useState<string>(ALL);
+  const [filterProject, setFilterProject] = useState<string>(ALL);
   const [day, setDay] = useState<string | null>(null);
   const [form, setForm] = useState<PlanForm>(emptyForm);
 
-  const first = monthStart(month);
+  const first = monthStart(anchor);
+  const weekStart = useMemo(() => {
+    const d = new Date(anchor);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }, [anchor]);
+
   const gridStart = useMemo(() => {
+    if (view === "week") return weekStart;
     const d = new Date(first);
     d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
     d.setHours(12, 0, 0, 0);
     return d;
-  }, [first]);
+  }, [first, weekStart, view]);
 
   const days = useMemo(
     () =>
-      Array.from({ length: 42 }, (_, i) => {
+      Array.from({ length: view === "week" ? 7 : 42 }, (_, i) => {
         const d = new Date(gridStart);
         d.setDate(d.getDate() + i);
         return d;
       }),
-    [gridStart],
+    [gridStart, view],
   );
 
   const rangeFrom = isoDay(days[0]!);
-  const rangeTo = isoDay(days[41]!);
+  const rangeTo = isoDay(days[days.length - 1]!);
 
-  const { data: entries = [] } = useQuery({
+  const { data: allEntries = [] } = useQuery({
     queryKey: ["time_entries", "calendar", rangeFrom, rangeTo],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -132,6 +153,22 @@ export function EinsatzKalender({
       return data;
     },
   });
+
+  /** Anzeige nach Mitarbeiter- und Projektfilter eingeschränkt. */
+  const entries = useMemo(
+    () =>
+      allEntries.filter(
+        (e) =>
+          (filterEmployee === ALL || e.employee_id === filterEmployee) &&
+          (filterProject === ALL || e.project_id === filterProject),
+      ),
+    [allEntries, filterEmployee, filterProject],
+  );
+
+  const visibleEmployees = useMemo(
+    () => (filterEmployee === ALL ? employees : employees.filter((e) => e.id === filterEmployee)),
+    [employees, filterEmployee],
+  );
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["time_entries"] });
@@ -205,11 +242,47 @@ export function EinsatzKalender({
   }, [entries]);
 
   const today = isoDay(new Date());
-  const shiftMonth = (delta: number) =>
-    setMonth(new Date(first.getFullYear(), first.getMonth() + delta, 1, 12));
+
+  const shift = (delta: number) => {
+    if (view === "week") {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + delta * 7);
+      setAnchor(d);
+    } else {
+      setAnchor(new Date(first.getFullYear(), first.getMonth() + delta, 1, 12));
+    }
+  };
+
+  const periodLabel =
+    view === "week"
+      ? `KW ${isoWeek(weekStart)} · ${formatDate(isoDay(days[0]!))} – ${formatDate(isoDay(days[6]!))}`
+      : first.toLocaleDateString("de-DE-u-ca-gregory-nu-latn", { month: "long", year: "numeric" });
+
+  /** Ist-Stunden (nur Arbeitseinsätze) je Mitarbeiter im sichtbaren Zeitraum. */
+  const actualByEmployee = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of entries) {
+      if (isAbsence(e) || !e.employee_id) continue;
+      map.set(e.employee_id, (map.get(e.employee_id) ?? 0) + Number(e.hours ?? 0));
+    }
+    return map;
+  }, [entries]);
+
+  /** Soll-Stunden aus dem Vertrag: Woche = Wochenstunden, Monat = Wochenstunden × 4,33. */
+  const plannedFor = (emp: KalenderEmployee) =>
+    Number(emp.weekly_hours ?? 0) * (view === "week" ? 1 : 4.33);
 
   const dayEntries = day ? (byDay.get(day) ?? []) : [];
   const isAbsent = form.entryType === "absence";
+
+  const openDay = (key: string, employeeId?: string) => {
+    setForm({
+      ...emptyForm,
+      employeeId: employeeId ?? (filterEmployee !== ALL ? filterEmployee : (employees[0]?.id ?? "")),
+      projectId: filterProject !== ALL ? filterProject : NO_PROJECT,
+    });
+    setDay(key);
+  };
 
   return (
     <section className="surface space-y-4 p-5">
@@ -217,113 +290,283 @@ export function EinsatzKalender({
         <div>
           <h2 className="text-lg font-semibold">Einsatz-Kalender</h2>
           <p className="text-sm text-muted-foreground">
-            Tag anklicken und Mitarbeiter, Objekt sowie Arbeitszeit planen – synchron mit der
-            Wochenübersicht.
+            Monats- oder Wochenansicht, Einsatzort je Zeitfenster sowie Soll-/Ist-Stunden je
+            Mitarbeiter.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => shiftMonth(-1)}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex overflow-hidden rounded-md border">
+            <Button
+              variant={view === "month" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none"
+              onClick={() => setView("month")}
+            >
+              Monat
+            </Button>
+            <Button
+              variant={view === "week" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none"
+              onClick={() => setView("week")}
+            >
+              Woche
+            </Button>
+          </div>
+          <Button variant="outline" size="icon" onClick={() => shift(-1)}>
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="min-w-[9rem] text-center text-sm font-medium">
-            {first.toLocaleDateString("de-DE-u-ca-gregory-nu-latn", {
-              month: "long",
-              year: "numeric",
-            })}
-          </span>
-          <Button variant="outline" size="icon" onClick={() => shiftMonth(1)}>
+          <span className="min-w-[9rem] text-center text-sm font-medium">{periodLabel}</span>
+          <Button variant="outline" size="icon" onClick={() => shift(1)}>
             <ChevronRight className="size-4" />
           </Button>
-          <Button variant="outline" onClick={() => setMonth(monthStart(new Date()))}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const d = new Date();
+              d.setHours(12, 0, 0, 0);
+              setAnchor(d);
+            }}
+          >
             Heute
           </Button>
           <AbwesenheitZeitraum employees={employees} />
         </div>
       </div>
 
-      <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] gap-px overflow-hidden rounded-lg border bg-border text-sm">
-        <div className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground">KW</div>
-        {WEEKDAYS.map((w) => (
-          <div
-            key={w}
-            className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground"
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={filterEmployee} onValueChange={setFilterEmployee}>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Alle Mitarbeiter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Alle Mitarbeiter</SelectItem>
+            {employees.map((e) => (
+              <SelectItem key={e.id} value={e.id}>
+                {e.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterProject} onValueChange={setFilterProject}>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Alle Objekte" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Alle Objekte / Projekte</SelectItem>
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name || "Ohne Namen"}
+                {p.city ? ` · ${p.city}` : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(filterEmployee !== ALL || filterProject !== ALL) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setFilterEmployee(ALL);
+              setFilterProject(ALL);
+            }}
           >
-            {w}
-          </div>
-        ))}
-        {days.map((d, index) => {
-          const key = isoDay(d);
-          const inMonth = d.getMonth() === first.getMonth();
-          const list = byDay.get(key) ?? [];
-          return (
-            <Fragment key={key}>
-              {index % 7 === 0 && (
-                <div
-                  className="flex items-center justify-center bg-muted/40 px-1 py-1.5 text-xs font-medium text-muted-foreground"
-                  title={`Kalenderwoche ${isoWeek(d)}`}
-                >
-                  {isoWeek(d)}
-                </div>
-              )}
+            Filter zurücksetzen
+          </Button>
+        )}
+      </div>
 
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                setForm({ ...emptyForm, employeeId: employees[0]?.id ?? "" });
-                setDay(key);
-              }}
-              className={`min-h-[92px] bg-background p-1.5 text-left transition hover:bg-accent/60 ${
-                inMonth ? "" : "opacity-45"
-              } ${key === today ? "ring-1 ring-inset ring-primary" : ""}`}
+      {view === "month" && visibleEmployees.length > 0 && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {visibleEmployees.map((emp) => {
+            const actual = actualByEmployee.get(emp.id) ?? 0;
+            const planned = plannedFor(emp);
+            return (
+              <span key={emp.id} className="rounded border px-2 py-1">
+                <span className="font-medium">{emp.name}</span> · Soll {planned.toFixed(2)} / Ist{" "}
+                {actual.toFixed(2)} Std.
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {view === "month" ? (
+        <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] gap-px overflow-hidden rounded-lg border bg-border text-sm">
+          <div className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground">KW</div>
+          {WEEKDAYS.map((w) => (
+            <div
+              key={w}
+              className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground"
             >
-              <div className="flex items-center justify-between">
-                <span className={`text-xs ${key === today ? "font-bold text-primary" : ""}`}>
-                  {d.getDate()}
-                </span>
-                {list.length > 0 && (
-                  <span className="rounded bg-primary/10 px-1 text-[10px] font-medium text-primary">
-                    {list.length}
-                  </span>
-                )}
-              </div>
-              <div className="mt-1 space-y-0.5">
-                {list.slice(0, 3).map((e) => {
-                  const reason = absenceReason(e);
-                  return (
-                    <div
-                      key={e.id}
-                      className={`flex items-center gap-1 truncate rounded border px-1 py-0.5 text-[11px] leading-tight ${
-                        reason
-                          ? absenceClasses(reason)
-                          : "border-transparent bg-primary/10 text-primary"
-                      }`}
-                      title={
-                        reason
-                          ? `${e.employee_name} · ${absenceLabel(reason)}`
-                          : `${e.employee_name} · ${e.location || "ohne Objekt"}`
-                      }
-                    >
-                      {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
-                      <span className="truncate">
-                        {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
-                        {e.employee_name}
-                      </span>
-                    </div>
-                  );
-                })}
-                {list.length > 3 && (
-                  <div className="text-[10px] text-muted-foreground">
-                    +{list.length - 3} weitere
+              {w}
+            </div>
+          ))}
+          {days.map((d, index) => {
+            const key = isoDay(d);
+            const inMonth = d.getMonth() === first.getMonth();
+            const list = byDay.get(key) ?? [];
+            return (
+              <Fragment key={key}>
+                {index % 7 === 0 && (
+                  <div
+                    className="flex items-center justify-center bg-muted/40 px-1 py-1.5 text-xs font-medium text-muted-foreground"
+                    title={`Kalenderwoche ${isoWeek(d)}`}
+                  >
+                    {isoWeek(d)}
                   </div>
                 )}
-              </div>
-            </button>
-            </Fragment>
-          );
 
-        })}
-      </div>
+                <button
+                  type="button"
+                  onClick={() => openDay(key)}
+                  className={`min-h-[92px] bg-background p-1.5 text-left transition hover:bg-accent/60 ${
+                    inMonth ? "" : "opacity-45"
+                  } ${key === today ? "ring-1 ring-inset ring-primary" : ""}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs ${key === today ? "font-bold text-primary" : ""}`}>
+                      {d.getDate()}
+                    </span>
+                    {list.length > 0 && (
+                      <span className="rounded bg-primary/10 px-1 text-[10px] font-medium text-primary">
+                        {list.length}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 space-y-0.5">
+                    {list.slice(0, 3).map((e) => {
+                      const reason = absenceReason(e);
+                      return (
+                        <div
+                          key={e.id}
+                          className={`flex items-center gap-1 truncate rounded border px-1 py-0.5 text-[11px] leading-tight ${
+                            reason
+                              ? absenceClasses(reason)
+                              : "border-transparent bg-primary/10 text-primary"
+                          }`}
+                          title={
+                            reason
+                              ? `${e.employee_name} · ${absenceLabel(reason)}`
+                              : `${e.employee_name} · ${e.location || "ohne Objekt"}`
+                          }
+                        >
+                          {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
+                          <span className="truncate">
+                            {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
+                            {e.employee_name}
+                            {!reason && e.location ? ` · ${e.location}` : ""}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {list.length > 3 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        +{list.length - 3} weitere
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </Fragment>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="grid min-w-[56rem] grid-cols-[12rem_repeat(7,minmax(0,1fr))] gap-px rounded-lg border bg-border text-sm">
+            <div className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              Mitarbeiter · Soll / Ist
+            </div>
+            {days.map((d, i) => (
+              <div
+                key={isoDay(d)}
+                className={`bg-muted/60 px-2 py-1.5 text-xs font-medium ${
+                  isoDay(d) === today ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {WEEKDAYS[i]} {d.getDate()}.{d.getMonth() + 1}.
+              </div>
+            ))}
+
+            {visibleEmployees.length === 0 && (
+              <div className="col-span-8 bg-background px-3 py-6 text-center text-sm text-muted-foreground">
+                Keine Mitarbeiter für diesen Filter.
+              </div>
+            )}
+
+            {visibleEmployees.map((emp) => {
+              const actual = actualByEmployee.get(emp.id) ?? 0;
+              const planned = plannedFor(emp);
+              const diff = actual - planned;
+              return (
+                <Fragment key={emp.id}>
+                  <div className="bg-background px-2 py-2">
+                    <div className="truncate font-medium">{emp.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Soll {planned.toFixed(2)} · Ist {actual.toFixed(2)} Std.
+                    </div>
+                    <div
+                      className={`text-xs font-medium ${
+                        diff < 0 ? "text-destructive" : "text-primary"
+                      }`}
+                    >
+                      {diff >= 0 ? "+" : ""}
+                      {diff.toFixed(2)} Std.
+                    </div>
+                  </div>
+                  {days.map((d) => {
+                    const key = isoDay(d);
+                    const list = (byDay.get(key) ?? []).filter((e) => e.employee_id === emp.id);
+                    return (
+                      <button
+                        key={`${emp.id}-${key}`}
+                        type="button"
+                        onClick={() => openDay(key, emp.id)}
+                        className={`min-h-[76px] space-y-0.5 bg-background p-1 text-left align-top transition hover:bg-accent/60 ${
+                          key === today ? "ring-1 ring-inset ring-primary" : ""
+                        }`}
+                      >
+                        {list.map((e) => {
+                          const reason = absenceReason(e);
+                          return (
+                            <div
+                              key={e.id}
+                              className={`rounded border px-1 py-0.5 text-[11px] leading-tight ${
+                                reason
+                                  ? absenceClasses(reason)
+                                  : "border-transparent bg-primary/10 text-primary"
+                              }`}
+                            >
+                              {reason ? (
+                                <span className="flex items-center gap-1">
+                                  {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
+                                  {absenceLabel(reason)}
+                                </span>
+                              ) : (
+                                <>
+                                  <div className="font-medium">
+                                    {(e.start_time ?? "").slice(0, 5)}–
+                                    {(e.end_time ?? "").slice(0, 5)}
+                                  </div>
+                                  <div className="truncate">{e.location || "ohne Objekt"}</div>
+                                  <div className="text-[10px] opacity-80">
+                                    {Number(e.hours ?? 0).toFixed(2)} Std.
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </button>
+                    );
+                  })}
+                </Fragment>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       <Dialog open={day !== null} onOpenChange={(o) => !o && setDay(null)}>
         <DialogContent className="sm:max-w-xl">
