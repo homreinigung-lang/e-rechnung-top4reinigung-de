@@ -1007,7 +1007,63 @@ export function EinsatzKalender({
               </dl>
             </div>
           )}
+          {detail && !isAbsence(detail) && (
+            <div className="flex flex-wrap gap-2 border-t pt-3">
+              {einsatzStatus(detail) === "done" && detail.completed_at ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={setEntryStatus.isPending}
+                  onClick={() =>
+                    setEntryStatus.mutate({ id: detail.id, patch: { completed_at: null } })
+                  }
+                >
+                  Abschluss zurücknehmen
+                </Button>
+              ) : einsatzStatus(detail) !== "done" ? (
+                <Button
+                  size="sm"
+                  disabled={setEntryStatus.isPending}
+                  onClick={() =>
+                    setEntryStatus.mutate({
+                      id: detail.id,
+                      patch: { completed_at: new Date().toISOString(), approval_status: "approved" },
+                    })
+                  }
+                >
+                  Als abgeschlossen markieren
+                </Button>
+              ) : null}
+              {einsatzStatus(detail) === "cancelled" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={setEntryStatus.isPending}
+                  onClick={() =>
+                    setEntryStatus.mutate({ id: detail.id, patch: { approval_status: "approved" } })
+                  }
+                >
+                  Stornierung aufheben
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={setEntryStatus.isPending}
+                  onClick={() =>
+                    setEntryStatus.mutate({
+                      id: detail.id,
+                      patch: { approval_status: "rejected", completed_at: null },
+                    })
+                  }
+                >
+                  Einsatz stornieren
+                </Button>
+              )}
+            </div>
+          )}
           <DialogFooter>
+
             {detail && (
               <Button
                 variant="outline"
