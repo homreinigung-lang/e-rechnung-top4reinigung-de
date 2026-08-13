@@ -857,13 +857,17 @@ function DokumentDetail() {
               <SelectItem value="eu_reverse_charge">
                 EU-Ausland – Reverse-Charge (0 % MwSt.)
               </SelectItem>
+              <SelectItem value="kleinunternehmer">
+                Kleinunternehmer § 19 UStG (0 % MwSt.)
+              </SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
             {taxMode === "domestic"
-              ? "Es werden 19 % Umsatzsteuer ausgewiesen. Der Reverse-Charge-Hinweis wird nicht gedruckt."
-              : "0 % Umsatzsteuer. Der Hinweis zur Steuerschuldnerschaft erscheint automatisch auf dem Dokument."}
+              ? "Es werden 19 % Umsatzsteuer ausgewiesen. Es wird kein Steuerhinweis gedruckt."
+              : `0 % Umsatzsteuer. Folgender Pflichthinweis erscheint automatisch auf dem Dokument: „${taxNote}“`}
           </p>
+
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
