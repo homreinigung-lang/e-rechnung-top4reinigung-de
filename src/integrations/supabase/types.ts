@@ -53,6 +53,126 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_connections: {
+        Row: {
+          account_ids: string[]
+          agreement_id: string
+          created_at: string
+          id: string
+          institution_id: string
+          institution_name: string
+          last_sync_at: string | null
+          provider: string
+          requisition_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_ids?: string[]
+          agreement_id?: string
+          created_at?: string
+          id?: string
+          institution_id?: string
+          institution_name?: string
+          last_sync_at?: string | null
+          provider?: string
+          requisition_id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_ids?: string[]
+          agreement_id?: string
+          created_at?: string
+          id?: string
+          institution_id?: string
+          institution_name?: string
+          last_sync_at?: string | null
+          provider?: string
+          requisition_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bank_transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          booking_date: string
+          connection_id: string | null
+          counterparty_name: string
+          created_at: string
+          currency: string
+          external_id: string
+          id: string
+          ignored: boolean
+          match_score: number
+          matched_at: string | null
+          matched_document_id: string | null
+          raw: Json
+          remittance_info: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string
+          amount?: number
+          booking_date: string
+          connection_id?: string | null
+          counterparty_name?: string
+          created_at?: string
+          currency?: string
+          external_id: string
+          id?: string
+          ignored?: boolean
+          match_score?: number
+          matched_at?: string | null
+          matched_document_id?: string | null
+          raw?: Json
+          remittance_info?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          booking_date?: string
+          connection_id?: string | null
+          counterparty_name?: string
+          created_at?: string
+          currency?: string
+          external_id?: string
+          id?: string
+          ignored?: boolean
+          match_score?: number
+          matched_at?: string | null
+          matched_document_id?: string | null
+          raw?: Json
+          remittance_info?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "bank_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_matched_document_id_fkey"
+            columns: ["matched_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address_line: string
