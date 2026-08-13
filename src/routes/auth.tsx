@@ -40,13 +40,43 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error("Anmeldung fehlgeschlagen: " + error.message);
+      return;
+    }
+    // Zwei-Faktor-Authentifizierung: falls aktiv, Bestätigungscode abfragen.
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    setLoading(false);
+    if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      setMfaRequired(true);
       return;
     }
     navigate({ to: "/dashboard", replace: true });
   }
+
+  async function verifyMfa(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const factor = (factors?.totp ?? [])[0];
+    if (!factor) {
+      setLoading(false);
+      toast.error("Kein Sicherheitsgerät gefunden.");
+      return;
+    }
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: factor.id,
+      code: mfaCode.trim(),
+    });
+    setLoading(false);
+    if (error) {
+      toast.error("Code ungültig: " + error.message);
+      return;
+    }
+    navigate({ to: "/dashboard", replace: true });
+  }
+
 
   async function forgotPassword() {
     if (!email) {
