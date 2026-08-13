@@ -135,7 +135,7 @@ type PlanForm = {
 };
 
 const emptyForm: PlanForm = {
-  employeeId: "",
+  employeeIds: [],
   entryType: "work",
   absenceReason: "vacation",
   projectId: NO_PROJECT,
