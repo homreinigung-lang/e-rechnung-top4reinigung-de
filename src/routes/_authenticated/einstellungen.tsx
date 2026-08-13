@@ -114,6 +114,7 @@ function Einstellungen() {
     rows: Record<string, unknown>[];
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [from, setFrom] = useState(`${new Date().getFullYear()}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
@@ -217,6 +218,65 @@ function Einstellungen() {
         Notiz: e.notes,
       })),
     );
+  }
+
+  /** Holt alle eigenen Kunden, Belege und Positionen (RLS-geschützt) für das Backup. */
+  async function loadBackupData() {
+    const [customers, documents, items] = await Promise.all([
+      supabase.from("customers").select("*").order("created_at"),
+      supabase.from("documents").select("*").order("issue_date"),
+      supabase.from("document_items").select("*").order("position"),
+    ]);
+    const err = customers.error ?? documents.error ?? items.error;
+    if (err) throw new Error(err.message);
+    return {
+      customers: customers.data ?? [],
+      documents: documents.data ?? [],
+      document_items: items.data ?? [],
+    };
+  }
+
+  async function exportBackupJson() {
+    setBackupBusy(true);
+    try {
+      const data = await loadBackupData();
+      const payload = {
+        app: "HomR Office",
+        exported_at: new Date().toISOString(),
+        counts: {
+          customers: data.customers.length,
+          documents: data.documents.length,
+          document_items: data.document_items.length,
+        },
+        ...data,
+      };
+      await saveFile(
+        new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+        `HomR_Backup_${new Date().toISOString().slice(0, 10)}.json`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Backup fehlgeschlagen");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  async function exportBackupXlsx() {
+    setBackupBusy(true);
+    try {
+      const data = await loadBackupData();
+      const { buildXlsx } = await import("@/lib/xlsx");
+      const blob = await buildXlsx([
+        { name: "Kunden", rows: data.customers as Record<string, unknown>[] },
+        { name: "Belege", rows: data.documents as Record<string, unknown>[] },
+        { name: "Positionen", rows: data.document_items as Record<string, unknown>[] },
+      ]);
+      await saveFile(blob, `HomR_Backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Backup fehlgeschlagen");
+    } finally {
+      setBackupBusy(false);
+    }
   }
 
   const KIND_LABEL: Record<string, string> = {
@@ -499,6 +559,23 @@ function Einstellungen() {
           </Button>
         </div>
 
+      </div>
+
+      <div className="surface space-y-4 p-6">
+        <h2 className="font-display text-lg font-semibold">Manuelles Backup (alle Daten)</h2>
+        <p className="text-sm text-muted-foreground">
+          Lädt alle Kunden, Rechnungen/Angebote und deren Positionen herunter – als Excel-Datei zum
+          Ansehen oder als JSON-Datei zur vollständigen Sicherung. Die Datei wird lokal auf Ihrem
+          Computer gespeichert.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={exportBackupXlsx} disabled={backupBusy}>
+            <Download className="size-4" /> Backup als Excel (.xlsx)
+          </Button>
+          <Button variant="outline" onClick={exportBackupJson} disabled={backupBusy}>
+            <Download className="size-4" /> Backup als JSON
+          </Button>
+        </div>
       </div>
 
       <AccountantAccessCard />
