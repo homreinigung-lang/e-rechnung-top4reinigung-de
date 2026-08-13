@@ -123,7 +123,7 @@ function hoursFromTimes(start: string, end: string, breakMinutes: number) {
 
 
 type PlanForm = {
-  employeeId: string;
+  employeeIds: string[];
   entryType: EntryType;
   absenceReason: AbsenceReason;
   projectId: string;
@@ -135,7 +135,7 @@ type PlanForm = {
 };
 
 const emptyForm: PlanForm = {
-  employeeId: "",
+  employeeIds: [],
   entryType: "work",
   absenceReason: "vacation",
   projectId: NO_PROJECT,
@@ -329,8 +329,8 @@ export function EinsatzKalender({
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
-      const employee = employees.find((e) => e.id === values.employeeId);
-      if (!employee) throw new Error("Bitte einen Mitarbeiter wählen.");
+      const selected = employees.filter((e) => values.employeeIds.includes(e.id));
+      if (selected.length === 0) throw new Error("Bitte mindestens einen Mitarbeiter wählen.");
       const absence = values.entryType === "absence";
       const rawBreak = Number(String(values.breakMinutes).replace(",", "."));
       const breakMinutes = absence || !Number.isFinite(rawBreak) ? 0 : Math.max(0, rawBreak);
@@ -348,7 +348,7 @@ export function EinsatzKalender({
           projects.find((p) => (p.name || "").trim().toLowerCase() === locText.toLowerCase()) ||
           null;
 
-      const { error } = await supabase.from("time_entries").insert({
+      const rows = selected.map((employee) => ({
         user_id: userId,
         employee_id: employee.id,
         employee_name: employee.name,
@@ -365,11 +365,20 @@ export function EinsatzKalender({
         note: values.note.trim(),
         entry_type: values.entryType,
         absence_reason: absence ? values.absenceReason : "",
-      });
+      }));
+
+      const { error } = await supabase.from("time_entries").insert(rows);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: (_d, values) => {
-      toast.success(values.entryType === "absence" ? "Abwesenheit eingetragen" : "Einsatz geplant");
+    onSuccess: (count, values) => {
+      const n = count ?? 1;
+      toast.success(
+        values.entryType === "absence"
+          ? `Abwesenheit für ${n} Mitarbeiter eingetragen`
+          : `Einsatz für ${n} Mitarbeiter geplant`,
+      );
+
       setDay(null);
       setForm(emptyForm);
 
@@ -462,9 +471,10 @@ export function EinsatzKalender({
 
 
   const openDay = (key: string, employeeId?: string) => {
+    const preset = employeeId ?? (filterEmployee !== ALL ? filterEmployee : "");
     setForm({
       ...emptyForm,
-      employeeId: employeeId ?? (filterEmployee !== ALL ? filterEmployee : (employees[0]?.id ?? "")),
+      employeeIds: preset ? [preset] : [],
       projectId: filterProject !== ALL ? filterProject : NO_PROJECT,
     });
     setDay(key);
@@ -827,23 +837,60 @@ export function EinsatzKalender({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label>Mitarbeiter</Label>
-              <Select
-                value={form.employeeId}
-                onValueChange={(v) => setForm({ ...form, employeeId: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Mitarbeiter wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Mitarbeiter (Mehrfachauswahl)</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline"
+                    onClick={() => setForm({ ...form, employeeIds: employees.map((e) => e.id) })}
+                  >
+                    Alle
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline"
+                    onClick={() => setForm({ ...form, employeeIds: [] })}
+                  >
+                    Keine
+                  </button>
+                </div>
+              </div>
+              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border p-2">
+                {employees.length === 0 && (
+                  <span className="text-sm text-muted-foreground">Keine Mitarbeiter vorhanden</span>
+                )}
+                {employees.map((e) => {
+                  const active = form.employeeIds.includes(e.id);
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          employeeIds: active
+                            ? form.employeeIds.filter((id) => id !== e.id)
+                            : [...form.employeeIds, e.id],
+                        })
+                      }
+                      className={`rounded-full border px-3 py-1 text-sm transition ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background hover:bg-muted"
+                      }`}
+                    >
                       {e.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {form.employeeIds.length} ausgewählt – der Einsatz wird für alle gleichzeitig
+                angelegt.
+              </p>
             </div>
+
 
             <div className="space-y-2">
               <Label>Art des Eintrags</Label>
@@ -973,7 +1020,7 @@ export function EinsatzKalender({
             <Button
               onClick={() => day && createPlan.mutate({ ...form, workDate: day })}
               disabled={
-                !form.employeeId ||
+                form.employeeIds.length === 0 ||
                 createPlan.isPending ||
                 (!isAbsent && (!timesValid || plannedHours <= 0))
               }
