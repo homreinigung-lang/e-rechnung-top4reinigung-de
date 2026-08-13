@@ -45,6 +45,9 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/")({
+  validateSearch: (search: Record<string, unknown>): { tab?: "invoice" | "quote" } => ({
+    tab: search["tab"] === "quote" ? "quote" : search["tab"] === "invoice" ? "invoice" : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Rechnungen & Angebote verwalten" },
@@ -65,7 +68,9 @@ export const Route = createFileRoute("/_authenticated/dokumente/")({
 function DokumenteListe() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"invoice" | "quote">("invoice");
+  const search = Route.useSearch();
+  const [tab, setTab] = useState<"invoice" | "quote">(search.tab ?? "invoice");
+
 
   const { data: documents = [] } = useQuery({
     queryKey: ["documents"],
