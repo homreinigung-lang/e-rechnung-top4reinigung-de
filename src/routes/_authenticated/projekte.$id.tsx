@@ -71,6 +71,7 @@ type Room = {
   floor: string;
   usage_type: string;
   area_sqm: number;
+  floor_covering: string;
   frequency: string;
   note: string;
   confirmed: boolean;
@@ -324,6 +325,8 @@ function ProjektDetail() {
         .update({
           expected_room_count: Math.max(review.expected_room_count, review.rooms.length),
           executive_summary: review.executive_summary || project?.executive_summary || "",
+          analysis_highlights: review.highlights,
+          analysis_requirements: review.requirements,
         })
         .eq("id", id);
 
@@ -337,6 +340,7 @@ function ProjektDetail() {
             floor: r.floor,
             usage_type: r.usage_type,
             area_sqm: r.area_sqm,
+            floor_covering: r.floor_covering,
           })),
         );
         if (error) throw error;
@@ -520,6 +524,7 @@ function ProjektDetail() {
                     <th className="py-2 pr-3">Etage</th>
                     <th className="py-2 pr-3">Nutzung</th>
                     <th className="py-2 pr-3 text-right">m²</th>
+                    <th className="py-2 pr-3">Bodenbelag</th>
                     <th className="py-2 pr-3">Geprüft</th>
                     <th className="py-2" />
                   </tr>
@@ -539,6 +544,7 @@ function ProjektDetail() {
                       <td className="py-2 pr-3">{r.floor}</td>
                       <td className="py-2 pr-3">{r.usage_type}</td>
                       <td className="py-2 pr-3 text-right">{formatNumber(Number(r.area_sqm))}</td>
+                      <td className="py-2 pr-3">{r.floor_covering}</td>
                       <td className="py-2 pr-3">
                         <Checkbox
                           checked={r.confirmed}
@@ -867,6 +873,15 @@ function ProjektDetail() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="r-covering">Bodenbelag / Oberfläche</Label>
+                <Input
+                  id="r-covering"
+                  value={roomDialog.floor_covering ?? ""}
+                  placeholder="Teppich, Fliesen, PVC …"
+                  onChange={(e) => setRoomDialog({ ...roomDialog, floor_covering: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="r-freq">Turnus</Label>
                 <Input
                   id="r-freq"
@@ -896,6 +911,7 @@ function ProjektDetail() {
                     floor: roomDialog.floor,
                     usage_type: roomDialog.usage_type,
                     area_sqm: roomDialog.area_sqm,
+                    floor_covering: roomDialog.floor_covering ?? "",
                     frequency: roomDialog.frequency,
                     note: roomDialog.note,
                     confirmed: true,
