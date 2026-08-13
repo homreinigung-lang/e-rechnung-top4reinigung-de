@@ -8,9 +8,11 @@ export type EinsatzStatus = "done" | "running" | "planned" | "cancelled" | "vaca
 
 type EntryLike = {
   work_date: string;
+  end_time?: string | null;
   entry_type?: string | null;
   absence_reason?: string | null;
   approval_status?: string | null;
+  completed_at?: string | null;
 };
 
 function todayIso() {
@@ -18,8 +20,14 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function nowHm() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export function einsatzStatus(entry: EntryLike): EinsatzStatus {
   if (isRejected(entry)) return "cancelled";
+  if (entry.completed_at) return "done";
   if (isAbsence(entry)) {
     if (isPending(entry)) return "requested";
     const reason = absenceReason(entry);
@@ -28,9 +36,15 @@ export function einsatzStatus(entry: EntryLike): EinsatzStatus {
   if (isPending(entry)) return "requested";
   const today = todayIso();
   if (entry.work_date < today) return "done";
-  if (entry.work_date === today) return "running";
+  if (entry.work_date === today) {
+    const end = (entry.end_time ?? "").slice(0, 5);
+    // Einsatz gilt als abgeschlossen, sobald die Endzeit überschritten ist.
+    if (end && end <= nowHm()) return "done";
+    return "running";
+  }
   return "planned";
 }
+
 
 export const STATUS_LABELS: Record<EinsatzStatus, string> = {
   done: "Abgeschlossen",

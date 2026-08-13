@@ -53,6 +53,8 @@ import {
 import { buildXlsx } from "@/lib/xlsx";
 import { saveFile } from "@/lib/download";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
+import { GermanTimeInput } from "@/components/GermanDateTimeInput";
+
 
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -80,16 +82,45 @@ function monthStart(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1, 12, 0, 0, 0);
 }
 
-/** Stunden aus "HH:MM" Start/Ende minus Pause (Minuten). */
-function hoursFromTimes(start: string, end: string, breakMinutes: number) {
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return 0;
-  let mins = eh! * 60 + em! - (sh! * 60 + sm!);
-  if (mins < 0) mins += 24 * 60;
-  mins -= breakMinutes;
-  return Math.max(0, Math.round((mins / 60) * 100) / 100);
+/** "HH:MM" (auch "8:5", "0800") → Minuten seit Mitternacht, sonst null. */
+function parseHm(value: string): number | null {
+  const raw = (value ?? "").trim();
+  if (!raw) return null;
+  let h: number, m: number;
+  const colon = /^(\d{1,2})[:.](\d{1,2})$/.exec(raw);
+  const plain = /^(\d{3,4})$/.exec(raw);
+  if (colon) {
+    h = Number(colon[1]);
+    m = Number(colon[2]);
+  } else if (plain) {
+    const s = plain[1]!.padStart(4, "0");
+    h = Number(s.slice(0, 2));
+    m = Number(s.slice(2));
+  } else return null;
+  if (!Number.isFinite(h) || !Number.isFinite(m) || h > 23 || m > 59) return null;
+  return h * 60 + m;
 }
+
+/** Minuten seit Mitternacht → "HH:MM". */
+function minutesToHm(min: number) {
+  const m = ((Math.round(min) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+/** Stunden aus Start/Ende minus Pause (Minuten). Immer eine gültige Zahl (>= 0). */
+
+function hoursFromTimes(start: string, end: string, breakMinutes: number) {
+  const s = parseHm(start);
+  const e = parseHm(end);
+  if (s === null || e === null) return 0;
+  const pause = Number.isFinite(breakMinutes) ? Math.max(0, breakMinutes) : 0;
+  let mins = e - s;
+  if (mins < 0) mins += 24 * 60;
+  mins -= pause;
+  const hours = Math.round((mins / 60) * 100) / 100;
+  return Number.isFinite(hours) ? Math.max(0, hours) : 0;
+}
+
 
 type PlanForm = {
   employeeId: string;
@@ -279,9 +310,15 @@ export function EinsatzKalender({
       const employee = employees.find((e) => e.id === values.employeeId);
       if (!employee) throw new Error("Bitte einen Mitarbeiter wählen.");
       const absence = values.entryType === "absence";
-      const breakMinutes = absence ? 0 : Number(values.breakMinutes.replace(",", ".")) || 0;
+      const rawBreak = Number(String(values.breakMinutes).replace(",", "."));
+      const breakMinutes = absence || !Number.isFinite(rawBreak) ? 0 : Math.max(0, rawBreak);
+      const startMin = parseHm(values.start);
+      const endMin = parseHm(values.end);
+      if (!absence && (startMin === null || endMin === null))
+        throw new Error("Bitte Start- und Endzeit im Format HH:MM eintragen.");
       const hours = absence ? 0 : hoursFromTimes(values.start, values.end, breakMinutes);
-      if (!absence && hours <= 0) throw new Error("Bitte gültige Start- und Endzeit eintragen.");
+      if (!absence && !(hours > 0))
+        throw new Error("Die geplante Dauer muss größer als 0 Stunden sein.");
       const project =
         absence || values.projectId === NO_PROJECT
           ? null
@@ -291,10 +328,11 @@ export function EinsatzKalender({
         employee_id: employee.id,
         employee_name: employee.name,
         work_date: values.workDate,
-        start_time: absence ? null : values.start,
-        end_time: absence ? null : values.end,
+        start_time: absence ? null : minutesToHm(startMin!),
+        end_time: absence ? null : minutesToHm(endMin!),
         break_minutes: breakMinutes,
-        hours,
+        hours: Number(hours.toFixed(2)),
+
         hourly_rate: Number(employee.hourly_rate ?? 0),
         project_id: project?.id ?? null,
         location: absence
@@ -371,6 +409,33 @@ export function EinsatzKalender({
 
   const dayEntries = day ? (byDay.get(day) ?? []) : [];
   const isAbsent = form.entryType === "absence";
+  const breakInput = Number(String(form.breakMinutes).replace(",", "."));
+  const plannedHours = hoursFromTimes(
+    form.start,
+    form.end,
+    Number.isFinite(breakInput) ? breakInput : 0,
+  );
+  const timesValid = parseHm(form.start) !== null && parseHm(form.end) !== null;
+
+  const setEntryStatus = useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: { completed_at?: string | null; approval_status?: string };
+    }) => {
+      const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Status aktualisiert");
+      setDetail(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const openDay = (key: string, employeeId?: string) => {
     setForm({
@@ -827,20 +892,21 @@ export function EinsatzKalender({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="k-start">Von (HH:MM)</Label>
-                  <Input
+                  <GermanTimeInput
                     id="k-start"
                     value={form.start}
-                    onChange={(e) => setForm({ ...form, start: e.target.value })}
+                    onChange={(v) => setForm({ ...form, start: v })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="k-end">Bis (HH:MM)</Label>
-                  <Input
+                  <GermanTimeInput
                     id="k-end"
                     value={form.end}
-                    onChange={(e) => setForm({ ...form, end: e.target.value })}
+                    onChange={(v) => setForm({ ...form, end: v })}
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="k-break">Pause (Min.)</Label>
                   <Input
@@ -876,13 +942,11 @@ export function EinsatzKalender({
               <>
                 Geplante Dauer:{" "}
                 <span className="font-medium text-foreground">
-                  {hoursFromTimes(
-                    form.start,
-                    form.end,
-                    Number(form.breakMinutes.replace(",", ".")) || 0,
-                  ).toFixed(2)}{" "}
-                  Std.
+                  {timesValid ? `${plannedHours.toFixed(2)} Std.` : "—"}
                 </span>
+                {timesValid && plannedHours <= 0 ? (
+                  <span className="text-destructive"> · Endzeit/Pause prüfen</span>
+                ) : null}
               </>
             )}
           </p>
@@ -890,11 +954,16 @@ export function EinsatzKalender({
           <DialogFooter>
             <Button
               onClick={() => day && createPlan.mutate({ ...form, workDate: day })}
-              disabled={!form.employeeId || createPlan.isPending}
+              disabled={
+                !form.employeeId ||
+                createPlan.isPending ||
+                (!isAbsent && (!timesValid || plannedHours <= 0))
+              }
             >
               <Plus className="size-4" /> {isAbsent ? "Abwesenheit eintragen" : "Einsatz eintragen"}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
@@ -938,7 +1007,63 @@ export function EinsatzKalender({
               </dl>
             </div>
           )}
+          {detail && !isAbsence(detail) && (
+            <div className="flex flex-wrap gap-2 border-t pt-3">
+              {einsatzStatus(detail) === "done" && detail.completed_at ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={setEntryStatus.isPending}
+                  onClick={() =>
+                    setEntryStatus.mutate({ id: detail.id, patch: { completed_at: null } })
+                  }
+                >
+                  Abschluss zurücknehmen
+                </Button>
+              ) : einsatzStatus(detail) !== "done" ? (
+                <Button
+                  size="sm"
+                  disabled={setEntryStatus.isPending}
+                  onClick={() =>
+                    setEntryStatus.mutate({
+                      id: detail.id,
+                      patch: { completed_at: new Date().toISOString(), approval_status: "approved" },
+                    })
+                  }
+                >
+                  Als abgeschlossen markieren
+                </Button>
+              ) : null}
+              {einsatzStatus(detail) === "cancelled" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={setEntryStatus.isPending}
+                  onClick={() =>
+                    setEntryStatus.mutate({ id: detail.id, patch: { approval_status: "approved" } })
+                  }
+                >
+                  Stornierung aufheben
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={setEntryStatus.isPending}
+                  onClick={() =>
+                    setEntryStatus.mutate({
+                      id: detail.id,
+                      patch: { approval_status: "rejected", completed_at: null },
+                    })
+                  }
+                >
+                  Einsatz stornieren
+                </Button>
+              )}
+            </div>
+          )}
           <DialogFooter>
+
             {detail && (
               <Button
                 variant="outline"
