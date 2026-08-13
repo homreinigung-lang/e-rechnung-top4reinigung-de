@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import {
   AlertTriangle,
   ArrowLeft,
+  Calculator,
   Loader2,
   Plus,
   Sparkles,
@@ -405,6 +406,35 @@ function ProjektDetail() {
   const revenueMonth = istHoursMonth * rate;
   const marginMonth = revenueMonth - laborCostMonth;
 
+  // Automatisch abgeleitete Eckdaten aus dem Raumbuch (Ergänzung zur KI-Zusammenfassung)
+  const coveringTotals = new Map<string, number>();
+  const usageTotals = new Map<string, number>();
+  for (const r of rooms) {
+    const cover = (r.floor_covering || "").trim();
+    if (cover) coveringTotals.set(cover, (coveringTotals.get(cover) ?? 0) + Number(r.area_sqm || 0));
+    const usage = (r.usage_type || "").trim();
+    if (usage) usageTotals.set(usage, (usageTotals.get(usage) ?? 0) + Number(r.area_sqm || 0));
+  }
+  const topList = (map: Map<string, number>) =>
+    [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const derivedFacts: string[] = [];
+  if (totalSqm > 0) derivedFacts.push(`Erkannte Fläche: ca. ${formatNumber(totalSqm)} m² (${rooms.length} Räume)`);
+  const topUsage = topList(usageTotals);
+  if (topUsage.length > 0) {
+    derivedFacts.push(
+      `Nutzung: ${topUsage.map(([k, v]) => `${k} ${formatNumber(v)} m²`).join(", ")}`,
+    );
+  }
+  const topCover = topList(coveringTotals);
+  if (topCover.length > 0) {
+    derivedFacts.push(
+      `Bodenbelag: ${topCover.map(([k, v]) => `${k} ${formatNumber(v)} m²`).join(", ")}`,
+    );
+  }
+  const aiHighlights = (project.analysis_highlights ?? []) as string[];
+  const aiRequirements = (project.analysis_requirements ?? []) as string[];
+  const hasAnalysis = aiHighlights.length > 0 || aiRequirements.length > 0 || derivedFacts.length > 0;
+
   const lvTotal = items.reduce((sum, i) => sum + Number(i.quantity || 0) * Number(i.unit_price || 0), 0);
   const openCritical = items.filter((i) => i.critical && !i.done);
 
@@ -469,6 +499,55 @@ function ProjektDetail() {
           </p>
         )}
       </section>
+
+      {/* KI-Analyse: Eckdaten & Anforderungen */}
+      {hasAnalysis && (
+        <section className="surface space-y-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">Analyse-Ergebnis</h2>
+            </div>
+            <Button asChild variant="outline">
+              <Link
+                to="/kalkulation"
+                search={{
+                  area: Math.round(totalSqm * 100) / 100,
+                  objekt: project.name || "",
+                  belag: topCover[0]?.[0] ?? "",
+                }}
+              >
+                <Calculator className="size-4" /> In Kalkulation übernehmen
+              </Link>
+            </Button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Erkannte Eckdaten</h3>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                {[...aiHighlights, ...derivedFacts].map((line, i) => (
+                  <li key={`${i}-${line}`}>{line}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Kundenanforderungen</h3>
+              {aiRequirements.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Keine ausdrücklichen Anforderungen erkannt.
+                </p>
+              ) : (
+                <ul className="list-disc space-y-1 pl-5 text-sm">
+                  {aiRequirements.map((line, i) => (
+                    <li key={`${i}-${line}`}>{line}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Executive Summary */}
       {(isTender || project.executive_summary) && (
