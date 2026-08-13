@@ -136,6 +136,27 @@ function RootComponent() {
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
 
+  // Beim Drucken den Dokumenttitel leeren, damit der Browser keine
+  // Kopf-/Fußzeile mit Titel und URL auf das PDF schreibt.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let previous = "";
+    const before = () => {
+      previous = document.title;
+      document.title = " ";
+    };
+    const after = () => {
+      if (previous) document.title = previous;
+    };
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+    };
+  }, []);
+
+
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
