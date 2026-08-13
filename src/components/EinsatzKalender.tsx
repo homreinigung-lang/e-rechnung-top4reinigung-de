@@ -53,6 +53,8 @@ import {
 import { buildXlsx } from "@/lib/xlsx";
 import { saveFile } from "@/lib/download";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
+import { GermanTimeInput } from "@/components/GermanDateTimeInput";
+
 
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
