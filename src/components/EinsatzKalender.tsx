@@ -462,9 +462,10 @@ export function EinsatzKalender({
 
 
   const openDay = (key: string, employeeId?: string) => {
+    const preset = employeeId ?? (filterEmployee !== ALL ? filterEmployee : "");
     setForm({
       ...emptyForm,
-      employeeId: employeeId ?? (filterEmployee !== ALL ? filterEmployee : (employees[0]?.id ?? "")),
+      employeeIds: preset ? [preset] : [],
       projectId: filterProject !== ALL ? filterProject : NO_PROJECT,
     });
     setDay(key);
