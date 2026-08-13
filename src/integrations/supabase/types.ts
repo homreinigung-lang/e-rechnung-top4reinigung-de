@@ -965,6 +965,7 @@ export type Database = {
           approval_status: string
           billed: boolean
           break_minutes: number
+          completed_at: string | null
           created_at: string
           customer_id: string | null
           decided_at: string | null
@@ -991,6 +992,7 @@ export type Database = {
           approval_status?: string
           billed?: boolean
           break_minutes?: number
+          completed_at?: string | null
           created_at?: string
           customer_id?: string | null
           decided_at?: string | null
@@ -1017,6 +1019,7 @@ export type Database = {
           approval_status?: string
           billed?: boolean
           break_minutes?: number
+          completed_at?: string | null
           created_at?: string
           customer_id?: string | null
           decided_at?: string | null
