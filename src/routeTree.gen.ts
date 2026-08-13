@@ -23,6 +23,7 @@ import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedPersonalRouteImport } from './routes/_authenticated/personal'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
+import { Route as AuthenticatedSicherheitRouteImport } from './routes/_authenticated/sicherheit'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
 import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
 import { Route as AuthenticatedZeiterfassungRouteImport } from './routes/_authenticated/zeiterfassung'
@@ -36,6 +37,7 @@ import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
 import { Route as AuthenticatedProjekteIndexRouteImport } from './routes/_authenticated/projekte.index'
 import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authenticated/projekte.$id'
+import { Route as ApiPublicFotoRetentionRouteImport } from './routes/api/public/foto-retention'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -110,6 +112,11 @@ const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSicherheitRoute = AuthenticatedSicherheitRouteImport.update({
+  id: '/sicherheit',
+  path: '/sicherheit',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSteuerberaterRoute =
   AuthenticatedSteuerberaterRouteImport.update({
     id: '/steuerberater',
@@ -181,6 +188,11 @@ const AuthenticatedProjekteIdRoute = AuthenticatedProjekteIdRouteImport.update({
   path: '/projekte/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicFotoRetentionRoute = ApiPublicFotoRetentionRouteImport.update({
+  id: '/api/public/foto-retention',
+  path: '/api/public/foto-retention',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -196,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
+  '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
@@ -207,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
@@ -223,6 +237,7 @@ export interface FileRoutesByTo {
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
+  '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
@@ -234,6 +249,7 @@ export interface FileRoutesByTo {
   '/rechtliches': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
   '/projekte': typeof AuthenticatedProjekteIndexRoute
 }
@@ -253,6 +269,7 @@ export interface FileRoutesById {
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/personal': typeof AuthenticatedPersonalRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
+  '/_authenticated/sicherheit': typeof AuthenticatedSicherheitRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/_authenticated/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
@@ -264,6 +281,7 @@ export interface FileRoutesById {
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/_authenticated/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
@@ -283,6 +301,7 @@ export interface FileRouteTypes {
     | '/meine-zeiten'
     | '/personal'
     | '/profil'
+    | '/sicherheit'
     | '/steuerberater'
     | '/wiederkehrend'
     | '/zeiterfassung'
@@ -294,6 +313,7 @@ export interface FileRouteTypes {
     | '/rechtliches/'
     | '/dokumente/$id'
     | '/projekte/$id'
+    | '/api/public/foto-retention'
     | '/dokumente/'
     | '/projekte/'
   fileRoutesByTo: FileRoutesByTo
@@ -310,6 +330,7 @@ export interface FileRouteTypes {
     | '/meine-zeiten'
     | '/personal'
     | '/profil'
+    | '/sicherheit'
     | '/steuerberater'
     | '/wiederkehrend'
     | '/zeiterfassung'
@@ -321,6 +342,7 @@ export interface FileRouteTypes {
     | '/rechtliches'
     | '/dokumente/$id'
     | '/projekte/$id'
+    | '/api/public/foto-retention'
     | '/dokumente'
     | '/projekte'
   id:
@@ -339,6 +361,7 @@ export interface FileRouteTypes {
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/personal'
     | '/_authenticated/profil'
+    | '/_authenticated/sicherheit'
     | '/_authenticated/steuerberater'
     | '/_authenticated/wiederkehrend'
     | '/_authenticated/zeiterfassung'
@@ -350,6 +373,7 @@ export interface FileRouteTypes {
     | '/rechtliches/'
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/projekte/$id'
+    | '/api/public/foto-retention'
     | '/_authenticated/dokumente/'
     | '/_authenticated/projekte/'
   fileRoutesById: FileRoutesById
@@ -361,6 +385,7 @@ export interface RootRouteChildren {
   RechtlichesRoute: typeof RechtlichesRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   StbTokenRoute: typeof StbTokenRoute
+  ApiPublicFotoRetentionRoute: typeof ApiPublicFotoRetentionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -463,6 +488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sicherheit': {
+      id: '/_authenticated/sicherheit'
+      path: '/sicherheit'
+      fullPath: '/sicherheit'
+      preLoaderRoute: typeof AuthenticatedSicherheitRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/steuerberater': {
       id: '/_authenticated/steuerberater'
       path: '/steuerberater'
@@ -554,6 +586,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjekteIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/foto-retention': {
+      id: '/api/public/foto-retention'
+      path: '/api/public/foto-retention'
+      fullPath: '/api/public/foto-retention'
+      preLoaderRoute: typeof ApiPublicFotoRetentionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -567,6 +606,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedPersonalRoute: typeof AuthenticatedPersonalRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
+  AuthenticatedSicherheitRoute: typeof AuthenticatedSicherheitRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
   AuthenticatedZeiterfassungRoute: typeof AuthenticatedZeiterfassungRoute
@@ -586,6 +626,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedPersonalRoute: AuthenticatedPersonalRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
+  AuthenticatedSicherheitRoute: AuthenticatedSicherheitRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
   AuthenticatedZeiterfassungRoute: AuthenticatedZeiterfassungRoute,
@@ -625,6 +666,7 @@ const rootRouteChildren: RootRouteChildren = {
   RechtlichesRoute: RechtlichesRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   StbTokenRoute: StbTokenRoute,
+  ApiPublicFotoRetentionRoute: ApiPublicFotoRetentionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

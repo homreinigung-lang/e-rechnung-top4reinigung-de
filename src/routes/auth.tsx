@@ -29,6 +29,9 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -40,13 +43,43 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error("Anmeldung fehlgeschlagen: " + error.message);
+      return;
+    }
+    // Zwei-Faktor-Authentifizierung: falls aktiv, Bestätigungscode abfragen.
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    setLoading(false);
+    if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      setMfaRequired(true);
       return;
     }
     navigate({ to: "/dashboard", replace: true });
   }
+
+  async function verifyMfa(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const factor = (factors?.totp ?? [])[0];
+    if (!factor) {
+      setLoading(false);
+      toast.error("Kein Sicherheitsgerät gefunden.");
+      return;
+    }
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: factor.id,
+      code: mfaCode.trim(),
+    });
+    setLoading(false);
+    if (error) {
+      toast.error("Code ungültig: " + error.message);
+      return;
+    }
+    navigate({ to: "/dashboard", replace: true });
+  }
+
 
   async function forgotPassword() {
     if (!email) {
@@ -113,7 +146,45 @@ function AuthPage() {
         </Link>
 
         <div className="surface p-6">
+          {mfaRequired ? (
+            <form onSubmit={verifyMfa} className="space-y-4">
+              <div>
+                <h1 className="font-display text-lg font-semibold">Bestätigungscode</h1>
+                <p className="text-sm text-muted-foreground">
+                  Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mfa">Code</Label>
+                <Input
+                  id="mfa"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  dir="ltr"
+                  required
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value)}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                Bestätigen
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMfaRequired(false);
+                  setMfaCode("");
+                  void supabase.auth.signOut();
+                }}
+                className="w-full text-center text-sm text-muted-foreground underline"
+              >
+                Abbrechen
+              </button>
+            </form>
+          ) : (
           <Tabs defaultValue="login">
+
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Anmelden</TabsTrigger>
               <TabsTrigger value="register">Registrieren</TabsTrigger>
@@ -182,17 +253,23 @@ function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
+          )}
 
-          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            oder
-            <span className="h-px flex-1 bg-border" />
-          </div>
+          {!mfaRequired && (
+            <>
+              <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                oder
+                <span className="h-px flex-1 bg-border" />
+              </div>
 
-          <Button variant="outline" className="w-full" onClick={google}>
-            Mit Google fortfahren
-          </Button>
+              <Button variant="outline" className="w-full" onClick={google}>
+                Mit Google fortfahren
+              </Button>
+            </>
+          )}
         </div>
+
       </div>
     </div>
   );

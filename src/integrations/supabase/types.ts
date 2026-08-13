@@ -73,6 +73,7 @@ export type Database = {
           owner_name: string
           payment_terms_days: number
           phone: string
+          photo_retention_days: number
           postal_code: string
           smtp_from: string
           smtp_host: string
@@ -103,6 +104,7 @@ export type Database = {
           owner_name?: string
           payment_terms_days?: number
           phone?: string
+          photo_retention_days?: number
           postal_code?: string
           smtp_from?: string
           smtp_host?: string
@@ -133,6 +135,7 @@ export type Database = {
           owner_name?: string
           payment_terms_days?: number
           phone?: string
+          photo_retention_days?: number
           postal_code?: string
           smtp_from?: string
           smtp_host?: string
@@ -314,6 +317,7 @@ export type Database = {
           pdf_path: string
           pdf_sha256: string
           reminder_level: number
+          retention_until: string | null
           reverse_charge: boolean
           sent_at: string | null
           service_description: string
@@ -363,6 +367,7 @@ export type Database = {
           pdf_path?: string
           pdf_sha256?: string
           reminder_level?: number
+          retention_until?: string | null
           reverse_charge?: boolean
           sent_at?: string | null
           service_description?: string
@@ -412,6 +417,7 @@ export type Database = {
           pdf_path?: string
           pdf_sha256?: string
           reminder_level?: number
+          retention_until?: string | null
           reverse_charge?: boolean
           sent_at?: string | null
           service_description?: string
@@ -1088,6 +1094,7 @@ export type Database = {
           pdf_path: string
           pdf_sha256: string
           reminder_level: number
+          retention_until: string | null
           reverse_charge: boolean
           sent_at: string | null
           service_description: string
