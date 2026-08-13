@@ -148,12 +148,34 @@ const emptyForm: PlanForm = {
 
 export function EinsatzKalender({
   employees,
-  projects,
+  projects: projectsProp = [],
 }: {
   employees: KalenderEmployee[];
-  projects: KalenderProject[];
+  projects?: KalenderProject[];
 }) {
   const queryClient = useQueryClient();
+
+  // Eigene Projektliste laden, damit das Objekt/Projekt-Dropdown immer gefüllt ist,
+  // auch wenn die übergebene Liste leer oder noch nicht geladen ist.
+  const { data: fetchedProjects = [] } = useQuery({
+    queryKey: ["projects", "kalender-picker"],
+    staleTime: 0,
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,city")
+        .order("name");
+      if (error) throw error;
+      return data as KalenderProject[];
+    },
+  });
+
+  const projects = useMemo<KalenderProject[]>(() => {
+    const map = new Map<string, KalenderProject>();
+    for (const p of [...projectsProp, ...fetchedProjects]) if (p?.id) map.set(p.id, p);
+    return [...map.values()].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "de"));
+  }, [projectsProp, fetchedProjects]);
   const [view, setView] = useState<"month" | "week">("month");
   const [anchor, setAnchor] = useState(() => {
     const d = new Date();

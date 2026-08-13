@@ -121,6 +121,8 @@ function KalkulationPage() {
   const [stairs, setStairs] = useState(false);
   const [floors, setFloors] = useState("1");
   const [stairRate, setStairRate] = useState(String(STAIR_RATE_PER_FLOOR));
+  const [hasLift, setHasLift] = useState(false);
+  const [liftRate, setLiftRate] = useState("5,00");
   const [discountPercent, setDiscountPercent] = useState("0");
   const [discountReason, setDiscountReason] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
@@ -171,8 +173,11 @@ function KalkulationPage() {
   );
 
   const stairsTotal = useMemo(
-    () => (stairs ? num(floors) * num(stairRate) * visitsPerMonth : 0),
-    [stairs, floors, stairRate, visitsPerMonth],
+    () =>
+      stairs
+        ? (num(floors) * num(stairRate) + (hasLift ? num(liftRate) : 0)) * visitsPerMonth
+        : 0,
+    [stairs, floors, stairRate, hasLift, liftRate, visitsPerMonth],
   );
 
   const subtotal = base + extrasTotal + stairsTotal + num(travel);
@@ -217,6 +222,11 @@ function KalkulationPage() {
       if (stairs) {
         parts.push(
           `Treppenhausreinigung: ${formatNumber(num(floors))} Etagen × ${formatMoney(num(stairRate))}/Etage`,
+        );
+        parts.push(
+          hasLift
+            ? `Aufzug vorhanden – Aufzugkabine inkl. (${formatMoney(num(liftRate))}/Einsatz)`
+            : "Kein Aufzug vorhanden",
         );
       }
       const chosen = EXTRAS.filter((e) => extras.includes(e.key)).map((e) => e.label);
@@ -465,8 +475,36 @@ function KalkulationPage() {
                       />
                     </div>
                   </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Gibt es einen Aufzug?</Label>
+                      <Select
+                        value={hasLift ? "yes" : "no"}
+                        onValueChange={(v) => setHasLift(v === "yes")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no">Nein – kein Aufzug</SelectItem>
+                          <SelectItem value="yes">Ja – Aufzug vorhanden</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {hasLift && (
+                      <div className="space-y-2">
+                        <Label>Aufzugkabine pro Einsatz (netto)</Label>
+                        <Input
+                          inputMode="decimal"
+                          value={liftRate}
+                          onChange={(e) => setLiftRate(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {formatNumber(num(floors))} Etagen × {formatMoney(num(stairRate))} ×{" "}
+                    ({formatNumber(num(floors))} Etagen × {formatMoney(num(stairRate))}
+                    {hasLift ? ` + Aufzug ${formatMoney(num(liftRate))}` : ""}) ×{" "}
                     {formatNumber(visitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
                   </p>
                 </>
