@@ -36,6 +36,7 @@ import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
 import { Route as AuthenticatedProjekteIndexRouteImport } from './routes/_authenticated/projekte.index'
 import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authenticated/projekte.$id'
+import { Route as ApiPublicFotoRetentionRouteImport } from './routes/api/public/foto-retention'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -181,6 +182,11 @@ const AuthenticatedProjekteIdRoute = AuthenticatedProjekteIdRouteImport.update({
   path: '/projekte/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicFotoRetentionRoute = ApiPublicFotoRetentionRouteImport.update({
+  id: '/api/public/foto-retention',
+  path: '/api/public/foto-retention',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
@@ -234,6 +241,7 @@ export interface FileRoutesByTo {
   '/rechtliches': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
   '/projekte': typeof AuthenticatedProjekteIndexRoute
 }
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/_authenticated/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/rechtliches/'
     | '/dokumente/$id'
     | '/projekte/$id'
+    | '/api/public/foto-retention'
     | '/dokumente/'
     | '/projekte/'
   fileRoutesByTo: FileRoutesByTo
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/rechtliches'
     | '/dokumente/$id'
     | '/projekte/$id'
+    | '/api/public/foto-retention'
     | '/dokumente'
     | '/projekte'
   id:
@@ -350,6 +361,7 @@ export interface FileRouteTypes {
     | '/rechtliches/'
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/projekte/$id'
+    | '/api/public/foto-retention'
     | '/_authenticated/dokumente/'
     | '/_authenticated/projekte/'
   fileRoutesById: FileRoutesById
@@ -361,6 +373,7 @@ export interface RootRouteChildren {
   RechtlichesRoute: typeof RechtlichesRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   StbTokenRoute: typeof StbTokenRoute
+  ApiPublicFotoRetentionRoute: typeof ApiPublicFotoRetentionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -554,6 +567,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjekteIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/foto-retention': {
+      id: '/api/public/foto-retention'
+      path: '/api/public/foto-retention'
+      fullPath: '/api/public/foto-retention'
+      preLoaderRoute: typeof ApiPublicFotoRetentionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -625,6 +645,7 @@ const rootRouteChildren: RootRouteChildren = {
   RechtlichesRoute: RechtlichesRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   StbTokenRoute: StbTokenRoute,
+  ApiPublicFotoRetentionRoute: ApiPublicFotoRetentionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
