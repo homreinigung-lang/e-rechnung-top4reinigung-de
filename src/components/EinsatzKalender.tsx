@@ -837,23 +837,60 @@ export function EinsatzKalender({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label>Mitarbeiter</Label>
-              <Select
-                value={form.employeeId}
-                onValueChange={(v) => setForm({ ...form, employeeId: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Mitarbeiter wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Mitarbeiter (Mehrfachauswahl)</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline"
+                    onClick={() => setForm({ ...form, employeeIds: employees.map((e) => e.id) })}
+                  >
+                    Alle
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline"
+                    onClick={() => setForm({ ...form, employeeIds: [] })}
+                  >
+                    Keine
+                  </button>
+                </div>
+              </div>
+              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border p-2">
+                {employees.length === 0 && (
+                  <span className="text-sm text-muted-foreground">Keine Mitarbeiter vorhanden</span>
+                )}
+                {employees.map((e) => {
+                  const active = form.employeeIds.includes(e.id);
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          employeeIds: active
+                            ? form.employeeIds.filter((id) => id !== e.id)
+                            : [...form.employeeIds, e.id],
+                        })
+                      }
+                      className={`rounded-full border px-3 py-1 text-sm transition ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background hover:bg-muted"
+                      }`}
+                    >
                       {e.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {form.employeeIds.length} ausgewählt – der Einsatz wird für alle gleichzeitig
+                angelegt.
+              </p>
             </div>
+
 
             <div className="space-y-2">
               <Label>Art des Eintrags</Label>
