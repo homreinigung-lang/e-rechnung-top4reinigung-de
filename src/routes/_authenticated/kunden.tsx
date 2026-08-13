@@ -47,6 +47,7 @@ type CustomerForm = {
   city: string;
   country: string;
   vat_id: string;
+  is_eu_customer: boolean;
   notes: string;
   status: string;
 };
@@ -72,6 +73,7 @@ const empty: CustomerForm = {
   city: "",
   country: "Deutschland",
   vat_id: "",
+  is_eu_customer: false,
   notes: "",
   status: "active",
 };
@@ -200,6 +202,21 @@ function Kunden() {
               {field("city", "Ort")}
               {field("country", "Land")}
               <div className="space-y-2">
+                <Label htmlFor="is_eu_customer">Kunde im EU-Ausland</Label>
+                <div className="flex h-9 items-center gap-2">
+                  <input
+                    id="is_eu_customer"
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={form.is_eu_customer}
+                    onChange={(e) => setForm({ ...form, is_eu_customer: e.target.checked })}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Mit USt-IdNr. wird automatisch Reverse-Charge (0 % MwSt.) gewählt.
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Label>Status</Label>
                 <Select
                   value={form.status}
@@ -284,6 +301,9 @@ function Kunden() {
                       city: c.city,
                       country: c.country,
                       vat_id: c.vat_id,
+                      is_eu_customer: Boolean(
+                        (c as { is_eu_customer?: boolean }).is_eu_customer,
+                      ),
                       notes: c.notes,
                       status: c.status ?? "active",
                     });
