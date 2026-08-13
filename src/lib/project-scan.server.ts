@@ -3,6 +3,8 @@ export type ScannedRoom = {
   floor: string;
   usage_type: string;
   area_sqm: number;
+  /** Bodenbelag / Oberflächenbeschaffenheit, z. B. "Teppich", "Fliesen", "PVC". */
+  floor_covering: string;
 };
 
 export type ScannedLvItem = {
@@ -24,6 +26,10 @@ export type ScannedProject = {
   customer_name: string;
   expected_room_count: number;
   executive_summary: string;
+  /** Stichpunktartige Eckdaten, z. B. "Erkannte Fläche: ca. 120 m² Büro". */
+  highlights: string[];
+  /** Ausdrücklich genannte Kundenanforderungen. */
+  requirements: string[];
   rooms: ScannedRoom[];
   items: ScannedLvItem[];
 };
@@ -36,6 +42,8 @@ const EMPTY: ScannedProject = {
   customer_name: "",
   expected_room_count: 0,
   executive_summary: "",
+  highlights: [],
+  requirements: [],
   rooms: [],
   items: [],
 };
@@ -51,6 +59,21 @@ function num(value: unknown): number {
       : cleaned.replace(/,/g, "");
   const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
+}
+
+function strList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const entry of value) {
+    const text = String(entry ?? "").replace(/^[-•*\s]+/, "").trim();
+    if (!text) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(text);
+  }
+  return out.slice(0, 12);
 }
 
 function isoDate(value: unknown): string {
@@ -81,6 +104,15 @@ Vorgehen:
 5. floor nur aus Planbeschriftung (z. B. "EG", "1. OG"), sonst "".
 6. expected_room_count = Anzahl der tatsächlich gelesenen Räume.
 7. items bleibt eine leere Liste.
+8. floor_covering = Bodenbelag / Oberfläche des Raums, nur wenn im Dokument oder auf dem Foto klar erkennbar (z. B. "Teppich", "Fliesen", "PVC/Linoleum", "Parkett", "Beton", "Sanitärkeramik"), sonst "".
+
+FOTOS UND SKIZZEN (nur wenn keine Tabelle/kein Raumbuch vorhanden ist):
+- Bei Fotos oder Handskizzen ohne geschriebene Zahlen darfst du die Fläche fachlich schätzen; schreibe die Schätzung dann in area_sqm und ergänze im Raumnamen NICHTS, sondern kennzeichne die Schätzung im Feld usage_type nicht, sondern in highlights mit dem Wort "geschätzt".
+- Erkenne auf Fotos zusätzlich Oberflächen (Bodenbelag, Glasflächen, Sanitärobjekte) und offensichtliche Verschmutzungsgrade.
+
+STICHPUNKTE (Pflicht):
+- highlights: 3–8 kurze deutsche Stichpunkte mit den wichtigsten Eckdaten, z. B. "Erkannte Fläche: ca. 120 m² Büro", "Bodenbelag: überwiegend Teppich", "Etagen: EG und 1. OG", "Sanitärbereiche: 3 WC-Einheiten". Zahlen nur aus gelesenen bzw. – bei Fotos – klar begründbaren Werten.
+- requirements: ausdrücklich genannte Kundenanforderungen (z. B. "Reinigung nach 18:00 Uhr", "Schlüsselübergabe", "Fensterreinigung 2× jährlich"). Nichts erfinden; sonst leere Liste.
 
 STRIKTE ZEILEN-REGELN (wichtigster Teil):
 - Eine Zeile = GENAU EIN Raum. Niemals Aufzählungen wie "Büro, WC, Flur" in ein Feld schreiben; solche Listen in einzelne Zeilen aufteilen.
@@ -100,6 +132,8 @@ Lies die Ausschreibung / das Leistungsverzeichnis und extrahiere:
 - Fristen (deadline als JJJJ-MM-TT) und geforderte Nachweise (evidence, z. B. Referenzen, Unbedenklichkeitsbescheinigung, Versicherungsnachweis)
 - critical = true nur bei ausdrücklich fristgebundenen oder zwingend geforderten Punkten
 - executive_summary: kurze deutsche Zusammenfassung (max. 6 Sätze) ausschließlich auf Basis des Dokuments.
+- highlights: 3–8 kurze Stichpunkte mit den wichtigsten Eckdaten (Flächen in m², Objektart, Reinigungsintervalle, Vertragslaufzeit), nur aus dem Dokument.
+- requirements: ausdrücklich geforderte Kundenanforderungen und Auflagen, wörtlich verkürzt.
 rooms bleibt eine leere Liste.
 ${NO_GUESS}
 Antworte ausschließlich mit reinem JSON.`;
@@ -116,6 +150,8 @@ const SCHEMA = {
     customer_name: { type: "string" },
     expected_room_count: { type: "number" },
     executive_summary: { type: "string" },
+    highlights: { type: "array", items: { type: "string" } },
+    requirements: { type: "array", items: { type: "string" } },
     rooms: {
       type: "array",
       items: {
@@ -126,8 +162,9 @@ const SCHEMA = {
           floor: { type: "string" },
           usage_type: { type: "string" },
           area_sqm: { type: "number" },
+          floor_covering: { type: "string" },
         },
-        required: ["name", "floor", "usage_type", "area_sqm"],
+        required: ["name", "floor", "usage_type", "area_sqm", "floor_covering"],
       },
     },
     items: {
@@ -166,6 +203,8 @@ const SCHEMA = {
     "customer_name",
     "expected_room_count",
     "executive_summary",
+    "highlights",
+    "requirements",
     "rooms",
     "items",
   ],
@@ -231,7 +270,7 @@ export async function analyzeProjectFile(
   const dataUrl = await toDataUrl(fileUrl, mimeType);
   const prompt =
     mode === "floorplan"
-      ? "Erstelle das vollständige Raumbuch zu diesem Grundriss."
+      ? "Erstelle das vollständige Raumbuch zu diesem Grundriss bzw. dieser Aufnahme, inklusive Bodenbelag je Raum, Stichpunkten (highlights) und erkannten Kundenanforderungen (requirements)."
       : "Analysiere diese Ausschreibung und erstelle das strukturierte Leistungsverzeichnis.";
 
   const content =
@@ -284,6 +323,7 @@ export async function analyzeProjectFile(
         floor: String(r["floor"] ?? "").trim(),
         usage_type: String(r["usage_type"] ?? "").trim(),
         area_sqm: num(r["area_sqm"]),
+        floor_covering: String(r["floor_covering"] ?? "").trim(),
       }))
     : [];
 
@@ -313,6 +353,8 @@ export async function analyzeProjectFile(
     customer_name: String(parsed["customer_name"] ?? "").trim(),
     expected_room_count: Math.round(expected),
     executive_summary: String(parsed["executive_summary"] ?? "").trim(),
+    highlights: strList(parsed["highlights"]),
+    requirements: strList(parsed["requirements"]),
     rooms: rooms.filter((r) => r.name || r.area_sqm > 0),
     items: items.filter((i) => i.title || i.section),
   };
