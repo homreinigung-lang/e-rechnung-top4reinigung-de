@@ -45,9 +45,10 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/")({
-  validateSearch: (search: Record<string, unknown>): { tab?: "invoice" | "quote" } => ({
+  validateSearch: (search: Record<string, unknown>): { tab?: "invoice" | "quote" | undefined } => ({
     tab: search["tab"] === "quote" ? "quote" : search["tab"] === "invoice" ? "invoice" : undefined,
   }),
+
   head: () => ({
     meta: [
       { title: "Rechnungen & Angebote verwalten" },
