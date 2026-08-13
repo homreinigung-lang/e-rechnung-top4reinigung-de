@@ -146,7 +146,45 @@ function AuthPage() {
         </Link>
 
         <div className="surface p-6">
+          {mfaRequired ? (
+            <form onSubmit={verifyMfa} className="space-y-4">
+              <div>
+                <h1 className="font-display text-lg font-semibold">Bestätigungscode</h1>
+                <p className="text-sm text-muted-foreground">
+                  Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mfa">Code</Label>
+                <Input
+                  id="mfa"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  dir="ltr"
+                  required
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value)}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                Bestätigen
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMfaRequired(false);
+                  setMfaCode("");
+                  void supabase.auth.signOut();
+                }}
+                className="w-full text-center text-sm text-muted-foreground underline"
+              >
+                Abbrechen
+              </button>
+            </form>
+          ) : (
           <Tabs defaultValue="login">
+
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Anmelden</TabsTrigger>
               <TabsTrigger value="register">Registrieren</TabsTrigger>
