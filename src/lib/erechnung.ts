@@ -101,7 +101,10 @@ type Model = ReturnType<typeof buildModel>;
 function buildModel(input: ERechnungInput) {
   const { doc, items, settings, netTotal, vatAmount, grossTotal, vatRate, number } = input;
   const s = settings ?? {};
-  const reverseCharge = String(doc["tax_mode"] ?? "eu_reverse_charge") !== "domestic";
+  const taxMode = String(doc["tax_mode"] ?? "eu_reverse_charge");
+  const smallBusiness = taxMode === "kleinunternehmer";
+  const reverseCharge = taxMode === "eu_reverse_charge";
+  const zeroVat = reverseCharge || smallBusiness;
   const isStorno = Boolean(doc["is_storno"]);
 
   return {
