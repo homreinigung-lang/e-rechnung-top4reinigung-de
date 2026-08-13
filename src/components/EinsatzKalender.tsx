@@ -360,9 +360,8 @@ export function EinsatzKalender({
 
         hourly_rate: Number(employee.hourly_rate ?? 0),
         project_id: project?.id ?? null,
-        location: absence
-          ? absenceLabel(values.absenceReason)
-          : project?.name || values.location.trim(),
+        location: absence ? absenceLabel(values.absenceReason) : locText || project?.name || "",
+
         note: values.note.trim(),
         entry_type: values.entryType,
         absence_reason: absence ? values.absenceReason : "",
