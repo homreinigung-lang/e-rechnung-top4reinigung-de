@@ -165,6 +165,19 @@ function ProjektDetail() {
     },
   });
 
+  // Ist-Stunden und Kosten aus der Zeiterfassung (nur genehmigte/erfasste Arbeitszeiten)
+  const { data: timeEntries = [] } = useQuery({
+    queryKey: ["project_time_entries", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("hours,hourly_rate,work_date,entry_type,approval_status")
+        .eq("project_id", id);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const planUrl = useFileUrl(project?.source_file_path);
 
   const patchProject = useMutation({
@@ -365,6 +378,29 @@ function ProjektDetail() {
   const rate = Number(project.hourly_rate || 0);
   const perf = Number(project.sqm_per_hour || 0);
   const hours = perf > 0 ? totalSqm / perf : 0;
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const effectiveEntries = timeEntries.filter(
+    (t) =>
+      (t.entry_type ?? "work") === "work" &&
+      (t.approval_status ?? "approved") !== "rejected",
+  );
+  const istHoursTotal = effectiveEntries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
+  const istHoursMonth = effectiveEntries
+    .filter((t) => String(t.work_date).startsWith(monthKey))
+    .reduce((sum, t) => sum + Number(t.hours || 0), 0);
+  const laborCostTotal = effectiveEntries.reduce(
+    (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
+    0,
+  );
+  const laborCostMonth = effectiveEntries
+    .filter((t) => String(t.work_date).startsWith(monthKey))
+    .reduce((sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0), 0);
+  const sollHoursMonth =
+    assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0) * 4.33;
+  const utilization = sollHoursMonth > 0 ? (istHoursMonth / sollHoursMonth) * 100 : 0;
+  const revenueMonth = istHoursMonth * rate;
+  const marginMonth = revenueMonth - laborCostMonth;
+
   const lvTotal = items.reduce((sum, i) => sum + Number(i.quantity || 0) * Number(i.unit_price || 0), 0);
   const openCritical = items.filter((i) => i.critical && !i.done);
 
@@ -704,6 +740,49 @@ function ProjektDetail() {
           Hinweis: Diese Übersicht dient der Vorbereitung. Angebote und Rechnungen werden
           unverändert im bestehenden Belegbereich erstellt.
         </p>
+      </section>
+
+      {/* Projekt-Analytics */}
+      <section className="surface space-y-4 p-5">
+        <div>
+          <h2 className="text-lg font-semibold">Projekt-Analytics</h2>
+          <p className="text-sm text-muted-foreground">
+            Soll/Ist-Vergleich des laufenden Monats aus der Zeiterfassung, Personalkosten und
+            Auslastung.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ["Soll-Stunden / Monat", `${sollHoursMonth.toFixed(1)} Std.`],
+            ["Ist-Stunden / Monat", `${istHoursMonth.toFixed(1)} Std.`],
+            ["Auslastung", `${utilization.toFixed(0)} %`],
+            ["Ist-Stunden gesamt", `${istHoursTotal.toFixed(1)} Std.`],
+            ["Personalkosten / Monat", formatMoney(laborCostMonth)],
+            ["Personalkosten gesamt", formatMoney(laborCostTotal)],
+            ["Umsatz / Monat (kalk.)", formatMoney(revenueMonth)],
+            ["Deckungsbeitrag / Monat", formatMoney(marginMonth)],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border bg-card p-4">
+              <div className="text-xs text-muted-foreground">{label}</div>
+              <div className="mt-1 text-lg font-semibold">{value}</div>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full ${utilization > 110 ? "bg-destructive" : "bg-primary"}`}
+              style={{ width: `${Math.min(utilization, 100)}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {sollHoursMonth === 0
+              ? "Für die Auslastung bitte den zugewiesenen Mitarbeitern Wochenstunden hinterlegen."
+              : utilization > 110
+                ? "Achtung: Der Ist-Aufwand liegt deutlich über der Planung."
+                : "Ist-Aufwand im Verhältnis zur geplanten Monatsleistung."}
+          </p>
+        </div>
       </section>
 
       {/* Team */}
