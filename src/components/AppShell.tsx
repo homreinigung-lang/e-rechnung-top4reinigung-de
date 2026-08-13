@@ -69,6 +69,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: myEmployee } = useMyEmployee();
   const menu = myEmployee ? employeeNav : nav;
 
+  // Echtzeit-Abgleich mit der Datenbank (Kunden, Rechnungen, Angebote)
+  useRealtimeSync();
+
 
   const { data: settings } = useQuery({
     queryKey: ["company_settings"],
