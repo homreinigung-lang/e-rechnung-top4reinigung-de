@@ -21,7 +21,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileSpreadsheet,
+  HeartPulse,
+  Plus,
+  Printer,
+  Trash2,
+} from "lucide-react";
 import { formatDate } from "@/lib/format";
 import {
   ABSENCE_REASONS,
@@ -33,11 +41,26 @@ import {
   type AbsenceReason,
   type EntryType,
 } from "@/lib/absence";
+import {
+  LEGEND,
+  STATUS_CLASSES,
+  STATUS_DOTS,
+  STATUS_LABELS,
+  einsatzStatus,
+  statusClasses,
+  statusLabel,
+} from "@/lib/einsatz-status";
+import { buildXlsx } from "@/lib/xlsx";
+import { saveFile } from "@/lib/download";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
+
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const NO_PROJECT = "__none__";
 const ALL = "__all__";
+
+type TimeEntry = import("@/integrations/supabase/types").Tables<"time_entries">;
+
 
 export type KalenderEmployee = {
   id: string;
@@ -109,6 +132,8 @@ export function EinsatzKalender({
   const [filterEmployee, setFilterEmployee] = useState<string>(ALL);
   const [filterProject, setFilterProject] = useState<string>(ALL);
   const [day, setDay] = useState<string | null>(null);
+  const [detail, setDetail] = useState<TimeEntry | null>(null);
+
   const [form, setForm] = useState<PlanForm>(emptyForm);
 
   const first = monthStart(anchor);
@@ -169,6 +194,78 @@ export function EinsatzKalender({
     () => (filterEmployee === ALL ? employees : employees.filter((e) => e.id === filterEmployee)),
     [employees, filterEmployee],
   );
+
+  /** Kundennamen für die Schnellansicht und den Export. */
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers", "calendar-names"],
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("customers").select("id,name,company");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const customerName = (id: string | null) => {
+    if (!id) return "";
+    const c = customers.find((x) => x.id === id);
+    return c ? c.company || c.name : "";
+  };
+
+  const projectName = (id: string | null) => {
+    if (!id) return "";
+    const p = projects.find((x) => x.id === id);
+    return p?.name || "";
+  };
+
+  /** Excel-Export des sichtbaren Zeitraums (inkl. Filter). */
+  const exportXlsx = async () => {
+    const rows = [...entries]
+      .sort((a, b) => (a.work_date + (a.start_time ?? "")).localeCompare(b.work_date + (b.start_time ?? "")))
+      .map((e) => ({
+        Datum: formatDate(e.work_date),
+        Mitarbeiter: e.employee_name,
+        Status: statusLabel(e),
+        Von: (e.start_time ?? "").slice(0, 5),
+        Bis: (e.end_time ?? "").slice(0, 5),
+        "Pause (Min.)": Number(e.break_minutes ?? 0),
+        Stunden: Number(e.hours ?? 0),
+        "Objekt / Einsatzort": e.location || projectName(e.project_id),
+        Kunde: customerName(e.customer_id),
+        Notiz: e.note || "",
+      }));
+    if (rows.length === 0) {
+      toast.info("Für diesen Zeitraum gibt es keine Einträge zum Exportieren.");
+      return;
+    }
+    const blob = await buildXlsx([{ name: "Einsatzplan", rows }]);
+    await saveFile(blob, `Einsatzplan_${periodLabel.replace(/[^\w]+/g, "_")}.xlsx`);
+  };
+
+  /** Druck-/PDF-Ausgabe des Kalenders (Querformat, ohne Bedienelemente). */
+  const printPlan = () => {
+    const style = document.createElement("style");
+    style.id = "kalender-print-style";
+    style.textContent = `@media print{
+      @page{size:A4 landscape;margin:10mm;}
+      body *{visibility:hidden !important;}
+      #einsatz-kalender-print,#einsatz-kalender-print *{visibility:visible !important;}
+      #einsatz-kalender-print{position:absolute !important;left:0;top:0;width:100%;box-shadow:none !important;border:none !important;padding:0 !important;}
+      #einsatz-kalender-print .kalender-no-print{display:none !important;}
+      #einsatz-kalender-print .overflow-x-auto{overflow:visible !important;}
+      #einsatz-kalender-print [class*="min-w-"]{min-width:0 !important;}
+      *{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+    }`;
+    document.head.appendChild(style);
+    const cleanup = () => {
+      style.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+    setTimeout(cleanup, 3000);
+  };
+
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["time_entries"] });
@@ -285,7 +382,7 @@ export function EinsatzKalender({
   };
 
   return (
-    <section className="surface space-y-4 p-5">
+    <section id="einsatz-kalender-print" className="surface space-y-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Einsatz-Kalender</h2>
@@ -293,8 +390,10 @@ export function EinsatzKalender({
             Monats- oder Wochenansicht, Einsatzort je Zeitfenster sowie Soll-/Ist-Stunden je
             Mitarbeiter.
           </p>
+          <p className="hidden text-sm font-medium print:block">{periodLabel}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="kalender-no-print flex flex-wrap items-center gap-2">
+
           <div className="flex overflow-hidden rounded-md border">
             <Button
               variant={view === "month" ? "default" : "ghost"}
@@ -330,11 +429,18 @@ export function EinsatzKalender({
           >
             Heute
           </Button>
+          <Button variant="outline" size="sm" onClick={exportXlsx}>
+            <FileSpreadsheet className="size-4" /> Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={printPlan}>
+            <Printer className="size-4" /> Drucken / PDF
+          </Button>
           <AbwesenheitZeitraum employees={employees} />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="kalender-no-print flex flex-wrap items-center gap-2">
+
         <Select value={filterEmployee} onValueChange={setFilterEmployee}>
           <SelectTrigger className="w-56">
             <SelectValue placeholder="Alle Mitarbeiter" />
@@ -375,6 +481,17 @@ export function EinsatzKalender({
           </Button>
         )}
       </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        {LEGEND.map((s) => (
+          <span key={s} className="flex items-center gap-1.5">
+            <span className={`size-2.5 rounded-full ${STATUS_DOTS[s]}`} />
+            {STATUS_LABELS[s]}
+          </span>
+        ))}
+      </div>
+
+
 
       {view === "month" && visibleEmployees.length > 0 && (
         <div className="flex flex-wrap gap-2 text-xs">
@@ -417,10 +534,14 @@ export function EinsatzKalender({
                   </div>
                 )}
 
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => openDay(key)}
-                  className={`min-h-[92px] bg-background p-1.5 text-left transition hover:bg-accent/60 ${
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter" || ev.key === " ") openDay(key);
+                  }}
+                  className={`min-h-[92px] cursor-pointer bg-background p-1.5 text-left transition hover:bg-accent/60 ${
                     inMonth ? "" : "opacity-45"
                   } ${key === today ? "ring-1 ring-inset ring-primary" : ""}`}
                 >
@@ -438,18 +559,15 @@ export function EinsatzKalender({
                     {list.slice(0, 3).map((e) => {
                       const reason = absenceReason(e);
                       return (
-                        <div
+                        <button
                           key={e.id}
-                          className={`flex items-center gap-1 truncate rounded border px-1 py-0.5 text-[11px] leading-tight ${
-                            reason
-                              ? absenceClasses(reason)
-                              : "border-transparent bg-primary/10 text-primary"
-                          }`}
-                          title={
-                            reason
-                              ? `${e.employee_name} · ${absenceLabel(reason)}`
-                              : `${e.employee_name} · ${e.location || "ohne Objekt"}`
-                          }
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setDetail(e);
+                          }}
+                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${statusClasses(e)}`}
+                          title={`${e.employee_name} · ${statusLabel(e)}`}
                         >
                           {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
                           <span className="truncate">
@@ -457,7 +575,7 @@ export function EinsatzKalender({
                             {e.employee_name}
                             {!reason && e.location ? ` · ${e.location}` : ""}
                           </span>
-                        </div>
+                        </button>
                       );
                     })}
                     {list.length > 3 && (
@@ -466,7 +584,8 @@ export function EinsatzKalender({
                       </div>
                     )}
                   </div>
-                </button>
+                </div>
+
               </Fragment>
             );
           })}
@@ -518,24 +637,30 @@ export function EinsatzKalender({
                     const key = isoDay(d);
                     const list = (byDay.get(key) ?? []).filter((e) => e.employee_id === emp.id);
                     return (
-                      <button
+                      <div
                         key={`${emp.id}-${key}`}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => openDay(key, emp.id)}
-                        className={`min-h-[76px] space-y-0.5 bg-background p-1 text-left align-top transition hover:bg-accent/60 ${
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter" || ev.key === " ") openDay(key, emp.id);
+                        }}
+                        className={`min-h-[76px] cursor-pointer space-y-0.5 bg-background p-1 text-left align-top transition hover:bg-accent/60 ${
                           key === today ? "ring-1 ring-inset ring-primary" : ""
                         }`}
                       >
                         {list.map((e) => {
                           const reason = absenceReason(e);
                           return (
-                            <div
+                            <button
                               key={e.id}
-                              className={`rounded border px-1 py-0.5 text-[11px] leading-tight ${
-                                reason
-                                  ? absenceClasses(reason)
-                                  : "border-transparent bg-primary/10 text-primary"
-                              }`}
+                              type="button"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                setDetail(e);
+                              }}
+                              title={statusLabel(e)}
+                              className={`w-full rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${statusClasses(e)}`}
                             >
                               {reason ? (
                                 <span className="flex items-center gap-1">
@@ -554,10 +679,11 @@ export function EinsatzKalender({
                                   </div>
                                 </>
                               )}
-                            </div>
+                            </button>
                           );
                         })}
-                      </button>
+                      </div>
+
                     );
                   })}
                 </Fragment>
@@ -771,6 +897,67 @@ export function EinsatzKalender({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Schnellansicht: Details eines einzelnen Einsatzes */}
+      <Dialog open={detail !== null} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Einsatz-Details</DialogTitle>
+          </DialogHeader>
+          {detail && (
+            <div className="space-y-3 text-sm">
+              <span
+                className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[einsatzStatus(detail)]}`}
+              >
+                <span className={`size-2 rounded-full ${STATUS_DOTS[einsatzStatus(detail)]}`} />
+                {statusLabel(detail)}
+              </span>
+              <dl className="grid grid-cols-[9rem_1fr] gap-x-3 gap-y-2">
+                <dt className="text-muted-foreground">Datum</dt>
+                <dd className="font-medium">{formatDate(detail.work_date)}</dd>
+                <dt className="text-muted-foreground">Mitarbeiter</dt>
+                <dd className="font-medium">{detail.employee_name}</dd>
+                <dt className="text-muted-foreground">Zeit</dt>
+                <dd>
+                  {isAbsence(detail)
+                    ? "ganztägig"
+                    : `${(detail.start_time ?? "").slice(0, 5)}–${(detail.end_time ?? "").slice(0, 5)} (Pause ${Number(detail.break_minutes ?? 0)} Min.)`}
+                </dd>
+                <dt className="text-muted-foreground">Arbeitsstunden</dt>
+                <dd className="font-medium">{Number(detail.hours ?? 0).toFixed(2)} Std.</dd>
+                <dt className="text-muted-foreground">Objekt / Einsatzort</dt>
+                <dd>{detail.location || projectName(detail.project_id) || "—"}</dd>
+                <dt className="text-muted-foreground">Kunde</dt>
+                <dd>{customerName(detail.customer_id) || "—"}</dd>
+                {detail.note ? (
+                  <>
+                    <dt className="text-muted-foreground">Notiz</dt>
+                    <dd>{detail.note}</dd>
+                  </>
+                ) : null}
+              </dl>
+            </div>
+          )}
+          <DialogFooter>
+            {detail && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const key = detail.work_date;
+                  setDetail(null);
+                  openDay(key, detail.employee_id ?? undefined);
+                }}
+              >
+                Tag öffnen
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => setDetail(null)}>
+              Schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
+
   );
 }
