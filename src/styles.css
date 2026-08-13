@@ -264,9 +264,33 @@
     text-decoration: none !important;
   }
   a[href]::after,
+  a[href]::before,
   abbr[title]::after {
     content: "" !important;
+    display: none !important;
   }
+
+  /* Externe/Plattform-Links werden im Druck nie ausgegeben. */
+  a[href^="http"]:not(.print-keep-link),
+  a[href^="//"] {
+    display: none !important;
+  }
+
+  /* Zusätzliche Umbruch-Sicherheit für Blöcke und Tabellen. */
+  .print-area table,
+  .print-area tbody tr,
+  .print-area .avoid-break,
+  .print-area section,
+  .print-area dt,
+  .print-area dd,
+  .print-area img {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .print-area * {
+    box-decoration-break: clone;
+  }
+
 }
 
 
