@@ -21,9 +21,28 @@ export type ReviewResult = {
   items: ScannedLvItem[];
   expected_room_count: number;
   executive_summary: string;
+  highlights: string[];
+  requirements: string[];
 };
 
-const EMPTY_ROOM: ScannedRoom = { name: "", floor: "", usage_type: "", area_sqm: 0 };
+const EMPTY_ROOM: ScannedRoom = {
+  name: "",
+  floor: "",
+  usage_type: "",
+  area_sqm: 0,
+  floor_covering: "",
+};
+
+/** Zeilenweise Liste <-> Textfeld. */
+function toLines(values: string[]): string {
+  return values.join("\n");
+}
+function fromLines(text: string): string[] {
+  return text
+    .split("\n")
+    .map((l) => l.replace(/^[-•*\s]+/, "").trim())
+    .filter(Boolean);
+}
 const EMPTY_ITEM: ScannedLvItem = {
   section: "",
   title: "",
@@ -49,12 +68,16 @@ export function ProjectScanReview({ open, mode, result, saving, onCancel, onConf
   const [rooms, setRooms] = useState<ScannedRoom[]>([]);
   const [items, setItems] = useState<ScannedLvItem[]>([]);
   const [summary, setSummary] = useState("");
+  const [highlights, setHighlights] = useState("");
+  const [requirements, setRequirements] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setRooms(result?.rooms ?? []);
     setItems(result?.items ?? []);
     setSummary(result?.executive_summary ?? "");
+    setHighlights(toLines(result?.highlights ?? []));
+    setRequirements(toLines(result?.requirements ?? []));
   }, [open, result]);
 
   const isTender = mode === "tender";
@@ -77,6 +100,29 @@ export function ProjectScanReview({ open, mode, result, saving, onCancel, onConf
             fehlende Zeilen ergänzen und falsche Zeilen löschen.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="scan-highlights">Erkannte Eckdaten (ein Stichpunkt pro Zeile)</Label>
+            <Textarea
+              id="scan-highlights"
+              rows={4}
+              value={highlights}
+              placeholder="Erkannte Fläche: ca. 120 m² Büro"
+              onChange={(e) => setHighlights(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="scan-requirements">Kundenanforderungen (eine pro Zeile)</Label>
+            <Textarea
+              id="scan-requirements"
+              rows={4}
+              value={requirements}
+              placeholder="Reinigung nach 18:00 Uhr"
+              onChange={(e) => setRequirements(e.target.value)}
+            />
+          </div>
+        </div>
 
         {!isTender && (
           <div className="space-y-3">
@@ -108,6 +154,7 @@ export function ProjectScanReview({ open, mode, result, saving, onCancel, onConf
                       <th className="py-2 pr-2">Etage</th>
                       <th className="py-2 pr-2">Nutzung</th>
                       <th className="py-2 pr-2">m²</th>
+                      <th className="py-2 pr-2">Bodenbelag</th>
                       <th className="py-2" />
                     </tr>
                   </thead>
@@ -144,6 +191,13 @@ export function ProjectScanReview({ open, mode, result, saving, onCancel, onConf
                             onChange={(e) =>
                               patchRoom(index, { area_sqm: Number(e.target.value) || 0 })
                             }
+                          />
+                        </td>
+                        <td className="py-2 pr-2">
+                          <Input
+                            value={r.floor_covering}
+                            placeholder="Teppich, Fliesen …"
+                            onChange={(e) => patchRoom(index, { floor_covering: e.target.value })}
                           />
                         </td>
                         <td className="py-2 text-right">
@@ -280,6 +334,8 @@ export function ProjectScanReview({ open, mode, result, saving, onCancel, onConf
                 items: items.filter((i) => i.title.trim() || i.section.trim()),
                 expected_room_count: rooms.length,
                 executive_summary: summary,
+                highlights: fromLines(highlights),
+                requirements: fromLines(requirements),
               })
             }
           >

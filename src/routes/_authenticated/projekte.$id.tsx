@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import {
   AlertTriangle,
   ArrowLeft,
+  Calculator,
   Loader2,
   Plus,
   Sparkles,
@@ -71,6 +72,7 @@ type Room = {
   floor: string;
   usage_type: string;
   area_sqm: number;
+  floor_covering: string;
   frequency: string;
   note: string;
   confirmed: boolean;
@@ -324,6 +326,8 @@ function ProjektDetail() {
         .update({
           expected_room_count: Math.max(review.expected_room_count, review.rooms.length),
           executive_summary: review.executive_summary || project?.executive_summary || "",
+          analysis_highlights: review.highlights,
+          analysis_requirements: review.requirements,
         })
         .eq("id", id);
 
@@ -337,6 +341,7 @@ function ProjektDetail() {
             floor: r.floor,
             usage_type: r.usage_type,
             area_sqm: r.area_sqm,
+            floor_covering: r.floor_covering,
           })),
         );
         if (error) throw error;
@@ -400,6 +405,35 @@ function ProjektDetail() {
   const utilization = sollHoursMonth > 0 ? (istHoursMonth / sollHoursMonth) * 100 : 0;
   const revenueMonth = istHoursMonth * rate;
   const marginMonth = revenueMonth - laborCostMonth;
+
+  // Automatisch abgeleitete Eckdaten aus dem Raumbuch (Ergänzung zur KI-Zusammenfassung)
+  const coveringTotals = new Map<string, number>();
+  const usageTotals = new Map<string, number>();
+  for (const r of rooms) {
+    const cover = (r.floor_covering || "").trim();
+    if (cover) coveringTotals.set(cover, (coveringTotals.get(cover) ?? 0) + Number(r.area_sqm || 0));
+    const usage = (r.usage_type || "").trim();
+    if (usage) usageTotals.set(usage, (usageTotals.get(usage) ?? 0) + Number(r.area_sqm || 0));
+  }
+  const topList = (map: Map<string, number>) =>
+    [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const derivedFacts: string[] = [];
+  if (totalSqm > 0) derivedFacts.push(`Erkannte Fläche: ca. ${formatNumber(totalSqm)} m² (${rooms.length} Räume)`);
+  const topUsage = topList(usageTotals);
+  if (topUsage.length > 0) {
+    derivedFacts.push(
+      `Nutzung: ${topUsage.map(([k, v]) => `${k} ${formatNumber(v)} m²`).join(", ")}`,
+    );
+  }
+  const topCover = topList(coveringTotals);
+  if (topCover.length > 0) {
+    derivedFacts.push(
+      `Bodenbelag: ${topCover.map(([k, v]) => `${k} ${formatNumber(v)} m²`).join(", ")}`,
+    );
+  }
+  const aiHighlights = (project.analysis_highlights ?? []) as string[];
+  const aiRequirements = (project.analysis_requirements ?? []) as string[];
+  const hasAnalysis = aiHighlights.length > 0 || aiRequirements.length > 0 || derivedFacts.length > 0;
 
   const lvTotal = items.reduce((sum, i) => sum + Number(i.quantity || 0) * Number(i.unit_price || 0), 0);
   const openCritical = items.filter((i) => i.critical && !i.done);
@@ -466,6 +500,55 @@ function ProjektDetail() {
         )}
       </section>
 
+      {/* KI-Analyse: Eckdaten & Anforderungen */}
+      {hasAnalysis && (
+        <section className="surface space-y-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">Analyse-Ergebnis</h2>
+            </div>
+            <Button asChild variant="outline">
+              <Link
+                to="/kalkulation"
+                search={{
+                  area: Math.round(totalSqm * 100) / 100,
+                  objekt: project.name || "",
+                  belag: topCover[0]?.[0] ?? "",
+                }}
+              >
+                <Calculator className="size-4" /> In Kalkulation übernehmen
+              </Link>
+            </Button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Erkannte Eckdaten</h3>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                {[...aiHighlights, ...derivedFacts].map((line, i) => (
+                  <li key={`${i}-${line}`}>{line}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Kundenanforderungen</h3>
+              {aiRequirements.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Keine ausdrücklichen Anforderungen erkannt.
+                </p>
+              ) : (
+                <ul className="list-disc space-y-1 pl-5 text-sm">
+                  {aiRequirements.map((line, i) => (
+                    <li key={`${i}-${line}`}>{line}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Executive Summary */}
       {(isTender || project.executive_summary) && (
         <section className="surface space-y-3 p-5">
@@ -520,6 +603,7 @@ function ProjektDetail() {
                     <th className="py-2 pr-3">Etage</th>
                     <th className="py-2 pr-3">Nutzung</th>
                     <th className="py-2 pr-3 text-right">m²</th>
+                    <th className="py-2 pr-3">Bodenbelag</th>
                     <th className="py-2 pr-3">Geprüft</th>
                     <th className="py-2" />
                   </tr>
@@ -539,6 +623,7 @@ function ProjektDetail() {
                       <td className="py-2 pr-3">{r.floor}</td>
                       <td className="py-2 pr-3">{r.usage_type}</td>
                       <td className="py-2 pr-3 text-right">{formatNumber(Number(r.area_sqm))}</td>
+                      <td className="py-2 pr-3">{r.floor_covering}</td>
                       <td className="py-2 pr-3">
                         <Checkbox
                           checked={r.confirmed}
@@ -867,6 +952,15 @@ function ProjektDetail() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="r-covering">Bodenbelag / Oberfläche</Label>
+                <Input
+                  id="r-covering"
+                  value={roomDialog.floor_covering ?? ""}
+                  placeholder="Teppich, Fliesen, PVC …"
+                  onChange={(e) => setRoomDialog({ ...roomDialog, floor_covering: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="r-freq">Turnus</Label>
                 <Input
                   id="r-freq"
@@ -896,6 +990,7 @@ function ProjektDetail() {
                     floor: roomDialog.floor,
                     usage_type: roomDialog.usage_type,
                     area_sqm: roomDialog.area_sqm,
+                    floor_covering: roomDialog.floor_covering ?? "",
                     frequency: roomDialog.frequency,
                     note: roomDialog.note,
                     confirmed: true,

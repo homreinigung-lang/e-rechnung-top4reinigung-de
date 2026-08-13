@@ -725,6 +725,7 @@ export type Database = {
           confirmed: boolean
           created_at: string
           floor: string
+          floor_covering: string
           frequency: string
           id: string
           name: string
@@ -740,6 +741,7 @@ export type Database = {
           confirmed?: boolean
           created_at?: string
           floor?: string
+          floor_covering?: string
           frequency?: string
           id?: string
           name?: string
@@ -755,6 +757,7 @@ export type Database = {
           confirmed?: boolean
           created_at?: string
           floor?: string
+          floor_covering?: string
           frequency?: string
           id?: string
           name?: string
@@ -778,6 +781,8 @@ export type Database = {
       projects: {
         Row: {
           address_line: string
+          analysis_highlights: string[]
+          analysis_requirements: string[]
           city: string
           contact_email: string
           contact_phone: string
@@ -801,6 +806,8 @@ export type Database = {
         }
         Insert: {
           address_line?: string
+          analysis_highlights?: string[]
+          analysis_requirements?: string[]
           city?: string
           contact_email?: string
           contact_phone?: string
@@ -824,6 +831,8 @@ export type Database = {
         }
         Update: {
           address_line?: string
+          analysis_highlights?: string[]
+          analysis_requirements?: string[]
           city?: string
           contact_email?: string
           contact_phone?: string
