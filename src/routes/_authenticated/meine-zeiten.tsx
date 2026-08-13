@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { kwLabel } from "@/lib/kw";
 import {
   absenceClasses,
   absenceLabel,
@@ -361,7 +362,8 @@ function MeineZeiten() {
               <li key={e.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 font-medium">
-                    {formatDate(e.work_date as string)}
+                    {formatDate(e.work_date as string)} ·{" "}
+                    <span className="text-muted-foreground">{kwLabel(e.work_date as string)}</span>
                     {isAbsence(e) && (
                       <span
                         className={`rounded border px-2 py-0.5 text-xs font-medium ${absenceClasses(absenceReason(e))}`}

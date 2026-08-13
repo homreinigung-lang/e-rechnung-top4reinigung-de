@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import { Check, Download, FileText, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { formatMoney, formatDate } from "@/lib/format";
+import { kwLabel } from "@/lib/kw";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { Urlaubsantraege } from "@/components/Urlaubsantraege";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
@@ -938,7 +939,8 @@ function Zeiterfassung() {
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">
                     {(e.employee_name as string) || "Ohne Zuordnung"} ·{" "}
-                    {formatDate(e.work_date as string)}
+                    {formatDate(e.work_date as string)} ·{" "}
+                    <span className="text-muted-foreground">{kwLabel(e.work_date as string)}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {[
@@ -954,6 +956,7 @@ function Zeiterfassung() {
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
                   <ArbeitsnachweisFotos
+                    canDelete
                     entryId={e.id as string}
                     paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
                     invalidateKey="time_entries"
