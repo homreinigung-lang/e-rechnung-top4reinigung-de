@@ -139,7 +139,16 @@ function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
   );
 }
 
+/** Schnellzugriff-Kacheln auf der Startseite. */
+const QUICK_LINKS = [
+  { to: "/dashboard", search: {}, label: "Startseite", hint: "Zahlen & offene Posten", icon: LayoutDashboard },
+  { to: "/kunden", search: {}, label: "Kunden", hint: "Kundenstamm verwalten", icon: Users },
+  { to: "/dokumente", search: { tab: "quote" as const }, label: "Angebote", hint: "Angebote erstellen & prüfen", icon: FileText },
+  { to: "/dokumente", search: { tab: "invoice" as const }, label: "Rechnungen", hint: "Rechnungen & Zahlungen", icon: Receipt },
+] as const;
+
 function AdminDashboard() {
+
   const navigate = useNavigate();
 
   const year = new Date().getFullYear();
