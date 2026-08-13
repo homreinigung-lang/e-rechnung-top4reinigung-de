@@ -12,6 +12,7 @@ type EntryLike = {
   entry_type?: string | null;
   absence_reason?: string | null;
   approval_status?: string | null;
+  completed_at?: string | null;
 };
 
 function todayIso() {
@@ -26,6 +27,7 @@ function nowHm() {
 
 export function einsatzStatus(entry: EntryLike): EinsatzStatus {
   if (isRejected(entry)) return "cancelled";
+  if (entry.completed_at) return "done";
   if (isAbsence(entry)) {
     if (isPending(entry)) return "requested";
     const reason = absenceReason(entry);
