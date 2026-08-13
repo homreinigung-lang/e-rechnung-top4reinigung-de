@@ -908,7 +908,6 @@ export function EinsatzKalender({
                   </datalist>
                 </div>
 
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="k-start">Von (HH:MM)</Label>
                   <GermanTimeInput
