@@ -144,7 +144,7 @@ function Kunden() {
         <Input
           id={key}
           type={type}
-          value={form[key] ?? ""}
+          value={typeof form[key] === "string" ? form[key] : ""}
           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
         />
       </div>
