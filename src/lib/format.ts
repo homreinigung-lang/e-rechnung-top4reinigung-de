@@ -91,3 +91,19 @@ export const REVERSE_CHARGE_NOTE =
 
 export const NO_VAT_NOTE =
   "Es wird keine Umsatzsteuer ausgewiesen (innergemeinschaftliche Leistung, Reverse-Charge-Verfahren).";
+
+export const KLEINUNTERNEHMER_NOTE =
+  "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.";
+
+/** Umsatzsteuersatz je Steuerart. */
+export function vatRateForTaxMode(taxMode: string): number {
+  return taxMode === "domestic" ? 19 : 0;
+}
+
+/** Pflichthinweis auf dem Beleg je Steuerart (leer bei Inlandsumsatz). */
+export function taxNoteForTaxMode(taxMode: string): string {
+  if (taxMode === "kleinunternehmer") return KLEINUNTERNEHMER_NOTE;
+  if (taxMode === "domestic") return "";
+  return REVERSE_CHARGE_NOTE;
+}
+

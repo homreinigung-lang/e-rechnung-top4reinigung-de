@@ -16,12 +16,14 @@ import {
 import { toast } from "sonner";
 import {
   DOC_TYPE_LABEL,
-  REVERSE_CHARGE_NOTE,
   STATUS_LABEL,
   formatDate,
   formatMoney,
   formatNumber,
+  taxNoteForTaxMode,
   today,
+  vatRateForTaxMode,
+
 } from "@/lib/format";
 import { buildEpcPayload } from "@/lib/epc";
 import { GiroCode } from "@/components/GiroCode";
@@ -187,7 +189,8 @@ function DokumentDetail() {
   }, [data]);
 
   const taxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
-  const vatRate = taxMode === "domestic" ? 19 : 0;
+  const vatRate = vatRateForTaxMode(taxMode);
+  const taxNote = taxNoteForTaxMode(taxMode);
 
   const logoSrc = useFileUrl(
     data?.settings && (data.settings as Record<string, unknown>)["logo_url"]
@@ -229,7 +232,7 @@ function DokumentDetail() {
         paid_at: form["status"] === "paid" ? form["paid_at"] || today() : null,
         customer_id: form["customer_id"] || null,
         vat_rate: vatRate,
-        reverse_charge: taxMode !== "domestic",
+        reverse_charge: taxMode === "eu_reverse_charge",
         discount_percent: discountPercent,
         discount_amount: discountAmount,
         discount_reason: discountReason,
@@ -454,6 +457,9 @@ function DokumentDetail() {
   function pickCustomer(customerId: string) {
     const c = data!.customers.find((x) => x.id === customerId);
     if (!c) return;
+    // Reverse-Charge greift nur bei EU-Kunden MIT gültiger USt-IdNr. (§ 13b UStG / Art. 196 MwStSystRL)
+    const euReverseCharge =
+      Boolean((c as { is_eu_customer?: boolean }).is_eu_customer) && Boolean(c.vat_id?.trim());
     setForm((f) => ({
       ...f,
       customer_id: c.id,
@@ -467,8 +473,15 @@ function DokumentDetail() {
       customer_city: c.city,
       customer_country: c.country,
       customer_vat_id: c.vat_id,
+      tax_mode:
+        String(f["tax_mode"] ?? "") === "kleinunternehmer"
+          ? "kleinunternehmer"
+          : euReverseCharge
+            ? "eu_reverse_charge"
+            : "domestic",
     }));
   }
+
 
   function updateItem(index: number, patch: Partial<Item>) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
@@ -854,13 +867,17 @@ function DokumentDetail() {
               <SelectItem value="eu_reverse_charge">
                 EU-Ausland – Reverse-Charge (0 % MwSt.)
               </SelectItem>
+              <SelectItem value="kleinunternehmer">
+                Kleinunternehmer § 19 UStG (0 % MwSt.)
+              </SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
             {taxMode === "domestic"
-              ? "Es werden 19 % Umsatzsteuer ausgewiesen. Der Reverse-Charge-Hinweis wird nicht gedruckt."
-              : "0 % Umsatzsteuer. Der Hinweis zur Steuerschuldnerschaft erscheint automatisch auf dem Dokument."}
+              ? "Es werden 19 % Umsatzsteuer ausgewiesen. Es wird kein Steuerhinweis gedruckt."
+              : `0 % Umsatzsteuer. Folgender Pflichthinweis erscheint automatisch auf dem Dokument: „${taxNote}“`}
           </p>
+
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -1395,8 +1412,8 @@ function DokumentDetail() {
               </div>
             </div>
 
-            {taxMode !== "domestic" && (
-              <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{REVERSE_CHARGE_NOTE}</p>
+            {taxNote && (
+              <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{taxNote}</p>
             )}
 
             {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
