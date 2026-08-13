@@ -187,7 +187,8 @@ function DokumentDetail() {
   }, [data]);
 
   const taxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
-  const vatRate = taxMode === "domestic" ? 19 : 0;
+  const vatRate = vatRateForTaxMode(taxMode);
+  const taxNote = taxNoteForTaxMode(taxMode);
 
   const logoSrc = useFileUrl(
     data?.settings && (data.settings as Record<string, unknown>)["logo_url"]
