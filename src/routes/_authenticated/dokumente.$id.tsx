@@ -16,12 +16,14 @@ import {
 import { toast } from "sonner";
 import {
   DOC_TYPE_LABEL,
-  REVERSE_CHARGE_NOTE,
   STATUS_LABEL,
   formatDate,
   formatMoney,
   formatNumber,
+  taxNoteForTaxMode,
   today,
+  vatRateForTaxMode,
+
 } from "@/lib/format";
 import { buildEpcPayload } from "@/lib/epc";
 import { GiroCode } from "@/components/GiroCode";
