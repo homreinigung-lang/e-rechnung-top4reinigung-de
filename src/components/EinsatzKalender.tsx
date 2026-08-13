@@ -942,13 +942,11 @@ export function EinsatzKalender({
               <>
                 Geplante Dauer:{" "}
                 <span className="font-medium text-foreground">
-                  {hoursFromTimes(
-                    form.start,
-                    form.end,
-                    Number(form.breakMinutes.replace(",", ".")) || 0,
-                  ).toFixed(2)}{" "}
-                  Std.
+                  {timesValid ? `${plannedHours.toFixed(2)} Std.` : "—"}
                 </span>
+                {timesValid && plannedHours <= 0 ? (
+                  <span className="text-destructive"> · Endzeit/Pause prüfen</span>
+                ) : null}
               </>
             )}
           </p>
@@ -956,11 +954,16 @@ export function EinsatzKalender({
           <DialogFooter>
             <Button
               onClick={() => day && createPlan.mutate({ ...form, workDate: day })}
-              disabled={!form.employeeId || createPlan.isPending}
+              disabled={
+                !form.employeeId ||
+                createPlan.isPending ||
+                (!isAbsent && (!timesValid || plannedHours <= 0))
+              }
             >
               <Plus className="size-4" /> {isAbsent ? "Abwesenheit eintragen" : "Einsatz eintragen"}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
