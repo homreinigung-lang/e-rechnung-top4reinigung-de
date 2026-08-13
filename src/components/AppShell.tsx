@@ -46,8 +46,10 @@ const nav = [
   { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
   { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
   { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
+  { to: "/sicherheit", label: "Sicherheit & Backup", icon: ShieldCheck },
   { to: "/profil", label: "Mein Profil", icon: UserCircle },
   { to: "/einstellungen", label: "Einstellungen", icon: Settings },
+
 ] as const;
 
 
