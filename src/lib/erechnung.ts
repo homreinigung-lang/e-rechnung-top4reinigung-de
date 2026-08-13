@@ -160,11 +160,12 @@ function buildModel(input: ERechnungInput) {
 }
 
 const RC_REASON = "Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge, § 13b UStG)";
+const KU_REASON = "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.";
 
 /** XRechnung 3.0 (UBL 2.1 Invoice, EN 16931 konform). */
 export function buildXRechnungXml(input: ERechnungInput): string {
   const m = buildModel(input);
-  const cat = m.reverseCharge ? "AE" : "S";
+  const cat = m.reverseCharge ? "AE" : m.smallBusiness ? "E" : "S";
   const paymentTerms = m.dueDate ? `Zahlbar ohne Abzug bis ${m.dueDate}` : "";
 
   const lines = m.items
@@ -272,7 +273,7 @@ ${m.seller.bic ? `      <cac:FinancialInstitutionBranch><cbc:ID>${esc(m.seller.b
       <cac:TaxCategory>
         <cbc:ID>${cat}</cbc:ID>
         <cbc:Percent>${dec(m.vatRate)}</cbc:Percent>
-${m.reverseCharge ? `        <cbc:TaxExemptionReason>${esc(RC_REASON)}</cbc:TaxExemptionReason>\n` : ""}        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+${m.reverseCharge || m.smallBusiness ? `        <cbc:TaxExemptionReason>${esc(m.smallBusiness ? KU_REASON : RC_REASON)}</cbc:TaxExemptionReason>\n` : ""}        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
       </cac:TaxCategory>
     </cac:TaxSubtotal>
   </cac:TaxTotal>
@@ -290,7 +291,7 @@ ${lines}
 /** ZUGFeRD 2.3 / Factur-X (CII, Profil EN 16931 „COMFORT“). */
 export function buildZugferdXml(input: ERechnungInput): string {
   const m = buildModel(input);
-  const cat = m.reverseCharge ? "AE" : "S";
+  const cat = m.reverseCharge ? "AE" : m.smallBusiness ? "E" : "S";
 
   const lines = m.items
     .map(
@@ -331,7 +332,7 @@ export function buildZugferdXml(input: ERechnungInput): string {
     <ram:TypeCode>${m.typeCode}</ram:TypeCode>
     <ram:IssueDateTime><udt:DateTimeString format="102">${cii(m.issueDate)}</udt:DateTimeString></ram:IssueDateTime>
 ${m.notes.map((n) => `    <ram:IncludedNote><ram:Content>${esc(n.slice(0, 1000))}</ram:Content></ram:IncludedNote>`).join("\n")}
-${m.reverseCharge ? `    <ram:IncludedNote><ram:Content>${esc(RC_REASON)}</ram:Content></ram:IncludedNote>\n` : ""}  </rsm:ExchangedDocument>
+${m.reverseCharge || m.smallBusiness ? `    <ram:IncludedNote><ram:Content>${esc(m.smallBusiness ? KU_REASON : RC_REASON)}</ram:Content></ram:IncludedNote>\n` : ""}  </rsm:ExchangedDocument>
   <rsm:SupplyChainTradeTransaction>
 ${lines}
     <ram:ApplicableHeaderTradeAgreement>
@@ -377,7 +378,7 @@ ${m.seller.bic ? `        <ram:PayeeSpecifiedCreditorFinancialInstitution><ram:B
 }      <ram:ApplicableTradeTax>
         <ram:CalculatedAmount>${dec(m.vatAmount)}</ram:CalculatedAmount>
         <ram:TypeCode>VAT</ram:TypeCode>
-${m.reverseCharge ? `        <ram:ExemptionReason>${esc(RC_REASON)}</ram:ExemptionReason>\n` : ""}        <ram:BasisAmount>${dec(m.netTotal)}</ram:BasisAmount>
+${m.reverseCharge || m.smallBusiness ? `        <ram:ExemptionReason>${esc(m.smallBusiness ? KU_REASON : RC_REASON)}</ram:ExemptionReason>\n` : ""}        <ram:BasisAmount>${dec(m.netTotal)}</ram:BasisAmount>
         <ram:CategoryCode>${cat}</ram:CategoryCode>
         <ram:RateApplicablePercent>${dec(m.vatRate)}</ram:RateApplicablePercent>
       </ram:ApplicableTradeTax>
