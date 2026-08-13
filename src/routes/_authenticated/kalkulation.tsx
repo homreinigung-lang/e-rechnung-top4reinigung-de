@@ -31,7 +31,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+type KalkulationSearch = { area?: number; objekt?: string; belag?: string };
+
 export const Route = createFileRoute("/_authenticated/kalkulation")({
+  validateSearch: (search: Record<string, unknown>): KalkulationSearch => {
+    const area = Number(search["area"]);
+    return {
+      ...(Number.isFinite(area) && area > 0 ? { area } : {}),
+      ...(search["objekt"] ? { objekt: String(search["objekt"]) } : {}),
+      ...(search["belag"] ? { belag: String(search["belag"]) } : {}),
+    };
+  },
   head: () => ({
     meta: [
       { title: "Kalkulation – Reinigungspreise berechnen" },
@@ -65,10 +75,7 @@ const CLEANING_TYPES: { value: string; label: string; area: number; hourly: numb
 
 const EXTRAS: { key: string; label: string; price: number }[] = [
   { key: "fenster", label: "Fensterreinigung innen/außen", price: 60 },
-  { key: "teppich", label: "Teppich-/Polsterreinigung", price: 90 },
-  { key: "desinfektion", label: "Desinfektion", price: 45 },
   { key: "entsorgung", label: "Müllentsorgung", price: 35 },
-  { key: "material", label: "Reinigungsmaterial & Verbrauch", price: 25 },
 ];
 
 function num(value: string): number {
@@ -98,9 +105,12 @@ type Attachment = {
 function KalkulationPage() {
   const navigate = useNavigate();
 
+  const search = Route.useSearch();
   const [type, setType] = useState(CLEANING_TYPES[0]!.value);
   const [mode, setMode] = useState<Mode>("area");
-  const [area, setArea] = useState("100");
+  const [area, setArea] = useState(
+    search.area ? String(search.area).replace(".", ",") : "100",
+  );
   const [pricePerSqm, setPricePerSqm] = useState(String(CLEANING_TYPES[0]!.area));
   const [hours, setHours] = useState("4");
   const [hourlyRate, setHourlyRate] = useState(String(CLEANING_TYPES[0]!.hourly));
@@ -115,7 +125,12 @@ function KalkulationPage() {
   const [discountReason, setDiscountReason] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
   const [finalTouched, setFinalTouched] = useState(false);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(() => {
+    const parts: string[] = [];
+    if (search.objekt) parts.push(`Objekt: ${search.objekt}`);
+    if (search.belag) parts.push(`Bodenbelag: ${search.belag}`);
+    return parts.join(" · ");
+  });
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -390,6 +405,14 @@ function KalkulationPage() {
                 {formatNumber(visitsPerMonth)} Einsätze pro Monat.
               </p>
             )}
+
+            {search.area ? (
+              <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                Vorschlagswerte aus der Projekt-Analyse übernommen: {formatNumber(search.area)} m²
+                {search.belag ? ` · Bodenbelag ${search.belag}` : ""}. Bitte prüfen und bei Bedarf
+                anpassen.
+              </p>
+            ) : null}
 
             <div className="space-y-2">
               <Label>Zusatzoptionen</Label>
