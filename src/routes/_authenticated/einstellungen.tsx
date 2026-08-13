@@ -219,6 +219,65 @@ function Einstellungen() {
     );
   }
 
+  /** Holt alle eigenen Kunden, Belege und Positionen (RLS-geschützt) für das Backup. */
+  async function loadBackupData() {
+    const [customers, documents, items] = await Promise.all([
+      supabase.from("customers").select("*").order("created_at"),
+      supabase.from("documents").select("*").order("issue_date"),
+      supabase.from("document_items").select("*").order("position"),
+    ]);
+    const err = customers.error ?? documents.error ?? items.error;
+    if (err) throw new Error(err.message);
+    return {
+      customers: customers.data ?? [],
+      documents: documents.data ?? [],
+      document_items: items.data ?? [],
+    };
+  }
+
+  async function exportBackupJson() {
+    setBackupBusy(true);
+    try {
+      const data = await loadBackupData();
+      const payload = {
+        app: "HomR Office",
+        exported_at: new Date().toISOString(),
+        counts: {
+          customers: data.customers.length,
+          documents: data.documents.length,
+          document_items: data.document_items.length,
+        },
+        ...data,
+      };
+      await saveFile(
+        new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+        `HomR_Backup_${new Date().toISOString().slice(0, 10)}.json`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Backup fehlgeschlagen");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  async function exportBackupXlsx() {
+    setBackupBusy(true);
+    try {
+      const data = await loadBackupData();
+      const { buildXlsx } = await import("@/lib/xlsx");
+      const blob = await buildXlsx([
+        { name: "Kunden", rows: data.customers as Record<string, unknown>[] },
+        { name: "Belege", rows: data.documents as Record<string, unknown>[] },
+        { name: "Positionen", rows: data.document_items as Record<string, unknown>[] },
+      ]);
+      await saveFile(blob, `HomR_Backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Backup fehlgeschlagen");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
   const KIND_LABEL: Record<string, string> = {
     documents: "Rechnungen",
     expenses: "Ausgaben",
