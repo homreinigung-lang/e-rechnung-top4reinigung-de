@@ -1020,7 +1020,7 @@ export function EinsatzKalender({
             <Button
               onClick={() => day && createPlan.mutate({ ...form, workDate: day })}
               disabled={
-                !form.employeeId ||
+                form.employeeIds.length === 0 ||
                 createPlan.isPending ||
                 (!isAbsent && (!timesValid || plannedHours <= 0))
               }
