@@ -37,8 +37,14 @@ import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const NO_PROJECT = "__none__";
+const ALL = "__all__";
 
-export type KalenderEmployee = { id: string; name: string; hourly_rate: number | null };
+export type KalenderEmployee = {
+  id: string;
+  name: string;
+  hourly_rate: number | null;
+  weekly_hours?: number | null;
+};
 export type KalenderProject = { id: string; name: string | null; city?: string | null };
 
 function isoDay(d: Date) {
