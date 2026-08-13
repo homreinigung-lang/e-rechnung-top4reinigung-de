@@ -114,6 +114,7 @@ function Einstellungen() {
     rows: Record<string, unknown>[];
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [from, setFrom] = useState(`${new Date().getFullYear()}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
@@ -558,6 +559,23 @@ function Einstellungen() {
           </Button>
         </div>
 
+      </div>
+
+      <div className="surface space-y-4 p-6">
+        <h2 className="font-display text-lg font-semibold">Manuelles Backup (alle Daten)</h2>
+        <p className="text-sm text-muted-foreground">
+          Lädt alle Kunden, Rechnungen/Angebote und deren Positionen herunter – als Excel-Datei zum
+          Ansehen oder als JSON-Datei zur vollständigen Sicherung. Die Datei wird lokal auf Ihrem
+          Computer gespeichert.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={exportBackupXlsx} disabled={backupBusy}>
+            <Download className="size-4" /> Backup als Excel (.xlsx)
+          </Button>
+          <Button variant="outline" onClick={exportBackupJson} disabled={backupBusy}>
+            <Download className="size-4" /> Backup als JSON
+          </Button>
+        </div>
       </div>
 
       <AccountantAccessCard />
