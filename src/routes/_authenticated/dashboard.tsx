@@ -19,6 +19,7 @@ import {
   CalendarClock,
   Clock,
   FileText,
+  LayoutDashboard,
   Plus,
   Receipt,
   TrendingDown,
@@ -139,7 +140,16 @@ function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
   );
 }
 
+/** Schnellzugriff-Kacheln auf der Startseite. */
+const QUICK_LINKS = [
+  { to: "/dashboard", search: {}, label: "Startseite", hint: "Zahlen & offene Posten", icon: LayoutDashboard },
+  { to: "/kunden", search: {}, label: "Kunden", hint: "Kundenstamm verwalten", icon: Users },
+  { to: "/dokumente", search: { tab: "quote" as const }, label: "Angebote", hint: "Angebote erstellen & prüfen", icon: FileText },
+  { to: "/dokumente", search: { tab: "invoice" as const }, label: "Rechnungen", hint: "Rechnungen & Zahlungen", icon: Receipt },
+] as const;
+
 function AdminDashboard() {
+
   const navigate = useNavigate();
 
   const year = new Date().getFullYear();
@@ -257,6 +267,28 @@ function AdminDashboard() {
         </DropdownMenu>
 
       </div>
+
+      {/* Schnellzugriff: direkter Einstieg ohne Umweg über das Menü */}
+      <nav aria-label="Schnellzugriff" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {QUICK_LINKS.map((q) => (
+          <Link
+            key={q.label}
+            to={q.to}
+            search={q.search}
+            className="surface group flex items-center gap-3 p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <q.icon className="size-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-semibold">{q.label}</span>
+              <span className="block truncate text-xs text-muted-foreground">{q.hint}</span>
+            </span>
+          </Link>
+        ))}
+      </nav>
+
+
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
