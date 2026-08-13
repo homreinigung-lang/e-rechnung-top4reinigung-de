@@ -329,8 +329,8 @@ export function EinsatzKalender({
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
-      const employee = employees.find((e) => e.id === values.employeeId);
-      if (!employee) throw new Error("Bitte einen Mitarbeiter wählen.");
+      const selected = employees.filter((e) => values.employeeIds.includes(e.id));
+      if (selected.length === 0) throw new Error("Bitte mindestens einen Mitarbeiter wählen.");
       const absence = values.entryType === "absence";
       const rawBreak = Number(String(values.breakMinutes).replace(",", "."));
       const breakMinutes = absence || !Number.isFinite(rawBreak) ? 0 : Math.max(0, rawBreak);
@@ -348,7 +348,7 @@ export function EinsatzKalender({
           projects.find((p) => (p.name || "").trim().toLowerCase() === locText.toLowerCase()) ||
           null;
 
-      const { error } = await supabase.from("time_entries").insert({
+      const rows = selected.map((employee) => ({
         user_id: userId,
         employee_id: employee.id,
         employee_name: employee.name,
@@ -365,11 +365,20 @@ export function EinsatzKalender({
         note: values.note.trim(),
         entry_type: values.entryType,
         absence_reason: absence ? values.absenceReason : "",
-      });
+      }));
+
+      const { error } = await supabase.from("time_entries").insert(rows);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: (_d, values) => {
-      toast.success(values.entryType === "absence" ? "Abwesenheit eingetragen" : "Einsatz geplant");
+    onSuccess: (count, values) => {
+      const n = count ?? 1;
+      toast.success(
+        values.entryType === "absence"
+          ? `Abwesenheit für ${n} Mitarbeiter eingetragen`
+          : `Einsatz für ${n} Mitarbeiter geplant`,
+      );
+
       setDay(null);
       setForm(emptyForm);
 
