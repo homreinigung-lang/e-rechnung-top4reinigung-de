@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { useMyEmployee } from "@/lib/employee";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 import { Button } from "@/components/ui/button";
 import {
