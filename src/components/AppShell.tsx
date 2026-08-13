@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { useMyEmployee } from "@/lib/employee";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +69,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: myEmployee } = useMyEmployee();
   const menu = myEmployee ? employeeNav : nav;
+
+  // Echtzeit-Abgleich mit der Datenbank (Kunden, Rechnungen, Angebote)
+  useRealtimeSync();
 
 
   const { data: settings } = useQuery({
