@@ -26,6 +26,8 @@ import {
   MoreVertical,
   Repeat,
   Settings,
+  ShieldCheck,
+
   TrendingDown,
   UserCircle,
   Users,
