@@ -94,32 +94,47 @@ export function EinsatzKalender({
   projects: KalenderProject[];
 }) {
   const queryClient = useQueryClient();
-  const [month, setMonth] = useState(() => monthStart(new Date()));
+  const [view, setView] = useState<"month" | "week">("month");
+  const [anchor, setAnchor] = useState(() => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  });
+  const [filterEmployee, setFilterEmployee] = useState<string>(ALL);
+  const [filterProject, setFilterProject] = useState<string>(ALL);
   const [day, setDay] = useState<string | null>(null);
   const [form, setForm] = useState<PlanForm>(emptyForm);
 
-  const first = monthStart(month);
+  const first = monthStart(anchor);
+  const weekStart = useMemo(() => {
+    const d = new Date(anchor);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }, [anchor]);
+
   const gridStart = useMemo(() => {
+    if (view === "week") return weekStart;
     const d = new Date(first);
     d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
     d.setHours(12, 0, 0, 0);
     return d;
-  }, [first]);
+  }, [first, weekStart, view]);
 
   const days = useMemo(
     () =>
-      Array.from({ length: 42 }, (_, i) => {
+      Array.from({ length: view === "week" ? 7 : 42 }, (_, i) => {
         const d = new Date(gridStart);
         d.setDate(d.getDate() + i);
         return d;
       }),
-    [gridStart],
+    [gridStart, view],
   );
 
   const rangeFrom = isoDay(days[0]!);
-  const rangeTo = isoDay(days[41]!);
+  const rangeTo = isoDay(days[days.length - 1]!);
 
-  const { data: entries = [] } = useQuery({
+  const { data: allEntries = [] } = useQuery({
     queryKey: ["time_entries", "calendar", rangeFrom, rangeTo],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -132,6 +147,22 @@ export function EinsatzKalender({
       return data;
     },
   });
+
+  /** Anzeige nach Mitarbeiter- und Projektfilter eingeschränkt. */
+  const entries = useMemo(
+    () =>
+      allEntries.filter(
+        (e) =>
+          (filterEmployee === ALL || e.employee_id === filterEmployee) &&
+          (filterProject === ALL || e.project_id === filterProject),
+      ),
+    [allEntries, filterEmployee, filterProject],
+  );
+
+  const visibleEmployees = useMemo(
+    () => (filterEmployee === ALL ? employees : employees.filter((e) => e.id === filterEmployee)),
+    [employees, filterEmployee],
+  );
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["time_entries"] });
