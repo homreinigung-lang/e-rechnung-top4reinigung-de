@@ -1398,8 +1398,8 @@ function DokumentDetail() {
               </div>
             </div>
 
-            {taxMode !== "domestic" && (
-              <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{REVERSE_CHARGE_NOTE}</p>
+            {taxNote && (
+              <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{taxNote}</p>
             )}
 
             {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
