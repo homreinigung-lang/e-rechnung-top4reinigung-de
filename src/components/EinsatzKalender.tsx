@@ -239,7 +239,8 @@ export function EinsatzKalender({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border bg-border text-sm">
+      <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] gap-px overflow-hidden rounded-lg border bg-border text-sm">
+        <div className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground">KW</div>
         {WEEKDAYS.map((w) => (
           <div
             key={w}
@@ -248,11 +249,21 @@ export function EinsatzKalender({
             {w}
           </div>
         ))}
-        {days.map((d) => {
+        {days.map((d, index) => {
           const key = isoDay(d);
           const inMonth = d.getMonth() === first.getMonth();
           const list = byDay.get(key) ?? [];
           return (
+            <Fragment key={key}>
+              {index % 7 === 0 && (
+                <div
+                  className="flex items-center justify-center bg-muted/40 px-1 py-1.5 text-xs font-medium text-muted-foreground"
+                  title={`Kalenderwoche ${isoWeek(d)}`}
+                >
+                  {isoWeek(d)}
+                </div>
+              )}
+
             <button
               key={key}
               type="button"
