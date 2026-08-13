@@ -317,7 +317,9 @@ export function EinsatzKalender({
                 )}
               </div>
             </button>
+            </Fragment>
           );
+
         })}
       </div>
 
