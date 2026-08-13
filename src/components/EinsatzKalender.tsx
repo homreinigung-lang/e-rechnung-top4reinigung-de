@@ -80,16 +80,38 @@ function monthStart(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1, 12, 0, 0, 0);
 }
 
-/** Stunden aus "HH:MM" Start/Ende minus Pause (Minuten). */
-function hoursFromTimes(start: string, end: string, breakMinutes: number) {
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return 0;
-  let mins = eh! * 60 + em! - (sh! * 60 + sm!);
-  if (mins < 0) mins += 24 * 60;
-  mins -= breakMinutes;
-  return Math.max(0, Math.round((mins / 60) * 100) / 100);
+/** "HH:MM" (auch "8:5", "0800") → Minuten seit Mitternacht, sonst null. */
+function parseHm(value: string): number | null {
+  const raw = (value ?? "").trim();
+  if (!raw) return null;
+  let h: number, m: number;
+  const colon = /^(\d{1,2})[:.](\d{1,2})$/.exec(raw);
+  const plain = /^(\d{3,4})$/.exec(raw);
+  if (colon) {
+    h = Number(colon[1]);
+    m = Number(colon[2]);
+  } else if (plain) {
+    const s = plain[1]!.padStart(4, "0");
+    h = Number(s.slice(0, 2));
+    m = Number(s.slice(2));
+  } else return null;
+  if (!Number.isFinite(h) || !Number.isFinite(m) || h > 23 || m > 59) return null;
+  return h * 60 + m;
 }
+
+/** Stunden aus Start/Ende minus Pause (Minuten). Immer eine gültige Zahl (>= 0). */
+function hoursFromTimes(start: string, end: string, breakMinutes: number) {
+  const s = parseHm(start);
+  const e = parseHm(end);
+  if (s === null || e === null) return 0;
+  const pause = Number.isFinite(breakMinutes) ? Math.max(0, breakMinutes) : 0;
+  let mins = e - s;
+  if (mins < 0) mins += 24 * 60;
+  mins -= pause;
+  const hours = Math.round((mins / 60) * 100) / 100;
+  return Number.isFinite(hours) ? Math.max(0, hours) : 0;
+}
+
 
 type PlanForm = {
   employeeId: string;
