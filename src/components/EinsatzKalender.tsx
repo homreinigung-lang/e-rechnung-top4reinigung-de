@@ -341,10 +341,13 @@ export function EinsatzKalender({
       const hours = absence ? 0 : hoursFromTimes(values.start, values.end, breakMinutes);
       if (!absence && !(hours > 0))
         throw new Error("Die geplante Dauer muss größer als 0 Stunden sein.");
-      const project =
-        absence || values.projectId === NO_PROJECT
-          ? null
-          : projects.find((p) => p.id === values.projectId) || null;
+      const locText = values.location.trim();
+      const project = absence
+        ? null
+        : projects.find((p) => p.id === values.projectId && values.projectId !== NO_PROJECT) ||
+          projects.find((p) => (p.name || "").trim().toLowerCase() === locText.toLowerCase()) ||
+          null;
+
       const { error } = await supabase.from("time_entries").insert({
         user_id: userId,
         employee_id: employee.id,
