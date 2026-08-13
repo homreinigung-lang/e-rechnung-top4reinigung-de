@@ -884,35 +884,30 @@ export function EinsatzKalender({
 
             {!isAbsent && (
               <>
-                <div className="space-y-2">
-                  <Label>Objekt / Projekt</Label>
-                  <Select
-                    value={form.projectId}
-                    onValueChange={(v) => setForm({ ...form, projectId: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_PROJECT}>Kein Projekt (Freitext)</SelectItem>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name || "Ohne Namen"}
-                          {p.city ? ` · ${p.city}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="k-loc">Einsatzort (Freitext)</Label>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="k-loc">Objekt / Projekt (Freitext)</Label>
                   <Input
                     id="k-loc"
+                    list="k-projects"
                     value={form.location}
-                    disabled={form.projectId !== NO_PROJECT}
-                    placeholder="z. B. Musterstraße 5, Treppenhaus"
-                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    placeholder="Projekt, Kunde oder Adresse frei eingeben"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const match = projects.find(
+                        (p) => (p.name || "").trim().toLowerCase() === v.trim().toLowerCase(),
+                      );
+                      setForm({ ...form, location: v, projectId: match?.id ?? NO_PROJECT });
+                    }}
                   />
+                  <datalist id="k-projects">
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.name || ""}>
+                        {p.city || ""}
+                      </option>
+                    ))}
+                  </datalist>
+                </div>
+
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="k-start">Von (HH:MM)</Label>
