@@ -409,6 +409,33 @@ export function EinsatzKalender({
 
   const dayEntries = day ? (byDay.get(day) ?? []) : [];
   const isAbsent = form.entryType === "absence";
+  const breakInput = Number(String(form.breakMinutes).replace(",", "."));
+  const plannedHours = hoursFromTimes(
+    form.start,
+    form.end,
+    Number.isFinite(breakInput) ? breakInput : 0,
+  );
+  const timesValid = parseHm(form.start) !== null && parseHm(form.end) !== null;
+
+  const setEntryStatus = useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: { completed_at?: string | null; approval_status?: string };
+    }) => {
+      const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Status aktualisiert");
+      setDetail(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const openDay = (key: string, employeeId?: string) => {
     setForm({
