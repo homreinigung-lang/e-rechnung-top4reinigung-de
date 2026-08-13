@@ -457,6 +457,9 @@ function DokumentDetail() {
   function pickCustomer(customerId: string) {
     const c = data!.customers.find((x) => x.id === customerId);
     if (!c) return;
+    // Reverse-Charge greift nur bei EU-Kunden MIT gültiger USt-IdNr. (§ 13b UStG / Art. 196 MwStSystRL)
+    const euReverseCharge =
+      Boolean((c as { is_eu_customer?: boolean }).is_eu_customer) && Boolean(c.vat_id?.trim());
     setForm((f) => ({
       ...f,
       customer_id: c.id,
@@ -470,8 +473,15 @@ function DokumentDetail() {
       customer_city: c.city,
       customer_country: c.country,
       customer_vat_id: c.vat_id,
+      tax_mode:
+        String(f["tax_mode"] ?? "") === "kleinunternehmer"
+          ? "kleinunternehmer"
+          : euReverseCharge
+            ? "eu_reverse_charge"
+            : "domestic",
     }));
   }
+
 
   function updateItem(index: number, patch: Partial<Item>) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
