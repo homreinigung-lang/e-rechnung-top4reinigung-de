@@ -123,7 +123,7 @@ function hoursFromTimes(start: string, end: string, breakMinutes: number) {
 
 
 type PlanForm = {
-  employeeId: string;
+  employeeIds: string[];
   entryType: EntryType;
   absenceReason: AbsenceReason;
   projectId: string;
