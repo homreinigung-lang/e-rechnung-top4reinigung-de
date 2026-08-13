@@ -1,0 +1,1 @@
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS is_eu_customer boolean NOT NULL DEFAULT false;
