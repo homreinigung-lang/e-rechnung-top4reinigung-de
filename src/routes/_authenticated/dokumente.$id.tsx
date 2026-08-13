@@ -232,7 +232,7 @@ function DokumentDetail() {
         paid_at: form["status"] === "paid" ? form["paid_at"] || today() : null,
         customer_id: form["customer_id"] || null,
         vat_rate: vatRate,
-        reverse_charge: taxMode !== "domestic",
+        reverse_charge: taxMode === "eu_reverse_charge",
         discount_percent: discountPercent,
         discount_amount: discountAmount,
         discount_reason: discountReason,
