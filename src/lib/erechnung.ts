@@ -118,9 +118,10 @@ function buildModel(input: ERechnungInput) {
     orderNumber: String(doc["order_number"] ?? "").trim(),
     notes: [String(doc["intro_text"] ?? ""), String(doc["notes"] ?? "")].filter(Boolean),
     reverseCharge,
-    vatRate: reverseCharge ? 0 : vatRate,
+    smallBusiness,
+    vatRate: zeroVat ? 0 : vatRate,
     netTotal,
-    vatAmount: reverseCharge ? 0 : vatAmount,
+    vatAmount: zeroVat ? 0 : vatAmount,
     grossTotal,
     seller: {
       name: String(s["company_name"] ?? "Hom Reinigung Service"),
