@@ -301,9 +301,15 @@ export function EinsatzKalender({
       const employee = employees.find((e) => e.id === values.employeeId);
       if (!employee) throw new Error("Bitte einen Mitarbeiter wählen.");
       const absence = values.entryType === "absence";
-      const breakMinutes = absence ? 0 : Number(values.breakMinutes.replace(",", ".")) || 0;
+      const rawBreak = Number(String(values.breakMinutes).replace(",", "."));
+      const breakMinutes = absence || !Number.isFinite(rawBreak) ? 0 : Math.max(0, rawBreak);
+      const startMin = parseHm(values.start);
+      const endMin = parseHm(values.end);
+      if (!absence && (startMin === null || endMin === null))
+        throw new Error("Bitte Start- und Endzeit im Format HH:MM eintragen.");
       const hours = absence ? 0 : hoursFromTimes(values.start, values.end, breakMinutes);
-      if (!absence && hours <= 0) throw new Error("Bitte gültige Start- und Endzeit eintragen.");
+      if (!absence && !(hours > 0))
+        throw new Error("Die geplante Dauer muss größer als 0 Stunden sein.");
       const project =
         absence || values.projectId === NO_PROJECT
           ? null
@@ -313,10 +319,11 @@ export function EinsatzKalender({
         employee_id: employee.id,
         employee_name: employee.name,
         work_date: values.workDate,
-        start_time: absence ? null : values.start,
-        end_time: absence ? null : values.end,
+        start_time: absence ? null : minutesToHm(startMin!),
+        end_time: absence ? null : minutesToHm(endMin!),
         break_minutes: breakMinutes,
-        hours,
+        hours: Number(hours.toFixed(2)),
+
         hourly_rate: Number(employee.hourly_rate ?? 0),
         project_id: project?.id ?? null,
         location: absence
