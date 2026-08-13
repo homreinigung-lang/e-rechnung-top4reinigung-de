@@ -376,6 +376,21 @@ export function EinsatzKalender({
         )}
       </div>
 
+      {view === "month" && visibleEmployees.length > 0 && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {visibleEmployees.map((emp) => {
+            const actual = actualByEmployee.get(emp.id) ?? 0;
+            const planned = plannedFor(emp);
+            return (
+              <span key={emp.id} className="rounded border px-2 py-1">
+                <span className="font-medium">{emp.name}</span> · Soll {planned.toFixed(2)} / Ist{" "}
+                {actual.toFixed(2)} Std.
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       {view === "month" ? (
         <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] gap-px overflow-hidden rounded-lg border bg-border text-sm">
           <div className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground">KW</div>
