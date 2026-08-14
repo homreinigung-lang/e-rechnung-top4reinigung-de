@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -113,7 +114,11 @@ type Item = {
   quantity: number;
   unit: string;
   unit_price: number;
+  is_optional?: boolean;
 };
+
+/** Hinweis unter den optionalen Zusatzleistungen (Angebotsstruktur). */
+const OPTIONAL_NOTE = "Zusatzleistungen werden nur bei tatsächlicher Durchführung berechnet.";
 
 /** Standard-Nettostundensatz (29,41 € netto ≈ 35,00 € brutto bei 19 % MwSt.). */
 const DEFAULT_NET_RATE = 29.41;
@@ -206,6 +211,7 @@ function DokumentDetail() {
         ...i,
         quantity: Number(i.quantity),
         unit_price: Number(i.unit_price),
+        is_optional: Boolean((i as unknown as Record<string, unknown>)["is_optional"]),
       })),
     );
   }, [data]);
@@ -222,6 +228,14 @@ function DokumentDetail() {
 
   const itemsTotal = useMemo(
     () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
+    [items],
+  );
+  const hasOptionalItems = useMemo(() => items.some((i) => i.is_optional), [items]);
+  const regularTotal = useMemo(
+    () =>
+      items
+        .filter((i) => !i.is_optional)
+        .reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
   const discountPercent = Math.min(
@@ -286,6 +300,7 @@ function DokumentDetail() {
             quantity: i.quantity,
             unit: i.unit,
             unit_price: i.unit_price,
+            is_optional: Boolean(i.is_optional),
           })),
         );
         if (insError) throw insError;
@@ -350,6 +365,7 @@ function DokumentDetail() {
             quantity: i.quantity,
             unit: i.unit,
             unit_price: i.unit_price,
+            is_optional: Boolean(i.is_optional),
           })),
         );
       }
@@ -694,13 +710,19 @@ function DokumentDetail() {
       customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
       introText: form["intro_text"] ? String(form["intro_text"]) : undefined,
-      items: items.map((i) => ({
+      items: (hasOptionalItems
+        ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
+        : items
+      ).map((i) => ({
         description: i.description,
         quantity: formatNumber(i.quantity),
         unit: i.unit,
         unitPrice: formatMoney(i.unit_price),
         total: formatMoney(i.quantity * i.unit_price),
+        optional: Boolean(i.is_optional),
       })),
+      regularSubtotal: formatMoney(regularTotal),
+      optionalNote: OPTIONAL_NOTE,
       serviceDescription:
         !isInvoice && form["service_description"]
           ? String(form["service_description"])
@@ -1194,6 +1216,7 @@ function DokumentDetail() {
                     quantity: 1,
                     unit: "Std.",
                     unit_price: Number(prev[prev.length - 1]?.unit_price) || DEFAULT_NET_RATE,
+                    is_optional: false,
                   },
                 ])
               }
@@ -1273,6 +1296,13 @@ function DokumentDetail() {
                   <Trash2 className="size-4 text-destructive" />
                 </Button>
               </div>
+              <label className="flex cursor-pointer items-center gap-2 text-xs sm:col-span-12">
+                <Checkbox
+                  checked={Boolean(item.is_optional)}
+                  onCheckedChange={(v) => updateItem(index, { is_optional: v === true })}
+                />
+                <span>Optionale Zusatzleistung (nur bei Durchführung berechnet)</span>
+              </label>
               <p className="text-xs text-muted-foreground sm:col-span-12">
                 Netto {formatMoney(item.quantity * item.unit_price)}
                 {vatRate > 0 && (
@@ -1502,8 +1532,36 @@ function DokumentDetail() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((i, n) => (
-                  <tr key={i.id} className="border-b border-border align-top">
+                {(hasOptionalItems
+                  ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
+                  : items
+                ).map((i, n, arr) => (
+                  <Fragment key={i.id}>
+                    {hasOptionalItems && n === 0 && (
+                      <tr className="bg-muted/70">
+                        <td colSpan={6} className="px-2 py-2 text-sm font-semibold">
+                          Regelmäßige Leistungen
+                        </td>
+                      </tr>
+                    )}
+                    {hasOptionalItems && i.is_optional && !arr[n - 1]?.is_optional && (
+                      <>
+                        <tr className="border-b border-border">
+                          <td colSpan={5} className="px-2 py-2 text-sm font-semibold">
+                            Monatlicher Festpreis (netto)
+                          </td>
+                          <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums whitespace-nowrap">
+                            {formatMoney(regularTotal)}
+                          </td>
+                        </tr>
+                        <tr className="bg-muted/70">
+                          <td colSpan={6} className="px-2 py-2 text-sm font-semibold">
+                            Optionale Zusatzleistungen
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                  <tr className="border-b border-border align-top">
                     <td className="px-2 py-2 tabular-nums">{n + 1}</td>
                     <td className="px-2 py-2 break-words whitespace-pre-line">{i.description}</td>
                     <td className="px-2 py-2 text-right tabular-nums">
@@ -1517,9 +1575,25 @@ function DokumentDetail() {
                       {formatMoney(i.quantity * i.unit_price)}
                     </td>
                   </tr>
+                    {hasOptionalItems &&
+                      !i.is_optional &&
+                      n === arr.length - 1 && (
+                        <tr className="border-b border-border">
+                          <td colSpan={5} className="px-2 py-2 text-sm font-semibold">
+                            Monatlicher Festpreis (netto)
+                          </td>
+                          <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums whitespace-nowrap">
+                            {formatMoney(regularTotal)}
+                          </td>
+                        </tr>
+                      )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
+            {hasOptionalItems && (
+              <p className="mt-2 text-xs text-muted-foreground">{OPTIONAL_NOTE}</p>
+            )}
           </div>
 
           {!isInvoice && form["service_description"] && (

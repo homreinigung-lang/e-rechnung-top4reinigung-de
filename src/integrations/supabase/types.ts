@@ -365,6 +365,7 @@ export type Database = {
           description: string
           document_id: string
           id: string
+          is_optional: boolean
           position: number
           quantity: number
           unit: string
@@ -376,6 +377,7 @@ export type Database = {
           description?: string
           document_id: string
           id?: string
+          is_optional?: boolean
           position?: number
           quantity?: number
           unit?: string
@@ -387,6 +389,7 @@ export type Database = {
           description?: string
           document_id?: string
           id?: string
+          is_optional?: boolean
           position?: number
           quantity?: number
           unit?: string

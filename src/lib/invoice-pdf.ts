@@ -26,6 +26,7 @@ export type PdfItem = {
   unit: string;
   unitPrice: string;
   total: string;
+  optional?: boolean | undefined;
 };
 
 export type PdfDocData = {
@@ -43,6 +44,9 @@ export type PdfDocData = {
   meta: Array<{ label: string; value: string }>;
   introText?: string | undefined;
   items: PdfItem[];
+  /** Zwischensumme der regelmäßigen Leistungen (nur wenn optionale Positionen existieren). */
+  regularSubtotal?: string | undefined;
+  optionalNote?: string | undefined;
   serviceDescription?: string | undefined;
   summary: Array<{ label: string; value: string; strong?: boolean; rule?: boolean }>;
   taxNote?: string | undefined;
@@ -325,9 +329,57 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     ctx.y = top - headH;
   };
 
+  const hasOptional = d.items.some((i) => i.optional);
+
+  /** Voll­breite Band-Zeile (Abschnittstitel oder Zwischensumme). */
+  const drawBandRow = (label: string, value?: string, filled = true) => {
+    const h = 20;
+    if (ctx.y - h < M_Y) {
+      newPage(ctx);
+      drawTableHead();
+    }
+    const top = ctx.y;
+    ctx.page.drawRectangle({
+      x: M_X,
+      y: top - h,
+      width: CONTENT_W,
+      height: h,
+      color: filled ? COLOR_HEAD_BG : COLOR_WHITE,
+      borderColor: COLOR_BORDER,
+      borderWidth: 0.7,
+    });
+    text(ctx, label, { x: M_X + padX, y: top - 14, size: 9, font: bold });
+    if (value) {
+      text(ctx, value, {
+        x: colX[5]! + padX,
+        y: top - 14,
+        width: colWidths[5]! - 2 * padX,
+        align: "right",
+        size: 9,
+        font: bold,
+      });
+    }
+    ctx.y = top - h;
+  };
+
   if (d.items.length > 0) drawTableHead();
 
+  const section = { current: "none" as "none" | "regular" | "optional" };
+
   d.items.forEach((item, index) => {
+    if (hasOptional) {
+      const wanted = item.optional ? "optional" : "regular";
+      if (wanted !== section.current) {
+        if (section.current === "regular" && d.regularSubtotal) {
+          drawBandRow("Monatlicher Festpreis (netto)", d.regularSubtotal, false);
+        }
+        drawBandRow(
+          wanted === "regular" ? "Regelmäßige Leistungen" : "Optionale Zusatzleistungen",
+        );
+        section.current = wanted;
+      }
+    }
+
     const cells = [
       [String(index + 1)],
       wrap(regular, rowSize, item.description, colWidths[1]! - 2 * padX),
@@ -369,7 +421,23 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     ctx.y = top - rowH;
   });
 
-  ctx.y -= 18;
+  if (hasOptional && section.current === "regular" && d.regularSubtotal) {
+    drawBandRow("Monatlicher Festpreis (netto)", d.regularSubtotal, false);
+  }
+
+  ctx.y -= 10;
+
+  if (hasOptional && d.optionalNote) {
+    const lines = wrap(regular, 8.5, d.optionalNote, CONTENT_W);
+    ensure(ctx, lines.length * 11 + 8);
+    lines.forEach((line, li) => {
+      text(ctx, line, { x: M_X, y: ctx.y - li * 11, size: 8.5, color: COLOR_MUTED });
+    });
+    ctx.y -= lines.length * 11 + 8;
+  }
+
+  ctx.y -= 8;
+
 
   // ---- Leistungsbeschreibung ---------------------------------------------
   if (d.serviceDescription) {

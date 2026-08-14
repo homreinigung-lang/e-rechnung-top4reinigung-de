@@ -196,6 +196,7 @@ function DokumenteListe() {
             quantity: i.quantity,
             unit: i.unit,
             unit_price: i.unit_price,
+            is_optional: i.is_optional,
           })),
         );
       }
