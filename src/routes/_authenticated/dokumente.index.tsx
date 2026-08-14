@@ -95,6 +95,11 @@ function DokumenteListe() {
     },
   });
 
+  type DocTarget = { id: string; label: string } | null;
+  const [payTarget, setPayTarget] = useState<DocTarget>(null);
+  const [payDate, setPayDate] = useState<string>(formatDate(today()));
+  const [deleteTarget, setDeleteTarget] = useState<DocTarget>(null);
+
   const create = useMutation({
     mutationFn: async (type: "invoice" | "quote") => {
       const { data: auth } = await supabase.auth.getUser();
