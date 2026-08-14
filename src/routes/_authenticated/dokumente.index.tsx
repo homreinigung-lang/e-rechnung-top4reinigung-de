@@ -721,8 +721,9 @@ function AngebotsTabelle({
                 <td className="px-4 py-3">
                   <StatusBadge status={isAuftrag && d.status === "accepted" ? "accepted" : d.status} />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex flex-wrap items-center justify-end gap-2">
+
                     {(d.status === "sent" || d.status === "draft") && (
                       <>
                         <Button
