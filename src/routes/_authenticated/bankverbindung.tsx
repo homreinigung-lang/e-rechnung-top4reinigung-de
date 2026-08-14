@@ -33,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import {
   confirmBankMatch,
   finishBankLink,
@@ -511,12 +511,12 @@ function BankverbindungPage() {
                               : "py-2 pr-3 text-right whitespace-nowrap"
                           }
                         >
-                          {formatCurrency(Number(t.amount))}
+                          {formatMoney(Number(t.amount))}
                         </td>
                         <td className="py-2 pr-3">
                           {doc ? (
                             <Badge variant={doc.status === "paid" ? "default" : "secondary"}>
-                              {doc.number} · {formatCurrency(Number(doc.total))}
+                              {doc.number} · {formatMoney(Number(doc.total))}
                             </Badge>
                           ) : (
                             <span className="text-muted-foreground">Offen</span>
