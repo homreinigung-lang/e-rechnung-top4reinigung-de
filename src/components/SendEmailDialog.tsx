@@ -98,7 +98,15 @@ export function SendEmailDialog({
           pdfBase64: toBase64(bytes),
         },
       });
-      await onSent?.();
+      try {
+        await onSent?.();
+      } catch (e) {
+        toast.error(
+          e instanceof Error
+            ? `E-Mail versendet, Status konnte aber nicht aktualisiert werden: ${e.message}`
+            : "E-Mail versendet, Status konnte aber nicht aktualisiert werden.",
+        );
+      }
       toast.success(`Die E-Mail wurde erfolgreich an ${to.trim()} gesendet.`, {
         description: `Kopie an ${COMPANY_COPY} · PDF${
           attachment && merge ? " inkl. Anlage" : ""
@@ -106,6 +114,7 @@ export function SendEmailDialog({
         duration: 8000,
       });
       onOpenChange(false);
+
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "E-Mail konnte nicht gesendet werden");
     } finally {
