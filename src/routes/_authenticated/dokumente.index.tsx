@@ -665,6 +665,8 @@ function AngebotsTabelle({
   remove,
   isLocked,
 }: AngebotsTabelleProps) {
+  const navigate = useNavigate();
+
   if (list.length === 0) {
     return (
       <p className="px-5 py-12 text-center text-sm text-muted-foreground">
@@ -691,8 +693,14 @@ function AngebotsTabelle({
             const deletable = !isLocked(r);
             const isAuftrag = d.status === "accepted" || Boolean(d.converted_document_id);
             return (
-              <tr key={d.id} className="align-middle hover:bg-muted/40">
+              <tr
+                key={d.id}
+                className="cursor-pointer align-middle hover:bg-muted/40"
+                title="Angebot öffnen und bearbeiten"
+                onClick={() => navigate({ to: "/dokumente/$id", params: { id: d.id } })}
+              >
                 <td className="px-4 py-3">
+
                   <Link
                     to="/dokumente/$id"
                     params={{ id: d.id }}
@@ -713,8 +721,9 @@ function AngebotsTabelle({
                 <td className="px-4 py-3">
                   <StatusBadge status={isAuftrag && d.status === "accepted" ? "accepted" : d.status} />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex flex-wrap items-center justify-end gap-2">
+
                     {(d.status === "sent" || d.status === "draft") && (
                       <>
                         <Button
