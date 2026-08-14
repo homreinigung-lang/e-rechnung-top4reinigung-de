@@ -942,15 +942,17 @@ function DokumentDetail() {
           {locked && isInvoice && !isStorno && !cancelledBy && (
             <Button
               variant="destructive"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Stornorechnung erstellen? Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
-                  )
-                ) {
-                  storno.mutate();
-                }
-              }}
+              onClick={() =>
+                setConfirmDialog({
+                  title: "Stornorechnung erstellen",
+                  description:
+                    "Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
+                  confirmLabel: "Storno erstellen",
+                  destructive: true,
+                  action: () => storno.mutate(),
+                })
+              }
+
               disabled={storno.isPending}
             >
               <Ban className="size-4" /> Stornorechnung
