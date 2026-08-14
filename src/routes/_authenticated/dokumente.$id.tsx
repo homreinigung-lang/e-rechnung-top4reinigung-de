@@ -13,6 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   DOC_TYPE_LABEL,
@@ -44,6 +52,7 @@ import {
   setQuoteDecision,
   type ReminderKind,
 } from "@/lib/workflow";
+import { parseGermanDate } from "@/lib/format";
 
 import { downloadBytes } from "@/lib/pdf";
 import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
@@ -148,6 +157,17 @@ function DokumentDetail() {
   const [form, setForm] = useState<Record<string, string | boolean | null>>({});
   const [items, setItems] = useState<Item[]>([]);
   const [mailOpen, setMailOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    action: () => void;
+  } | null>(null);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payDate, setPayDate] = useState<string>("");
+
+
 
   useEffect(() => {
     if (!data) return;
@@ -816,12 +836,8 @@ function DokumentDetail() {
             <Button
               variant="outline"
               onClick={() => {
-                const date = window.prompt(
-                  "Zahlungsdatum (JJJJ-MM-TT) bestätigen:",
-                  String(form["paid_at"] ?? today()),
-                );
-                if (!date) return;
-                markPaid.mutate(date);
+                setPayDate(formatDate(String(form["paid_at"] ?? today())));
+                setPayOpen(true);
               }}
               disabled={markPaid.isPending}
             >
@@ -835,15 +851,19 @@ function DokumentDetail() {
               </span>
               <Button
                 variant="outline"
-                onClick={() => {
-                  if (!confirm("Zahlung zurücknehmen? Die Rechnung gilt danach wieder als offen."))
-                    return;
-                  unmarkPaid.mutate();
-                }}
+                onClick={() =>
+                  setConfirmDialog({
+                    title: "Zahlung zurücknehmen",
+                    description: "Die Rechnung gilt danach wieder als offen.",
+                    confirmLabel: "Zurücknehmen",
+                    action: () => unmarkPaid.mutate(),
+                  })
+                }
                 disabled={unmarkPaid.isPending}
               >
                 <BadgeEuro className="size-4" /> Zahlung zurücknehmen
               </Button>
+
             </>
           )}
 
@@ -856,30 +876,31 @@ function DokumentDetail() {
               <>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        "Freundliche Zahlungserinnerung jetzt erfassen und versenden?\n\n[Jetzt senden] bestätigen.",
-                      )
-                    ) {
-                      reminder.mutate("erinnerung");
-                    }
-                  }}
+                  onClick={() =>
+                    setConfirmDialog({
+                      title: "Zahlungserinnerung senden",
+                      description:
+                        "Freundliche Zahlungserinnerung jetzt erfassen und versenden?",
+                      confirmLabel: "Jetzt senden",
+                      action: () => reminder.mutate("erinnerung"),
+                    })
+                  }
                   disabled={reminder.isPending}
                 >
                   <BellRing className="size-4" /> Zahlungserinnerung
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Offizielle ${mahnLabel(Math.max(2, reminderLevel + 1))} jetzt senden? Dieser Schritt wird GoBD-konform protokolliert.\n\n[Jetzt senden] bestätigen.`,
-                      )
-                    ) {
-                      reminder.mutate("mahnung");
-                    }
-                  }}
+                  onClick={() =>
+                    setConfirmDialog({
+                      title: `${mahnLabel(Math.max(2, reminderLevel + 1))} senden`,
+                      description:
+                        "Dieser Schritt wird GoBD-konform protokolliert. Jetzt offiziell mahnen?",
+                      confirmLabel: "Jetzt senden",
+                      action: () => reminder.mutate("mahnung"),
+                    })
+                  }
+
                   disabled={reminder.isPending || !canMahnen}
                   title={
                     canMahnen
@@ -922,15 +943,17 @@ function DokumentDetail() {
           {locked && isInvoice && !isStorno && !cancelledBy && (
             <Button
               variant="destructive"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Stornorechnung erstellen? Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
-                  )
-                ) {
-                  storno.mutate();
-                }
-              }}
+              onClick={() =>
+                setConfirmDialog({
+                  title: "Stornorechnung erstellen",
+                  description:
+                    "Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
+                  confirmLabel: "Storno erstellen",
+                  destructive: true,
+                  action: () => storno.mutate(),
+                })
+              }
+
               disabled={storno.isPending}
             >
               <Ban className="size-4" /> Stornorechnung
@@ -1643,6 +1666,68 @@ function DokumentDetail() {
           queryClient.invalidateQueries({ queryKey: ["documents"] });
         }}
       />
+
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Als bezahlt markieren</DialogTitle>
+            <DialogDescription>Zahlungsdatum im Format TT.MM.JJJJ erfassen.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="detail-pay-date">Zahlungsdatum</Label>
+            <Input
+              id="detail-pay-date"
+              value={payDate}
+              onChange={(e) => setPayDate(e.target.value)}
+              placeholder="TT.MM.JJJJ"
+              inputMode="numeric"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => {
+                const iso = parseGermanDate(payDate);
+                if (!iso) {
+                  toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+                  return;
+                }
+                markPaid.mutate(iso);
+                setPayOpen(false);
+              }}
+              disabled={markPaid.isPending}
+            >
+              Zahlung buchen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDialog !== null} onOpenChange={(o) => !o && setConfirmDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{confirmDialog?.title}</DialogTitle>
+            <DialogDescription>{confirmDialog?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant={confirmDialog?.destructive ? "destructive" : "default"}
+              onClick={() => {
+                confirmDialog?.action();
+                setConfirmDialog(null);
+              }}
+            >
+              {confirmDialog?.confirmLabel ?? "Bestätigen"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

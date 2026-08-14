@@ -3,6 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
@@ -84,6 +94,11 @@ function DokumenteListe() {
       return data;
     },
   });
+
+  type DocTarget = { id: string; label: string } | null;
+  const [payTarget, setPayTarget] = useState<DocTarget>(null);
+  const [payDate, setPayDate] = useState<string>(formatDate(today()));
+  const [deleteTarget, setDeleteTarget] = useState<DocTarget>(null);
 
   const create = useMutation({
     mutationFn: async (type: "invoice" | "quote") => {
@@ -427,25 +442,14 @@ function DokumenteListe() {
                       size="icon"
                       title="Als bezahlt markieren (Zahlungsdatum erfassen)"
                       onClick={() => {
-                        const input = prompt(
-                          "Zahlungsdatum (TT.MM.JJJJ) eingeben:",
-                          formatDate(today()),
-                        );
-                        if (!input) return;
-                        const iso = parseGermanDate(input);
-                        if (!iso) {
-                          toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
-                          return;
-                        }
-                        markPaid.mutate({ docId: d.id, date: iso });
+                        setPayTarget({ id: d.id, label: `${DOC_TYPE_LABEL[d.type]} ${d.number}` });
+                        setPayDate(formatDate(today()));
                       }}
                       disabled={markPaid.isPending}
                     >
                       <BadgeEuro className="size-4 text-primary" />
                     </Button>
                   )}
-
-
 
                   <Button
                     variant="ghost"
@@ -468,9 +472,10 @@ function DokumenteListe() {
                         toast.error(deleteBlockedMessage(r), { duration: 9000 });
                         return;
                       }
-                      if (confirm(`${DOC_TYPE_LABEL[d.type]} ${d.number} wirklich löschen?`)) {
-                        remove.mutate(d.id);
-                      }
+                      setDeleteTarget({
+                        id: d.id,
+                        label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
+                      });
                     }}
                   >
                     <Trash2
@@ -479,12 +484,82 @@ function DokumenteListe() {
                       }
                     />
                   </Button>
+
                 </li>
               );
             })}
           </ul>
         )}
       </div>
+
+      <Dialog open={payTarget !== null} onOpenChange={(o) => !o && setPayTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Als bezahlt markieren</DialogTitle>
+            <DialogDescription>
+              {payTarget?.label} – Zahlungsdatum im Format TT.MM.JJJJ erfassen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="pay-date">Zahlungsdatum</Label>
+            <Input
+              id="pay-date"
+              value={payDate}
+              onChange={(e) => setPayDate(e.target.value)}
+              placeholder="TT.MM.JJJJ"
+              inputMode="numeric"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayTarget(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => {
+                const iso = parseGermanDate(payDate);
+                if (!iso) {
+                  toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+                  return;
+                }
+                if (!payTarget) return;
+                markPaid.mutate({ docId: payTarget.id, date: iso });
+                setPayTarget(null);
+              }}
+              disabled={markPaid.isPending}
+            >
+              Zahlung buchen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Entwurf löschen</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.label} wirklich unwiderruflich löschen?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!deleteTarget) return;
+                remove.mutate(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+              disabled={remove.isPending}
+            >
+              Endgültig löschen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
