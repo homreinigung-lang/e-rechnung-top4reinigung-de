@@ -229,6 +229,15 @@ function AdminDashboard() {
     { label: "Kunden", value: String(data?.customerCount ?? 0), icon: Users },
   ];
 
+  const acceptedQuotes = quotes.filter((d) => d.status === "accepted").length;
+  const declinedQuotes = quotes.filter((d) => d.status === "declined").length;
+  const kpis = [
+    { label: "Rechnungen", value: String(invoices.length), icon: Receipt, accent: "text-primary" },
+    { label: "Angebote", value: String(quotes.length), icon: FileText, accent: "text-primary" },
+    { label: "Angenommen", value: String(acceptedQuotes), icon: CheckCircle2, accent: "text-primary" },
+    { label: "Abgelehnt", value: String(declinedQuotes), icon: XCircle, accent: "text-destructive" },
+  ];
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
