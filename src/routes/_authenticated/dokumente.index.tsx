@@ -476,6 +476,75 @@ function DokumenteListe() {
           </ul>
         )}
       </div>
+
+      <Dialog open={payTarget !== null} onOpenChange={(o) => !o && setPayTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Als bezahlt markieren</DialogTitle>
+            <DialogDescription>
+              {payTarget?.label} – Zahlungsdatum im Format TT.MM.JJJJ erfassen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="pay-date">Zahlungsdatum</Label>
+            <Input
+              id="pay-date"
+              value={payDate}
+              onChange={(e) => setPayDate(e.target.value)}
+              placeholder="TT.MM.JJJJ"
+              inputMode="numeric"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayTarget(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => {
+                const iso = parseGermanDate(payDate);
+                if (!iso) {
+                  toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+                  return;
+                }
+                if (!payTarget) return;
+                markPaid.mutate({ docId: payTarget.id, date: iso });
+                setPayTarget(null);
+              }}
+              disabled={markPaid.isPending}
+            >
+              Zahlung buchen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Entwurf löschen</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.label} wirklich unwiderruflich löschen?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!deleteTarget) return;
+                remove.mutate(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+              disabled={remove.isPending}
+            >
+              Endgültig löschen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
