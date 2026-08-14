@@ -1665,6 +1665,68 @@ function DokumentDetail() {
           queryClient.invalidateQueries({ queryKey: ["documents"] });
         }}
       />
+
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Als bezahlt markieren</DialogTitle>
+            <DialogDescription>Zahlungsdatum im Format TT.MM.JJJJ erfassen.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="detail-pay-date">Zahlungsdatum</Label>
+            <Input
+              id="detail-pay-date"
+              value={payDate}
+              onChange={(e) => setPayDate(e.target.value)}
+              placeholder="TT.MM.JJJJ"
+              inputMode="numeric"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => {
+                const iso = parseGermanDate(payDate);
+                if (!iso) {
+                  toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+                  return;
+                }
+                markPaid.mutate(iso);
+                setPayOpen(false);
+              }}
+              disabled={markPaid.isPending}
+            >
+              Zahlung buchen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDialog !== null} onOpenChange={(o) => !o && setConfirmDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{confirmDialog?.title}</DialogTitle>
+            <DialogDescription>{confirmDialog?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant={confirmDialog?.destructive ? "destructive" : "default"}
+              onClick={() => {
+                confirmDialog?.action();
+                setConfirmDialog(null);
+              }}
+            >
+              {confirmDialog?.confirmLabel ?? "Bestätigen"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
