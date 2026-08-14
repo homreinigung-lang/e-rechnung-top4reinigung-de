@@ -99,6 +99,9 @@ function DokumenteListe() {
   const [payTarget, setPayTarget] = useState<DocTarget>(null);
   const [payDate, setPayDate] = useState<string>(formatDate(today()));
   const [deleteTarget, setDeleteTarget] = useState<DocTarget>(null);
+  const [declineTarget, setDeclineTarget] = useState<DocTarget>(null);
+  const [declineReason, setDeclineReason] = useState("");
+
 
   const create = useMutation({
     mutationFn: async (type: "invoice" | "quote") => {
