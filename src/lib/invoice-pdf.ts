@@ -26,6 +26,7 @@ export type PdfItem = {
   unit: string;
   unitPrice: string;
   total: string;
+  optional?: boolean | undefined;
 };
 
 export type PdfDocData = {
