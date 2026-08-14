@@ -113,7 +113,11 @@ type Item = {
   quantity: number;
   unit: string;
   unit_price: number;
+  is_optional?: boolean;
 };
+
+/** Hinweis unter den optionalen Zusatzleistungen (Angebotsstruktur). */
+const OPTIONAL_NOTE = "Zusatzleistungen werden nur bei tatsächlicher Durchführung berechnet.";
 
 /** Standard-Nettostundensatz (29,41 € netto ≈ 35,00 € brutto bei 19 % MwSt.). */
 const DEFAULT_NET_RATE = 29.41;
@@ -206,6 +210,7 @@ function DokumentDetail() {
         ...i,
         quantity: Number(i.quantity),
         unit_price: Number(i.unit_price),
+        is_optional: Boolean((i as unknown as Record<string, unknown>)["is_optional"]),
       })),
     );
   }, [data]);
@@ -286,6 +291,7 @@ function DokumentDetail() {
             quantity: i.quantity,
             unit: i.unit,
             unit_price: i.unit_price,
+            is_optional: Boolean(i.is_optional),
           })),
         );
         if (insError) throw insError;
@@ -350,6 +356,7 @@ function DokumentDetail() {
             quantity: i.quantity,
             unit: i.unit,
             unit_price: i.unit_price,
+            is_optional: Boolean(i.is_optional),
           })),
         );
       }
@@ -700,7 +707,10 @@ function DokumentDetail() {
         unit: i.unit,
         unitPrice: formatMoney(i.unit_price),
         total: formatMoney(i.quantity * i.unit_price),
+        optional: Boolean(i.is_optional),
       })),
+      regularSubtotal: formatMoney(regularTotal),
+      optionalNote: OPTIONAL_NOTE,
       serviceDescription:
         !isInvoice && form["service_description"]
           ? String(form["service_description"])
@@ -1194,6 +1204,7 @@ function DokumentDetail() {
                     quantity: 1,
                     unit: "Std.",
                     unit_price: Number(prev[prev.length - 1]?.unit_price) || DEFAULT_NET_RATE,
+                    is_optional: false,
                   },
                 ])
               }
