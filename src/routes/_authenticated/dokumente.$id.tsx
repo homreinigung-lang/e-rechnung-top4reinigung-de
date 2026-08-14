@@ -44,7 +44,8 @@ import {
   type ReminderKind,
 } from "@/lib/workflow";
 
-import { elementToPdfBytes, downloadBytes } from "@/lib/pdf";
+import { downloadBytes } from "@/lib/pdf";
+import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
 import {
   buildXRechnungXml,
   buildZugferdXml,
