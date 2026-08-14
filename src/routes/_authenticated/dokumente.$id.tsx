@@ -39,6 +39,7 @@ import {
   mahnLabel,
   mahnungAllowed,
   markInvoicePaid,
+  unmarkInvoicePaid,
   sendReminder,
   setQuoteDecision,
   type ReminderKind,
@@ -377,6 +378,19 @@ function DokumentDetail() {
     onSuccess: (paid) => {
       setForm((f) => ({ ...f, status: "paid", paid_at: paid }));
       toast.success(`Als bezahlt markiert (${formatDate(paid)})`);
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
+  // Zahlungsstatus ist bewusst von der GoBD-Sperre ausgenommen:
+  // Der Zahlungseingang ändert keinen steuerlichen Rechnungsinhalt.
+  const unmarkPaid = useMutation({
+    mutationFn: () => unmarkInvoicePaid(id),
+    onSuccess: () => {
+      setForm((f) => ({ ...f, status: "sent", paid_at: null }));
+      toast.success("Zahlung zurückgenommen – Rechnung gilt wieder als offen");
       queryClient.invalidateQueries({ queryKey: ["document", id] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
@@ -815,9 +829,22 @@ function DokumentDetail() {
             </Button>
           )}
           {isInvoice && doc.status === "paid" && (
-            <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-              Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
-            </span>
+            <>
+              <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+                Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
+              </span>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!confirm("Zahlung zurücknehmen? Die Rechnung gilt danach wieder als offen."))
+                    return;
+                  unmarkPaid.mutate();
+                }}
+                disabled={unmarkPaid.isPending}
+              >
+                <BadgeEuro className="size-4" /> Zahlung zurücknehmen
+              </Button>
+            </>
           )}
 
 
