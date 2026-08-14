@@ -360,43 +360,65 @@ function DokumenteListe() {
                     </div>
                     <div className="text-right">
                       <div className="font-medium">{formatMoney(Number(d.total))}</div>
-                      <div className="text-xs text-muted-foreground">{STATUS_LABEL[d.status]}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {d.type === "quote" && (d.status === "accepted" || r["converted_document_id"])
+                          ? "Auftrag"
+                          : STATUS_LABEL[d.status]}
+                      </div>
                     </div>
                   </Link>
 
-                  {d.type === "quote" && d.status !== "declined" && !r["converted_document_id"] && (
-                    <>
-                      {d.status !== "accepted" && (
+                  {d.type === "quote" && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(d.status === "sent" || d.status === "draft") && (
                         <>
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Angebot annehmen"
+                            size="sm"
                             onClick={() => decide.mutate({ docId: d.id, decision: "accepted" })}
+                            disabled={decide.isPending}
                           >
-                            <Check className="size-4 text-primary" />
+                            <Check className="size-4" /> Angenommen
                           </Button>
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Angebot ablehnen"
-                            onClick={() => decide.mutate({ docId: d.id, decision: "declined" })}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setDeclineTarget({ id: d.id, label: `Angebot ${d.number}` });
+                              setDeclineReason("");
+                            }}
                           >
-                            <X className="size-4 text-destructive" />
+                            <X className="size-4" /> Abgelehnt
                           </Button>
                         </>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="In Auftrag umwandeln"
-                        onClick={() => convert.mutate(d.id)}
-                        disabled={convert.isPending}
-                      >
-                        <ArrowRightLeft className="size-4" />
-                      </Button>
-                    </>
+
+                      {d.status === "accepted" && !r["converted_document_id"] && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          title="Rechnung direkt aus dem Auftrag erstellen"
+                          onClick={() => convert.mutate(d.id)}
+                          disabled={convert.isPending}
+                        >
+                          <ArrowRightLeft className="size-4" /> Rechnung erstellen
+                        </Button>
+                      )}
+
+                      {(d.status === "accepted" || Boolean(r["converted_document_id"])) &&
+                        d.status !== "paid" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Auftrag als abgeschlossen kennzeichnen"
+                            onClick={() => complete.mutate(d.id)}
+                            disabled={complete.isPending}
+                          >
+                            <BadgeEuro className="size-4" /> Bezahlt/Abgeschlossen
+                          </Button>
+                        )}
+                    </div>
                   )}
+
 
                   {d.type === "invoice" &&
                     d.status !== "paid" &&
