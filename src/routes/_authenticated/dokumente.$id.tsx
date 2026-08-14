@@ -229,6 +229,14 @@ function DokumentDetail() {
     () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
+  const hasOptionalItems = useMemo(() => items.some((i) => i.is_optional), [items]);
+  const regularTotal = useMemo(
+    () =>
+      items
+        .filter((i) => !i.is_optional)
+        .reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
+    [items],
+  );
   const discountPercent = Math.min(
     100,
     Math.max(0, Number(String(form["discount_percent"] ?? "0").replace(",", ".")) || 0),
