@@ -350,11 +350,8 @@ function DokumentDetail() {
       await queryClient.invalidateQueries({ queryKey: ["document", id] });
       // Kurz warten, damit die Druckansicht die neue Nummer zeigt.
       await new Promise((r) => setTimeout(r, 400));
-      const element = document.querySelector<HTMLElement>(".print-area");
-      if (element) {
-        const bytes = await elementToPdfBytes(element);
-        await archiveDocumentPdf({ id, number: finalized.number }, bytes);
-      }
+      const bytes = await buildDocumentPdfBytes(await buildPdfData(finalized.number));
+      await archiveDocumentPdf({ id, number: finalized.number }, bytes);
       return finalized.number;
     },
     onSuccess: (number) => {
