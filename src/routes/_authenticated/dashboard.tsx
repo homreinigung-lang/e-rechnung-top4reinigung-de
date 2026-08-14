@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
 import { computeEuer } from "@/lib/euer";
+import { EuerChart } from "@/components/EuerChart";
 import { createDocument } from "@/lib/create-document";
 import { useMyEmployee, type MyEmployee } from "@/lib/employee";
 import { dueInfo, mahnLabel } from "@/lib/workflow";
@@ -395,6 +396,9 @@ function AdminDashboard() {
               {formatMoney(euer.expenseVat)}
             </div>
           </div>
+        </div>
+        <div className="p-5">
+          <EuerChart year={year} docs={docs} expenses={expenses} />
         </div>
       </div>
 
