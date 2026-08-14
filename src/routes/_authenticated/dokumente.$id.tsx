@@ -710,7 +710,10 @@ function DokumentDetail() {
       customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
       introText: form["intro_text"] ? String(form["intro_text"]) : undefined,
-      items: items.map((i) => ({
+      items: (hasOptionalItems
+        ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
+        : items
+      ).map((i) => ({
         description: i.description,
         quantity: formatNumber(i.quantity),
         unit: i.unit,
