@@ -18,6 +18,7 @@ import { dueInfo, mahnLabel } from "@/lib/workflow";
 import {
   AlertTriangle,
   CalendarClock,
+  CheckCircle2,
   Clock,
   FileText,
   LayoutDashboard,
@@ -25,6 +26,7 @@ import {
   Receipt,
   TrendingDown,
   Users,
+  XCircle,
 } from "lucide-react";
 
 
@@ -227,6 +229,15 @@ function AdminDashboard() {
     { label: "Kunden", value: String(data?.customerCount ?? 0), icon: Users },
   ];
 
+  const acceptedQuotes = quotes.filter((d) => d.status === "accepted").length;
+  const declinedQuotes = quotes.filter((d) => d.status === "declined").length;
+  const kpis = [
+    { label: "Rechnungen", value: String(invoices.length), icon: Receipt, accent: "text-primary" },
+    { label: "Angebote", value: String(quotes.length), icon: FileText, accent: "text-primary" },
+    { label: "Angenommen", value: String(acceptedQuotes), icon: CheckCircle2, accent: "text-primary" },
+    { label: "Abgelehnt", value: String(declinedQuotes), icon: XCircle, accent: "text-destructive" },
+  ];
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -302,6 +313,27 @@ function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      <div className="surface overflow-hidden">
+        <div className="border-b px-5 py-4">
+          <h2 className="font-semibold">Belege im Überblick</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Anzahl der Rechnungen und Angebote sowie deren Status.
+          </p>
+        </div>
+        <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+          {kpis.map((k) => (
+            <div key={k.label} className="bg-card p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{k.label}</span>
+                <k.icon className={`size-4 ${k.accent}`} />
+              </div>
+              <div className="mt-3 font-display text-3xl font-semibold">{k.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
 
       <div className="surface overflow-hidden">
         <div className="flex items-center justify-between border-b px-5 py-4">
