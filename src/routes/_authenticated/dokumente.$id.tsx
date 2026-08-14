@@ -855,6 +855,27 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
+          {doc.status === "draft" && (
+            <Button
+              variant="outline"
+              title="Beleg als versendet kennzeichnen, ohne eine E-Mail zu verschicken"
+              onClick={() => setSendStatus.mutate("sent")}
+              disabled={setSendStatus.isPending}
+            >
+              <Check className="size-4" /> Als versendet markieren
+            </Button>
+          )}
+          {doc.status === "sent" && !locked && (
+            <Button
+              variant="ghost"
+              title="Status zurück auf Entwurf setzen"
+              onClick={() => setSendStatus.mutate("draft")}
+              disabled={setSendStatus.isPending}
+            >
+              Zurück auf Entwurf
+            </Button>
+          )}
+
           {!locked && (
             <Button variant={editMode ? "secondary" : "default"} onClick={() => setEditMode((v) => !v)}>
               <Pencil className="size-4" /> {editMode ? "Vorschau" : "Bearbeiten"}
