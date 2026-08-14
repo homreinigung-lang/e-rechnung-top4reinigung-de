@@ -639,7 +639,7 @@ function DokumentDetail() {
     return {
       isInvoice,
       title: `${DOC_TYPE_LABEL[doc.type]} ${number}`,
-      logo: await loadLogo(),
+      logo: (await loadLogo()) ?? null,
       logoInitials: companyName
         .split(/\s+/)
         .slice(0, 2)

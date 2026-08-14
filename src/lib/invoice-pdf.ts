@@ -31,24 +31,24 @@ export type PdfItem = {
 export type PdfDocData = {
   isInvoice: boolean;
   title: string; // z. B. "Rechnung RE-2026-0001"
-  logo?: { bytes: Uint8Array; type: "png" | "jpg" } | null;
+  logo?: { bytes: Uint8Array; type: "png" | "jpg" } | null | undefined;
   logoInitials: string;
   companyName: string;
-  ownerName?: string;
-  contactEmail?: string;
-  contactPhone?: string;
+  ownerName?: string | undefined;
+  contactEmail?: string | undefined;
+  contactPhone?: string | undefined;
   senderLine: string;
   customer: string[];
-  customerVatId?: string;
+  customerVatId?: string | undefined;
   meta: Array<{ label: string; value: string }>;
-  introText?: string;
+  introText?: string | undefined;
   items: PdfItem[];
-  serviceDescription?: string;
+  serviceDescription?: string | undefined;
   summary: Array<{ label: string; value: string; strong?: boolean; rule?: boolean }>;
-  taxNote?: string;
-  notes?: string;
-  paymentLines?: string[];
-  qrPayload?: string | null;
+  taxNote?: string | undefined;
+  notes?: string | undefined;
+  paymentLines?: string[] | undefined;
+  qrPayload?: string | null | undefined;
   footer: Array<{ heading: string; lines: string[] }>;
 };
 
