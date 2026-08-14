@@ -115,7 +115,7 @@ function DokumenteListe() {
           notes:
             type === "quote"
               ? "Ihre Zufriedenheit und eine langfristige, vertrauensvolle Zusammenarbeit sind uns besonders wichtig. Unser Anspruch ist es, nicht einfach nur zu arbeiten, sondern gute und sorgfältige Arbeit zu leisten. Sollten Sie besondere Wünsche haben oder mit einer ausgeführten Leistung nicht zufrieden sein, teilen Sie uns dies bitte direkt mit."
-              : undefined,
+              : "",
         })
         .select("id")
         .single();
