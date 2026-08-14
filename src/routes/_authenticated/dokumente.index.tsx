@@ -609,7 +609,42 @@ function DokumenteListe() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={declineTarget !== null} onOpenChange={(o) => !o && setDeclineTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Angebot ablehnen</DialogTitle>
+            <DialogDescription>
+              {declineTarget?.label}: Grund der Ablehnung für das Archiv festhalten (optional).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="decline-reason">Ablehnungsgrund</Label>
+            <Input
+              id="decline-reason"
+              value={declineReason}
+              placeholder="z. B. Preis zu hoch, anderer Anbieter"
+              onChange={(e) => setDeclineReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeclineTarget(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => {
+                if (!declineTarget) return;
+                decline.mutate({ docId: declineTarget.id, reason: declineReason });
+              }}
+              disabled={decline.isPending}
+            >
+              Als abgelehnt archivieren
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
