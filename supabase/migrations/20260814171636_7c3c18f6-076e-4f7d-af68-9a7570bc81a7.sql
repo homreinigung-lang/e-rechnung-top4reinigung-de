@@ -1,0 +1,1 @@
+ALTER TABLE public.document_items ADD COLUMN IF NOT EXISTS is_optional boolean NOT NULL DEFAULT false;
