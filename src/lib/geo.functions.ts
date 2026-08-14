@@ -7,7 +7,7 @@ import { z } from "zod";
  */
 export const geocodeAddresses = createServerFn({ method: "POST" })
   .inputValidator((data) =>
-    z.object({ addresses: z.array(z.string().min(3)).max(60) }).parse(data),
+    z.object({ addresses: z.array(z.string().min(3)).max(12) }).parse(data),
   )
   .handler(async ({ data }) => {
     const unique = Array.from(new Set(data.addresses.map((a) => a.trim()).filter(Boolean)));
