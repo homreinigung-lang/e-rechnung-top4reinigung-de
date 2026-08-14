@@ -875,30 +875,31 @@ function DokumentDetail() {
               <>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        "Freundliche Zahlungserinnerung jetzt erfassen und versenden?\n\n[Jetzt senden] bestätigen.",
-                      )
-                    ) {
-                      reminder.mutate("erinnerung");
-                    }
-                  }}
+                  onClick={() =>
+                    setConfirmDialog({
+                      title: "Zahlungserinnerung senden",
+                      description:
+                        "Freundliche Zahlungserinnerung jetzt erfassen und versenden?",
+                      confirmLabel: "Jetzt senden",
+                      action: () => reminder.mutate("erinnerung"),
+                    })
+                  }
                   disabled={reminder.isPending}
                 >
                   <BellRing className="size-4" /> Zahlungserinnerung
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Offizielle ${mahnLabel(Math.max(2, reminderLevel + 1))} jetzt senden? Dieser Schritt wird GoBD-konform protokolliert.\n\n[Jetzt senden] bestätigen.`,
-                      )
-                    ) {
-                      reminder.mutate("mahnung");
-                    }
-                  }}
+                  onClick={() =>
+                    setConfirmDialog({
+                      title: `${mahnLabel(Math.max(2, reminderLevel + 1))} senden`,
+                      description:
+                        "Dieser Schritt wird GoBD-konform protokolliert. Jetzt offiziell mahnen?",
+                      confirmLabel: "Jetzt senden",
+                      action: () => reminder.mutate("mahnung"),
+                    })
+                  }
+
                   disabled={reminder.isPending || !canMahnen}
                   title={
                     canMahnen
