@@ -5,10 +5,15 @@
 
 type DocLike = Record<string, unknown> | null | undefined;
 
+/**
+ * Gesperrt ist ausschließlich eine Rechnung, die offiziell versendet bzw.
+ * festgeschrieben wurde (locked_at). Entwürfe bleiben vollständig änderbar
+ * und löschbar, Angebote sind generell ausgenommen.
+ */
 export function isLockedDocument(doc: DocLike): boolean {
   if (!doc) return false;
-  const status = String(doc["status"] ?? "");
-  return Boolean(doc["locked_at"]) || (status !== "" && status !== "draft");
+  if (doc["type"] === "quote") return false;
+  return Boolean(doc["locked_at"]);
 }
 
 export function documentLabel(doc: DocLike): string {
