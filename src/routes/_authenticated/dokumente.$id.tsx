@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1529,8 +1529,36 @@ function DokumentDetail() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((i, n) => (
-                  <tr key={i.id} className="border-b border-border align-top">
+                {(hasOptionalItems
+                  ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
+                  : items
+                ).map((i, n, arr) => (
+                  <Fragment key={i.id}>
+                    {hasOptionalItems && n === 0 && (
+                      <tr className="bg-muted/70">
+                        <td colSpan={6} className="px-2 py-2 text-sm font-semibold">
+                          Regelmäßige Leistungen
+                        </td>
+                      </tr>
+                    )}
+                    {hasOptionalItems && i.is_optional && !arr[n - 1]?.is_optional && (
+                      <>
+                        <tr className="border-b border-border">
+                          <td colSpan={5} className="px-2 py-2 text-sm font-semibold">
+                            Monatlicher Festpreis (netto)
+                          </td>
+                          <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums whitespace-nowrap">
+                            {formatMoney(regularTotal)}
+                          </td>
+                        </tr>
+                        <tr className="bg-muted/70">
+                          <td colSpan={6} className="px-2 py-2 text-sm font-semibold">
+                            Optionale Zusatzleistungen
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                  <tr className="border-b border-border align-top">
                     <td className="px-2 py-2 tabular-nums">{n + 1}</td>
                     <td className="px-2 py-2 break-words whitespace-pre-line">{i.description}</td>
                     <td className="px-2 py-2 text-right tabular-nums">
@@ -1544,9 +1572,25 @@ function DokumentDetail() {
                       {formatMoney(i.quantity * i.unit_price)}
                     </td>
                   </tr>
+                    {hasOptionalItems &&
+                      !i.is_optional &&
+                      n === arr.length - 1 && (
+                        <tr className="border-b border-border">
+                          <td colSpan={5} className="px-2 py-2 text-sm font-semibold">
+                            Monatlicher Festpreis (netto)
+                          </td>
+                          <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums whitespace-nowrap">
+                            {formatMoney(regularTotal)}
+                          </td>
+                        </tr>
+                      )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
+            {hasOptionalItems && (
+              <p className="mt-2 text-xs text-muted-foreground">{OPTIONAL_NOTE}</p>
+            )}
           </div>
 
           {!isInvoice && form["service_description"] && (
