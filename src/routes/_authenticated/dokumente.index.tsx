@@ -278,15 +278,36 @@ function DokumenteListe() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const decline = useMutation({
+    mutationFn: ({ docId, reason }: { docId: string; reason: string }) =>
+      declineQuote(docId, reason),
+    onSuccess: () => {
+      toast.success("Angebot als abgelehnt archiviert");
+      setDeclineTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const complete = useMutation({
+    mutationFn: (docId: string) => completeQuote(docId),
+    onSuccess: () => {
+      toast.success("Auftrag abgeschlossen");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const convert = useMutation({
     mutationFn: (docId: string) => convertQuoteToInvoice(docId),
     onSuccess: (newId) => {
-      toast.success("Rechnung aus Angebot erstellt");
+      toast.success("Rechnung aus Auftrag erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const list = documents.filter((d) => d.type === tab);
 
