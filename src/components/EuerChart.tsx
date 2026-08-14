@@ -72,7 +72,7 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
 
   const pieData = [
     { name: "Einnahmen", value: totals.einnahmen, color: "hsl(var(--primary))" },
-    { name: "Ausgaben", value: totals.ausgaben, color: "hsl(var(--chart-2, 198 80% 50%))" },
+    { name: "Ausgaben", value: totals.ausgaben, color: "#f97316" },
   ].filter((d) => d.value > 0);
 
   const hasData = totals.einnahmen > 0 || totals.ausgaben > 0;
