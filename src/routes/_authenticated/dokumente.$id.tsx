@@ -384,6 +384,19 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
+  // Zahlungsstatus ist bewusst von der GoBD-Sperre ausgenommen:
+  // Der Zahlungseingang ändert keinen steuerlichen Rechnungsinhalt.
+  const unmarkPaid = useMutation({
+    mutationFn: () => unmarkInvoicePaid(id),
+    onSuccess: () => {
+      setForm((f) => ({ ...f, status: "sent", paid_at: null }));
+      toast.success("Zahlung zurückgenommen – Rechnung gilt wieder als offen");
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
   const reminder = useMutation({
     mutationFn: (kind: ReminderKind) => sendReminder(id, kind),
     onSuccess: (level) => {
