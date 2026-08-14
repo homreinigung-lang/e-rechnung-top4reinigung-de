@@ -31,8 +31,11 @@ import {
   addDays,
 } from "@/lib/format";
 import {
+  completeQuote,
   convertQuoteToInvoice,
+  declineQuote,
   dueInfo,
+
   mahnLabel,
   mahnungAllowed,
   markInvoicePaid,
@@ -99,6 +102,9 @@ function DokumenteListe() {
   const [payTarget, setPayTarget] = useState<DocTarget>(null);
   const [payDate, setPayDate] = useState<string>(formatDate(today()));
   const [deleteTarget, setDeleteTarget] = useState<DocTarget>(null);
+  const [declineTarget, setDeclineTarget] = useState<DocTarget>(null);
+  const [declineReason, setDeclineReason] = useState("");
+
 
   const create = useMutation({
     mutationFn: async (type: "invoice" | "quote") => {
@@ -278,15 +284,36 @@ function DokumenteListe() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const decline = useMutation({
+    mutationFn: ({ docId, reason }: { docId: string; reason: string }) =>
+      declineQuote(docId, reason),
+    onSuccess: () => {
+      toast.success("Angebot als abgelehnt archiviert");
+      setDeclineTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const complete = useMutation({
+    mutationFn: (docId: string) => completeQuote(docId),
+    onSuccess: () => {
+      toast.success("Auftrag abgeschlossen");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const convert = useMutation({
     mutationFn: (docId: string) => convertQuoteToInvoice(docId),
     onSuccess: (newId) => {
-      toast.success("Rechnung aus Angebot erstellt");
+      toast.success("Rechnung aus Auftrag erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const list = documents.filter((d) => d.type === tab);
 
@@ -360,43 +387,65 @@ function DokumenteListe() {
                     </div>
                     <div className="text-right">
                       <div className="font-medium">{formatMoney(Number(d.total))}</div>
-                      <div className="text-xs text-muted-foreground">{STATUS_LABEL[d.status]}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {d.type === "quote" && (d.status === "accepted" || r["converted_document_id"])
+                          ? "Auftrag"
+                          : STATUS_LABEL[d.status]}
+                      </div>
                     </div>
                   </Link>
 
-                  {d.type === "quote" && d.status !== "declined" && !r["converted_document_id"] && (
-                    <>
-                      {d.status !== "accepted" && (
+                  {d.type === "quote" && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(d.status === "sent" || d.status === "draft") && (
                         <>
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Angebot annehmen"
+                            size="sm"
                             onClick={() => decide.mutate({ docId: d.id, decision: "accepted" })}
+                            disabled={decide.isPending}
                           >
-                            <Check className="size-4 text-primary" />
+                            <Check className="size-4" /> Angenommen
                           </Button>
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Angebot ablehnen"
-                            onClick={() => decide.mutate({ docId: d.id, decision: "declined" })}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setDeclineTarget({ id: d.id, label: `Angebot ${d.number}` });
+                              setDeclineReason("");
+                            }}
                           >
-                            <X className="size-4 text-destructive" />
+                            <X className="size-4" /> Abgelehnt
                           </Button>
                         </>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="In Auftrag umwandeln"
-                        onClick={() => convert.mutate(d.id)}
-                        disabled={convert.isPending}
-                      >
-                        <ArrowRightLeft className="size-4" />
-                      </Button>
-                    </>
+
+                      {d.status === "accepted" && !r["converted_document_id"] && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          title="Rechnung direkt aus dem Auftrag erstellen"
+                          onClick={() => convert.mutate(d.id)}
+                          disabled={convert.isPending}
+                        >
+                          <ArrowRightLeft className="size-4" /> Rechnung erstellen
+                        </Button>
+                      )}
+
+                      {(d.status === "accepted" || Boolean(r["converted_document_id"])) &&
+                        d.status !== "paid" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Auftrag als abgeschlossen kennzeichnen"
+                            onClick={() => complete.mutate(d.id)}
+                            disabled={complete.isPending}
+                          >
+                            <BadgeEuro className="size-4" /> Bezahlt/Abgeschlossen
+                          </Button>
+                        )}
+                    </div>
                   )}
+
 
                   {d.type === "invoice" &&
                     d.status !== "paid" &&
@@ -560,7 +609,42 @@ function DokumenteListe() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={declineTarget !== null} onOpenChange={(o) => !o && setDeclineTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Angebot ablehnen</DialogTitle>
+            <DialogDescription>
+              {declineTarget?.label}: Grund der Ablehnung für das Archiv festhalten (optional).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="decline-reason">Ablehnungsgrund</Label>
+            <Input
+              id="decline-reason"
+              value={declineReason}
+              placeholder="z. B. Preis zu hoch, anderer Anbieter"
+              onChange={(e) => setDeclineReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeclineTarget(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              onClick={() => {
+                if (!declineTarget) return;
+                decline.mutate({ docId: declineTarget.id, reason: declineReason });
+              }}
+              disabled={decline.isPending}
+            >
+              Als abgelehnt archivieren
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 

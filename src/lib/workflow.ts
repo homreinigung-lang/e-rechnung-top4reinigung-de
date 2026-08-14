@@ -145,6 +145,47 @@ export async function setQuoteDecision(id: string, decision: "accepted" | "decli
   await logAudit(decision === "accepted" ? "quote_accepted" : "quote_declined", doc, {});
 }
 
+/** Angebot mit Begründung ablehnen (Grund wird in den Anmerkungen archiviert). */
+export async function declineQuote(id: string, reason: string): Promise<void> {
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .select("id, number, notes")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  const trimmed = reason.trim();
+  const note = trimmed
+    ? `${doc.notes ? `${doc.notes}\n\n` : ""}Ablehnungsgrund (${formatToday()}): ${trimmed}`
+    : doc.notes;
+  const { error: updateError } = await supabase
+    .from("documents")
+    .update({ status: "declined", notes: note } as never)
+    .eq("id", id);
+  if (updateError) throw updateError;
+  await logAudit("quote_declined", { id, number: doc.number }, { reason: trimmed });
+}
+
+/** Auftrag (angenommenes Angebot) als abgeschlossen/bezahlt kennzeichnen. */
+export async function completeQuote(id: string): Promise<void> {
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .select("id, number")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  const { error: updateError } = await supabase
+    .from("documents")
+    .update({ status: "paid", paid_at: today() } as never)
+    .eq("id", id);
+  if (updateError) throw updateError;
+  await logAudit("quote_completed", { id, number: doc.number }, {});
+}
+
+function formatToday(): string {
+  return new Date().toLocaleDateString("de-DE-u-ca-gregory-nu-latn");
+}
+
+
 /** Angenommenes Angebot mit einem Klick in eine Rechnung (Entwurf) umwandeln. */
 export async function convertQuoteToInvoice(quoteId: string): Promise<string> {
   const userId = await currentUserId();
