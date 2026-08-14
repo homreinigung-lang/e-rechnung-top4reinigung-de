@@ -286,6 +286,16 @@ function AuthPage() {
             <TabsContent value="register">
               <form onSubmit={signUp} className="mt-6 space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="name2">Name</Label>
+                  <Input
+                    id="name2"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+
                   <Label htmlFor="email2">E-Mail</Label>
                   <Input
                     id="email2"
