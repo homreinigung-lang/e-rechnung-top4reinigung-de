@@ -691,8 +691,14 @@ function AngebotsTabelle({
             const deletable = !isLocked(r);
             const isAuftrag = d.status === "accepted" || Boolean(d.converted_document_id);
             return (
-              <tr key={d.id} className="align-middle hover:bg-muted/40">
+              <tr
+                key={d.id}
+                className="cursor-pointer align-middle hover:bg-muted/40"
+                title="Angebot öffnen und bearbeiten"
+                onClick={() => navigate({ to: "/dokumente/$id", params: { id: d.id } })}
+              >
                 <td className="px-4 py-3">
+
                   <Link
                     to="/dokumente/$id"
                     params={{ id: d.id }}
