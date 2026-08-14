@@ -835,12 +835,8 @@ function DokumentDetail() {
             <Button
               variant="outline"
               onClick={() => {
-                const date = window.prompt(
-                  "Zahlungsdatum (JJJJ-MM-TT) bestätigen:",
-                  String(form["paid_at"] ?? today()),
-                );
-                if (!date) return;
-                markPaid.mutate(date);
+                setPayDate(formatDate(String(form["paid_at"] ?? today())));
+                setPayOpen(true);
               }}
               disabled={markPaid.isPending}
             >
@@ -854,15 +850,19 @@ function DokumentDetail() {
               </span>
               <Button
                 variant="outline"
-                onClick={() => {
-                  if (!confirm("Zahlung zurücknehmen? Die Rechnung gilt danach wieder als offen."))
-                    return;
-                  unmarkPaid.mutate();
-                }}
+                onClick={() =>
+                  setConfirmDialog({
+                    title: "Zahlung zurücknehmen",
+                    description: "Die Rechnung gilt danach wieder als offen.",
+                    confirmLabel: "Zurücknehmen",
+                    action: () => unmarkPaid.mutate(),
+                  })
+                }
                 disabled={unmarkPaid.isPending}
               >
                 <BadgeEuro className="size-4" /> Zahlung zurücknehmen
               </Button>
+
             </>
           )}
 
