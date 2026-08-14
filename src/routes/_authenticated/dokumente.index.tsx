@@ -746,7 +746,7 @@ function AngebotsTabelle({
                       </Button>
                     )}
 
-                    {(d.status === "accepted" || Boolean(d.converted_document_id")) &&
+                    {(d.status === "accepted" || Boolean(d.converted_document_id)) &&
                       d.status !== "paid" && (
                         <Button
                           size="sm"
