@@ -44,7 +44,8 @@ import {
   type ReminderKind,
 } from "@/lib/workflow";
 
-import { elementToPdfBytes, downloadBytes } from "@/lib/pdf";
+import { downloadBytes } from "@/lib/pdf";
+import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
 import {
   buildXRechnungXml,
   buildZugferdXml,
@@ -349,11 +350,8 @@ function DokumentDetail() {
       await queryClient.invalidateQueries({ queryKey: ["document", id] });
       // Kurz warten, damit die Druckansicht die neue Nummer zeigt.
       await new Promise((r) => setTimeout(r, 400));
-      const element = document.querySelector<HTMLElement>(".print-area");
-      if (element) {
-        const bytes = await elementToPdfBytes(element);
-        await archiveDocumentPdf({ id, number: finalized.number }, bytes);
-      }
+      const bytes = await buildDocumentPdfBytes(await buildPdfData(finalized.number));
+      await archiveDocumentPdf({ id, number: finalized.number }, bytes);
       return finalized.number;
     },
     onSuccess: (number) => {
@@ -583,14 +581,143 @@ function DokumentDetail() {
     }
   }
 
+  /** Logo für die PDF-Erzeugung laden (optional – ohne Logo wird ein Kürzel gesetzt). */
+  async function loadLogo(): Promise<PdfDocData["logo"]> {
+    if (!logoSrc) return null;
+    try {
+      const response = await fetch(logoSrc);
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const isJpg = /jpe?g/i.test(blob.type) || bytes[0] === 0xff;
+      return { bytes, type: isJpg ? "jpg" : "png" };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Alle Belegdaten für die bibliotheksbasierte PDF-Erzeugung (pdf-lib) sammeln. */
+  async function buildPdfData(numberOverride?: string): Promise<PdfDocData> {
+    const number = numberOverride ?? docNumber;
+    const companyName = String(settings?.["company_name"] ?? "Hom Reinigung Service");
+
+    const meta: Array<{ label: string; value: string }> = [];
+    if (form["customer_number"])
+      meta.push({ label: "Kundennummer", value: String(form["customer_number"]) });
+    meta.push({ label: isInvoice ? "Rechnungsnummer" : "Angebotsnummer", value: number });
+    meta.push({
+      label: isInvoice ? "Rechnungsdatum" : "Datum",
+      value: formatDate(String(form["issue_date"] ?? "")),
+    });
+    if (form["service_period"])
+      meta.push({ label: "Leistungszeitraum", value: String(form["service_period"]) });
+    if (isInvoice && form["due_date"])
+      meta.push({ label: "Fällig am", value: formatDate(String(form["due_date"])) });
+    if (form["order_number"])
+      meta.push({ label: "Bestellnummer", value: String(form["order_number"]) });
+
+    const summary: PdfDocData["summary"] = [];
+    if (discountPercent > 0) {
+      summary.push({ label: "Zwischensumme (netto)", value: formatMoney(itemsTotal) });
+      summary.push({
+        label: `Rabatt ${formatNumber(discountPercent)} %${discountReason ? ` – ${discountReason}` : ""}`,
+        value: `−${formatMoney(discountAmount)}`,
+      });
+    }
+    summary.push({ label: "Nettobetrag (Summe netto)", value: formatMoney(netTotal) });
+    summary.push({
+      label: `zzgl. Umsatzsteuer ${formatNumber(vatRate)} %`,
+      value: formatMoney(vatAmount),
+    });
+    summary.push({
+      label: vatRate > 0 ? "Bruttobetrag (inkl. MwSt.)" : "Gesamtbetrag",
+      value: formatMoney(grossTotal),
+      strong: true,
+      rule: true,
+    });
+
+    return {
+      isInvoice,
+      title: `${DOC_TYPE_LABEL[doc.type]} ${number}`,
+      logo: await loadLogo(),
+      logoInitials: companyName
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((w) => w.charAt(0).toUpperCase())
+        .join(""),
+      companyName,
+      ownerName: settings?.["owner_name"] ? String(settings["owner_name"]) : undefined,
+      contactEmail: settings?.["email"] ? String(settings["email"]) : undefined,
+      contactPhone: settings?.["phone"] ? String(settings["phone"]) : undefined,
+      senderLine,
+      customer: [
+        String(form["customer_company"] ?? ""),
+        String(form["customer_name"] ?? ""),
+        String(form["customer_address_line"] ?? ""),
+        `${String(form["customer_postal_code"] ?? "")} ${String(form["customer_city"] ?? "")}`.trim(),
+        String(form["customer_country"] ?? ""),
+      ],
+      customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
+      meta,
+      introText: form["intro_text"] ? String(form["intro_text"]) : undefined,
+      items: items.map((i) => ({
+        description: i.description,
+        quantity: formatNumber(i.quantity),
+        unit: i.unit,
+        unitPrice: formatMoney(i.unit_price),
+        total: formatMoney(i.quantity * i.unit_price),
+      })),
+      serviceDescription:
+        !isInvoice && form["service_description"]
+          ? String(form["service_description"])
+          : undefined,
+      summary,
+      taxNote: taxNote || undefined,
+      notes: form["notes"] ? String(form["notes"]) : undefined,
+      paymentLines: isInvoice
+        ? [
+            `Zahlüberweisung in ${paymentTermsDays} Tagen`,
+            "Vielen Dank für die gute Zusammenarbeit.",
+            `${bankName} · IBAN ${iban} · BIC ${bic}`,
+          ]
+        : undefined,
+      qrPayload: epc,
+      footer: [
+        {
+          heading: companyName,
+          lines: [
+            String(settings?.["address_line"] ?? ""),
+            `${String(settings?.["postal_code"] ?? "")} ${String(settings?.["city"] ?? "")}`.trim(),
+            settings?.["phone"] ? `Tel. ${String(settings["phone"])}` : "",
+            settings?.["email"] ? String(settings["email"]) : "",
+          ],
+        },
+        {
+          heading: "Steuerangaben",
+          lines: [
+            `USt-IdNr.: ${String(settings?.["vat_id"] ?? "DE458492078")}`,
+            `Steuernummer: ${String(settings?.["tax_number"] ?? "040/200/01653")}`,
+            settings?.["owner_name"] ? `Inhaber: ${String(settings["owner_name"])}` : "",
+          ],
+        },
+        {
+          heading: "Bankverbindung",
+          lines: [
+            String(settings?.["bank_name"] ?? ""),
+            `IBAN ${String(settings?.["iban"] ?? "")}`,
+            `BIC ${String(settings?.["bic"] ?? "")}`,
+          ],
+        },
+      ],
+    };
+  }
+
   async function exportZugferd() {
     const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
     try {
       const input = eRechnungInput();
       warnIfIncomplete(input);
-      const element = document.querySelector<HTMLElement>(".print-area");
-      if (!element) throw new Error("Druckansicht nicht gefunden.");
-      const pdfBytes = await elementToPdfBytes(element);
+      const pdfBytes = await buildDocumentPdfBytes(await buildPdfData());
       const hybrid = await embedZugferdXml(pdfBytes, buildZugferdXml(input), {
         number: docNumber,
         title: DOC_TYPE_LABEL[doc.type] ?? "Rechnung",
@@ -607,13 +734,11 @@ function DokumentDetail() {
     }
   }
 
-  /** Fertiges Dokument direkt als A4-PDF herunterladen. */
+  /** Fertiges Dokument direkt als A4-PDF herunterladen (pdf-lib, kein Browser-Druck). */
   async function downloadPdf() {
     const toastId = toast.loading("PDF wird erzeugt…");
     try {
-      const element = document.querySelector<HTMLElement>(".print-area");
-      if (!element) throw new Error("Druckansicht nicht gefunden.");
-      const bytes = await elementToPdfBytes(element);
+      const bytes = await buildDocumentPdfBytes(await buildPdfData());
       downloadBytes(
         bytes,
         `${DOC_TYPE_LABEL[doc.type]}-${docNumber.replace(/\W+/g, "_")}.pdf`.replace(/\s+/g, "-"),
