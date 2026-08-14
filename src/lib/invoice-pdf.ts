@@ -364,19 +364,19 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
 
   if (d.items.length > 0) drawTableHead();
 
-  let sectionState: "none" | "regular" | "optional" = "none";
+  const section = { current: "none" as "none" | "regular" | "optional" };
 
   d.items.forEach((item, index) => {
     if (hasOptional) {
       const wanted = item.optional ? "optional" : "regular";
-      if (wanted !== sectionState) {
-        if (sectionState === "regular" && d.regularSubtotal) {
+      if (wanted !== section.current) {
+        if (section.current === "regular" && d.regularSubtotal) {
           drawBandRow("Monatlicher Festpreis (netto)", d.regularSubtotal, false);
         }
         drawBandRow(
           wanted === "regular" ? "Regelmäßige Leistungen" : "Optionale Zusatzleistungen",
         );
-        sectionState = wanted;
+        section.current = wanted;
       }
     }
 
@@ -421,7 +421,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     ctx.y = top - rowH;
   });
 
-  if (hasOptional && sectionState === "regular" && d.regularSubtotal) {
+  if (hasOptional && section.current === "regular" && d.regularSubtotal) {
     drawBandRow("Monatlicher Festpreis (netto)", d.regularSubtotal, false);
   }
 
