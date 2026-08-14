@@ -829,9 +829,22 @@ function DokumentDetail() {
             </Button>
           )}
           {isInvoice && doc.status === "paid" && (
-            <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-              Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
-            </span>
+            <>
+              <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+                Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
+              </span>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!confirm("Zahlung zurücknehmen? Die Rechnung gilt danach wieder als offen."))
+                    return;
+                  unmarkPaid.mutate();
+                }}
+                disabled={unmarkPaid.isPending}
+              >
+                <BadgeEuro className="size-4" /> Zahlung zurücknehmen
+              </Button>
+            </>
           )}
 
 
