@@ -464,8 +464,9 @@ function DokumentDetail() {
       setForm((f) => ({ ...f, status: next }));
       toast.success(
         next === "sent"
-          ? "Status auf „Versendet" gesetzt – ohne erneute E-Mail an den Kunden."
-          : "Status auf „Entwurf" zurückgesetzt.",
+          ? "Status auf Versendet gesetzt – ohne erneute E-Mail an den Kunden."
+          : "Status auf Entwurf zurückgesetzt.",
+
       );
       queryClient.invalidateQueries({ queryKey: ["document", id] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
