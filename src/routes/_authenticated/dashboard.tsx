@@ -315,6 +315,27 @@ function AdminDashboard() {
       </div>
 
       <div className="surface overflow-hidden">
+        <div className="border-b px-5 py-4">
+          <h2 className="font-semibold">Belege im Überblick</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Anzahl der Rechnungen und Angebote sowie deren Status.
+          </p>
+        </div>
+        <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+          {kpis.map((k) => (
+            <div key={k.label} className="bg-card p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{k.label}</span>
+                <k.icon className={`size-4 ${k.accent}`} />
+              </div>
+              <div className="mt-3 font-display text-3xl font-semibold">{k.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+
+      <div className="surface overflow-hidden">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <h2 className="font-semibold">Offene Posten</h2>
           <span className="text-sm text-muted-foreground">
