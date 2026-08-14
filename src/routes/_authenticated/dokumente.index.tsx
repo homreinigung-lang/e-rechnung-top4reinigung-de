@@ -349,10 +349,10 @@ function DokumenteListe() {
       </Tabs>
 
       {tab === "quote" ? (
-        <AngeboteTabelle
+        <AngebotsTabelle
           list={list}
           decide={decide}
-          decline={(id, label) => {
+          decline={(id: string, label: string) => {
             setDeclineTarget({ id, label });
             setDeclineReason("");
           }}
@@ -360,7 +360,7 @@ function DokumenteListe() {
           complete={complete}
           duplicate={duplicate}
           remove={remove}
-          isLocked={(r) => isLockedDocument(r)}
+          isLocked={(r: Record<string, unknown>) => isLockedDocument(r)}
         />
       ) : (
         <div className="surface overflow-hidden">
