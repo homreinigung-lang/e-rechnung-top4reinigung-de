@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_approvals: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          decided_at: string | null
+          email: string
+          full_name: string
+          id: string
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          decided_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          status?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          decided_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       accountant_access: {
         Row: {
           access_code: string
