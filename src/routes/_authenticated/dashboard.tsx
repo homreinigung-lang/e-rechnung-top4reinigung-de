@@ -397,6 +397,9 @@ function AdminDashboard() {
             </div>
           </div>
         </div>
+        <div className="p-5">
+          <EuerChart year={year} docs={docs} expenses={expenses} />
+        </div>
       </div>
 
 
