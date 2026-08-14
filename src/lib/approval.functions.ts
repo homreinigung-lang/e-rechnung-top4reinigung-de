@@ -30,13 +30,17 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
       .maybeSingle();
     if (existing.data) return { status: existing.data.status as string };
 
-    // Bereits angelegte Mitarbeitende brauchen keine erneute Freigabe.
+    // Bereits angelegte Mitarbeitende und bestehende Altkonten (älter als eine
+    // Stunde) brauchen keine erneute Freigabe.
     const employee = await supabaseAdmin
       .from("employees")
       .select("id")
       .ilike("email", email)
       .limit(1);
-    const autoApprove = (employee.data ?? []).length > 0;
+    const createdMs = new Date(user.created_at ?? Date.now()).getTime();
+    const isLegacy = Date.now() - createdMs > 3600_000;
+    const autoApprove = (employee.data ?? []).length > 0 || isLegacy;
+
 
     const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
     const fullName =
