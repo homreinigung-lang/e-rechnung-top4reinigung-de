@@ -665,6 +665,8 @@ function AngebotsTabelle({
   remove,
   isLocked,
 }: AngebotsTabelleProps) {
+  const navigate = useNavigate();
+
   if (list.length === 0) {
     return (
       <p className="px-5 py-12 text-center text-sm text-muted-foreground">
