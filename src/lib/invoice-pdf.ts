@@ -44,6 +44,9 @@ export type PdfDocData = {
   meta: Array<{ label: string; value: string }>;
   introText?: string | undefined;
   items: PdfItem[];
+  /** Zwischensumme der regelmäßigen Leistungen (nur wenn optionale Positionen existieren). */
+  regularSubtotal?: string | undefined;
+  optionalNote?: string | undefined;
   serviceDescription?: string | undefined;
   summary: Array<{ label: string; value: string; strong?: boolean; rule?: boolean }>;
   taxNote?: string | undefined;
