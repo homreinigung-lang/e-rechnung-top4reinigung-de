@@ -427,25 +427,14 @@ function DokumenteListe() {
                       size="icon"
                       title="Als bezahlt markieren (Zahlungsdatum erfassen)"
                       onClick={() => {
-                        const input = prompt(
-                          "Zahlungsdatum (TT.MM.JJJJ) eingeben:",
-                          formatDate(today()),
-                        );
-                        if (!input) return;
-                        const iso = parseGermanDate(input);
-                        if (!iso) {
-                          toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
-                          return;
-                        }
-                        markPaid.mutate({ docId: d.id, date: iso });
+                        setPayTarget({ id: d.id, label: `${DOC_TYPE_LABEL[d.type]} ${d.number}` });
+                        setPayDate(formatDate(today()));
                       }}
                       disabled={markPaid.isPending}
                     >
                       <BadgeEuro className="size-4 text-primary" />
                     </Button>
                   )}
-
-
 
                   <Button
                     variant="ghost"
@@ -468,9 +457,10 @@ function DokumenteListe() {
                         toast.error(deleteBlockedMessage(r), { duration: 9000 });
                         return;
                       }
-                      if (confirm(`${DOC_TYPE_LABEL[d.type]} ${d.number} wirklich löschen?`)) {
-                        remove.mutate(d.id);
-                      }
+                      setDeleteTarget({
+                        id: d.id,
+                        label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
+                      });
                     }}
                   >
                     <Trash2
@@ -479,6 +469,7 @@ function DokumenteListe() {
                       }
                     />
                   </Button>
+
                 </li>
               );
             })}
