@@ -1722,12 +1722,28 @@ function DokumentDetail() {
           fileBaseName: `${DOC_TYPE_LABEL[doc.type]}-${docNumber}`,
         }}
         onSent={async () => {
-          setField("status", "sent");
-          await supabase
+          // Versand-Status verbindlich in der Datenbank setzen (auch für Angebote),
+          // damit der Beleg in der Übersicht als "Versendet" erscheint.
+          const { data: updated, error: sendError } = await supabase
             .from("documents")
             .update({ status: "sent", sent_at: new Date().toISOString() } as never)
-            .eq("id", id);
-          await logAudit("sent", { id, number: docNumber }, { to: mail.to });
+            .eq("id", id)
+            .select("id, status")
+            .maybeSingle();
+          if (sendError || !updated) {
+            toast.error(
+              `Status konnte nicht auf "Versendet" gesetzt werden: ${
+                sendError?.message ?? "Beleg nicht gefunden"
+              }`,
+            );
+          } else {
+            setField("status", "sent");
+          }
+          try {
+            await logAudit("sent", { id, number: docNumber }, { to: mail.to });
+          } catch {
+            /* Protokollierung darf den Versand nicht blockieren */
+          }
           // Rechnungen werden beim Versand automatisch festgeschrieben (GoBD).
           if (isInvoice && !locked) {
             try {
@@ -1736,9 +1752,11 @@ function DokumentDetail() {
               toast.error(e instanceof Error ? e.message : "Festschreiben fehlgeschlagen");
             }
           }
-          queryClient.invalidateQueries({ queryKey: ["document", id] });
-          queryClient.invalidateQueries({ queryKey: ["documents"] });
+          await queryClient.invalidateQueries({ queryKey: ["document", id] });
+          await queryClient.invalidateQueries({ queryKey: ["documents"] });
+          await queryClient.refetchQueries({ queryKey: ["documents"] });
         }}
+
       />
 
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
