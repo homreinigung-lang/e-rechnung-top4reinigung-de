@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/PasswordInput";
+import { requestAccountApproval, getApprovalStatus } from "@/lib/approval.functions";
+
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -27,6 +29,8 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -39,6 +43,19 @@ function AuthPage() {
     });
   }, [navigate]);
 
+  async function ensureApproved(): Promise<boolean> {
+    const { data } = await supabase.auth.getUser();
+    const uid = data.user?.id;
+    if (!uid) return false;
+    const { status } = await getApprovalStatus({ data: { authUserId: uid } });
+    if (status === "pending") {
+      await supabase.auth.signOut();
+      navigate({ to: "/freigabe-ausstehend", replace: true });
+      return false;
+    }
+    return true;
+  }
+
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -50,13 +67,17 @@ function AuthPage() {
     }
     // Zwei-Faktor-Authentifizierung: falls aktiv, Bestätigungscode abfragen.
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    setLoading(false);
     if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      setLoading(false);
       setMfaRequired(true);
       return;
     }
+    const ok = await ensureApproved();
+    setLoading(false);
+    if (!ok) return;
     navigate({ to: "/dashboard", replace: true });
   }
+
 
   async function verifyMfa(e: React.FormEvent) {
     e.preventDefault();
@@ -74,9 +95,13 @@ function AuthPage() {
     });
     setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error("Code ungültig: " + error.message);
       return;
     }
+    const ok = await ensureApproved();
+    setLoading(false);
+    if (!ok) return;
     navigate({ to: "/dashboard", replace: true });
   }
 
@@ -99,24 +124,42 @@ function AuthPage() {
   }
 
   async function signUp(e: React.FormEvent) {
-
     e.preventDefault();
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: { full_name: fullName.trim() },
+      },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error("Registrierung fehlgeschlagen: " + error.message);
       return;
     }
-    if (data.session) {
-      navigate({ to: "/dashboard", replace: true });
-      return;
+
+    // Neues Konto bleibt gesperrt, bis der Inhaber es per E-Mail freigibt.
+    if (data.user) {
+      try {
+        const res = await requestAccountApproval({
+          data: { authUserId: data.user.id, fullName: fullName.trim() },
+        });
+        if (res.status === "approved") {
+          setLoading(false);
+          if (data.session) navigate({ to: "/dashboard", replace: true });
+          else toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
+          return;
+        }
+      } catch {
+        // Freigabe-Antrag konnte nicht erstellt werden – Konto bleibt gesperrt.
+      }
     }
-    toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
+
+    await supabase.auth.signOut();
+    setLoading(false);
+    navigate({ to: "/freigabe-ausstehend", replace: true });
   }
 
   async function google() {
@@ -128,8 +171,23 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      const res = await requestAccountApproval({
+        data: {
+          authUserId: data.user.id,
+          fullName: (data.user.user_metadata?.["full_name"] as string | undefined) ?? "",
+        },
+      }).catch(() => ({ status: "pending" as const }));
+      if (res.status === "pending") {
+        await supabase.auth.signOut();
+        navigate({ to: "/freigabe-ausstehend", replace: true });
+        return;
+      }
+    }
     navigate({ to: "/dashboard", replace: true });
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">

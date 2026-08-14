@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as FreigabeAusstehendRouteImport } from './routes/freigabe-ausstehend'
 import { Route as RechtlichesRouteImport } from './routes/rechtliches'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
@@ -38,6 +39,7 @@ import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenti
 import { Route as AuthenticatedProjekteIndexRouteImport } from './routes/_authenticated/projekte.index'
 import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authenticated/projekte.$id'
 import { Route as ApiPublicFotoRetentionRouteImport } from './routes/api/public/foto-retention'
+import { Route as ApiPublicKontoFreigabeRouteImport } from './routes/api/public/konto-freigabe'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -51,6 +53,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FreigabeAusstehendRoute = FreigabeAusstehendRouteImport.update({
+  id: '/freigabe-ausstehend',
+  path: '/freigabe-ausstehend',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RechtlichesRoute = RechtlichesRouteImport.update({
@@ -193,10 +200,16 @@ const ApiPublicFotoRetentionRoute = ApiPublicFotoRetentionRouteImport.update({
   path: '/api/public/foto-retention',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicKontoFreigabeRoute = ApiPublicKontoFreigabeRouteImport.update({
+  id: '/api/public/konto-freigabe',
+  path: '/api/public/konto-freigabe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
@@ -221,12 +234,14 @@ export interface FileRoutesByFullPath {
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
+  '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/reset-password': typeof ResetPasswordRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
@@ -250,6 +265,7 @@ export interface FileRoutesByTo {
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
+  '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
   '/projekte': typeof AuthenticatedProjekteIndexRoute
 }
@@ -258,6 +274,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
@@ -282,6 +299,7 @@ export interface FileRoutesById {
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
+  '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/_authenticated/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
@@ -290,6 +308,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/freigabe-ausstehend'
     | '/rechtliches'
     | '/reset-password'
     | '/ausgaben'
@@ -314,12 +333,14 @@ export interface FileRouteTypes {
     | '/dokumente/$id'
     | '/projekte/$id'
     | '/api/public/foto-retention'
+    | '/api/public/konto-freigabe'
     | '/dokumente/'
     | '/projekte/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/freigabe-ausstehend'
     | '/reset-password'
     | '/ausgaben'
     | '/bankverbindung'
@@ -343,6 +364,7 @@ export interface FileRouteTypes {
     | '/dokumente/$id'
     | '/projekte/$id'
     | '/api/public/foto-retention'
+    | '/api/public/konto-freigabe'
     | '/dokumente'
     | '/projekte'
   id:
@@ -350,6 +372,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/freigabe-ausstehend'
     | '/rechtliches'
     | '/reset-password'
     | '/_authenticated/ausgaben'
@@ -374,6 +397,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/projekte/$id'
     | '/api/public/foto-retention'
+    | '/api/public/konto-freigabe'
     | '/_authenticated/dokumente/'
     | '/_authenticated/projekte/'
   fileRoutesById: FileRoutesById
@@ -382,10 +406,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  FreigabeAusstehendRoute: typeof FreigabeAusstehendRoute
   RechtlichesRoute: typeof RechtlichesRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   StbTokenRoute: typeof StbTokenRoute
   ApiPublicFotoRetentionRoute: typeof ApiPublicFotoRetentionRoute
+  ApiPublicKontoFreigabeRoute: typeof ApiPublicKontoFreigabeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -409,6 +435,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/freigabe-ausstehend': {
+      id: '/freigabe-ausstehend'
+      path: '/freigabe-ausstehend'
+      fullPath: '/freigabe-ausstehend'
+      preLoaderRoute: typeof FreigabeAusstehendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rechtliches': {
@@ -593,6 +626,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFotoRetentionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/konto-freigabe': {
+      id: '/api/public/konto-freigabe'
+      path: '/api/public/konto-freigabe'
+      fullPath: '/api/public/konto-freigabe'
+      preLoaderRoute: typeof ApiPublicKontoFreigabeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -663,10 +703,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  FreigabeAusstehendRoute: FreigabeAusstehendRoute,
   RechtlichesRoute: RechtlichesRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   StbTokenRoute: StbTokenRoute,
   ApiPublicFotoRetentionRoute: ApiPublicFotoRetentionRoute,
+  ApiPublicKontoFreigabeRoute: ApiPublicKontoFreigabeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
