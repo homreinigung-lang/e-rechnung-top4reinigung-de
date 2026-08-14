@@ -443,6 +443,38 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Manuelle Statuspflege ohne erneuten E-Mail-Versand.
+  const setSendStatus = useMutation({
+    mutationFn: async (next: "draft" | "sent") => {
+      const { data, error } = await supabase
+        .from("documents")
+        .update({
+          status: next,
+          sent_at: next === "sent" ? new Date().toISOString() : null,
+        } as never)
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("Beleg nicht gefunden");
+      await logAudit(next === "sent" ? "marked_sent" : "marked_draft", { id, number: docNumber }, {});
+      return next;
+    },
+    onSuccess: (next) => {
+      setForm((f) => ({ ...f, status: next }));
+      toast.success(
+        next === "sent"
+          ? "Status auf Versendet gesetzt – ohne erneute E-Mail an den Kunden."
+          : "Status auf Entwurf zurückgesetzt.",
+
+      );
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
+
   const decide = useMutation({
     mutationFn: (decision: "accepted" | "declined") => setQuoteDecision(id, decision),
     onSuccess: () => {
@@ -823,6 +855,27 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => setMailOpen(true)}>
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
+          {doc.status === "draft" && (
+            <Button
+              variant="outline"
+              title="Beleg als versendet kennzeichnen, ohne eine E-Mail zu verschicken"
+              onClick={() => setSendStatus.mutate("sent")}
+              disabled={setSendStatus.isPending}
+            >
+              <Check className="size-4" /> Als versendet markieren
+            </Button>
+          )}
+          {doc.status === "sent" && !locked && (
+            <Button
+              variant="ghost"
+              title="Status zurück auf Entwurf setzen"
+              onClick={() => setSendStatus.mutate("draft")}
+              disabled={setSendStatus.isPending}
+            >
+              Zurück auf Entwurf
+            </Button>
+          )}
+
           {!locked && (
             <Button variant={editMode ? "secondary" : "default"} onClick={() => setEditMode((v) => !v)}>
               <Pencil className="size-4" /> {editMode ? "Vorschau" : "Bearbeiten"}
