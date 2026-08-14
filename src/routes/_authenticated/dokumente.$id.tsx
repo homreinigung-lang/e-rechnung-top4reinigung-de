@@ -156,6 +156,17 @@ function DokumentDetail() {
   const [form, setForm] = useState<Record<string, string | boolean | null>>({});
   const [items, setItems] = useState<Item[]>([]);
   const [mailOpen, setMailOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    action: () => void;
+  } | null>(null);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payDate, setPayDate] = useState<string>("");
+
+
 
   useEffect(() => {
     if (!data) return;
