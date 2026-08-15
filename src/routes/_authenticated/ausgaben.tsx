@@ -279,6 +279,14 @@ function Ausgaben() {
           {!scanning && form.receipt_url && (
             <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
               <Paperclip className="size-4" /> Beleg angehängt & mit der Ausgabe verknüpft
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-1 h-7"
+                onClick={() => setPreview(form.receipt_url)}
+              >
+                <Eye className="mr-1 size-4" /> Ansehen
+              </Button>
             </span>
           )}
           {!scanning && scanned && (
