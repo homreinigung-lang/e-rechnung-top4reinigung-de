@@ -9,7 +9,7 @@ import type { MapPoint } from "@/components/EinsatzKarte";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
-import { MapPin, Users, FolderKanban, HardHat } from "lucide-react";
+import { MapPin, Users, FolderKanban, HardHat, Navigation } from "lucide-react";
 
 const EinsatzKarte = lazy(() => import("@/components/EinsatzKarte"));
 
@@ -194,6 +194,19 @@ function KartePage() {
         </div>
       </div>
 
+      <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+        <Navigation className="mt-0.5 size-5 shrink-0 text-primary" />
+        <div className="space-y-1">
+          <p className="font-medium">Direkte Navigation zum Einsatzort</p>
+          <p className="text-muted-foreground">
+            Mitarbeiter können auf jeden Marker oder Listeneintrag tippen und über die Schaltfläche
+            „Navigieren" Google Maps mit der Routenführung zum ausgewählten Einsatzort öffnen. So
+            spart das Team Zeit bei der Anfahrt und die Verwaltung sieht alle Standorte übersichtlich
+            auf einen Blick.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {(Object.keys(FILTER_LABEL) as Filter[]).map((k) => {
           const Icon = FILTER_ICON[k];
@@ -239,11 +252,22 @@ function KartePage() {
               <li key={p.id} className="px-4 py-3">
                 <div className="flex items-start gap-2">
                   <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{p.title}</div>
                     <div className="truncate text-sm text-muted-foreground">{p.subtitle}</div>
                     <div className="truncate text-xs text-muted-foreground">{p.address}</div>
                   </div>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0"
+                  >
+                    <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs">
+                      <Navigation className="size-3.5" />
+                      {p.kind === "assignment" ? "Navigieren" : "Route"}
+                    </Button>
+                  </a>
                 </div>
               </li>
             ))}

@@ -2,6 +2,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect } from "react";
+import { Navigation as NavigationIcon } from "lucide-react";
 
 export type MapPoint = {
   id: string;
@@ -53,17 +54,31 @@ export default function EinsatzKarte({ points }: { points: MapPoint[] }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitBounds points={points} />
-      {points.map((p) => (
-        <Marker key={p.id} position={[p.lat, p.lon]} icon={pinIcon(p.kind)}>
-          <Popup>
-            <div className="space-y-1">
-              <div className="font-semibold">{p.title}</div>
-              <div>{p.subtitle}</div>
-              <div className="text-xs opacity-70">{p.address}</div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      {points.map((p) => {
+        const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+          p.address,
+        )}`;
+        return (
+          <Marker key={p.id} position={[p.lat, p.lon]} icon={pinIcon(p.kind)}>
+            <Popup>
+              <div className="space-y-1.5">
+                <div className="font-semibold">{p.title}</div>
+                <div>{p.subtitle}</div>
+                <div className="text-xs opacity-70">{p.address}</div>
+                <a
+                  href={navUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground no-underline hover:opacity-90"
+                >
+                  <NavigationIcon className="size-3.5" />
+                  {p.kind === "assignment" ? "Zum Einsatzort navigieren" : "Route öffnen"}
+                </a>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
     </MapContainer>
   );
 }
