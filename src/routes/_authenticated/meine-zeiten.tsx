@@ -492,13 +492,10 @@ function ProjectDetailDialog({
   // Tageswerte aus der Arbeitsplanung; ältere Einträge ohne Tageswerte auf Mo–Fr verteilen.
   const dayTotals = projectAssignments.reduce<number[]>(
     (acc, a) => {
-      const days = normalizeDayHours(a.day_hours);
-      const sum = days.reduce((s, n) => s + n, 0);
-      const week = Number(a.hours_per_week ?? 0);
-      const effective = sum > 0 ? days : week > 0 ? [week / 5, week / 5, week / 5, week / 5, week / 5, 0, 0] : days;
+      const effective = effectiveDayHours(a.day_hours, a.hours_per_week);
       return acc.map((v, i) => v + (effective[i] ?? 0));
     },
-    [0, 0, 0, 0, 0, 0, 0],
+    normalizeDayHours(null),
   );
   const totalHours = dayTotals.reduce((s, n) => s + n, 0);
 
