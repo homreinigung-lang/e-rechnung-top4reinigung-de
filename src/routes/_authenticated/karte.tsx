@@ -239,11 +239,22 @@ function KartePage() {
               <li key={p.id} className="px-4 py-3">
                 <div className="flex items-start gap-2">
                   <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{p.title}</div>
                     <div className="truncate text-sm text-muted-foreground">{p.subtitle}</div>
                     <div className="truncate text-xs text-muted-foreground">{p.address}</div>
                   </div>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0"
+                  >
+                    <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs">
+                      <Navigation className="size-3.5" />
+                      {p.kind === "assignment" ? "Navigieren" : "Route"}
+                    </Button>
+                  </a>
                 </div>
               </li>
             ))}
