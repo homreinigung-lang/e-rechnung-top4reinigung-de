@@ -225,18 +225,23 @@ function Arbeitsplanung() {
     return m;
   }, [assignments]);
 
-  // Entwurf: eingegebene Tagesstunden bleiben lokal, bis „Speichern" gedrückt wird.
-  const [draft, setDraft] = React.useState<Record<string, number[]>>({});
+  // Entwurf: eingegebene Zeiten bleiben lokal, bis „Speichern" gedrückt wird.
+  const [draft, setDraft] = React.useState<Record<string, DayTime[]>>({});
   React.useEffect(() => {
     setDraft({});
   }, [weekStart]);
 
-  const savedDays = (e: string, p: string) => {
+  const savedTimes = (e: string, p: string) => {
+    const a = map.get(key(e, p));
+    return normalizeDayTimes(a?.day_times);
+  };
+
+  /** Fallback für Altbestand ohne Von-/Bis-Zeiten. */
+  const savedFallbackHours = (e: string, p: string) => {
     const a = map.get(key(e, p));
     if (!a) return normalizeDayHours(null);
     const days = normalizeDayHours(a.day_hours);
     const total = days.reduce((s, n) => s + n, 0);
-    // Ältere Einträge ohne Tageswerte: Wochenstunden gleichmäßig auf Mo–Fr verteilen.
     if (total === 0 && Number(a.hours_per_week ?? 0) > 0) {
       const per = Number(a.hours_per_week) / 5;
       return [per, per, per, per, per, 0, 0];
@@ -244,14 +249,26 @@ function Arbeitsplanung() {
     return days;
   };
 
-  const cellDays = (e: string, p: string) => draft[key(e, p)] ?? savedDays(e, p);
-  const cellHours = (e: string, p: string) =>
-    cellDays(e, p).reduce((s, n) => s + (Number(n) || 0), 0);
+  const cellTimes = (e: string, p: string) => draft[key(e, p)] ?? savedTimes(e, p);
 
-  const setDay = (e: string, p: string, index: number, value: number) =>
+  const cellDayHours = (e: string, p: string) => {
+    const fromTimes = cellTimes(e, p).map((t) => timeToHours(t));
+    if (fromTimes.some((h) => h > 0)) return fromTimes;
+    return draft[key(e, p)] ? fromTimes : savedFallbackHours(e, p);
+  };
+
+  const cellHours = (e: string, p: string) =>
+    cellDayHours(e, p).reduce((s, n) => s + (Number(n) || 0), 0);
+
+  const setDayTime = (
+    e: string,
+    p: string,
+    index: number,
+    patch: Partial<DayTime>,
+  ) =>
     setDraft((d) => {
-      const current = [...(d[key(e, p)] ?? savedDays(e, p))];
-      current[index] = Number.isFinite(value) && value > 0 ? value : 0;
+      const current = [...(d[key(e, p)] ?? savedTimes(e, p))];
+      current[index] = { ...(current[index] ?? EMPTY_DAY_TIME), ...patch };
       return { ...d, [key(e, p)]: current };
     });
 
@@ -259,13 +276,14 @@ function Arbeitsplanung() {
     () =>
       Object.keys(draft).filter((k) => {
         const [e, p] = k.split("|");
-        return JSON.stringify(draft[k]) !== JSON.stringify(savedDays(e!, p!));
+        return JSON.stringify(draft[k]) !== JSON.stringify(savedTimes(e!, p!));
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [draft, map],
   );
 
-  async function persistCell(employee: Employee, object: GridObject, days: number[]) {
+  async function persistCell(employee: Employee, object: GridObject, times: DayTime[]) {
+    const days = times.map((t) => timeToHours(t));
     const hours = days.reduce((s, n) => s + (Number(n) || 0), 0);
     const existing = map.get(key(employee.id, object.id));
     if (hours <= 0) {
@@ -281,7 +299,7 @@ function Arbeitsplanung() {
     if (existing) {
       const { error } = await supabase
         .from("project_assignments")
-        .update({ hours_per_week: hours, day_hours: days })
+        .update({ hours_per_week: hours, day_hours: days, day_times: times })
         .eq("id", existing.id);
       if (error) throw error;
       return;
@@ -307,8 +325,7 @@ function Arbeitsplanung() {
       projectId = created.id;
     }
     // Upsert anhand (Projekt, Mitarbeiter, Wochenstart): existiert für diese Woche
-    // schon ein Eintrag, wird er aktualisiert – sonst neu angelegt. Verhindert den
-    // Duplicate-Key-Fehler bei wiederholtem Speichern derselben Woche.
+    // schon ein Eintrag, wird er aktualisiert – sonst neu angelegt.
     const { error } = await supabase
       .from("project_assignments")
       .upsert(
@@ -318,6 +335,7 @@ function Arbeitsplanung() {
           user_id: employee.user_id,
           hours_per_week: hours,
           day_hours: days,
+          day_times: times,
           start_date: weekStart,
           end_date: weekEnd,
         },
@@ -333,9 +351,10 @@ function Arbeitsplanung() {
         const employee = employees.find((e) => e.id === eid);
         const object = objects.find((o) => o.id === pid);
         if (!employee || !object) continue;
-        await persistCell(employee, object, draft[k] ?? normalizeDayHours(null));
+        await persistCell(employee, object, draft[k] ?? normalizeDayTimes(null));
       }
     },
+
     onSuccess: () => {
       setDraft({});
       queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
