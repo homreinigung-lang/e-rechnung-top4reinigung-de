@@ -44,7 +44,19 @@ type Project = {
   address_line: string | null;
   postal_code: string | null;
   status: string | null;
+  customer_id?: string | null;
 };
+
+type Customer = {
+  id: string;
+  name: string;
+  company: string | null;
+  city: string | null;
+  address_line: string | null;
+  postal_code: string | null;
+};
+
+type GridObject = Project & { customerId?: string; virtual?: boolean };
 
 type Assignment = {
   id: string;
@@ -77,10 +89,22 @@ function Arbeitsplanung() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id,name,city,address_line,postal_code,status")
+        .select("id,name,city,address_line,postal_code,status,customer_id")
         .order("name");
       if (error) throw error;
       return data as Project[];
+    },
+  });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers", "planung"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id,name,company,city,address_line,postal_code")
+        .order("name");
+      if (error) throw error;
+      return data as Customer[];
     },
   });
 
@@ -95,6 +119,25 @@ function Arbeitsplanung() {
     },
   });
 
+  const objects = React.useMemo<GridObject[]>(() => {
+    const linked = new Set(
+      projects.map((p) => (p as Project & { customer_id?: string }).customer_id).filter(Boolean),
+    );
+    const fromCustomers: GridObject[] = customers
+      .filter((c) => !linked.has(c.id))
+      .map((c) => ({
+        id: `c:${c.id}`,
+        name: c.company || c.name,
+        city: c.city,
+        address_line: c.address_line,
+        postal_code: c.postal_code,
+        status: null,
+        customerId: c.id,
+        virtual: true,
+      }));
+    return [...projects, ...fromCustomers];
+  }, [projects, customers]);
+
   const key = (e: string, p: string) => `${e}|${p}`;
   const map = React.useMemo(() => {
     const m = new Map<string, Assignment>();
@@ -103,8 +146,8 @@ function Arbeitsplanung() {
   }, [assignments]);
 
   const save = useMutation({
-    mutationFn: async (v: { employee: Employee; projectId: string; hours: number }) => {
-      const existing = map.get(key(v.employee.id, v.projectId));
+    mutationFn: async (v: { employee: Employee; object: GridObject; hours: number }) => {
+      const existing = map.get(key(v.employee.id, v.object.id));
       if (v.hours <= 0) {
         if (existing) {
           const { error } = await supabase
@@ -123,8 +166,28 @@ function Arbeitsplanung() {
         if (error) throw error;
         return;
       }
+      let projectId = v.object.id;
+      if (v.object.virtual) {
+        const customer = customers.find((c) => c.id === v.object.customerId);
+        const { data: created, error: pErr } = await supabase
+          .from("projects")
+          .insert({
+            user_id: v.employee.user_id,
+            name: v.object.name ?? "Objekt",
+            mode: "grundriss",
+            customer_id: v.object.customerId ?? null,
+            customer_name: customer ? customer.company || customer.name : "",
+            address_line: v.object.address_line ?? "",
+            postal_code: v.object.postal_code ?? "",
+            city: v.object.city ?? "",
+          })
+          .select("id")
+          .single();
+        if (pErr) throw pErr;
+        projectId = created.id;
+      }
       const { error } = await supabase.from("project_assignments").insert({
-        project_id: v.projectId,
+        project_id: projectId,
         employee_id: v.employee.id,
         user_id: v.employee.user_id,
         hours_per_week: v.hours,
@@ -133,17 +196,18 @@ function Arbeitsplanung() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const visibleProjects = React.useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter((p) =>
+    if (!q) return objects;
+    return objects.filter((p) =>
       `${p.name ?? ""} ${p.city ?? ""} ${p.address_line ?? ""}`.toLowerCase().includes(q),
     );
-  }, [projects, filter]);
+  }, [objects, filter]);
 
   const employeeTotal = (id: string) =>
     assignments
@@ -177,7 +241,9 @@ function Arbeitsplanung() {
       <section className="surface overflow-x-auto p-0">
         {employees.length === 0 || visibleProjects.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">
-            Für das Raster werden mindestens ein aktiver Mitarbeiter und ein Objekt benötigt.
+            {employees.length === 0
+              ? "Bitte zuerst mindestens einen aktiven Mitarbeiter anlegen (Menüpunkt Personal)."
+              : "Kein Objekt gefunden – bitte Kunden oder Projekte anlegen bzw. Suche zurücksetzen."}
           </p>
         ) : (
           <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -236,7 +302,7 @@ function Arbeitsplanung() {
                               const hours = Number(ev.target.value || 0);
                               const current = Number(a?.hours_per_week ?? 0);
                               if (hours === current) return;
-                              save.mutate({ employee: e, projectId: p.id, hours });
+                              save.mutate({ employee: e, object: p, hours });
                             }}
                             className="h-9 text-center"
                           />
