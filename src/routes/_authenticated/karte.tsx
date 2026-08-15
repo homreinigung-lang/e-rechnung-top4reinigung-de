@@ -34,18 +34,20 @@ export const Route = createFileRoute("/_authenticated/karte")({
   component: KartePage,
 });
 
-type Filter = "customer" | "project" | "assignment";
+type Filter = "customer" | "project" | "assignment" | "custom";
 
 const FILTER_LABEL: Record<Filter, string> = {
   customer: "Kunden",
   project: "Projekte",
   assignment: "Einsätze",
+  custom: "Eigene Orte",
 };
 
 const FILTER_ICON = {
   customer: Users,
   project: FolderKanban,
   assignment: HardHat,
+  custom: MapPin,
 } as const;
 
 function buildAddress(parts: (string | null | undefined)[]) {
