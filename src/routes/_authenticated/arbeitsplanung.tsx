@@ -44,6 +44,7 @@ type Project = {
   address_line: string | null;
   postal_code: string | null;
   status: string | null;
+  customer_id?: string | null;
 };
 
 type Customer = {
@@ -88,7 +89,7 @@ function Arbeitsplanung() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id,name,city,address_line,postal_code,status")
+        .select("id,name,city,address_line,postal_code,status,customer_id")
         .order("name");
       if (error) throw error;
       return data as Project[];
