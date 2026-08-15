@@ -76,6 +76,7 @@ function Ausgaben() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Form>(empty);
   const [scanning, setScanning] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
   const runScan = useServerFn(scanReceipt);
 
