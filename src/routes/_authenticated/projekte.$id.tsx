@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeProject, type ScannedProject } from "@/lib/project-scan.functions";
-import { fileUrl } from "@/lib/storage";
+import { fileUrl, openStoredFile } from "@/lib/storage";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
 import { useFileUrl } from "@/hooks/useFileUrl";

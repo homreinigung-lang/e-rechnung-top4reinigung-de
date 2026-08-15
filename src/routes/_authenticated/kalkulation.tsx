@@ -9,7 +9,7 @@ import { suggestItems } from "@/lib/item-ai.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { formatMoney, formatNumber } from "@/lib/format";
-import { fileUrl } from "@/lib/storage";
+import { fileUrl, openStoredFile } from "@/lib/storage";
 
 import { FileUploadButton } from "@/components/FileUploadButton";
 
