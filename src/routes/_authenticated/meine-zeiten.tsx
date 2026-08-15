@@ -5,8 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Navigation, Trash2 } from "lucide-react";
+import { MapPin, Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { mapsUrl, projectAddress } from "@/lib/maps";
@@ -50,6 +57,7 @@ function MeineZeiten() {
   const queryClient = useQueryClient();
   const { data: me, isLoading } = useMyEmployee();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const { data: entries = [] } = useQuery({
     queryKey: ["my_time_entries", me?.id],
@@ -269,6 +277,9 @@ function MeineZeiten() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="surface p-5">
           <h2 className="text-lg font-semibold">Meine Objekte / Einsatzorte</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Tippen Sie auf ein Objekt, um Details und die Navigation dorthin zu öffnen.
+          </p>
           {assignments.length === 0 && !me.work_location ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Aktuell sind Ihnen keine festen Objekte zugewiesen.
@@ -284,36 +295,34 @@ function MeineZeiten() {
               {assignments.map((a) => {
                 const p = projects.find((x) => x.id === a.project_id);
                 const address = p ? projectAddress(p) : "";
+                const name = projectName(a.project_id as string) ?? "Projekt";
                 return (
-                  <li key={a.id} className="flex items-center justify-between gap-3 py-2">
-                    <span className="min-w-0">
-                      <span className="block truncate">
-                        <span className="font-medium">
-                          {projectName(a.project_id as string) ?? "Projekt"}
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProjectId(a.project_id as string)}
+                      className="flex w-full items-center justify-between gap-3 rounded px-1 py-2 text-left transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate">
+                          <span className="font-medium">{name}</span>
+                          {a.assignment_role ? ` · ${a.assignment_role}` : ""}
                         </span>
-                        {a.assignment_role ? ` · ${a.assignment_role}` : ""}
+                        {address && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {address}
+                          </span>
+                        )}
                       </span>
-                      {address && (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {address}
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="text-muted-foreground">
+                          {Number(a.hours_per_week ?? 0) > 0
+                            ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
+                            : ""}
                         </span>
-                      )}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <span className="text-muted-foreground">
-                        {Number(a.hours_per_week ?? 0) > 0
-                          ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
-                          : ""}
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
                       </span>
-                      {address && (
-                        <Button asChild size="sm" variant="outline">
-                          <a href={mapsUrl(address)} target="_blank" rel="noreferrer">
-                            <Navigation className="mr-1 h-3.5 w-3.5" />
-                            Zum Einsatzort
-                          </a>
-                        </Button>
-                      )}
-                    </span>
+                    </button>
                   </li>
                 );
               })}
@@ -454,6 +463,79 @@ function MeineZeiten() {
           </ul>
         )}
       </div>
+
+      <ProjectDetailDialog
+        projectId={selectedProjectId}
+        projects={projects}
+        assignments={assignments}
+        onClose={() => setSelectedProjectId(null)}
+      />
     </div>
+  );
+}
+
+function ProjectDetailDialog({
+  projectId,
+  projects,
+  assignments,
+  onClose,
+}: {
+  projectId: string | null;
+  projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
+  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; start_date: string | null; end_date: string | null }[];
+  onClose: () => void;
+}) {
+  const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
+  const address = project ? projectAddress(project) : "";
+  const projectAssignments = assignments.filter((a) => a.project_id === projectId);
+  const totalHours = projectAssignments.reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0);
+
+  return (
+    <Dialog open={!!projectId} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{project?.name ?? "Objekt"}</DialogTitle>
+          <DialogDescription>Objekt-Details und Routenführung</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <div className="text-xs text-muted-foreground">Adresse</div>
+            <div className="mt-1 text-sm font-medium">
+              {address || "Keine Adresse hinterlegt"}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-muted-foreground">Wochenstunden</div>
+              <div className="mt-1 text-sm font-medium">{totalHours.toFixed(2)} Std.</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Einsätze</div>
+              <div className="mt-1 text-sm font-medium">{projectAssignments.length}</div>
+            </div>
+          </div>
+          {projectAssignments.length > 0 && (
+            <ul className="divide-y text-xs">
+              {projectAssignments.map((a) => (
+                <li key={a.id} className="flex items-center justify-between py-2">
+                  <span>{a.assignment_role || "Einsatz"}</span>
+                  <span className="text-muted-foreground">
+                    {Number(a.hours_per_week ?? 0).toFixed(2)} Std./Woche
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {address && (
+            <Button asChild className="w-full">
+              <a href={mapsUrl(address)} target="_blank" rel="noreferrer">
+                <Navigation className="mr-2 h-4 w-4" />
+                Zum Einsatzort navigieren
+              </a>
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
