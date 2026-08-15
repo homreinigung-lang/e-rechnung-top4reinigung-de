@@ -5,8 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { mapsUrl, projectAddress } from "@/lib/maps";
+import { isoWeek, isoWeekYear } from "@/lib/kw";
+import { formatDate } from "@/lib/format";
+
 
 export const Route = createFileRoute("/_authenticated/arbeitsplanung")({
   head: () => ({
@@ -64,12 +67,36 @@ type Assignment = {
   employee_id: string;
   hours_per_week: number | null;
   assignment_role: string | null;
+  start_date: string | null;
+  end_date: string | null;
 };
 
+function isoDay(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Montag der Woche zum übergebenen Datum. */
+function mondayOf(date: Date) {
+  const d = new Date(date);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - (day - 1));
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
+function addDays(date: Date, n: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
 
 function Arbeitsplanung() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = React.useState("");
+  const [monday, setMonday] = React.useState(() => mondayOf(new Date()));
+  const weekStart = isoDay(monday);
+  const weekEnd = isoDay(addDays(monday, 6));
+
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees", "planung"],
@@ -109,15 +136,17 @@ function Arbeitsplanung() {
   });
 
   const { data: assignments = [] } = useQuery({
-    queryKey: ["project_assignments", "planung"],
+    queryKey: ["project_assignments", "planung", weekStart],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,employee_id,hours_per_week,assignment_role");
+        .select("id,project_id,employee_id,hours_per_week,assignment_role,start_date,end_date")
+        .eq("start_date", weekStart);
       if (error) throw error;
       return data as Assignment[];
     },
   });
+
 
   const objects = React.useMemo<GridObject[]>(() => {
     const linked = new Set(
@@ -191,8 +220,11 @@ function Arbeitsplanung() {
         employee_id: v.employee.id,
         user_id: v.employee.user_id,
         hours_per_week: v.hours,
+        start_date: weekStart,
+        end_date: weekEnd,
       });
       if (error) throw error;
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
@@ -229,7 +261,48 @@ function Arbeitsplanung() {
         </p>
       </div>
 
-      <div className="surface p-5">
+      <div className="surface flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Vorherige Woche"
+            onClick={() => setMonday((d) => addDays(d, -7))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-[220px] text-center">
+            <div className="flex items-center justify-center gap-2 font-semibold">
+              <CalendarDays className="h-4 w-4 text-primary" />
+              KW {isoWeek(monday)} / {isoWeekYear(monday)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {formatDate(weekStart)} – {formatDate(weekEnd)}
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Nächste Woche"
+            onClick={() => setMonday((d) => addDays(d, 7))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setMonday(mondayOf(new Date()))}>
+            Aktuelle Woche
+          </Button>
+          <Input
+            type="date"
+            value={weekStart}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) setMonday(mondayOf(new Date(`${v}T12:00:00`)));
+            }}
+            className="h-9 w-[170px]"
+          />
+        </div>
         <Input
           placeholder="Objekt suchen (Name, Ort, Adresse) …"
           value={filter}
@@ -237,6 +310,7 @@ function Arbeitsplanung() {
           className="max-w-md"
         />
       </div>
+
 
       <section className="surface overflow-x-auto p-0">
         {employees.length === 0 || visibleProjects.length === 0 ? (
@@ -296,7 +370,9 @@ function Arbeitsplanung() {
                             type="number"
                             min={0}
                             step="0.5"
+                            key={`${weekStart}|${a?.id ?? "neu"}`}
                             defaultValue={a?.hours_per_week ? Number(a.hours_per_week) : ""}
+
                             placeholder="–"
                             onBlur={(ev) => {
                               const hours = Number(ev.target.value || 0);
