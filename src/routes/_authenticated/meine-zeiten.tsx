@@ -5,8 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Navigation, Trash2 } from "lucide-react";
+import { MapPin, Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { mapsUrl, projectAddress } from "@/lib/maps";
