@@ -83,8 +83,17 @@ function MeineZeiten() {
     },
   });
 
+  const { data: releasedWeeks = [] } = useQuery({
+    queryKey: ["plan_releases", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from("plan_releases").select("week_start");
+      return (data ?? []).map((r) => String(r.week_start));
+    },
+  });
+
   const { data: assignments = [] } = useQuery({
-    queryKey: ["my_assignments", me?.id],
+    queryKey: ["my_assignments", me?.id, releasedWeeks.join(",")],
     enabled: !!me?.id,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -92,9 +101,12 @@ function MeineZeiten() {
         .select("id,project_id,assignment_role,hours_per_week,start_date,end_date")
         .eq("employee_id", me!.id);
       if (error) return [];
-      return data ?? [];
+      // Nur freigegebene Wochenpläne sind für Mitarbeitende sichtbar.
+      const released = new Set(releasedWeeks);
+      return (data ?? []).filter((a) => !a.start_date || released.has(String(a.start_date)));
     },
   });
+
 
   const projectName = useMemo(() => {
     const map = new Map(projects.map((p) => [p.id, p.name || "Projekt"]));
