@@ -4,10 +4,12 @@ import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { MapPin, Navigation, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, Send, Save } from "lucide-react";
 import { mapsUrl, projectAddress } from "@/lib/maps";
 import { isoWeek, isoWeekYear } from "@/lib/kw";
+import { DAY_LABELS, normalizeDayHours } from "@/lib/planung";
 import { formatDate } from "@/lib/format";
 
 
@@ -66,10 +68,12 @@ type Assignment = {
   project_id: string;
   employee_id: string;
   hours_per_week: number | null;
+  day_hours: unknown;
   assignment_role: string | null;
   start_date: string | null;
   end_date: string | null;
 };
+
 
 function isoDay(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -140,7 +144,7 @@ function Arbeitsplanung() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,employee_id,hours_per_week,assignment_role,start_date,end_date")
+        .select("id,project_id,employee_id,hours_per_week,day_hours,assignment_role,start_date,end_date")
         .eq("start_date", weekStart);
       if (error) throw error;
       return data as Assignment[];
@@ -221,32 +225,48 @@ function Arbeitsplanung() {
     return m;
   }, [assignments]);
 
-  // Entwurf: eingegebene Stunden bleiben lokal, bis „Speichern" gedrückt wird.
-  const [draft, setDraft] = React.useState<Record<string, string>>({});
+  // Entwurf: eingegebene Tagesstunden bleiben lokal, bis „Speichern" gedrückt wird.
+  const [draft, setDraft] = React.useState<Record<string, number[]>>({});
   React.useEffect(() => {
     setDraft({});
   }, [weekStart]);
 
-  const savedHours = (e: string, p: string) => Number(map.get(key(e, p))?.hours_per_week ?? 0);
-  const cellValue = (e: string, p: string) => {
-    const k = key(e, p);
-    if (draft[k] !== undefined) return draft[k];
-    const h = savedHours(e, p);
-    return h ? String(h) : "";
+  const savedDays = (e: string, p: string) => {
+    const a = map.get(key(e, p));
+    if (!a) return normalizeDayHours(null);
+    const days = normalizeDayHours(a.day_hours);
+    const total = days.reduce((s, n) => s + n, 0);
+    // Ältere Einträge ohne Tageswerte: Wochenstunden gleichmäßig auf Mo–Fr verteilen.
+    if (total === 0 && Number(a.hours_per_week ?? 0) > 0) {
+      const per = Number(a.hours_per_week) / 5;
+      return [per, per, per, per, per, 0, 0];
+    }
+    return days;
   };
-  const cellHours = (e: string, p: string) => Number(cellValue(e, p) || 0);
+
+  const cellDays = (e: string, p: string) => draft[key(e, p)] ?? savedDays(e, p);
+  const cellHours = (e: string, p: string) =>
+    cellDays(e, p).reduce((s, n) => s + (Number(n) || 0), 0);
+
+  const setDay = (e: string, p: string, index: number, value: number) =>
+    setDraft((d) => {
+      const current = [...(d[key(e, p)] ?? savedDays(e, p))];
+      current[index] = Number.isFinite(value) && value > 0 ? value : 0;
+      return { ...d, [key(e, p)]: current };
+    });
 
   const dirtyKeys = React.useMemo(
     () =>
       Object.keys(draft).filter((k) => {
         const [e, p] = k.split("|");
-        return Number(draft[k] || 0) !== savedHours(e!, p!);
+        return JSON.stringify(draft[k]) !== JSON.stringify(savedDays(e!, p!));
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [draft, map],
   );
 
-  async function persistCell(employee: Employee, object: GridObject, hours: number) {
+  async function persistCell(employee: Employee, object: GridObject, days: number[]) {
+    const hours = days.reduce((s, n) => s + (Number(n) || 0), 0);
     const existing = map.get(key(employee.id, object.id));
     if (hours <= 0) {
       if (existing) {
@@ -261,7 +281,7 @@ function Arbeitsplanung() {
     if (existing) {
       const { error } = await supabase
         .from("project_assignments")
-        .update({ hours_per_week: hours })
+        .update({ hours_per_week: hours, day_hours: days })
         .eq("id", existing.id);
       if (error) throw error;
       return;
@@ -291,6 +311,7 @@ function Arbeitsplanung() {
       employee_id: employee.id,
       user_id: employee.user_id,
       hours_per_week: hours,
+      day_hours: days,
       start_date: weekStart,
       end_date: weekEnd,
     });
@@ -304,7 +325,7 @@ function Arbeitsplanung() {
         const employee = employees.find((e) => e.id === eid);
         const object = objects.find((o) => o.id === pid);
         if (!employee || !object) continue;
-        await persistCell(employee, object, Number(draft[k] || 0));
+        await persistCell(employee, object, draft[k] ?? normalizeDayHours(null));
       }
     },
     onSuccess: () => {
@@ -338,8 +359,8 @@ function Arbeitsplanung() {
       <div>
         <h1 className="text-3xl font-bold">Arbeitsplanung</h1>
         <p className="mt-1 text-muted-foreground">
-          Wochenstunden je Mitarbeiter und Objekt im Raster planen. Änderungen werden sofort
-          gespeichert und im Mitarbeiterportal angezeigt.
+          Auf eine Zelle klicken und Stunden je Wochentag (Mo–So) eintragen – die Wochensumme
+          wird automatisch berechnet und nach der Freigabe im Mitarbeiterportal angezeigt.
         </p>
       </div>
 
@@ -513,21 +534,51 @@ function Arbeitsplanung() {
                         {soll > 0 ? ` · Soll ${soll.toFixed(1)} Std.` : ""}
                       </div>
                     </td>
-                    {visibleProjects.map((p) => (
-                      <td key={p.id} className="p-2">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.5"
-                          value={cellValue(e.id, p.id)}
-                          placeholder="–"
-                          onChange={(ev) =>
-                            setDraft((d) => ({ ...d, [key(e.id, p.id)]: ev.target.value }))
-                          }
-                          className="h-9 text-center"
-                        />
-                      </td>
-                    ))}
+                    {visibleProjects.map((p) => {
+                      const days = cellDays(e.id, p.id);
+                      const sum = cellHours(e.id, p.id);
+                      return (
+                        <td key={p.id} className="p-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-9 w-full justify-center font-medium"
+                              >
+                                {sum > 0 ? `${sum.toFixed(1)} Std.` : "–"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 space-y-2">
+                              <div className="text-sm font-semibold">
+                                {e.name} · {p.name || "Objekt"}
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                {DAY_LABELS.map((label, i) => (
+                                  <label key={label} className="flex items-center gap-2 text-xs">
+                                    <span className="w-6 text-muted-foreground">{label}</span>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      step="0.5"
+                                      value={days[i] ? String(days[i]) : ""}
+                                      placeholder="0"
+                                      onChange={(ev) =>
+                                        setDay(e.id, p.id, i, Number(ev.target.value))
+                                      }
+                                      className="h-8 text-center"
+                                    />
+                                  </label>
+                                ))}
+                              </div>
+                              <div className="pt-1 text-right text-xs font-semibold">
+                                Woche: {sum.toFixed(1)} Std.
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </td>
+                      );
+                    })}
 
                     <td
                       className={`p-3 text-right font-semibold ${over ? "text-destructive" : ""}`}

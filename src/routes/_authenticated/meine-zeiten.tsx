@@ -17,6 +17,7 @@ import { MapPin, Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { mapsUrl, projectAddress } from "@/lib/maps";
+import { DAY_NAMES, effectiveDayHours, normalizeDayHours } from "@/lib/planung";
 import {
   absenceClasses,
   absenceLabel,
@@ -106,7 +107,7 @@ function MeineZeiten() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,assignment_role,hours_per_week,start_date,end_date")
+        .select("id,project_id,assignment_role,hours_per_week,day_hours,start_date,end_date")
         .eq("employee_id", me!.id);
       if (error) return [];
       // Nur freigegebene Wochenpläne sind für Mitarbeitende sichtbar.
@@ -482,13 +483,21 @@ function ProjectDetailDialog({
 }: {
   projectId: string | null;
   projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
-  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; start_date: string | null; end_date: string | null }[];
+  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; day_hours?: unknown; start_date: string | null; end_date: string | null }[];
   onClose: () => void;
 }) {
   const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
   const address = project ? projectAddress(project) : "";
   const projectAssignments = assignments.filter((a) => a.project_id === projectId);
-  const totalHours = projectAssignments.reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0);
+  // Tageswerte aus der Arbeitsplanung; ältere Einträge ohne Tageswerte auf Mo–Fr verteilen.
+  const dayTotals = projectAssignments.reduce<number[]>(
+    (acc, a) => {
+      const effective = effectiveDayHours(a.day_hours, a.hours_per_week);
+      return acc.map((v, i) => v + (effective[i] ?? 0));
+    },
+    normalizeDayHours(null),
+  );
+  const totalHours = dayTotals.reduce((s, n) => s + n, 0);
 
   return (
     <Dialog open={!!projectId} onOpenChange={(open) => !open && onClose()}>
@@ -514,18 +523,25 @@ function ProjectDetailDialog({
               <div className="mt-1 text-sm font-medium">{projectAssignments.length}</div>
             </div>
           </div>
-          {projectAssignments.length > 0 && (
-            <ul className="divide-y text-xs">
-              {projectAssignments.map((a) => (
-                <li key={a.id} className="flex items-center justify-between py-2">
-                  <span>{a.assignment_role || "Einsatz"}</span>
-                  <span className="text-muted-foreground">
-                    {Number(a.hours_per_week ?? 0).toFixed(2)} Std./Woche
+          <div>
+            <div className="text-xs text-muted-foreground">Stunden je Wochentag</div>
+            <ul className="mt-1 divide-y text-sm">
+              {DAY_NAMES.map((name, i) => (
+                <li key={name} className="flex items-center justify-between py-1.5">
+                  <span className={dayTotals[i] ? "font-medium" : "text-muted-foreground"}>
+                    {name}
+                  </span>
+                  <span className={dayTotals[i] ? "font-medium" : "text-muted-foreground"}>
+                    {(dayTotals[i] ?? 0).toFixed(2)} Std.
                   </span>
                 </li>
               ))}
+              <li className="flex items-center justify-between py-1.5 font-semibold">
+                <span>Summe</span>
+                <span>{totalHours.toFixed(2)} Std.</span>
+              </li>
             </ul>
-          )}
+          </div>
           {address && (
             <Button asChild className="w-full">
               <a href={mapsUrl(address)} target="_blank" rel="noreferrer">
