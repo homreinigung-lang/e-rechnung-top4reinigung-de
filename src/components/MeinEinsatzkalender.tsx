@@ -96,6 +96,8 @@ export function MeinEinsatzkalender({
           address: p ? projectAddress(p) : "",
           hours,
           role: a.assignment_role ?? null,
+          released: a.released !== false,
+
         });
         m.set(date, list);
       });
