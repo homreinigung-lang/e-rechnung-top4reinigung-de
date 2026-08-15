@@ -370,7 +370,9 @@ function Arbeitsplanung() {
                             type="number"
                             min={0}
                             step="0.5"
+                            key={`${weekStart}|${a?.id ?? "neu"}`}
                             defaultValue={a?.hours_per_week ? Number(a.hours_per_week) : ""}
+
                             placeholder="–"
                             onBlur={(ev) => {
                               const hours = Number(ev.target.value || 0);
