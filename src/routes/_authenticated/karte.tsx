@@ -238,11 +238,14 @@ function KartePage() {
     [raw, coords, active],
   );
 
-  const counts = {
+  const counts: Record<Filter, number> = {
     customer: raw.filter((r) => r.kind === "customer").length,
     project: raw.filter((r) => r.kind === "project").length,
     assignment: raw.filter((r) => r.kind === "assignment").length,
+    custom: raw.filter((r) => r.kind === "custom").length,
   };
+
+  const missing = raw.filter((r) => !coords[r.address]);
 
   return (
     <div className="space-y-6">
