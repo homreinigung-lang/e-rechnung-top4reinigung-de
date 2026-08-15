@@ -1,18 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const requestSchema = z.object({
-  authUserId: z.string().uuid(),
-  fullName: z.string().max(200).optional(),
-});
-
 /**
  * Legt nach einer Registrierung einen Freigabe-Antrag an und informiert den
  * Inhaber per E-Mail mit Freigabe- und Ablehnungs-Link.
  * Mitarbeitende, deren E-Mail bereits hinterlegt ist, werden direkt freigegeben.
  */
 export const requestAccountApproval = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => requestSchema.parse(input))
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        authUserId: z.string().uuid(),
+        fullName: z.string().max(200).optional(),
+      })
+      .parse(input),
+  )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const mail = await import("./approval-mail.server");
