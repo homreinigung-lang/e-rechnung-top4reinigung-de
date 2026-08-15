@@ -220,8 +220,11 @@ function Arbeitsplanung() {
         employee_id: v.employee.id,
         user_id: v.employee.user_id,
         hours_per_week: v.hours,
+        start_date: weekStart,
+        end_date: weekEnd,
       });
       if (error) throw error;
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
