@@ -10,9 +10,10 @@ import { toast } from "sonner";
 import { formatDate, formatMoney, today } from "@/lib/format";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { receiptFileToPdf } from "@/lib/receipt-pdf";
-import { openStoredFile, uploadUserFile } from "@/lib/storage";
+import { downloadStoredFile, uploadUserFile } from "@/lib/storage";
+import { DateiVorschau } from "@/components/DateiVorschau";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
-import { Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Download, Eye, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/ausgaben")({
@@ -312,11 +313,18 @@ function Ausgaben() {
         ) : (
           <ul className="divide-y">
             {rows.map((r) => (
-              <ExpenseRow key={r.id} row={r as never} onDelete={() => remove.mutate(r.id)} />
+              <ExpenseRow
+                key={r.id}
+                row={r as never}
+                onDelete={() => remove.mutate(r.id)}
+                onPreview={(path) => setPreview(path)}
+              />
             ))}
           </ul>
         )}
       </div>
+
+      <DateiVorschau path={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }
@@ -332,7 +340,15 @@ type ExpenseRowData = {
   receipt_url: string;
 };
 
-function ExpenseRow({ row: r, onDelete }: { row: ExpenseRowData; onDelete: () => void }) {
+function ExpenseRow({
+  row: r,
+  onDelete,
+  onPreview,
+}: {
+  row: ExpenseRowData;
+  onDelete: () => void;
+  onPreview: (path: string) => void;
+}) {
   return (
     <li className="flex items-center gap-3 px-5 py-4">
                 <div className="flex-1">
@@ -349,18 +365,28 @@ function ExpenseRow({ row: r, onDelete }: { row: ExpenseRowData; onDelete: () =>
                   </div>
                 </div>
                 {r.receipt_url && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Beleg öffnen"
-                    onClick={() =>
-                      void openStoredFile(r.receipt_url).catch(() =>
-                        toast.error("Beleg konnte nicht geöffnet werden."),
-                      )
-                    }
-                  >
-                    <Paperclip className="size-4" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Beleg ansehen"
+                      onClick={() => onPreview(r.receipt_url)}
+                    >
+                      <Eye className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Beleg herunterladen"
+                      onClick={() =>
+                        void downloadStoredFile(r.receipt_url).catch(() =>
+                          toast.error("Beleg konnte nicht geladen werden."),
+                        )
+                      }
+                    >
+                      <Download className="size-4" />
+                    </Button>
+                  </>
                 )}
                 <Button variant="ghost" size="icon" onClick={onDelete}>
                   <Trash2 className="size-4 text-destructive" />
