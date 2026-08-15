@@ -32,6 +32,9 @@ export type PdfItem = {
 export type PdfDocData = {
   isInvoice: boolean;
   title: string; // z. B. "Rechnung RE-2026-0001"
+  /** Zentrierte Hauptüberschrift (nur Angebote); ersetzt die Titelzeile. */
+  headline?: string | undefined;
+
   logo?: { bytes: Uint8Array; type: "png" | "jpg" } | null | undefined;
   logoInitials: string;
   companyName: string;
