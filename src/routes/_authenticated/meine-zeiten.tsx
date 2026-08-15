@@ -523,18 +523,25 @@ function ProjectDetailDialog({
               <div className="mt-1 text-sm font-medium">{projectAssignments.length}</div>
             </div>
           </div>
-          {projectAssignments.length > 0 && (
-            <ul className="divide-y text-xs">
-              {projectAssignments.map((a) => (
-                <li key={a.id} className="flex items-center justify-between py-2">
-                  <span>{a.assignment_role || "Einsatz"}</span>
-                  <span className="text-muted-foreground">
-                    {Number(a.hours_per_week ?? 0).toFixed(2)} Std./Woche
+          <div>
+            <div className="text-xs text-muted-foreground">Stunden je Wochentag</div>
+            <ul className="mt-1 divide-y text-sm">
+              {DAY_NAMES.map((name, i) => (
+                <li key={name} className="flex items-center justify-between py-1.5">
+                  <span className={dayTotals[i] ? "font-medium" : "text-muted-foreground"}>
+                    {name}
+                  </span>
+                  <span className={dayTotals[i] ? "font-medium" : "text-muted-foreground"}>
+                    {(dayTotals[i] ?? 0).toFixed(2)} Std.
                   </span>
                 </li>
               ))}
+              <li className="flex items-center justify-between py-1.5 font-semibold">
+                <span>Summe</span>
+                <span>{totalHours.toFixed(2)} Std.</span>
+              </li>
             </ul>
-          )}
+          </div>
           {address && (
             <Button asChild className="w-full">
               <a href={mapsUrl(address)} target="_blank" rel="noreferrer">
