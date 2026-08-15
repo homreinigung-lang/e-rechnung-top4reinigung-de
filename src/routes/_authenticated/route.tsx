@@ -9,7 +9,13 @@ export const Route = createFileRoute("/_authenticated")({
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
     // Neue Konten sind erst nach Freigabe durch den Inhaber nutzbar.
-    const { status } = await getApprovalStatus({ data: { authUserId: data.user.id } });
+    // Netzwerkfehler dürfen die App nicht blockieren -> im Zweifel Zugriff zulassen.
+    let status: string | null = null;
+    try {
+      status = (await getApprovalStatus({ data: { authUserId: data.user.id } })).status;
+    } catch (error) {
+      console.warn("Freigabe-Status konnte nicht geprüft werden:", error);
+    }
     if (status === "pending") {
       await supabase.auth.signOut();
       throw redirect({ to: "/freigabe-ausstehend" });
