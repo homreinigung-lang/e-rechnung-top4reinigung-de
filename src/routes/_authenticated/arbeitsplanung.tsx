@@ -401,23 +401,44 @@ function Arbeitsplanung() {
             <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
           )}
           <div>
-            <div className="font-semibold">
-              {release
-                ? `Woche freigegeben (KW ${isoWeek(monday)})`
-                : `Planung noch nicht freigegeben (KW ${isoWeek(monday)})`}
+            <div className="flex flex-wrap items-center gap-2 font-semibold">
+              KW {isoWeek(monday)}
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  release
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {release ? "Freigegeben" : "Entwurf"}
+              </span>
+              {dirtyKeys.length > 0 && (
+                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+                  Ungespeicherte Änderungen
+                </span>
+              )}
             </div>
             <p className="text-sm text-muted-foreground">
               {release
-                ? `Freigegeben am ${formatDate(release.released_at.slice(0, 10))} – Mitarbeitende sehen den Plan als verbindlich.`
-                : "Nach der Freigabe gilt der Wochenplan als verbindlich und Mitarbeitende erhalten eine Benachrichtigung."}
+                ? `Freigegeben am ${formatDate(release.released_at.slice(0, 10))} – Mitarbeitende sehen diesen Plan in ihrem Konto.`
+                : "Entwurf: nur intern sichtbar. Erst nach der Freigabe erscheint der Plan bei den Mitarbeitenden."}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => saveAll.mutate()}
+            disabled={saveAll.isPending || dirtyKeys.length === 0}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Speichern
+          </Button>
           {release && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => withdrawRelease.mutate()}
               disabled={withdrawRelease.isPending}
             >
@@ -426,14 +447,18 @@ function Arbeitsplanung() {
           )}
           <Button
             type="button"
-            onClick={() => releaseWeek.mutate()}
-            disabled={releaseLoading || releaseWeek.isPending || assignments.length === 0}
+            onClick={async () => {
+              if (dirtyKeys.length > 0) await saveAll.mutateAsync();
+              releaseWeek.mutate();
+            }}
+            disabled={releaseLoading || releaseWeek.isPending || saveAll.isPending}
           >
             <Send className="mr-2 h-4 w-4" />
             {release ? "Erneut freigeben" : "Woche freigeben"}
           </Button>
         </div>
       </div>
+
 
 
 
