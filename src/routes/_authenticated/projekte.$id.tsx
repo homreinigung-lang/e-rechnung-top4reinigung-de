@@ -8,7 +8,6 @@ import { analyzeProject, type ScannedProject } from "@/lib/project-scan.function
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
-import { useFileUrl } from "@/hooks/useFileUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -180,7 +179,6 @@ function ProjektDetail() {
     },
   });
 
-  const planUrl = useFileUrl(project?.source_file_path);
 
   const patchProject = useMutation({
     mutationFn: async (values: ProjectUpdate) => {
