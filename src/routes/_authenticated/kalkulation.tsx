@@ -64,13 +64,20 @@ export const Route = createFileRoute("/_authenticated/kalkulation")({
 
 type Mode = "area" | "hours";
 
-const CLEANING_TYPES: { value: string; label: string; area: number; hourly: number }[] = [
-  { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.55, hourly: 29.41 },
-  { value: "grund", label: "Grundreinigung", area: 1.9, hourly: 34.0 },
-  { value: "bau", label: "Bauendreinigung", area: 2.6, hourly: 38.0 },
-  { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 33.0 },
-  { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.75, hourly: 29.41 },
-  { value: "buero", label: "Büroreinigung", area: 0.65, hourly: 29.41 },
+const CLEANING_TYPES: {
+  value: string;
+  label: string;
+  area: number;
+  hourly: number;
+  /** Empfohlener Stundensatz-Korridor (netto). */
+  range: [number, number];
+}[] = [
+  { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.55, hourly: 35, range: [34, 37] },
+  { value: "grund", label: "Grundreinigung (Tiefenreinigung)", area: 1.9, hourly: 43, range: [42, 45] },
+  { value: "bau", label: "Bauendreinigung (Tiefenreinigung)", area: 2.6, hourly: 44, range: [42, 45] },
+  { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 36, range: [34, 37] },
+  { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.75, hourly: 35, range: [34, 37] },
+  { value: "buero", label: "Büroreinigung", area: 0.65, hourly: 35, range: [34, 37] },
 ];
 
 const EXTRAS: { key: string; label: string; price: number }[] = [
@@ -371,6 +378,26 @@ function KalkulationPage() {
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Empfehlung {selected.label}: {formatMoney(selected.range[0])} –{" "}
+                    {formatMoney(selected.range[1])} pro Stunde. Frei überschreibbar – die Summe
+                    aktualisiert sich sofort.
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {[selected.range[0], Math.round((selected.range[0] + selected.range[1]) / 2), selected.range[1]].map(
+                      (r) => (
+                        <Button
+                          key={r}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setHourlyRate(String(r))}
+                        >
+                          {formatMoney(r)}
+                        </Button>
+                      ),
+                    )}
+                  </div>
                 </div>
               </div>
             )}
