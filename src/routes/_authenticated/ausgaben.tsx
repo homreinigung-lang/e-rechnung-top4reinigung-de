@@ -334,7 +334,6 @@ type ExpenseRowData = {
 };
 
 function ExpenseRow({ row: r, onDelete }: { row: ExpenseRowData; onDelete: () => void }) {
-  const receipt = useFileUrl(r.receipt_url);
   return (
     <li className="flex items-center gap-3 px-5 py-4">
                 <div className="flex-1">
@@ -350,16 +349,19 @@ function ExpenseRow({ row: r, onDelete }: { row: ExpenseRowData; onDelete: () =>
                     netto {formatMoney(Number(r.net_amount))}
                   </div>
                 </div>
-                {receipt && (
-                  <a
-                    href={receipt}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex size-9 items-center justify-center rounded-md hover:bg-muted"
+                {r.receipt_url && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     title="Beleg öffnen"
+                    onClick={() =>
+                      void openStoredFile(r.receipt_url).catch(() =>
+                        toast.error("Beleg konnte nicht geöffnet werden."),
+                      )
+                    }
                   >
                     <Paperclip className="size-4" />
-                  </a>
+                  </Button>
                 )}
                 <Button variant="ghost" size="icon" onClick={onDelete}>
                   <Trash2 className="size-4 text-destructive" />
