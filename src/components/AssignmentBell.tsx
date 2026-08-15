@@ -51,7 +51,13 @@ export function AssignmentBell() {
         .order("created_at", { ascending: false })
         .limit(15);
       if (error) return [];
-      return (data ?? []) as Assignment[];
+      const { data: rel } = await supabase.from("plan_releases").select("week_start");
+      const released = new Set((rel ?? []).map((r) => String(r.week_start)));
+      // Entwürfe (noch nicht freigegebene Wochen) werden nicht gemeldet.
+      return ((data ?? []) as Assignment[]).filter(
+        (a) => !a.start_date || released.has(String(a.start_date)),
+      );
+
     },
   });
 
