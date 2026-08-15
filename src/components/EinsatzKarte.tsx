@@ -71,7 +71,7 @@ export default function EinsatzKarte({ points }: { points: MapPoint[] }) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground no-underline hover:opacity-90"
                 >
-                  <Navigation className="size-3.5" />
+                  <NavigationIcon className="size-3.5" />
                   {p.kind === "assignment" ? "Zum Einsatzort navigieren" : "Route öffnen"}
                 </a>
               </div>
