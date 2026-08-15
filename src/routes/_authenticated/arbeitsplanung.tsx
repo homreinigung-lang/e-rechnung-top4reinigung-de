@@ -221,61 +221,97 @@ function Arbeitsplanung() {
     return m;
   }, [assignments]);
 
-  const save = useMutation({
-    mutationFn: async (v: { employee: Employee; object: GridObject; hours: number }) => {
-      const existing = map.get(key(v.employee.id, v.object.id));
-      if (v.hours <= 0) {
-        if (existing) {
-          const { error } = await supabase
-            .from("project_assignments")
-            .delete()
-            .eq("id", existing.id);
-          if (error) throw error;
-        }
-        return;
-      }
+  // Entwurf: eingegebene Stunden bleiben lokal, bis „Speichern" gedrückt wird.
+  const [draft, setDraft] = React.useState<Record<string, string>>({});
+  React.useEffect(() => {
+    setDraft({});
+  }, [weekStart]);
+
+  const savedHours = (e: string, p: string) => Number(map.get(key(e, p))?.hours_per_week ?? 0);
+  const cellValue = (e: string, p: string) => {
+    const k = key(e, p);
+    if (draft[k] !== undefined) return draft[k];
+    const h = savedHours(e, p);
+    return h ? String(h) : "";
+  };
+  const cellHours = (e: string, p: string) => Number(cellValue(e, p) || 0);
+
+  const dirtyKeys = React.useMemo(
+    () =>
+      Object.keys(draft).filter((k) => {
+        const [e, p] = k.split("|");
+        return Number(draft[k] || 0) !== savedHours(e!, p!);
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [draft, map],
+  );
+
+  async function persistCell(employee: Employee, object: GridObject, hours: number) {
+    const existing = map.get(key(employee.id, object.id));
+    if (hours <= 0) {
       if (existing) {
         const { error } = await supabase
           .from("project_assignments")
-          .update({ hours_per_week: v.hours })
+          .delete()
           .eq("id", existing.id);
         if (error) throw error;
-        return;
       }
-      let projectId = v.object.id;
-      if (v.object.virtual) {
-        const customer = customers.find((c) => c.id === v.object.customerId);
-        const { data: created, error: pErr } = await supabase
-          .from("projects")
-          .insert({
-            user_id: v.employee.user_id,
-            name: v.object.name ?? "Objekt",
-            mode: "grundriss",
-            customer_id: v.object.customerId ?? null,
-            customer_name: customer ? customer.company || customer.name : "",
-            address_line: v.object.address_line ?? "",
-            postal_code: v.object.postal_code ?? "",
-            city: v.object.city ?? "",
-          })
-          .select("id")
-          .single();
-        if (pErr) throw pErr;
-        projectId = created.id;
-      }
-      const { error } = await supabase.from("project_assignments").insert({
-        project_id: projectId,
-        employee_id: v.employee.id,
-        user_id: v.employee.user_id,
-        hours_per_week: v.hours,
-        start_date: weekStart,
-        end_date: weekEnd,
-      });
+      return;
+    }
+    if (existing) {
+      const { error } = await supabase
+        .from("project_assignments")
+        .update({ hours_per_week: hours })
+        .eq("id", existing.id);
       if (error) throw error;
+      return;
+    }
+    let projectId = object.id;
+    if (object.virtual) {
+      const customer = customers.find((c) => c.id === object.customerId);
+      const { data: created, error: pErr } = await supabase
+        .from("projects")
+        .insert({
+          user_id: employee.user_id,
+          name: object.name ?? "Objekt",
+          mode: "grundriss",
+          customer_id: object.customerId ?? null,
+          customer_name: customer ? customer.company || customer.name : "",
+          address_line: object.address_line ?? "",
+          postal_code: object.postal_code ?? "",
+          city: object.city ?? "",
+        })
+        .select("id")
+        .single();
+      if (pErr) throw pErr;
+      projectId = created.id;
+    }
+    const { error } = await supabase.from("project_assignments").insert({
+      project_id: projectId,
+      employee_id: employee.id,
+      user_id: employee.user_id,
+      hours_per_week: hours,
+      start_date: weekStart,
+      end_date: weekEnd,
+    });
+    if (error) throw error;
+  }
 
+  const saveAll = useMutation({
+    mutationFn: async () => {
+      for (const k of dirtyKeys) {
+        const [eid, pid] = k.split("|");
+        const employee = employees.find((e) => e.id === eid);
+        const object = objects.find((o) => o.id === pid);
+        if (!employee || !object) continue;
+        await persistCell(employee, object, Number(draft[k] || 0));
+      }
     },
     onSuccess: () => {
+      setDraft({});
       queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Wochenplan gespeichert (Entwurf).");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -289,14 +325,13 @@ function Arbeitsplanung() {
   }, [objects, filter]);
 
   const employeeTotal = (id: string) =>
-    assignments
-      .filter((a) => a.employee_id === id)
-      .reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0);
+    objects.reduce((s, o) => s + cellHours(id, o.id), 0);
 
   const projectTotal = (id: string) =>
-    assignments
-      .filter((a) => a.project_id === id)
-      .reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0);
+    employees.reduce((s, e) => s + cellHours(e.id, id), 0);
+
+  const grandTotal = employees.reduce((s, e) => s + employeeTotal(e.id), 0);
+
 
   return (
     <div className="space-y-6">
