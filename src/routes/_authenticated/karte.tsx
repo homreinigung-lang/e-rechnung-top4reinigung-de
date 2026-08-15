@@ -60,9 +60,20 @@ function KartePage() {
     customer: true,
     project: true,
     assignment: true,
+    custom: true,
   });
   const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
+  const [form, setForm] = useState({
+    label: "",
+    address_line: "",
+    postal_code: "",
+    city: "",
+    country: "Deutschland",
+    note: "",
+  });
+  const [saving, setSaving] = useState(false);
   const geocode = useServerFn(geocodeAddresses);
+  const queryClient = useQueryClient();
 
   const { data, isPending } = useQuery({
     queryKey: ["karte-daten", day],
