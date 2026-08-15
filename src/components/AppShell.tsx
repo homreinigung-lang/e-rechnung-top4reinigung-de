@@ -43,6 +43,7 @@ const nav = [
   { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
   { to: "/projekte", label: "Projekte", icon: FolderKanban },
   { to: "/personal", label: "Personal", icon: HardHat },
+  { to: "/arbeitsplanung", label: "Arbeitsplanung", icon: CalendarRange },
   { to: "/wiederkehrend", label: "Wiederkehrend", icon: Repeat },
 
   { to: "/kunden", label: "Kunden", icon: Users },
