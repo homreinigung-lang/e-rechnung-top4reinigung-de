@@ -20,6 +20,7 @@ import { Route as AuthenticatedBankverbindungRouteImport } from './routes/_authe
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenticated/kalkulation'
+import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/karte'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedPersonalRouteImport } from './routes/_authenticated/personal'
@@ -98,6 +99,11 @@ const AuthenticatedKalkulationRoute =
     path: '/kalkulation',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedKarteRoute = AuthenticatedKarteRouteImport.update({
+  id: '/karte',
+  path: '/karte',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedKundenRoute = AuthenticatedKundenRouteImport.update({
   id: '/kunden',
   path: '/kunden',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
+  '/karte': typeof AuthenticatedKarteRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/personal': typeof AuthenticatedPersonalRoute
@@ -248,6 +255,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
+  '/karte': typeof AuthenticatedKarteRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/personal': typeof AuthenticatedPersonalRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kalkulation': typeof AuthenticatedKalkulationRoute
+  '/_authenticated/karte': typeof AuthenticatedKarteRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/personal': typeof AuthenticatedPersonalRoute
@@ -316,6 +325,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/einstellungen'
     | '/kalkulation'
+    | '/karte'
     | '/kunden'
     | '/meine-zeiten'
     | '/personal'
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/einstellungen'
     | '/kalkulation'
+    | '/karte'
     | '/kunden'
     | '/meine-zeiten'
     | '/personal'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
     | '/_authenticated/kalkulation'
+    | '/_authenticated/karte'
     | '/_authenticated/kunden'
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/personal'
@@ -491,6 +503,13 @@ declare module '@tanstack/react-router' {
       path: '/kalkulation'
       fullPath: '/kalkulation'
       preLoaderRoute: typeof AuthenticatedKalkulationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/karte': {
+      id: '/_authenticated/karte'
+      path: '/karte'
+      fullPath: '/karte'
+      preLoaderRoute: typeof AuthenticatedKarteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/kunden': {
@@ -642,6 +661,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
   AuthenticatedKalkulationRoute: typeof AuthenticatedKalkulationRoute
+  AuthenticatedKarteRoute: typeof AuthenticatedKarteRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedPersonalRoute: typeof AuthenticatedPersonalRoute
@@ -662,6 +682,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
   AuthenticatedKalkulationRoute: AuthenticatedKalkulationRoute,
+  AuthenticatedKarteRoute: AuthenticatedKarteRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedPersonalRoute: AuthenticatedPersonalRoute,

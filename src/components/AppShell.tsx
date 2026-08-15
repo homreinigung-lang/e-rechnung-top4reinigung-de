@@ -22,6 +22,7 @@ import {
   FolderKanban,
   HardHat,
   Landmark,
+  Map as MapIcon,
   LayoutDashboard,
   LogOut,
   MoreVertical,
@@ -45,6 +46,7 @@ const nav = [
   { to: "/wiederkehrend", label: "Wiederkehrend", icon: Repeat },
 
   { to: "/kunden", label: "Kunden", icon: Users },
+  { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
   { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock },
   { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
   { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
