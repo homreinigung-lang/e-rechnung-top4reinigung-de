@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { MapPin, Navigation, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { MapPin, Navigation, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, Send } from "lucide-react";
 import { mapsUrl, projectAddress } from "@/lib/maps";
 import { isoWeek, isoWeekYear } from "@/lib/kw";
 import { formatDate } from "@/lib/format";
