@@ -35,6 +35,7 @@ import {
 
 } from "@/lib/format";
 import { buildEpcPayload } from "@/lib/epc";
+import { QUOTE_INTRO, deriveServiceName, quoteHeadline } from "@/lib/document-texts";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -721,6 +722,16 @@ function DokumentDetail() {
     return {
       isInvoice,
       title: `${DOC_TYPE_LABEL[doc.type]} ${number}`,
+      ...(isInvoice
+        ? {}
+        : {
+            headline: quoteHeadline(
+              deriveServiceName(
+                form["service_description"] ? String(form["service_description"]) : "",
+                items[0]?.description ?? "",
+              ),
+            ),
+          }),
       logo: (await loadLogo()) ?? null,
       logoInitials: companyName
         .split(/\s+/)
@@ -741,7 +752,9 @@ function DokumentDetail() {
       ],
       customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
-      introText: form["intro_text"] ? String(form["intro_text"]) : undefined,
+      introText: isInvoice
+        ? undefined
+        : `${QUOTE_INTRO}${form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""}`,
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
         : items
@@ -1559,9 +1572,23 @@ function DokumentDetail() {
             </dl>
           </div>
 
-          <h2 className="mt-7 font-display text-xl font-semibold">
-            {DOC_TYPE_LABEL[doc.type]} {docNumber}
-          </h2>
+          {isInvoice ? (
+            <h2 className="mt-7 font-display text-xl font-semibold">
+              {DOC_TYPE_LABEL[doc.type]} {docNumber}
+            </h2>
+          ) : (
+            <>
+              <h2 className="mt-7 text-center font-display text-lg font-bold text-balance">
+                {quoteHeadline(
+                  deriveServiceName(
+                    form["service_description"] ? String(form["service_description"]) : "",
+                    items[0]?.description ?? "",
+                  ),
+                )}
+              </h2>
+              <p className="mt-3 text-justify text-sm leading-relaxed">{QUOTE_INTRO}</p>
+            </>
+          )}
           {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
 
           <div className="invoice-table-wrap mt-4 overflow-x-auto">
