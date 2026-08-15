@@ -359,8 +359,8 @@ function Arbeitsplanung() {
       <div>
         <h1 className="text-3xl font-bold">Arbeitsplanung</h1>
         <p className="mt-1 text-muted-foreground">
-          Wochenstunden je Mitarbeiter und Objekt im Raster planen. Änderungen werden sofort
-          gespeichert und im Mitarbeiterportal angezeigt.
+          Auf eine Zelle klicken und Stunden je Wochentag (Mo–So) eintragen – die Wochensumme
+          wird automatisch berechnet und nach der Freigabe im Mitarbeiterportal angezeigt.
         </p>
       </div>
 
