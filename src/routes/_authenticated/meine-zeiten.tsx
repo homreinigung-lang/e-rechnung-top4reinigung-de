@@ -31,6 +31,7 @@ import {
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
+import { MeinEinsatzkalender } from "@/components/MeinEinsatzkalender";
 
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
@@ -274,6 +275,12 @@ function MeineZeiten() {
           </div>
         </dl>
       </section>
+
+      <MeinEinsatzkalender
+        assignments={assignments as never}
+        projects={projects}
+        onSelectProject={(id) => setSelectedProjectId(id)}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="surface p-5">

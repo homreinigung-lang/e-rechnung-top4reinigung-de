@@ -7,6 +7,15 @@ const TABLES: { table: string; keys: string[] }[] = [
   { table: "customers", keys: ["customers"] },
   { table: "documents", keys: ["documents", "document"] },
   { table: "document_items", keys: ["documents", "document", "document-items"] },
+  // Wochenplanung: Änderungen der Verwaltung erscheinen sofort im Mitarbeiterkalender.
+  {
+    table: "project_assignments",
+    keys: ["project_assignments", "my_assignments", "my_projects"],
+  },
+  {
+    table: "plan_releases",
+    keys: ["plan_release", "plan_releases", "my_assignments"],
+  },
 ];
 
 /**
