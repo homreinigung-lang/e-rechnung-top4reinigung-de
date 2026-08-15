@@ -111,11 +111,15 @@ function MeineZeiten() {
         .select("id,project_id,assignment_role,hours_per_week,day_hours,start_date,end_date")
         .eq("employee_id", me!.id);
       if (error) return [];
-      // Nur freigegebene Wochenpläne sind für Mitarbeitende sichtbar.
+      // Alle Planungen sind sichtbar; noch nicht freigegebene Wochen werden markiert.
       const released = new Set(releasedWeeks);
-      return (data ?? []).filter((a) => !a.start_date || released.has(String(a.start_date)));
+      return (data ?? []).map((a) => ({
+        ...a,
+        released: !a.start_date || released.has(String(a.start_date)),
+      }));
     },
   });
+
 
 
   const projectName = useMemo(() => {

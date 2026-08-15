@@ -11,7 +11,9 @@ export type KalenderAssignment = {
   day_hours: unknown;
   start_date: string | null;
   assignment_role?: string | null;
+  released?: boolean;
 };
+
 
 export type KalenderProjekt = {
   id: string;
@@ -48,7 +50,9 @@ type DayTask = {
   address: string;
   hours: number;
   role: string | null;
+  released: boolean;
 };
+
 
 /**
  * Einsatzkalender im Mitarbeiterportal: zeigt die in der Arbeitsplanung
@@ -92,6 +96,8 @@ export function MeinEinsatzkalender({
           address: p ? projectAddress(p) : "",
           hours,
           role: a.assignment_role ?? null,
+          released: a.released !== false,
+
         });
         m.set(date, list);
       });
@@ -188,7 +194,11 @@ export function MeinEinsatzkalender({
                     key={t.key}
                     type="button"
                     onClick={() => t.projectId && onSelectProject?.(t.projectId)}
-                    className="block w-full rounded border border-primary/30 bg-primary/10 px-1.5 py-1 text-left transition hover:bg-primary/20"
+                    className={`block w-full rounded border px-1.5 py-1 text-left transition ${
+                      t.released
+                        ? "border-primary/30 bg-primary/10 hover:bg-primary/20"
+                        : "border-dashed border-muted-foreground/40 bg-muted hover:bg-muted/70"
+                    }`}
                   >
                     <span className="block truncate font-medium">{t.name}</span>
                     {t.address && (
@@ -197,9 +207,15 @@ export function MeinEinsatzkalender({
                         <span className="truncate">{t.address}</span>
                       </span>
                     )}
-                    <span className="block text-[10px] font-semibold text-primary">
+                    <span
+                      className={`block text-[10px] font-semibold ${
+                        t.released ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
                       {t.hours.toFixed(2)} Std.
+                      {!t.released && " · vorläufig"}
                     </span>
+
                   </button>
                 ))}
               </div>
