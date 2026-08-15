@@ -6,9 +6,10 @@ import { useMyEmployee } from "@/lib/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
+import { mapsUrl, projectAddress } from "@/lib/maps";
 import {
   absenceClasses,
   absenceLabel,

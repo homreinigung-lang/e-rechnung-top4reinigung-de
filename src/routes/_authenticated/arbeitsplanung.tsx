@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { MapPin, Navigation } from "lucide-react";
+import { mapsUrl, projectAddress } from "@/lib/maps";
 
 export const Route = createFileRoute("/_authenticated/arbeitsplanung")({
   head: () => ({
@@ -53,20 +54,6 @@ type Assignment = {
   assignment_role: string | null;
 };
 
-/** Vollständige Adresse eines Objekts für Karten-Navigation. */
-export function projectAddress(p: {
-  address_line?: string | null;
-  postal_code?: string | null;
-  city?: string | null;
-}) {
-  return [p.address_line, [p.postal_code, p.city].filter(Boolean).join(" ")]
-    .filter((s) => s && String(s).trim())
-    .join(", ");
-}
-
-export function mapsUrl(address: string) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
-}
 
 function Arbeitsplanung() {
   const queryClient = useQueryClient();
