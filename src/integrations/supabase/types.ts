@@ -844,6 +844,7 @@ export type Database = {
           assignment_role: string
           created_at: string
           day_hours: Json
+          day_times: Json
           employee_id: string
           end_date: string | null
           hours_per_week: number
@@ -858,6 +859,7 @@ export type Database = {
           assignment_role?: string
           created_at?: string
           day_hours?: Json
+          day_times?: Json
           employee_id: string
           end_date?: string | null
           hours_per_week?: number
@@ -872,6 +874,7 @@ export type Database = {
           assignment_role?: string
           created_at?: string
           day_hours?: Json
+          day_times?: Json
           employee_id?: string
           end_date?: string | null
           hours_per_week?: number
