@@ -57,6 +57,7 @@ function MeineZeiten() {
   const queryClient = useQueryClient();
   const { data: me, isLoading } = useMyEmployee();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const { data: entries = [] } = useQuery({
     queryKey: ["my_time_entries", me?.id],
