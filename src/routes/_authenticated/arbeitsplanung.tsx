@@ -147,6 +147,53 @@ function Arbeitsplanung() {
     },
   });
 
+  const { data: release, isLoading: releaseLoading } = useQuery({
+    queryKey: ["plan_release", weekStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plan_releases")
+        .select("id,week_start,released_at")
+        .eq("week_start", weekStart)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; week_start: string; released_at: string } | null;
+    },
+  });
+
+  const releaseWeek = useMutation({
+    mutationFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) throw new Error("Nicht angemeldet");
+      const { error } = await supabase
+        .from("plan_releases")
+        .upsert(
+          { user_id: uid, week_start: weekStart, week_end: weekEnd, released_at: new Date().toISOString() },
+          { onConflict: "user_id,week_start" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan_release"] });
+      toast.success(`Woche freigegeben – Mitarbeitende wurden benachrichtigt.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const withdrawRelease = useMutation({
+    mutationFn: async () => {
+      if (!release) return;
+      const { error } = await supabase.from("plan_releases").delete().eq("id", release.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan_release"] });
+      toast.success("Freigabe zurückgenommen.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
 
   const objects = React.useMemo<GridObject[]>(() => {
     const linked = new Set(
