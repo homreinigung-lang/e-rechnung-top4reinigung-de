@@ -9,7 +9,7 @@ import type { MapPoint } from "@/components/EinsatzKarte";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
-import { MapPin, Users, FolderKanban, HardHat } from "lucide-react";
+import { MapPin, Users, FolderKanban, HardHat, Navigation } from "lucide-react";
 
 const EinsatzKarte = lazy(() => import("@/components/EinsatzKarte"));
 
