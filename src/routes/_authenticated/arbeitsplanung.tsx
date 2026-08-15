@@ -67,12 +67,36 @@ type Assignment = {
   employee_id: string;
   hours_per_week: number | null;
   assignment_role: string | null;
+  start_date: string | null;
+  end_date: string | null;
 };
 
+function isoDay(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Montag der Woche zum übergebenen Datum. */
+function mondayOf(date: Date) {
+  const d = new Date(date);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - (day - 1));
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
+function addDays(date: Date, n: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
 
 function Arbeitsplanung() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = React.useState("");
+  const [monday, setMonday] = React.useState(() => mondayOf(new Date()));
+  const weekStart = isoDay(monday);
+  const weekEnd = isoDay(addDays(monday, 6));
+
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees", "planung"],
