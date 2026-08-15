@@ -73,17 +73,6 @@ type Assignment = {
   end_date: string | null;
 };
 
-export const DAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
-
-/** Sichert immer ein Array mit 7 Tageswerten (Mo–So). */
-export function normalizeDayHours(value: unknown): number[] {
-  const arr = Array.isArray(value) ? value : [];
-  return Array.from({ length: 7 }, (_, i) => Number(arr[i] ?? 0) || 0);
-}
-
-export function sumDayHours(value: unknown): number {
-  return normalizeDayHours(value).reduce((s, n) => s + n, 0);
-}
 
 function isoDay(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
