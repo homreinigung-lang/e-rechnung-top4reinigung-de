@@ -11,7 +11,9 @@ export type KalenderAssignment = {
   day_hours: unknown;
   start_date: string | null;
   assignment_role?: string | null;
+  released?: boolean;
 };
+
 
 export type KalenderProjekt = {
   id: string;
