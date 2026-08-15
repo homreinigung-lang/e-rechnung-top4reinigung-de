@@ -226,7 +226,7 @@ function AccountantPortal() {
         zip.file(f.name, await res.blob());
       }
       const blob = await zip.generateAsync({ type: "blob" });
-      saveFile(`Belege_${zipMonth}.zip`, blob);
+      await saveFile(blob, `Belege_${zipMonth}.zip`);
       return files.length;
     },
     onSuccess: (count) => toast.success(`${count} Belege als ZIP heruntergeladen`),
