@@ -136,15 +136,17 @@ function Arbeitsplanung() {
   });
 
   const { data: assignments = [] } = useQuery({
-    queryKey: ["project_assignments", "planung"],
+    queryKey: ["project_assignments", "planung", weekStart],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,employee_id,hours_per_week,assignment_role");
+        .select("id,project_id,employee_id,hours_per_week,assignment_role,start_date,end_date")
+        .eq("start_date", weekStart);
       if (error) throw error;
       return data as Assignment[];
     },
   });
+
 
   const objects = React.useMemo<GridObject[]>(() => {
     const linked = new Set(
