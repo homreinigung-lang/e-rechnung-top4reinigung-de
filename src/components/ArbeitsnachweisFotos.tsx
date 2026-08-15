@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { useFileUrl } from "@/hooks/useFileUrl";
-import { FILES_BUCKET } from "@/lib/storage";
+import { FILES_BUCKET, openStoredFile } from "@/lib/storage";
 import { toast } from "sonner";
 import { Camera, Loader2, Trash2, X } from "lucide-react";
 
