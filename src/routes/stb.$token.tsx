@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import JSZip from "jszip";
 import {
+  getAccountantMonthReceipts,
   getAccountantReceiptUrl,
   getAccountantReport,
   type Row,
@@ -12,7 +14,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Download, FileSpreadsheet, FileText, Lock, Paperclip, Printer } from "lucide-react";
+import {
+  Download,
+  FileArchive,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Lock,
+  Paperclip,
+  Printer,
+} from "lucide-react";
 
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
@@ -202,6 +213,26 @@ function AccountantPortal() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [zipMonth, setZipMonth] = useState(new Date().toISOString().slice(0, 7));
+  const fetchMonthReceipts = useServerFn(getAccountantMonthReceipts);
+  const zipExport = useMutation({
+    mutationFn: async () => {
+      const files = await fetchMonthReceipts({ data: { token, code, month: zipMonth } });
+      if (files.length === 0) throw new Error("Keine Belege in diesem Monat.");
+      const zip = new JSZip();
+      for (const f of files) {
+        const res = await fetch(f.url);
+        if (!res.ok) continue;
+        zip.file(f.name, await res.blob());
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      saveFile(`Belege_${zipMonth}.zip`, blob);
+      return files.length;
+    },
+    onSuccess: (count) => toast.success(`${count} Belege als ZIP heruntergeladen`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const fetchReceipt = useServerFn(getAccountantReceiptUrl);
   /** Öffnet den hinterlegten Beleg in einem neuen Tab. */
   function openReceipt(expenseId: string) {
@@ -362,6 +393,31 @@ function AccountantPortal() {
             >
               <FileSpreadsheet className="size-4" /> Excel-Export
             </Button>
+            <div className="flex items-center gap-2 rounded-md border px-2">
+              <Label htmlFor="zipMonth" className="text-xs text-muted-foreground">
+                Belege-Monat
+              </Label>
+              <Input
+                id="zipMonth"
+                type="month"
+                value={zipMonth}
+                onChange={(e) => setZipMonth(e.target.value)}
+                className="h-8 w-[150px] border-0 shadow-none focus-visible:ring-0"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={zipExport.isPending}
+                onClick={() => zipExport.mutate()}
+              >
+                {zipExport.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FileArchive className="size-4" />
+                )}
+                ZIP laden
+              </Button>
+            </div>
             <Button variant="outline" onClick={() => window.print()}>
               <Printer className="size-4" /> Als PDF drucken
             </Button>
