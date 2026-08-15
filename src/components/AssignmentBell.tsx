@@ -122,7 +122,12 @@ export function AssignmentBell() {
   }, [me?.id, queryClient]);
 
 
-  const unread = assignments.filter((a) => !seenAt || a.created_at > seenAt);
+  const unreadReleases = releases.filter((r) => !seenAt || r.released_at > seenAt);
+  const unread = [
+    ...assignments.filter((a) => !seenAt || a.created_at > seenAt),
+    ...unreadReleases,
+  ];
+
 
   if (!me) return null;
 
