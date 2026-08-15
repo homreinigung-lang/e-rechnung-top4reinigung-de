@@ -50,7 +50,9 @@ type DayTask = {
   address: string;
   hours: number;
   role: string | null;
+  released: boolean;
 };
+
 
 /**
  * Einsatzkalender im Mitarbeiterportal: zeigt die in der Arbeitsplanung
