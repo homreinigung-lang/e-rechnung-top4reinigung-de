@@ -194,7 +194,11 @@ export function MeinEinsatzkalender({
                     key={t.key}
                     type="button"
                     onClick={() => t.projectId && onSelectProject?.(t.projectId)}
-                    className="block w-full rounded border border-primary/30 bg-primary/10 px-1.5 py-1 text-left transition hover:bg-primary/20"
+                    className={`block w-full rounded border px-1.5 py-1 text-left transition ${
+                      t.released
+                        ? "border-primary/30 bg-primary/10 hover:bg-primary/20"
+                        : "border-dashed border-muted-foreground/40 bg-muted hover:bg-muted/70"
+                    }`}
                   >
                     <span className="block truncate font-medium">{t.name}</span>
                     {t.address && (
@@ -203,9 +207,15 @@ export function MeinEinsatzkalender({
                         <span className="truncate">{t.address}</span>
                       </span>
                     )}
-                    <span className="block text-[10px] font-semibold text-primary">
+                    <span
+                      className={`block text-[10px] font-semibold ${
+                        t.released ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
                       {t.hours.toFixed(2)} Std.
+                      {!t.released && " · vorläufig"}
                     </span>
+
                   </button>
                 ))}
               </div>
