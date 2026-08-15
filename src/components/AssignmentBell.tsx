@@ -55,6 +55,24 @@ export function AssignmentBell() {
     },
   });
 
+  const { data: releases = [] } = useQuery({
+    queryKey: ["plan_release_notifications", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("plan_releases")
+        .select("id,week_start,week_end,released_at")
+        .order("released_at", { ascending: false })
+        .limit(5);
+      return (data ?? []) as {
+        id: string;
+        week_start: string;
+        week_end: string;
+        released_at: string;
+      }[];
+    },
+  });
+
   const { data: projects = [] } = useQuery({
     queryKey: ["notification_projects", me?.id],
     enabled: !!me?.id,
@@ -87,12 +105,22 @@ export function AssignmentBell() {
           queryClient.invalidateQueries({ queryKey: ["assignment_notifications"] });
           queryClient.invalidateQueries({ queryKey: ["my_assignments"] });
         },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "plan_releases" },
+        () => {
+          toast.info("Wochenplan wurde freigegeben");
+          queryClient.invalidateQueries({ queryKey: ["plan_release_notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["my_assignments"] });
+        },
       );
     channel.subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [me?.id, queryClient]);
+
 
   const unread = assignments.filter((a) => !seenAt || a.created_at > seenAt);
 
