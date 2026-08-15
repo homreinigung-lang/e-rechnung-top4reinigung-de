@@ -6,9 +6,10 @@ import { useMyEmployee } from "@/lib/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
+import { mapsUrl, projectAddress } from "@/lib/maps";
 import {
   absenceClasses,
   absenceLabel,
@@ -68,9 +69,17 @@ function MeineZeiten() {
     queryKey: ["my_projects", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id,name,city,address_line");
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,city,address_line,postal_code");
       if (error) return [];
-      return (data ?? []) as { id: string; name: string; city: string; address_line: string }[];
+      return (data ?? []) as {
+        id: string;
+        name: string;
+        city: string;
+        address_line: string;
+        postal_code: string;
+      }[];
     },
   });
 
@@ -260,21 +269,42 @@ function MeineZeiten() {
                   <span className="text-muted-foreground"> · Einsatzort (Freitext)</span>
                 </li>
               )}
-              {assignments.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-3 py-2">
-                  <span className="min-w-0 truncate">
-                    <span className="font-medium">
-                      {projectName(a.project_id as string) ?? "Projekt"}
+              {assignments.map((a) => {
+                const p = projects.find((x) => x.id === a.project_id);
+                const address = p ? projectAddress(p) : "";
+                return (
+                  <li key={a.id} className="flex items-center justify-between gap-3 py-2">
+                    <span className="min-w-0">
+                      <span className="block truncate">
+                        <span className="font-medium">
+                          {projectName(a.project_id as string) ?? "Projekt"}
+                        </span>
+                        {a.assignment_role ? ` · ${a.assignment_role}` : ""}
+                      </span>
+                      {address && (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {address}
+                        </span>
+                      )}
                     </span>
-                    {a.assignment_role ? ` · ${a.assignment_role}` : ""}
-                  </span>
-                  <span className="shrink-0 text-muted-foreground">
-                    {Number(a.hours_per_week ?? 0) > 0
-                      ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
-                      : ""}
-                  </span>
-                </li>
-              ))}
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="text-muted-foreground">
+                        {Number(a.hours_per_week ?? 0) > 0
+                          ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
+                          : ""}
+                      </span>
+                      {address && (
+                        <Button asChild size="sm" variant="outline">
+                          <a href={mapsUrl(address)} target="_blank" rel="noreferrer">
+                            <Navigation className="mr-1 h-3.5 w-3.5" />
+                            Zum Einsatzort
+                          </a>
+                        </Button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

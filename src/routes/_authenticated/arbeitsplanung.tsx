@@ -1,0 +1,274 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as React from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { MapPin, Navigation } from "lucide-react";
+import { mapsUrl, projectAddress } from "@/lib/maps";
+
+export const Route = createFileRoute("/_authenticated/arbeitsplanung")({
+  head: () => ({
+    meta: [
+      { title: "Arbeitsplanung – Team & Objekte im Raster" },
+      {
+        name: "description",
+        content:
+          "Mitarbeiter im Raster auf Objekte verteilen, Wochenstunden planen und Einsatzorte direkt navigieren.",
+      },
+      { property: "og:title", content: "Arbeitsplanung" },
+      {
+        property: "og:description",
+        content: "Personaleinsatz je Objekt planen und Auslastung im Blick behalten.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: Arbeitsplanung,
+});
+
+type Employee = {
+  id: string;
+  name: string;
+  role: string;
+  weekly_hours: number | null;
+  user_id: string;
+};
+
+type Project = {
+  id: string;
+  name: string | null;
+  city: string | null;
+  address_line: string | null;
+  postal_code: string | null;
+  status: string | null;
+};
+
+type Assignment = {
+  id: string;
+  project_id: string;
+  employee_id: string;
+  hours_per_week: number | null;
+  assignment_role: string | null;
+};
+
+
+function Arbeitsplanung() {
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = React.useState("");
+
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees", "planung"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id,name,role,weekly_hours,user_id")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data as Employee[];
+    },
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects", "planung"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,city,address_line,postal_code,status")
+        .order("name");
+      if (error) throw error;
+      return data as Project[];
+    },
+  });
+
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["project_assignments", "planung"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .select("id,project_id,employee_id,hours_per_week,assignment_role");
+      if (error) throw error;
+      return data as Assignment[];
+    },
+  });
+
+  const key = (e: string, p: string) => `${e}|${p}`;
+  const map = React.useMemo(() => {
+    const m = new Map<string, Assignment>();
+    for (const a of assignments) m.set(key(a.employee_id, a.project_id), a);
+    return m;
+  }, [assignments]);
+
+  const save = useMutation({
+    mutationFn: async (v: { employee: Employee; projectId: string; hours: number }) => {
+      const existing = map.get(key(v.employee.id, v.projectId));
+      if (v.hours <= 0) {
+        if (existing) {
+          const { error } = await supabase
+            .from("project_assignments")
+            .delete()
+            .eq("id", existing.id);
+          if (error) throw error;
+        }
+        return;
+      }
+      if (existing) {
+        const { error } = await supabase
+          .from("project_assignments")
+          .update({ hours_per_week: v.hours })
+          .eq("id", existing.id);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase.from("project_assignments").insert({
+        project_id: v.projectId,
+        employee_id: v.employee.id,
+        user_id: v.employee.user_id,
+        hours_per_week: v.hours,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const visibleProjects = React.useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return projects;
+    return projects.filter((p) =>
+      `${p.name ?? ""} ${p.city ?? ""} ${p.address_line ?? ""}`.toLowerCase().includes(q),
+    );
+  }, [projects, filter]);
+
+  const employeeTotal = (id: string) =>
+    assignments
+      .filter((a) => a.employee_id === id)
+      .reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0);
+
+  const projectTotal = (id: string) =>
+    assignments
+      .filter((a) => a.project_id === id)
+      .reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Arbeitsplanung</h1>
+        <p className="mt-1 text-muted-foreground">
+          Wochenstunden je Mitarbeiter und Objekt im Raster planen. Änderungen werden sofort
+          gespeichert und im Mitarbeiterportal angezeigt.
+        </p>
+      </div>
+
+      <div className="surface p-5">
+        <Input
+          placeholder="Objekt suchen (Name, Ort, Adresse) …"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="max-w-md"
+        />
+      </div>
+
+      <section className="surface overflow-x-auto p-0">
+        {employees.length === 0 || visibleProjects.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">
+            Für das Raster werden mindestens ein aktiver Mitarbeiter und ein Objekt benötigt.
+          </p>
+        ) : (
+          <table className="w-full min-w-[720px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b bg-muted/40">
+                <th className="sticky left-0 z-10 bg-muted/40 p-3 text-left font-semibold">
+                  Mitarbeiter
+                </th>
+                {visibleProjects.map((p) => (
+                  <th key={p.id} className="min-w-[150px] p-3 text-left font-semibold align-top">
+                    <div className="truncate">{p.name || "Objekt"}</div>
+                    <div className="mt-1 flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{p.city || "—"}</span>
+                    </div>
+                    {projectAddress(p) && (
+                      <a
+                        href={mapsUrl(projectAddress(p))}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-xs font-normal text-primary hover:underline"
+                      >
+                        <Navigation className="h-3 w-3" /> Route
+                      </a>
+                    )}
+                  </th>
+                ))}
+                <th className="p-3 text-right font-semibold">Summe</th>
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((e) => {
+                const total = employeeTotal(e.id);
+                const soll = Number(e.weekly_hours ?? 0);
+                const over = soll > 0 && total > soll;
+                return (
+                  <tr key={e.id} className="border-b last:border-0">
+                    <td className="sticky left-0 z-10 bg-background p-3">
+                      <div className="font-medium">{e.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {e.role || "—"}
+                        {soll > 0 ? ` · Soll ${soll.toFixed(1)} Std.` : ""}
+                      </div>
+                    </td>
+                    {visibleProjects.map((p) => {
+                      const a = map.get(key(e.id, p.id));
+                      return (
+                        <td key={p.id} className="p-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.5"
+                            defaultValue={a?.hours_per_week ? Number(a.hours_per_week) : ""}
+                            placeholder="–"
+                            onBlur={(ev) => {
+                              const hours = Number(ev.target.value || 0);
+                              const current = Number(a?.hours_per_week ?? 0);
+                              if (hours === current) return;
+                              save.mutate({ employee: e, projectId: p.id, hours });
+                            }}
+                            className="h-9 text-center"
+                          />
+                        </td>
+                      );
+                    })}
+                    <td
+                      className={`p-3 text-right font-semibold ${over ? "text-destructive" : ""}`}
+                    >
+                      {total.toFixed(1)} Std.
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="bg-muted/30">
+                <td className="sticky left-0 z-10 bg-muted/30 p-3 font-semibold">Objekt-Summe</td>
+                {visibleProjects.map((p) => (
+                  <td key={p.id} className="p-3 text-center font-semibold">
+                    {projectTotal(p.id).toFixed(1)}
+                  </td>
+                ))}
+                <td className="p-3 text-right font-semibold">
+                  {assignments
+                    .reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0)
+                    .toFixed(1)}{" "}
+                  Std.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </section>
+    </div>
+  );
+}
