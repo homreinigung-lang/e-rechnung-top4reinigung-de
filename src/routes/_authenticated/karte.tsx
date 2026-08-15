@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
 import { Suspense, lazy, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { geocodeAddresses } from "@/lib/geo.functions";
@@ -9,7 +9,8 @@ import type { MapPoint } from "@/components/EinsatzKarte";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
-import { MapPin, Users, FolderKanban, HardHat, Navigation } from "lucide-react";
+import { toast } from "sonner";
+import { MapPin, Users, FolderKanban, HardHat, Navigation, Plus, Trash2 } from "lucide-react";
 
 const EinsatzKarte = lazy(() => import("@/components/EinsatzKarte"));
 
