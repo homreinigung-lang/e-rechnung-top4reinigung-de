@@ -17,6 +17,7 @@ import { MapPin, Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { mapsUrl, projectAddress } from "@/lib/maps";
+import { DAY_NAMES, effectiveDayHours, normalizeDayHours } from "@/lib/planung";
 import {
   absenceClasses,
   absenceLabel,
