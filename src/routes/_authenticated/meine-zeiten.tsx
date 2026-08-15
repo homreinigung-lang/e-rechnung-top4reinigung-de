@@ -106,7 +106,7 @@ function MeineZeiten() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,assignment_role,hours_per_week,start_date,end_date")
+        .select("id,project_id,assignment_role,hours_per_week,day_hours,start_date,end_date")
         .eq("employee_id", me!.id);
       if (error) return [];
       // Nur freigegebene Wochenpläne sind für Mitarbeitende sichtbar.
@@ -482,13 +482,24 @@ function ProjectDetailDialog({
 }: {
   projectId: string | null;
   projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
-  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; start_date: string | null; end_date: string | null }[];
+  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; day_hours?: unknown; start_date: string | null; end_date: string | null }[];
   onClose: () => void;
 }) {
   const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
   const address = project ? projectAddress(project) : "";
   const projectAssignments = assignments.filter((a) => a.project_id === projectId);
-  const totalHours = projectAssignments.reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0);
+  // Tageswerte aus der Arbeitsplanung; ältere Einträge ohne Tageswerte auf Mo–Fr verteilen.
+  const dayTotals = projectAssignments.reduce<number[]>(
+    (acc, a) => {
+      const days = normalizeDayHours(a.day_hours);
+      const sum = days.reduce((s, n) => s + n, 0);
+      const week = Number(a.hours_per_week ?? 0);
+      const effective = sum > 0 ? days : week > 0 ? [week / 5, week / 5, week / 5, week / 5, week / 5, 0, 0] : days;
+      return acc.map((v, i) => v + (effective[i] ?? 0));
+    },
+    [0, 0, 0, 0, 0, 0, 0],
+  );
+  const totalHours = dayTotals.reduce((s, n) => s + n, 0);
 
   return (
     <Dialog open={!!projectId} onOpenChange={(open) => !open && onClose()}>

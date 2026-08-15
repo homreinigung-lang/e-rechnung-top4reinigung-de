@@ -843,6 +843,7 @@ export type Database = {
         Row: {
           assignment_role: string
           created_at: string
+          day_hours: Json
           employee_id: string
           end_date: string | null
           hours_per_week: number
@@ -856,6 +857,7 @@ export type Database = {
         Insert: {
           assignment_role?: string
           created_at?: string
+          day_hours?: Json
           employee_id: string
           end_date?: string | null
           hours_per_week?: number
@@ -869,6 +871,7 @@ export type Database = {
         Update: {
           assignment_role?: string
           created_at?: string
+          day_hours?: Json
           employee_id?: string
           end_date?: string | null
           hours_per_week?: number
