@@ -261,7 +261,48 @@ function Arbeitsplanung() {
         </p>
       </div>
 
-      <div className="surface p-5">
+      <div className="surface flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Vorherige Woche"
+            onClick={() => setMonday((d) => addDays(d, -7))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-[220px] text-center">
+            <div className="flex items-center justify-center gap-2 font-semibold">
+              <CalendarDays className="h-4 w-4 text-primary" />
+              KW {isoWeek(monday)} / {isoWeekYear(monday)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {formatDate(weekStart)} – {formatDate(weekEnd)}
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Nächste Woche"
+            onClick={() => setMonday((d) => addDays(d, 7))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setMonday(mondayOf(new Date()))}>
+            Aktuelle Woche
+          </Button>
+          <Input
+            type="date"
+            value={weekStart}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) setMonday(mondayOf(new Date(`${v}T12:00:00`)));
+            }}
+            className="h-9 w-[170px]"
+          />
+        </div>
         <Input
           placeholder="Objekt suchen (Name, Ort, Adresse) …"
           value={filter}
@@ -269,6 +310,7 @@ function Arbeitsplanung() {
           className="max-w-md"
         />
       </div>
+
 
       <section className="surface overflow-x-auto p-0">
         {employees.length === 0 || visibleProjects.length === 0 ? (
