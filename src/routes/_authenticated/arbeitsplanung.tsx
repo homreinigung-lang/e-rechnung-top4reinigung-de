@@ -306,15 +306,23 @@ function Arbeitsplanung() {
       if (pErr) throw pErr;
       projectId = created.id;
     }
-    const { error } = await supabase.from("project_assignments").insert({
-      project_id: projectId,
-      employee_id: employee.id,
-      user_id: employee.user_id,
-      hours_per_week: hours,
-      day_hours: days,
-      start_date: weekStart,
-      end_date: weekEnd,
-    });
+    // Upsert anhand (Projekt, Mitarbeiter, Wochenstart): existiert für diese Woche
+    // schon ein Eintrag, wird er aktualisiert – sonst neu angelegt. Verhindert den
+    // Duplicate-Key-Fehler bei wiederholtem Speichern derselben Woche.
+    const { error } = await supabase
+      .from("project_assignments")
+      .upsert(
+        {
+          project_id: projectId,
+          employee_id: employee.id,
+          user_id: employee.user_id,
+          hours_per_week: hours,
+          day_hours: days,
+          start_date: weekStart,
+          end_date: weekEnd,
+        },
+        { onConflict: "project_id,employee_id,start_date" },
+      );
     if (error) throw error;
   }
 
