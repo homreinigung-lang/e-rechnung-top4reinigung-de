@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as FreigabeAusstehendRouteImport } from './routes/freigabe-ausstehend'
 import { Route as RechtlichesRouteImport } from './routes/rechtliches'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedArbeitsplanungRouteImport } from './routes/_authenticated/arbeitsplanung'
 import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
 import { Route as AuthenticatedBankverbindungRouteImport } from './routes/_authenticated/bankverbindung'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -71,6 +72,12 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedArbeitsplanungRoute =
+  AuthenticatedArbeitsplanungRouteImport.update({
+    id: '/arbeitsplanung',
+    path: '/arbeitsplanung',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAusgabenRoute = AuthenticatedAusgabenRouteImport.update({
   id: '/ausgaben',
   path: '/ausgaben',
@@ -218,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/arbeitsplanung': typeof AuthenticatedArbeitsplanungRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -250,6 +258,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/arbeitsplanung': typeof AuthenticatedArbeitsplanungRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -285,6 +294,7 @@ export interface FileRoutesById {
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/arbeitsplanung': typeof AuthenticatedArbeitsplanungRoute
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
   '/_authenticated/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
     | '/freigabe-ausstehend'
     | '/rechtliches'
     | '/reset-password'
+    | '/arbeitsplanung'
     | '/ausgaben'
     | '/bankverbindung'
     | '/dashboard'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/freigabe-ausstehend'
     | '/reset-password'
+    | '/arbeitsplanung'
     | '/ausgaben'
     | '/bankverbindung'
     | '/dashboard'
@@ -386,6 +398,7 @@ export interface FileRouteTypes {
     | '/freigabe-ausstehend'
     | '/rechtliches'
     | '/reset-password'
+    | '/_authenticated/arbeitsplanung'
     | '/_authenticated/ausgaben'
     | '/_authenticated/bankverbindung'
     | '/_authenticated/dashboard'
@@ -469,6 +482,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/arbeitsplanung': {
+      id: '/_authenticated/arbeitsplanung'
+      path: '/arbeitsplanung'
+      fullPath: '/arbeitsplanung'
+      preLoaderRoute: typeof AuthenticatedArbeitsplanungRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ausgaben': {
       id: '/_authenticated/ausgaben'
@@ -656,6 +676,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedArbeitsplanungRoute: typeof AuthenticatedArbeitsplanungRoute
   AuthenticatedAusgabenRoute: typeof AuthenticatedAusgabenRoute
   AuthenticatedBankverbindungRoute: typeof AuthenticatedBankverbindungRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -677,6 +698,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedArbeitsplanungRoute: AuthenticatedArbeitsplanungRoute,
   AuthenticatedAusgabenRoute: AuthenticatedAusgabenRoute,
   AuthenticatedBankverbindungRoute: AuthenticatedBankverbindungRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
