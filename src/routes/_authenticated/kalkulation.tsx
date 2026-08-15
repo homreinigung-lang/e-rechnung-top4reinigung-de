@@ -640,23 +640,33 @@ function KalkulationPage() {
                     {attachments.map((a) => (
                       <div key={a.path} className="space-y-2 rounded-md border p-2">
                         {a.isImage && a.url ? (
-                          <a href={a.url} target="_blank" rel="noreferrer">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void openStoredFile(a.path, a.name).catch(() =>
+                                toast.error("Datei konnte nicht geöffnet werden."),
+                              )
+                            }
+                          >
                             <img
                               src={a.url}
                               alt={`Vorschau ${a.name}`}
                               className="h-32 w-full rounded object-cover"
                               loading="lazy"
                             />
-                          </a>
+                          </button>
                         ) : (
-                          <a
-                            href={a.url}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void openStoredFile(a.path, a.name).catch(() =>
+                                toast.error("Datei konnte nicht geöffnet werden."),
+                              )
+                            }
                             className="flex h-32 w-full items-center justify-center rounded bg-muted"
                           >
                             <FileText className="size-8 text-muted-foreground" />
-                          </a>
+                          </button>
                         )}
 
 
