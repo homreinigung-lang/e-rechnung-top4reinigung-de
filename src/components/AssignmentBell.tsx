@@ -161,9 +161,24 @@ export function AssignmentBell() {
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>Benachrichtigungen</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {assignments.length === 0 && (
+        {assignments.length === 0 && releases.length === 0 && (
           <DropdownMenuItem disabled>Keine Zuweisungen</DropdownMenuItem>
         )}
+        {releases.map((r) => {
+          const isNew = !seenAt || r.released_at > seenAt;
+          return (
+            <DropdownMenuItem key={r.id} className="flex flex-col items-start gap-0.5">
+              <span className="text-sm font-medium">
+                {isNew ? "● " : ""}
+                Wochenplan freigegeben
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {formatDate(r.week_start)} – {formatDate(r.week_end)}
+              </span>
+            </DropdownMenuItem>
+          );
+        })}
+
         {assignments.map((a) => {
           const isNew = !seenAt || a.created_at > seenAt;
           return (
