@@ -463,6 +463,79 @@ function MeineZeiten() {
           </ul>
         )}
       </div>
+
+      <ProjectDetailDialog
+        projectId={selectedProjectId}
+        projects={projects}
+        assignments={assignments}
+        onClose={() => setSelectedProjectId(null)}
+      />
     </div>
+  );
+}
+
+function ProjectDetailDialog({
+  projectId,
+  projects,
+  assignments,
+  onClose,
+}: {
+  projectId: string | null;
+  projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
+  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; start_date: string | null; end_date: string | null }[];
+  onClose: () => void;
+}) {
+  const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
+  const address = project ? projectAddress(project) : "";
+  const projectAssignments = assignments.filter((a) => a.project_id === projectId);
+  const totalHours = projectAssignments.reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0);
+
+  return (
+    <Dialog open={!!projectId} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{project?.name ?? "Objekt"}</DialogTitle>
+          <DialogDescription>Objekt-Details und Routenführung</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <div className="text-xs text-muted-foreground">Adresse</div>
+            <div className="mt-1 text-sm font-medium">
+              {address || "Keine Adresse hinterlegt"}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-muted-foreground">Wochenstunden</div>
+              <div className="mt-1 text-sm font-medium">{totalHours.toFixed(2)} Std.</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Einsätze</div>
+              <div className="mt-1 text-sm font-medium">{projectAssignments.length}</div>
+            </div>
+          </div>
+          {projectAssignments.length > 0 && (
+            <ul className="divide-y text-xs">
+              {projectAssignments.map((a) => (
+                <li key={a.id} className="flex items-center justify-between py-2">
+                  <span>{a.assignment_role || "Einsatz"}</span>
+                  <span className="text-muted-foreground">
+                    {Number(a.hours_per_week ?? 0).toFixed(2)} Std./Woche
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {address && (
+            <Button asChild className="w-full">
+              <a href={mapsUrl(address)} target="_blank" rel="noreferrer">
+                <Navigation className="mr-2 h-4 w-4" />
+                Zum Einsatzort navigieren
+              </a>
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
