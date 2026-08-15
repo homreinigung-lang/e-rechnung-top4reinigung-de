@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate, formatMoney, today } from "@/lib/format";
 import { FileUploadButton } from "@/components/FileUploadButton";
+import { receiptFileToPdf } from "@/lib/receipt-pdf";
+import { uploadUserFile } from "@/lib/storage";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
 import { Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
@@ -77,6 +79,25 @@ function Ausgaben() {
   const [scanned, setScanned] = useState(false);
   const runScan = useServerFn(scanReceipt);
 
+  /** Nimmt den Upload entgegen: Beleg auslesen und Fotos sofort in ein PDF wandeln. */
+  async function handleReceipt(path: string, file: File) {
+    setForm((f) => ({ ...f, receipt_url: path }));
+    const scan = await analyze(file);
+    if (!file.type.startsWith("image/")) return;
+    try {
+      const pdfFile = await receiptFileToPdf(file, {
+        date: scan?.expense_date || form.expense_date || today(),
+        category: scan?.category || form.category,
+        ...(scan?.supplier ? { supplier: scan.supplier } : {}),
+      });
+      const pdfPath = await uploadUserFile(pdfFile, "belege");
+      setForm((f) => ({ ...f, receipt_url: pdfPath }));
+      toast.success("Beleg-Foto wurde automatisch in ein PDF umgewandelt");
+    } catch {
+      toast.error("PDF-Umwandlung fehlgeschlagen – das Foto bleibt als Beleg hinterlegt.");
+    }
+  }
+
   /** Liest den hochgeladenen Beleg aus und füllt die Felder vor. */
   async function analyze(file: File) {
     setScanning(true);
@@ -100,8 +121,10 @@ function Ausgaben() {
       toast.success("Belegdaten erkannt", {
         description: "Bitte Beträge und Datum kurz prüfen.",
       });
+      return r;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Beleg konnte nicht ausgelesen werden.");
+      return null;
     } finally {
       setScanning(false);
     }
@@ -244,11 +267,8 @@ function Ausgaben() {
           <FileUploadButton
             folder="belege"
             accept="image/*,application/pdf"
-            label="Beleg hochladen & automatisch auslesen"
-            onUploaded={(path, file) => {
-              setForm((f) => ({ ...f, receipt_url: path }));
-              void analyze(file);
-            }}
+            label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
+            onUploaded={(path, file) => void handleReceipt(path, file)}
           />
           {scanning && (
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
