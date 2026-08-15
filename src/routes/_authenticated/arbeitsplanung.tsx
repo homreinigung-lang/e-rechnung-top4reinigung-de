@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { MapPin, Navigation, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { MapPin, Navigation, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, Send } from "lucide-react";
 import { mapsUrl, projectAddress } from "@/lib/maps";
 import { isoWeek, isoWeekYear } from "@/lib/kw";
 import { formatDate } from "@/lib/format";
@@ -146,6 +146,53 @@ function Arbeitsplanung() {
       return data as Assignment[];
     },
   });
+
+  const { data: release, isLoading: releaseLoading } = useQuery({
+    queryKey: ["plan_release", weekStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plan_releases")
+        .select("id,week_start,released_at")
+        .eq("week_start", weekStart)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; week_start: string; released_at: string } | null;
+    },
+  });
+
+  const releaseWeek = useMutation({
+    mutationFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) throw new Error("Nicht angemeldet");
+      const { error } = await supabase
+        .from("plan_releases")
+        .upsert(
+          { user_id: uid, week_start: weekStart, week_end: weekEnd, released_at: new Date().toISOString() },
+          { onConflict: "user_id,week_start" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan_release"] });
+      toast.success(`Woche freigegeben – Mitarbeitende wurden benachrichtigt.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const withdrawRelease = useMutation({
+    mutationFn: async () => {
+      if (!release) return;
+      const { error } = await supabase.from("plan_releases").delete().eq("id", release.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan_release"] });
+      toast.success("Freigabe zurückgenommen.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
 
   const objects = React.useMemo<GridObject[]>(() => {
@@ -310,6 +357,50 @@ function Arbeitsplanung() {
           className="max-w-md"
         />
       </div>
+
+      <div className="surface flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          {release ? (
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          ) : (
+            <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+          )}
+          <div>
+            <div className="font-semibold">
+              {release
+                ? `Woche freigegeben (KW ${isoWeek(monday)})`
+                : `Planung noch nicht freigegeben (KW ${isoWeek(monday)})`}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {release
+                ? `Freigegeben am ${formatDate(release.released_at.slice(0, 10))} – Mitarbeitende sehen den Plan als verbindlich.`
+                : "Nach der Freigabe gilt der Wochenplan als verbindlich und Mitarbeitende erhalten eine Benachrichtigung."}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {release && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => withdrawRelease.mutate()}
+              disabled={withdrawRelease.isPending}
+            >
+              Freigabe zurücknehmen
+            </Button>
+          )}
+          <Button
+            type="button"
+            onClick={() => releaseWeek.mutate()}
+            disabled={releaseLoading || releaseWeek.isPending || assignments.length === 0}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {release ? "Erneut freigeben" : "Woche freigeben"}
+          </Button>
+        </div>
+      </div>
+
+
 
 
       <section className="surface overflow-x-auto p-0">

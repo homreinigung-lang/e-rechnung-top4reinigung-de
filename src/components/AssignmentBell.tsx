@@ -55,6 +55,24 @@ export function AssignmentBell() {
     },
   });
 
+  const { data: releases = [] } = useQuery({
+    queryKey: ["plan_release_notifications", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("plan_releases")
+        .select("id,week_start,week_end,released_at")
+        .order("released_at", { ascending: false })
+        .limit(5);
+      return (data ?? []) as {
+        id: string;
+        week_start: string;
+        week_end: string;
+        released_at: string;
+      }[];
+    },
+  });
+
   const { data: projects = [] } = useQuery({
     queryKey: ["notification_projects", me?.id],
     enabled: !!me?.id,
@@ -87,6 +105,15 @@ export function AssignmentBell() {
           queryClient.invalidateQueries({ queryKey: ["assignment_notifications"] });
           queryClient.invalidateQueries({ queryKey: ["my_assignments"] });
         },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "plan_releases" },
+        () => {
+          toast.info("Wochenplan wurde freigegeben");
+          queryClient.invalidateQueries({ queryKey: ["plan_release_notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["my_assignments"] });
+        },
       );
     channel.subscribe();
     return () => {
@@ -94,7 +121,13 @@ export function AssignmentBell() {
     };
   }, [me?.id, queryClient]);
 
-  const unread = assignments.filter((a) => !seenAt || a.created_at > seenAt);
+
+  const unreadReleases = releases.filter((r) => !seenAt || r.released_at > seenAt);
+  const unread = [
+    ...assignments.filter((a) => !seenAt || a.created_at > seenAt),
+    ...unreadReleases,
+  ];
+
 
   if (!me) return null;
 
@@ -128,9 +161,24 @@ export function AssignmentBell() {
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>Benachrichtigungen</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {assignments.length === 0 && (
+        {assignments.length === 0 && releases.length === 0 && (
           <DropdownMenuItem disabled>Keine Zuweisungen</DropdownMenuItem>
         )}
+        {releases.map((r) => {
+          const isNew = !seenAt || r.released_at > seenAt;
+          return (
+            <DropdownMenuItem key={r.id} className="flex flex-col items-start gap-0.5">
+              <span className="text-sm font-medium">
+                {isNew ? "● " : ""}
+                Wochenplan freigegeben
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {formatDate(r.week_start)} – {formatDate(r.week_end)}
+              </span>
+            </DropdownMenuItem>
+          );
+        })}
+
         {assignments.map((a) => {
           const isNew = !seenAt || a.created_at > seenAt;
           return (
