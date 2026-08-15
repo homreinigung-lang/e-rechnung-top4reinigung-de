@@ -5,10 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeProject, type ScannedProject } from "@/lib/project-scan.functions";
-import { fileUrl } from "@/lib/storage";
+import { fileUrl, openStoredFile } from "@/lib/storage";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
-import { useFileUrl } from "@/hooks/useFileUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -180,7 +179,6 @@ function ProjektDetail() {
     },
   });
 
-  const planUrl = useFileUrl(project?.source_file_path);
 
   const patchProject = useMutation({
     mutationFn: async (values: ProjectUpdate) => {
@@ -489,10 +487,16 @@ function ProjektDetail() {
 
         {project.source_file_name && (
           <p className="text-sm text-muted-foreground">
-            Datei: {planUrl ? (
-              <a href={planUrl} target="_blank" rel="noreferrer" className="underline">
+            Datei: {project.source_file_path ? (
+              <button
+                type="button"
+                className="underline"
+                onClick={() =>
+                  void openStoredFile(project.source_file_path, project.source_file_name)
+                }
+              >
                 {project.source_file_name}
-              </a>
+              </button>
             ) : (
               project.source_file_name
             )}

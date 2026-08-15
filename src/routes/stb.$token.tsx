@@ -234,12 +234,24 @@ function AccountantPortal() {
   });
 
   const fetchReceipt = useServerFn(getAccountantReceiptUrl);
-  /** Öffnet den hinterlegten Beleg in einem neuen Tab. */
+  /** Lädt den Beleg als Blob und öffnet ihn lokal (kein Adblocker-Problem). */
   function openReceipt(expenseId: string) {
     void (async () => {
       try {
         const url = await fetchReceipt({ data: { token, code, expenseId } });
-        window.open(url, "_blank", "noopener");
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Beleg konnte nicht geladen werden.");
+        const blobUrl = URL.createObjectURL(await res.blob());
+        const win = window.open(blobUrl, "_blank", "noopener,noreferrer");
+        if (!win) {
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = `Beleg_${expenseId}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Beleg konnte nicht geöffnet werden.");
       }
