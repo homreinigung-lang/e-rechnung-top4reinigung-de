@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Calculator, FileSignature, FileText, Trash2 } from "lucide-react";
+import { Calculator, FileSignature, FileText, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { suggestItems } from "@/lib/item-ai.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
@@ -64,13 +66,20 @@ export const Route = createFileRoute("/_authenticated/kalkulation")({
 
 type Mode = "area" | "hours";
 
-const CLEANING_TYPES: { value: string; label: string; area: number; hourly: number }[] = [
-  { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.55, hourly: 29.41 },
-  { value: "grund", label: "Grundreinigung", area: 1.9, hourly: 34.0 },
-  { value: "bau", label: "Bauendreinigung", area: 2.6, hourly: 38.0 },
-  { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 33.0 },
-  { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.75, hourly: 29.41 },
-  { value: "buero", label: "Büroreinigung", area: 0.65, hourly: 29.41 },
+const CLEANING_TYPES: {
+  value: string;
+  label: string;
+  area: number;
+  hourly: number;
+  /** Empfohlener Stundensatz-Korridor (netto). */
+  range: [number, number];
+}[] = [
+  { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.55, hourly: 35, range: [34, 37] },
+  { value: "grund", label: "Grundreinigung (Tiefenreinigung)", area: 1.9, hourly: 43, range: [42, 45] },
+  { value: "bau", label: "Bauendreinigung (Tiefenreinigung)", area: 2.6, hourly: 44, range: [42, 45] },
+  { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 36, range: [34, 37] },
+  { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.75, hourly: 35, range: [34, 37] },
+  { value: "buero", label: "Büroreinigung", area: 0.65, hourly: 35, range: [34, 37] },
 ];
 
 const EXTRAS: { key: string; label: string; price: number }[] = [
@@ -101,6 +110,14 @@ type Attachment = {
 
 
 
+
+type AiItem = {
+  id: string;
+  description: string;
+  quantity: string;
+  unit: string;
+  unit_price: string;
+};
 
 function KalkulationPage() {
   const navigate = useNavigate();
@@ -144,6 +161,34 @@ function KalkulationPage() {
 
 
 
+
+  // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiItems, setAiItems] = useState<AiItem[]>([]);
+  const suggest = useServerFn(suggestItems);
+  const aiSuggest = useMutation({
+    mutationFn: async () => suggest({ data: { prompt: aiPrompt } }),
+    onSuccess: (res) => {
+      const list = res.items.map((i, n) => ({
+        id: `${Date.now()}-${n}`,
+        description: i.description,
+        quantity: String(i.quantity).replace(".", ","),
+        unit: i.unit,
+        unit_price: String(i.unit_price).replace(".", ","),
+      }));
+      setAiItems((prev) => [...prev, ...list]);
+      toast.success(`${list.length} Positionen vorgeschlagen – frei anpassbar`);
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
+  const aiTotal = useMemo(
+    () => aiItems.reduce((s, i) => s + num(i.quantity) * num(i.unit_price), 0),
+    [aiItems],
+  );
+
+  const patchAiItem = (id: string, patch: Partial<AiItem>) =>
+    setAiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
   const analysisTotals = useMemo(
@@ -249,6 +294,21 @@ function KalkulationPage() {
       });
       if (itemError) throw itemError;
 
+      if (aiItems.length > 0) {
+        const { error: aiError } = await supabase.from("document_items").insert(
+          aiItems.map((i, n) => ({
+            document_id: quoteId,
+            user_id: userId,
+            position: n + 2,
+            description: i.description,
+            quantity: num(i.quantity),
+            unit: i.unit,
+            unit_price: num(i.unit_price),
+          })),
+        );
+        if (aiError) throw aiError;
+      }
+
       const { error: docError } = await supabase
         .from("documents")
         .update({
@@ -256,9 +316,9 @@ function KalkulationPage() {
           discount_percent: pct,
           discount_amount: Math.round((unitPrice - endNet) * 100) / 100,
           discount_reason: discountReason,
-          net_total: endNet,
-          vat_amount: endNet * 0.19,
-          total: endNet * 1.19,
+          net_total: endNet + aiTotal,
+          vat_amount: (endNet + aiTotal) * 0.19,
+          total: (endNet + aiTotal) * 1.19,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
@@ -371,6 +431,26 @@ function KalkulationPage() {
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Empfehlung {selected.label}: {formatMoney(selected.range[0])} –{" "}
+                    {formatMoney(selected.range[1])} pro Stunde. Frei überschreibbar – die Summe
+                    aktualisiert sich sofort.
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {[selected.range[0], Math.round((selected.range[0] + selected.range[1]) / 2), selected.range[1]].map(
+                      (r) => (
+                        <Button
+                          key={r}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setHourlyRate(String(r))}
+                        >
+                          {formatMoney(r)}
+                        </Button>
+                      ),
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -825,6 +905,96 @@ function KalkulationPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="size-5" /> KI-Assistent: Positionen vorschlagen
+          </CardTitle>
+          <CardDescription>
+            Arbeit kurz beschreiben – der Assistent schlägt passende Leistungspositionen inkl.
+            Menge und Preis vor. Alle Werte bleiben vollständig manuell änderbar.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            rows={3}
+            placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={aiSuggest.isPending || aiPrompt.trim().length < 5}
+              onClick={() => aiSuggest.mutate()}
+            >
+              <Sparkles className="size-4" />
+              {aiSuggest.isPending ? "Wird erstellt…" : "Positionen generieren"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setAiItems((prev) => [
+                  ...prev,
+                  {
+                    id: `${Date.now()}`,
+                    description: "",
+                    quantity: "1",
+                    unit: "Std.",
+                    unit_price: "35",
+                  },
+                ])
+              }
+            >
+              <Plus className="size-4" /> Position manuell
+            </Button>
+          </div>
+
+          {aiItems.length > 0 && (
+            <div className="space-y-2">
+              {aiItems.map((i) => (
+                <div key={i.id} className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_2.5rem]">
+                  <Input
+                    value={i.description}
+                    placeholder="Leistung"
+                    onChange={(e) => patchAiItem(i.id, { description: e.target.value })}
+                  />
+                  <Input
+                    inputMode="decimal"
+                    value={i.quantity}
+                    onChange={(e) => patchAiItem(i.id, { quantity: e.target.value })}
+                  />
+                  <Input
+                    value={i.unit}
+                    onChange={(e) => patchAiItem(i.id, { unit: e.target.value })}
+                  />
+                  <Input
+                    inputMode="decimal"
+                    value={i.unit_price}
+                    onChange={(e) => patchAiItem(i.id, { unit_price: e.target.value })}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setAiItems((prev) => prev.filter((x) => x.id !== i.id))}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              ))}
+              <p className="text-right text-sm font-medium">
+                Summe Zusatzpositionen (netto): {formatMoney(aiTotal)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Diese Positionen werden zusätzlich zur Kalkulation in das Angebot übernommen.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
+
   );
 }

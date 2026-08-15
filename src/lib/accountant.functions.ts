@@ -172,3 +172,68 @@ export const getAccountantReceiptUrl = createServerFn({ method: "POST" })
     return signed.signedUrl;
   });
 
+
+/** Liefert alle Belege eines Monats als Liste signierter Download-Adressen (ZIP-Export). */
+export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; code: string; month: string }) => data)
+  .handler(
+    async ({ data }): Promise<Array<{ name: string; url: string }>> => {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      const { data: access } = await supabaseAdmin
+        .from("accountant_access")
+        .select("user_id, access_code, active")
+        .eq("token", data.token)
+        .maybeSingle();
+
+      if (
+        !access ||
+        !access.active ||
+        access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
+      ) {
+        throw new Error("Zugang ungültig.");
+      }
+
+      if (!/^\d{4}-\d{2}$/.test(data.month)) throw new Error("Ungültiger Monat.");
+      const start = `${data.month}-01`;
+      const [y, m] = data.month.split("-").map(Number);
+      const endDate = new Date(Date.UTC(y!, m!, 1));
+      const end = endDate.toISOString().slice(0, 10);
+
+      const { data: expenses } = await supabaseAdmin
+        .from("expenses")
+        .select("id, expense_date, supplier, category, document_number, receipt_url")
+        .eq("user_id", access.user_id)
+        .gte("expense_date", start)
+        .lt("expense_date", end)
+        .order("expense_date", { ascending: true });
+
+      const out: Array<{ name: string; url: string }> = [];
+      let index = 1;
+      for (const e of expenses ?? []) {
+        const path = e.receipt_url ?? "";
+        if (!path) continue;
+        const ext = path.split(".").pop()?.toLowerCase() || "pdf";
+        const label = [
+          String(index).padStart(2, "0"),
+          e.expense_date,
+          (e.supplier || "Beleg").replace(/[^\w\s-]+/g, "").trim().replace(/\s+/g, "-"),
+          (e.category || "").replace(/[^\w-]+/g, ""),
+        ]
+          .filter(Boolean)
+          .join("_");
+
+        if (/^https?:/.test(path)) {
+          out.push({ name: `${label}.${ext}`, url: path });
+        } else {
+          const { data: signed } = await supabaseAdmin.storage
+            .from("firmen-dateien")
+            .createSignedUrl(path, 60 * 30);
+          if (signed?.signedUrl) out.push({ name: `${label}.${ext}`, url: signed.signedUrl });
+        }
+        index += 1;
+      }
+
+      return out;
+    },
+  );

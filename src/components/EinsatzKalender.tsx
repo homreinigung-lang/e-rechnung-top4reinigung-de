@@ -1,3 +1,4 @@
+import { holidayName } from "@/lib/feiertage";
 import { Fragment, useMemo, useState } from "react";
 import { isoWeek } from "@/lib/kw";
 
@@ -621,6 +622,7 @@ export function EinsatzKalender({
           {days.map((d, index) => {
             const key = isoDay(d);
             const inMonth = d.getMonth() === first.getMonth();
+            const holiday = holidayName(key);
             const list = byDay.get(key) ?? [];
             return (
               <Fragment key={key}>
@@ -642,7 +644,10 @@ export function EinsatzKalender({
                   }}
                   className={`min-h-[92px] cursor-pointer bg-background p-1.5 text-left transition hover:bg-accent/60 ${
                     inMonth ? "" : "opacity-45"
-                  } ${key === today ? "ring-1 ring-inset ring-primary" : ""}`}
+                  } ${key === today ? "ring-1 ring-inset ring-primary" : ""} ${
+                    holiday ? "bg-amber-50 dark:bg-amber-950/30" : ""
+                  }`}
+                  title={holiday ? `Feiertag (Saarland): ${holiday}` : undefined}
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-xs ${key === today ? "font-bold text-primary" : ""}`}>
@@ -654,6 +659,11 @@ export function EinsatzKalender({
                       </span>
                     )}
                   </div>
+                  {holiday && (
+                    <div className="mt-0.5 truncate text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                      {holiday}
+                    </div>
+                  )}
                   <div className="mt-1 space-y-0.5">
                     {list.slice(0, 3).map((e) => {
                       const reason = absenceReason(e);
