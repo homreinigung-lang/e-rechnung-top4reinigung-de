@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Calculator, FileSignature, FileText, Trash2 } from "lucide-react";
+import { Calculator, FileSignature, FileText, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { suggestItems } from "@/lib/item-ai.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
@@ -109,6 +111,14 @@ type Attachment = {
 
 
 
+type AiItem = {
+  id: string;
+  description: string;
+  quantity: string;
+  unit: string;
+  unit_price: string;
+};
+
 function KalkulationPage() {
   const navigate = useNavigate();
 
@@ -151,6 +161,34 @@ function KalkulationPage() {
 
 
 
+
+  // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiItems, setAiItems] = useState<AiItem[]>([]);
+  const suggest = useServerFn(suggestItems);
+  const aiSuggest = useMutation({
+    mutationFn: async () => suggest({ data: { prompt: aiPrompt } }),
+    onSuccess: (res) => {
+      const list = res.items.map((i, n) => ({
+        id: `${Date.now()}-${n}`,
+        description: i.description,
+        quantity: String(i.quantity).replace(".", ","),
+        unit: i.unit,
+        unit_price: String(i.unit_price).replace(".", ","),
+      }));
+      setAiItems((prev) => [...prev, ...list]);
+      toast.success(`${list.length} Positionen vorgeschlagen – frei anpassbar`);
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
+  const aiTotal = useMemo(
+    () => aiItems.reduce((s, i) => s + num(i.quantity) * num(i.unit_price), 0),
+    [aiItems],
+  );
+
+  const patchAiItem = (id: string, patch: Partial<AiItem>) =>
+    setAiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
   const analysisTotals = useMemo(
@@ -256,6 +294,21 @@ function KalkulationPage() {
       });
       if (itemError) throw itemError;
 
+      if (aiItems.length > 0) {
+        const { error: aiError } = await supabase.from("document_items").insert(
+          aiItems.map((i, n) => ({
+            document_id: quoteId,
+            user_id: userId,
+            position: n + 2,
+            description: i.description,
+            quantity: num(i.quantity),
+            unit: i.unit,
+            unit_price: num(i.unit_price),
+          })),
+        );
+        if (aiError) throw aiError;
+      }
+
       const { error: docError } = await supabase
         .from("documents")
         .update({
@@ -263,9 +316,9 @@ function KalkulationPage() {
           discount_percent: pct,
           discount_amount: Math.round((unitPrice - endNet) * 100) / 100,
           discount_reason: discountReason,
-          net_total: endNet,
-          vat_amount: endNet * 0.19,
-          total: endNet * 1.19,
+          net_total: endNet + aiTotal,
+          vat_amount: (endNet + aiTotal) * 0.19,
+          total: (endNet + aiTotal) * 1.19,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
