@@ -262,9 +262,19 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   ctx.y = Math.min(addrY, metaY) - 18;
 
   // ---- Titel + Einleitung -------------------------------------------------
-  ensure(ctx, 34);
-  text(ctx, d.title, { y: ctx.y, size: 14.5, font: bold });
-  ctx.y -= 18;
+  if (d.headline) {
+    const hLines = wrap(bold, 13, d.headline, CONTENT_W);
+    ensure(ctx, hLines.length * 17 + 10);
+    for (const line of hLines) {
+      text(ctx, line, { y: ctx.y, size: 13, font: bold, align: "center" });
+      ctx.y -= 17;
+    }
+    ctx.y -= 6;
+  } else {
+    ensure(ctx, 34);
+    text(ctx, d.title, { y: ctx.y, size: 14.5, font: bold });
+    ctx.y -= 18;
+  }
 
   if (d.introText) {
     const lines = wrap(regular, 9.5, d.introText, CONTENT_W);
@@ -275,6 +285,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     }
     ctx.y -= 4;
   }
+
 
   // ---- Positionstabelle ---------------------------------------------------
   const fractions = [0.07, 0.43, 0.1, 0.1, 0.15, 0.15];
