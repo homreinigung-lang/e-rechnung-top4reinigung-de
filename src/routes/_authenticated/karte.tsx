@@ -194,6 +194,19 @@ function KartePage() {
         </div>
       </div>
 
+      <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+        <Navigation className="mt-0.5 size-5 shrink-0 text-primary" />
+        <div className="space-y-1">
+          <p className="font-medium">Direkte Navigation zum Einsatzort</p>
+          <p className="text-muted-foreground">
+            Mitarbeiter können auf jeden Marker oder Listeneintrag tippen und über die Schaltfläche
+            „Navigieren" Google Maps mit der Routenführung zum ausgewählten Einsatzort öffnen. So
+            spart das Team Zeit bei der Anfahrt und die Verwaltung sieht alle Standorte übersichtlich
+            auf einen Blick.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {(Object.keys(FILTER_LABEL) as Filter[]).map((k) => {
           const Icon = FILTER_ICON[k];
