@@ -277,6 +277,9 @@ function MeineZeiten() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="surface p-5">
           <h2 className="text-lg font-semibold">Meine Objekte / Einsatzorte</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Tippen Sie auf ein Objekt, um Details und die Navigation dorthin zu öffnen.
+          </p>
           {assignments.length === 0 && !me.work_location ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Aktuell sind Ihnen keine festen Objekte zugewiesen.
@@ -292,36 +295,34 @@ function MeineZeiten() {
               {assignments.map((a) => {
                 const p = projects.find((x) => x.id === a.project_id);
                 const address = p ? projectAddress(p) : "";
+                const name = projectName(a.project_id as string) ?? "Projekt";
                 return (
-                  <li key={a.id} className="flex items-center justify-between gap-3 py-2">
-                    <span className="min-w-0">
-                      <span className="block truncate">
-                        <span className="font-medium">
-                          {projectName(a.project_id as string) ?? "Projekt"}
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProjectId(a.project_id as string)}
+                      className="flex w-full items-center justify-between gap-3 rounded px-1 py-2 text-left transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate">
+                          <span className="font-medium">{name}</span>
+                          {a.assignment_role ? ` · ${a.assignment_role}` : ""}
                         </span>
-                        {a.assignment_role ? ` · ${a.assignment_role}` : ""}
+                        {address && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {address}
+                          </span>
+                        )}
                       </span>
-                      {address && (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {address}
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="text-muted-foreground">
+                          {Number(a.hours_per_week ?? 0) > 0
+                            ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
+                            : ""}
                         </span>
-                      )}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <span className="text-muted-foreground">
-                        {Number(a.hours_per_week ?? 0) > 0
-                          ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
-                          : ""}
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
                       </span>
-                      {address && (
-                        <Button asChild size="sm" variant="outline">
-                          <a href={mapsUrl(address)} target="_blank" rel="noreferrer">
-                            <Navigation className="mr-1 h-3.5 w-3.5" />
-                            Zum Einsatzort
-                          </a>
-                        </Button>
-                      )}
-                    </span>
+                    </button>
                   </li>
                 );
               })}
