@@ -519,12 +519,8 @@ function Arbeitsplanung() {
                     {projectTotal(p.id).toFixed(1)}
                   </td>
                 ))}
-                <td className="p-3 text-right font-semibold">
-                  {assignments
-                    .reduce((s, a) => s + Number(a.hours_per_week ?? 0), 0)
-                    .toFixed(1)}{" "}
-                  Std.
-                </td>
+                <td className="p-3 text-right font-semibold">{grandTotal.toFixed(1)} Std.</td>
+
               </tr>
             </tbody>
           </table>
