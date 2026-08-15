@@ -68,9 +68,17 @@ function MeineZeiten() {
     queryKey: ["my_projects", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id,name,city,address_line");
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,city,address_line,postal_code");
       if (error) return [];
-      return (data ?? []) as { id: string; name: string; city: string; address_line: string }[];
+      return (data ?? []) as {
+        id: string;
+        name: string;
+        city: string;
+        address_line: string;
+        postal_code: string;
+      }[];
     },
   });
 
