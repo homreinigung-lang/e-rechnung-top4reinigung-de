@@ -1,0 +1,1 @@
+ALTER TABLE public.project_assignments DROP CONSTRAINT IF EXISTS project_assignments_project_id_employee_id_key; CREATE UNIQUE INDEX project_assignments_project_employee_week_key ON public.project_assignments (project_id, employee_id, start_date);
