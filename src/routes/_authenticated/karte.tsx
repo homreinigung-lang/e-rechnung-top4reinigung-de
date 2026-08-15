@@ -153,16 +153,29 @@ function KartePage() {
     const list: Omit<MapPoint, "lat" | "lon">[] = [];
 
     for (const c of data.customers) {
-      const address = buildAddress([c.address_line, c.postal_code, c.city]);
+      const address = buildAddress([c.address_line, c.postal_code, c.city, c.country]);
       if (!address) continue;
       list.push({
         id: `c-${c.id}`,
         kind: "customer",
         title: c.company || c.name || "Kunde",
-        subtitle: c.company && c.name ? c.name : "Kundenadresse",
+        subtitle: `Verwaltungssitz${c.company && c.name ? ` · ${c.name}` : ""}`,
         address,
       });
     }
+
+    for (const l of data.locations) {
+      const address = buildAddress([l.address_line, l.postal_code, l.city, l.country]);
+      if (!address) continue;
+      list.push({
+        id: `m-${l.id}`,
+        kind: "custom",
+        title: l.label || "Einsatzort",
+        subtitle: l.note || "Manuell erfasster Einsatzort",
+        address,
+      });
+    }
+
 
     for (const p of data.projects) {
       const address = buildAddress([p.address_line, p.postal_code, p.city]);
