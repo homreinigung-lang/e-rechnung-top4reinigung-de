@@ -34,18 +34,20 @@ export const Route = createFileRoute("/_authenticated/karte")({
   component: KartePage,
 });
 
-type Filter = "customer" | "project" | "assignment";
+type Filter = "customer" | "project" | "assignment" | "custom";
 
 const FILTER_LABEL: Record<Filter, string> = {
   customer: "Kunden",
   project: "Projekte",
   assignment: "Einsätze",
+  custom: "Eigene Orte",
 };
 
 const FILTER_ICON = {
   customer: Users,
   project: FolderKanban,
   assignment: HardHat,
+  custom: MapPin,
 } as const;
 
 function buildAddress(parts: (string | null | undefined)[]) {
@@ -58,17 +60,28 @@ function KartePage() {
     customer: true,
     project: true,
     assignment: true,
+    custom: true,
   });
   const [day, setDay] = useState(() => new Date().toISOString().slice(0, 10));
+  const [form, setForm] = useState({
+    label: "",
+    address_line: "",
+    postal_code: "",
+    city: "",
+    country: "Deutschland",
+    note: "",
+  });
+  const [saving, setSaving] = useState(false);
   const geocode = useServerFn(geocodeAddresses);
+  const queryClient = useQueryClient();
 
   const { data, isPending } = useQuery({
     queryKey: ["karte-daten", day],
     queryFn: async () => {
-      const [customers, projects, entries] = await Promise.all([
+      const [customers, projects, entries, locations] = await Promise.all([
         supabase
           .from("customers")
-          .select("id, name, company, address_line, postal_code, city")
+          .select("id, name, company, address_line, postal_code, city, country")
           .order("name"),
         supabase
           .from("projects")
@@ -77,15 +90,60 @@ function KartePage() {
           .from("time_entries")
           .select("id, employee_name, work_date, location, project_id, entry_type")
           .eq("work_date", day),
+        supabase
+          .from("map_locations")
+          .select("id, label, note, address_line, postal_code, city, country")
+          .order("created_at", { ascending: false }),
       ]);
       if (customers.error) throw customers.error;
       return {
         customers: customers.data ?? [],
         projects: projects.data ?? [],
         entries: entries.data ?? [],
+        locations: locations.data ?? [],
       };
     },
   });
+
+  async function addLocation() {
+    if (!form.address_line.trim() && !form.city.trim()) {
+      toast.error("Bitte mindestens Straße oder Ort angeben.");
+      return;
+    }
+    setSaving(true);
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth.user?.id;
+    if (!uid) {
+      setSaving(false);
+      toast.error("Nicht angemeldet.");
+      return;
+    }
+    const { error } = await supabase.from("map_locations").insert({ ...form, user_id: uid });
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setForm({
+      label: "",
+      address_line: "",
+      postal_code: "",
+      city: "",
+      country: "Deutschland",
+      note: "",
+    });
+    toast.success("Einsatzort gespeichert.");
+    queryClient.invalidateQueries({ queryKey: ["karte-daten"] });
+  }
+
+  async function removeLocation(id: string) {
+    const { error } = await supabase.from("map_locations").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["karte-daten"] });
+  }
 
   // Rohpunkte (noch ohne Koordinaten)
   const raw = useMemo(() => {

@@ -729,6 +729,56 @@ export type Database = {
         }
         Relationships: []
       }
+      map_locations: {
+        Row: {
+          address_line: string
+          city: string
+          country: string
+          created_at: string
+          customer_id: string | null
+          id: string
+          label: string
+          note: string
+          postal_code: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_line?: string
+          city?: string
+          country?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          label?: string
+          note?: string
+          postal_code?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_line?: string
+          city?: string
+          country?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          label?: string
+          note?: string
+          postal_code?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_locations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       number_sequences: {
         Row: {
           created_at: string

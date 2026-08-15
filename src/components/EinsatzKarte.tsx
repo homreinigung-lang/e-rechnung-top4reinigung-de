@@ -6,7 +6,7 @@ import { Navigation as NavigationIcon } from "lucide-react";
 
 export type MapPoint = {
   id: string;
-  kind: "customer" | "project" | "assignment";
+  kind: "customer" | "project" | "assignment" | "custom";
   title: string;
   subtitle: string;
   address: string;
@@ -18,6 +18,7 @@ const COLORS: Record<MapPoint["kind"], string> = {
   customer: "#0f766e",
   project: "#7c3aed",
   assignment: "#ea580c",
+  custom: "#0284c7",
 };
 
 function pinIcon(kind: MapPoint["kind"]) {
