@@ -358,6 +358,50 @@ function Arbeitsplanung() {
         />
       </div>
 
+      <div className="surface flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          {release ? (
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          ) : (
+            <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+          )}
+          <div>
+            <div className="font-semibold">
+              {release
+                ? `Woche freigegeben (KW ${isoWeek(monday)})`
+                : `Planung noch nicht freigegeben (KW ${isoWeek(monday)})`}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {release
+                ? `Freigegeben am ${formatDate(release.released_at.slice(0, 10))} – Mitarbeitende sehen den Plan als verbindlich.`
+                : "Nach der Freigabe gilt der Wochenplan als verbindlich und Mitarbeitende erhalten eine Benachrichtigung."}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {release && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => withdrawRelease.mutate()}
+              disabled={withdrawRelease.isPending}
+            >
+              Freigabe zurücknehmen
+            </Button>
+          )}
+          <Button
+            type="button"
+            onClick={() => releaseWeek.mutate()}
+            disabled={releaseLoading || releaseWeek.isPending || assignments.length === 0}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {release ? "Erneut freigeben" : "Woche freigeben"}
+          </Button>
+        </div>
+      </div>
+
+
+
 
       <section className="surface overflow-x-auto p-0">
         {employees.length === 0 || visibleProjects.length === 0 ? (
