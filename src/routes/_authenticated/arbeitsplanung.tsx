@@ -488,29 +488,22 @@ function Arbeitsplanung() {
                         {soll > 0 ? ` · Soll ${soll.toFixed(1)} Std.` : ""}
                       </div>
                     </td>
-                    {visibleProjects.map((p) => {
-                      const a = map.get(key(e.id, p.id));
-                      return (
-                        <td key={p.id} className="p-2">
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.5"
-                            key={`${weekStart}|${a?.id ?? "neu"}`}
-                            defaultValue={a?.hours_per_week ? Number(a.hours_per_week) : ""}
+                    {visibleProjects.map((p) => (
+                      <td key={p.id} className="p-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.5"
+                          value={cellValue(e.id, p.id)}
+                          placeholder="–"
+                          onChange={(ev) =>
+                            setDraft((d) => ({ ...d, [key(e.id, p.id)]: ev.target.value }))
+                          }
+                          className="h-9 text-center"
+                        />
+                      </td>
+                    ))}
 
-                            placeholder="–"
-                            onBlur={(ev) => {
-                              const hours = Number(ev.target.value || 0);
-                              const current = Number(a?.hours_per_week ?? 0);
-                              if (hours === current) return;
-                              save.mutate({ employee: e, object: p, hours });
-                            }}
-                            className="h-9 text-center"
-                          />
-                        </td>
-                      );
-                    })}
                     <td
                       className={`p-3 text-right font-semibold ${over ? "text-destructive" : ""}`}
                     >
