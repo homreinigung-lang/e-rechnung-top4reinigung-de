@@ -298,6 +298,80 @@ function KartePage() {
         })}
       </div>
 
+      <div className="surface space-y-3 p-4">
+        <div>
+          <h2 className="font-semibold">Eigenen Einsatzort erfassen</h2>
+          <p className="text-sm text-muted-foreground">
+            Kundenadressen sind der Verwaltungssitz (z. B. Österreich). Tragen Sie hier die
+            tatsächlichen Objekt- bzw. Einsatzadressen frei ein.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+          <Input
+            placeholder="Bezeichnung (z. B. Objekt SGS Halle 2)"
+            value={form.label}
+            onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+            className="lg:col-span-2"
+          />
+          <Input
+            placeholder="Straße & Nr."
+            value={form.address_line}
+            onChange={(e) => setForm((f) => ({ ...f, address_line: e.target.value }))}
+          />
+          <Input
+            placeholder="PLZ"
+            value={form.postal_code}
+            onChange={(e) => setForm((f) => ({ ...f, postal_code: e.target.value }))}
+          />
+          <Input
+            placeholder="Ort"
+            value={form.city}
+            onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+          />
+          <Input
+            placeholder="Land"
+            value={form.country}
+            onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
+          />
+          <Input
+            placeholder="Notiz (optional)"
+            value={form.note}
+            onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+            className="lg:col-span-5"
+          />
+          <Button onClick={addLocation} disabled={saving}>
+            <Plus className="size-4" /> Hinzufügen
+          </Button>
+        </div>
+        {(data?.locations.length ?? 0) > 0 && (
+          <ul className="divide-y rounded-md border">
+            {data?.locations.map((l) => (
+              <li key={l.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                <MapPin className="size-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate">
+                  <strong>{l.label || "Einsatzort"}</strong>{" "}
+                  <span className="text-muted-foreground">
+                    {[l.address_line, l.postal_code, l.city, l.country].filter(Boolean).join(", ")}
+                  </span>
+                </span>
+                <Button size="sm" variant="ghost" onClick={() => removeLocation(l.id)}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {missing.length > 0 && !geoLoading && (
+        <p className="text-sm text-amber-700">
+          {missing.length} Adresse(n) konnten nicht auf der Karte verortet werden:{" "}
+          {missing.map((m) => m.address).join(" | ")}
+        </p>
+      )}
+
+
+
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="surface h-[520px] overflow-hidden">
           <ClientOnly fallback={<div className="grid h-full place-items-center text-sm text-muted-foreground">Karte wird geladen …</div>}>
