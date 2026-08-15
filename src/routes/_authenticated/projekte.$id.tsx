@@ -489,10 +489,16 @@ function ProjektDetail() {
 
         {project.source_file_name && (
           <p className="text-sm text-muted-foreground">
-            Datei: {planUrl ? (
-              <a href={planUrl} target="_blank" rel="noreferrer" className="underline">
+            Datei: {project.source_file_path ? (
+              <button
+                type="button"
+                className="underline"
+                onClick={() =>
+                  void openStoredFile(project.source_file_path, project.source_file_name)
+                }
+              >
                 {project.source_file_name}
-              </a>
+              </button>
             ) : (
               project.source_file_name
             )}
