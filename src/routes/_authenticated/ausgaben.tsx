@@ -10,8 +10,7 @@ import { toast } from "sonner";
 import { formatDate, formatMoney, today } from "@/lib/format";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { receiptFileToPdf } from "@/lib/receipt-pdf";
-import { uploadUserFile } from "@/lib/storage";
-import { useFileUrl } from "@/hooks/useFileUrl";
+import { openStoredFile, uploadUserFile } from "@/lib/storage";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
 import { Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
 
