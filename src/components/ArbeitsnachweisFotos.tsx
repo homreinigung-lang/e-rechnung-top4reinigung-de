@@ -154,7 +154,12 @@ function Foto({
   const src = useFileUrl(path);
   return (
     <div className="relative">
-      <a href={src || undefined} target="_blank" rel="noreferrer">
+      <button
+        type="button"
+        onClick={() =>
+          void openStoredFile(path).catch(() => toast.error("Foto konnte nicht geöffnet werden."))
+        }
+      >
         {src ? (
           <img
             src={src}
@@ -165,7 +170,7 @@ function Foto({
         ) : (
           <div className="size-16 animate-pulse rounded-md border bg-muted" />
         )}
-      </a>
+      </button>
       {selectable && (
         <input
           type="checkbox"
