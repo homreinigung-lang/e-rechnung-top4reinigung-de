@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { useMyEmployee } from "@/lib/employee";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { AssignmentBell } from "@/components/AssignmentBell";
+
 
 import { Button } from "@/components/ui/button";
 import {
@@ -121,7 +123,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <div className="ml-auto flex items-center gap-1">
+            <AssignmentBell />
             <DropdownMenu>
+
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Menü öffnen">
                   <MoreVertical className="size-5" />
