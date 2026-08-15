@@ -996,6 +996,5 @@ function KalkulationPage() {
       </Card>
     </div>
 
-    </div>
   );
 }
