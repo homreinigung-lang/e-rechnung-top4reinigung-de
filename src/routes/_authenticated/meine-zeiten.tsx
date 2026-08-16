@@ -108,7 +108,7 @@ function MeineZeiten() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,assignment_role,hours_per_week,day_hours,start_date,end_date")
+        .select("id,project_id,assignment_role,hours_per_week,day_hours,day_times,start_date,end_date")
         .eq("employee_id", me!.id);
       if (error) return [];
       // Alle Planungen sind sichtbar; noch nicht freigegebene Wochen werden markiert.
