@@ -56,6 +56,17 @@ import { saveFile } from "@/lib/download";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { GermanTimeInput } from "@/components/GermanDateTimeInput";
 
+import { effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
+
+type PlanShift = {
+  key: string;
+  employeeId: string;
+  employeeName: string;
+  projectName: string;
+  range: string;
+  hours: number;
+};
+
 
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -410,7 +421,59 @@ export function EinsatzKalender({
     return map;
   }, [entries]);
 
+  /** Wochenplanung (Arbeitsplanung) für den sichtbaren Zeitraum. */
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["project_assignments", "calendar", rangeFrom, rangeTo],
+    queryFn: async () => {
+      const from = new Date(`${rangeFrom}T12:00:00`);
+      from.setDate(from.getDate() - 6);
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .select("id,employee_id,project_id,assignment_role,start_date,hours_per_week,day_hours,day_times")
+        .gte("start_date", isoDay(from))
+        .lte("start_date", rangeTo);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  /** Aus der Planung abgeleitete Schichten (Von–Bis) je Tag. */
+  const planByDay = useMemo(() => {
+    const map = new Map<string, PlanShift[]>();
+    for (const a of assignments) {
+      if (!a.start_date || !a.employee_id) continue;
+      if (filterEmployee !== ALL && a.employee_id !== filterEmployee) continue;
+      if (filterProject !== ALL && a.project_id !== filterProject) continue;
+      const monday = new Date(`${a.start_date}T12:00:00`);
+      monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+      const hours = effectiveDayHours(a.day_hours, a.hours_per_week, a.day_times);
+      const times = normalizeDayTimes(a.day_times);
+      hours.forEach((h, i) => {
+        if (!h || h <= 0) return;
+        const d = new Date(monday);
+        d.setDate(d.getDate() + i);
+        const key = isoDay(d);
+        const list = map.get(key) ?? [];
+        list.push({
+          key: `${a.id}-${i}`,
+          employeeId: a.employee_id!,
+          employeeName: employees.find((e) => e.id === a.employee_id)?.name ?? "Mitarbeiter",
+          projectName: projectName(a.project_id) || "Ohne Objekt",
+          range: formatDayTime(times[i]),
+          hours: h,
+        });
+        map.set(key, list);
+      });
+    }
+    for (const list of map.values()) {
+      list.sort((x, y) => (x.range || "zz").localeCompare(y.range || "zz"));
+    }
+    return map;
+  }, [assignments, employees, projects, filterEmployee, filterProject]);
+
   const today = isoDay(new Date());
+
+
 
   const shift = (delta: number) => {
     if (view === "week") {
