@@ -56,6 +56,17 @@ import { saveFile } from "@/lib/download";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { GermanTimeInput } from "@/components/GermanDateTimeInput";
 
+import { effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
+
+type PlanShift = {
+  key: string;
+  employeeId: string;
+  employeeName: string;
+  projectName: string;
+  range: string;
+  hours: number;
+};
+
 
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
