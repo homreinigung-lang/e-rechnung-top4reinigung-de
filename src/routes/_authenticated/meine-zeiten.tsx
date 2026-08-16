@@ -17,7 +17,7 @@ import { MapPin, Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { mapsUrl, projectAddress } from "@/lib/maps";
-import { DAY_NAMES, effectiveDayHours, normalizeDayHours } from "@/lib/planung";
+import { DAY_NAMES, effectiveDayHours, normalizeDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
 import {
   absenceClasses,
   absenceLabel,
@@ -494,7 +494,7 @@ function ProjectDetailDialog({
 }: {
   projectId: string | null;
   projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
-  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; day_hours?: unknown; start_date: string | null; end_date: string | null }[];
+  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; day_hours?: unknown; day_times?: unknown; start_date: string | null; end_date: string | null }[];
   onClose: () => void;
 }) {
   const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
@@ -503,12 +503,19 @@ function ProjectDetailDialog({
   // Tageswerte aus der Arbeitsplanung; ältere Einträge ohne Tageswerte auf Mo–Fr verteilen.
   const dayTotals = projectAssignments.reduce<number[]>(
     (acc, a) => {
-      const effective = effectiveDayHours(a.day_hours, a.hours_per_week);
+      const effective = effectiveDayHours(a.day_hours, a.hours_per_week, a.day_times);
       return acc.map((v, i) => v + (effective[i] ?? 0));
     },
     normalizeDayHours(null),
   );
   const totalHours = dayTotals.reduce((s, n) => s + n, 0);
+  // Arbeitszeiten (Von–Bis) je Wochentag aus der Planung.
+  const dayRanges = Array.from({ length: 7 }, (_, i) =>
+    projectAssignments
+      .map((a) => formatDayTime(normalizeDayTimes(a.day_times)[i]))
+      .filter(Boolean)
+      .join(", "),
+  );
 
   return (
     <Dialog open={!!projectId} onOpenChange={(open) => !open && onClose()}>
@@ -535,7 +542,7 @@ function ProjectDetailDialog({
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Stunden je Wochentag</div>
+            <div className="text-xs text-muted-foreground">Arbeitszeiten je Wochentag</div>
             <ul className="mt-1 divide-y text-sm">
               {DAY_NAMES.map((name, i) => (
                 <li key={name} className="flex items-center justify-between py-1.5">
@@ -543,6 +550,7 @@ function ProjectDetailDialog({
                     {name}
                   </span>
                   <span className={dayTotals[i] ? "font-medium" : "text-muted-foreground"}>
+                    {dayRanges[i] ? `${dayRanges[i]} · ` : ""}
                     {(dayTotals[i] ?? 0).toFixed(2)} Std.
                   </span>
                 </li>
