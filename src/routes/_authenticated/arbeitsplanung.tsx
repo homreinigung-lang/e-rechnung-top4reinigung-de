@@ -77,6 +77,7 @@ type Assignment = {
   employee_id: string;
   hours_per_week: number | null;
   day_hours: unknown;
+  day_times?: unknown;
   assignment_role: string | null;
   start_date: string | null;
   end_date: string | null;
