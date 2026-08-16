@@ -153,7 +153,7 @@ function Arbeitsplanung() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,employee_id,hours_per_week,day_hours,assignment_role,start_date,end_date")
+        .select("id,project_id,employee_id,hours_per_week,day_hours,day_times,assignment_role,start_date,end_date")
         .eq("start_date", weekStart);
       if (error) throw error;
       return data as Assignment[];
