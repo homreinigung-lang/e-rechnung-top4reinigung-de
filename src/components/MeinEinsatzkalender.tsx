@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
-import { DAY_LABELS, effectiveDayHours } from "@/lib/planung";
+import { DAY_LABELS, effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
 import { projectAddress } from "@/lib/maps";
 
 export type KalenderAssignment = {
@@ -9,6 +9,7 @@ export type KalenderAssignment = {
   project_id: string | null;
   hours_per_week: number | null;
   day_hours: unknown;
+  day_times?: unknown;
   start_date: string | null;
   assignment_role?: string | null;
   released?: boolean;
@@ -49,6 +50,7 @@ type DayTask = {
   name: string;
   address: string;
   hours: number;
+  range: string;
   role: string | null;
   released: boolean;
 };
@@ -83,7 +85,8 @@ export function MeinEinsatzkalender({
     for (const a of assignments) {
       if (!a.start_date) continue;
       const monday = mondayOf(new Date(`${a.start_date}T12:00:00`));
-      const days = effectiveDayHours(a.day_hours, a.hours_per_week);
+      const days = effectiveDayHours(a.day_hours, a.hours_per_week, a.day_times);
+      const times = normalizeDayTimes(a.day_times);
       days.forEach((hours, i) => {
         if (!hours || hours <= 0) return;
         const date = isoDay(addDays(monday, i));
@@ -95,6 +98,7 @@ export function MeinEinsatzkalender({
           name: p?.name || "Objekt",
           address: p ? projectAddress(p) : "",
           hours,
+          range: formatDayTime(times[i]),
           role: a.assignment_role ?? null,
           released: a.released !== false,
 
@@ -212,6 +216,7 @@ export function MeinEinsatzkalender({
                         t.released ? "text-primary" : "text-muted-foreground"
                       }`}
                     >
+                      {t.range ? `${t.range} · ` : ""}
                       {t.hours.toFixed(2)} Std.
                       {!t.released && " · vorläufig"}
                     </span>

@@ -9,7 +9,15 @@ import { toast } from "sonner";
 import { MapPin, Navigation, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, Send, Save } from "lucide-react";
 import { mapsUrl, projectAddress } from "@/lib/maps";
 import { isoWeek, isoWeekYear } from "@/lib/kw";
-import { DAY_LABELS, normalizeDayHours } from "@/lib/planung";
+import {
+  DAY_LABELS,
+  normalizeDayHours,
+  normalizeDayTimes,
+  timeToHours,
+  formatDayTime,
+  EMPTY_DAY_TIME,
+  type DayTime,
+} from "@/lib/planung";
 import { formatDate } from "@/lib/format";
 
 
@@ -69,6 +77,7 @@ type Assignment = {
   employee_id: string;
   hours_per_week: number | null;
   day_hours: unknown;
+  day_times?: unknown;
   assignment_role: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -144,7 +153,7 @@ function Arbeitsplanung() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,employee_id,hours_per_week,day_hours,assignment_role,start_date,end_date")
+        .select("id,project_id,employee_id,hours_per_week,day_hours,day_times,assignment_role,start_date,end_date")
         .eq("start_date", weekStart);
       if (error) throw error;
       return data as Assignment[];
@@ -562,8 +571,10 @@ function Arbeitsplanung() {
                       </div>
                     </td>
                     {visibleProjects.map((p) => {
-                      const days = cellDays(e.id, p.id);
+                      const times = cellTimes(e.id, p.id);
+                      const days = cellDayHours(e.id, p.id);
                       const sum = cellHours(e.id, p.id);
+                      const ranges = times.map((t) => formatDayTime(t)).filter(Boolean);
                       return (
                         <td key={p.id} className="p-2">
                           <Popover>
@@ -571,41 +582,77 @@ function Arbeitsplanung() {
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="h-9 w-full justify-center font-medium"
+                                className="h-auto min-h-9 w-full flex-col gap-0.5 py-1 font-medium"
                               >
-                                {sum > 0 ? `${sum.toFixed(1)} Std.` : "–"}
+                                <span>{sum > 0 ? `${sum.toFixed(2)} Std.` : "–"}</span>
+                                {ranges.length > 0 && (
+                                  <span className="text-[10px] font-normal text-muted-foreground">
+                                    {ranges[0]}
+                                    {ranges.length > 1 ? ` +${ranges.length - 1}` : ""}
+                                  </span>
+                                )}
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-64 space-y-2">
+                            <PopoverContent className="w-80 space-y-2">
                               <div className="text-sm font-semibold">
                                 {e.name} · {p.name || "Objekt"}
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {DAY_LABELS.map((label, i) => (
-                                  <label key={label} className="flex items-center gap-2 text-xs">
-                                    <span className="w-6 text-muted-foreground">{label}</span>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      step="0.5"
-                                      value={days[i] ? String(days[i]) : ""}
-                                      placeholder="0"
-                                      onChange={(ev) =>
-                                        setDay(e.id, p.id, i, Number(ev.target.value))
-                                      }
-                                      className="h-8 text-center"
-                                    />
-                                  </label>
-                                ))}
+                              <div className="grid grid-cols-[1.5rem_1fr_1fr_3.2rem_2.6rem] items-center gap-1 text-[10px] text-muted-foreground">
+                                <span />
+                                <span>Von</span>
+                                <span>Bis</span>
+                                <span>Pause</span>
+                                <span className="text-right">Std.</span>
                               </div>
+                              {DAY_LABELS.map((label, i) => (
+                                <div
+                                  key={label}
+                                  className="grid grid-cols-[1.5rem_1fr_1fr_3.2rem_2.6rem] items-center gap-1"
+                                >
+                                  <span className="text-xs text-muted-foreground">{label}</span>
+                                  <Input
+                                    type="time"
+                                    value={times[i]?.start ?? ""}
+                                    onChange={(ev) =>
+                                      setDayTime(e.id, p.id, i, { start: ev.target.value })
+                                    }
+                                    className="h-8 px-1 text-xs"
+                                  />
+                                  <Input
+                                    type="time"
+                                    value={times[i]?.end ?? ""}
+                                    onChange={(ev) =>
+                                      setDayTime(e.id, p.id, i, { end: ev.target.value })
+                                    }
+                                    className="h-8 px-1 text-xs"
+                                  />
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    step="5"
+                                    placeholder="0"
+                                    value={times[i]?.breakMin ? String(times[i]!.breakMin) : ""}
+                                    onChange={(ev) =>
+                                      setDayTime(e.id, p.id, i, {
+                                        breakMin: Number(ev.target.value) || 0,
+                                      })
+                                    }
+                                    className="h-8 px-1 text-center text-xs"
+                                  />
+                                  <span className="text-right text-xs font-medium">
+                                    {(days[i] ?? 0).toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
                               <div className="pt-1 text-right text-xs font-semibold">
-                                Woche: {sum.toFixed(1)} Std.
+                                Woche: {sum.toFixed(2)} Std.
                               </div>
                             </PopoverContent>
                           </Popover>
                         </td>
                       );
                     })}
+
 
                     <td
                       className={`p-3 text-right font-semibold ${over ? "text-destructive" : ""}`}
