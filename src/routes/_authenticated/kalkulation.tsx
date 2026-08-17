@@ -18,13 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -75,8 +69,20 @@ const CLEANING_TYPES: {
   range: [number, number];
 }[] = [
   { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.55, hourly: 35, range: [34, 37] },
-  { value: "grund", label: "Grundreinigung (Tiefenreinigung)", area: 1.9, hourly: 43, range: [42, 45] },
-  { value: "bau", label: "Bauendreinigung (Tiefenreinigung)", area: 2.6, hourly: 44, range: [42, 45] },
+  {
+    value: "grund",
+    label: "Grundreinigung (Tiefenreinigung)",
+    area: 1.9,
+    hourly: 43,
+    range: [42, 45],
+  },
+  {
+    value: "bau",
+    label: "Bauendreinigung (Tiefenreinigung)",
+    area: 2.6,
+    hourly: 44,
+    range: [42, 45],
+  },
   { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 36, range: [34, 37] },
   { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.75, hourly: 35, range: [34, 37] },
   { value: "buero", label: "Büroreinigung", area: 0.65, hourly: 35, range: [34, 37] },
@@ -108,9 +114,6 @@ type Attachment = {
   note: string;
 };
 
-
-
-
 type AiItem = {
   id: string;
   description: string;
@@ -125,9 +128,7 @@ function KalkulationPage() {
   const search = Route.useSearch();
   const [type, setType] = useState(CLEANING_TYPES[0]!.value);
   const [mode, setMode] = useState<Mode>("area");
-  const [area, setArea] = useState(
-    search.area ? String(search.area).replace(".", ",") : "100",
-  );
+  const [area, setArea] = useState(search.area ? String(search.area).replace(".", ",") : "100");
   const [pricePerSqm, setPricePerSqm] = useState(String(CLEANING_TYPES[0]!.area));
   const [hours, setHours] = useState("4");
   const [hourlyRate, setHourlyRate] = useState(String(CLEANING_TYPES[0]!.hourly));
@@ -158,9 +159,6 @@ function KalkulationPage() {
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
-
-
-
 
   // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
   const [aiPrompt, setAiPrompt] = useState("");
@@ -197,13 +195,10 @@ function KalkulationPage() {
         unit_price: String(i.unit_price).replace(".", ","),
       }));
       setAiItems((prev) => [...prev, ...list]);
-      toast.success(
-        `Kalkulation übernommen – ${list.length} Positionen erstellt (frei anpassbar)`,
-      );
+      toast.success(`Kalkulation übernommen – ${list.length} Positionen erstellt (frei anpassbar)`);
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
-
 
   const aiTotal = useMemo(
     () => aiItems.reduce((s, i) => s + num(i.quantity) * num(i.unit_price), 0),
@@ -230,8 +225,7 @@ function KalkulationPage() {
   }, [frequency, frequencyUnit]);
 
   const base = useMemo(() => {
-    const core =
-      mode === "area" ? num(area) * num(pricePerSqm) : num(hours) * num(hourlyRate);
+    const core = mode === "area" ? num(area) * num(pricePerSqm) : num(hours) * num(hourlyRate);
     return core * visitsPerMonth;
   }, [mode, area, pricePerSqm, hours, hourlyRate, visitsPerMonth]);
 
@@ -242,9 +236,7 @@ function KalkulationPage() {
 
   const stairsTotal = useMemo(
     () =>
-      stairs
-        ? (num(floors) * num(stairRate) + (hasLift ? num(liftRate) : 0)) * visitsPerMonth
-        : 0,
+      stairs ? (num(floors) * num(stairRate) + (hasLift ? num(liftRate) : 0)) * visitsPerMonth : 0,
     [stairs, floors, stairRate, hasLift, liftRate, visitsPerMonth],
   );
 
@@ -252,7 +244,6 @@ function KalkulationPage() {
   const pct = Math.min(100, Math.max(0, num(discountPercent)));
   const discountAmount = (subtotal * pct) / 100;
   const suggested = Math.round((subtotal - discountAmount) * 100) / 100;
-
 
   // Vorschlag automatisch übernehmen, solange der Endpreis nicht manuell geändert wurde.
   useEffect(() => {
@@ -364,8 +355,8 @@ function KalkulationPage() {
       <div>
         <h1 className="font-display text-2xl font-semibold">Kalkulation</h1>
         <p className="text-sm text-muted-foreground">
-          Leistung beschreiben – der Assistent füllt Leistungsdaten und Positionen aus. Alles
-          bleibt manuell änderbar und geht mit einem Klick ins Angebot.
+          Leistung beschreiben – der Assistent füllt Leistungsdaten und Positionen aus. Alles bleibt
+          manuell änderbar und geht mit einem Klick ins Angebot.
         </p>
       </div>
 
@@ -396,8 +387,6 @@ function KalkulationPage() {
           </Button>
         </CardContent>
       </Card>
-
-
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card>
@@ -490,19 +479,21 @@ function KalkulationPage() {
                     aktualisiert sich sofort.
                   </p>
                   <div className="flex flex-wrap gap-1">
-                    {[selected.range[0], Math.round((selected.range[0] + selected.range[1]) / 2), selected.range[1]].map(
-                      (r) => (
-                        <Button
-                          key={r}
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setHourlyRate(String(r))}
-                        >
-                          {formatMoney(r)}
-                        </Button>
-                      ),
-                    )}
+                    {[
+                      selected.range[0],
+                      Math.round((selected.range[0] + selected.range[1]) / 2),
+                      selected.range[1],
+                    ].map((r) => (
+                      <Button
+                        key={r}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setHourlyRate(String(r))}
+                      >
+                        {formatMoney(r)}
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -644,7 +635,6 @@ function KalkulationPage() {
               )}
             </div>
 
-
             <div className="space-y-2">
               <Label>Bemerkung zur Leistung</Label>
               <Textarea
@@ -721,8 +711,6 @@ function KalkulationPage() {
                             <FileText className="size-8 text-muted-foreground" />
                           </button>
                         )}
-
-
 
                         <div className="flex items-center gap-2">
                           <span className="flex-1 truncate text-xs">{a.name}</span>
@@ -855,8 +843,8 @@ function KalkulationPage() {
                 <div>
                   <Label>Positionen</Label>
                   <p className="text-xs text-muted-foreground">
-                    Vom Assistenten erzeugt oder manuell ergänzt – jede Zeile bleibt frei
-                    änderbar und geht direkt ins Angebot.
+                    Vom Assistenten erzeugt oder manuell ergänzt – jede Zeile bleibt frei änderbar
+                    und geht direkt ins Angebot.
                   </p>
                 </div>
                 <Button
@@ -940,7 +928,6 @@ function KalkulationPage() {
               )}
             </div>
           </CardContent>
-
         </Card>
 
         <Card>
@@ -1053,7 +1040,6 @@ function KalkulationPage() {
               </div>
             </div>
 
-
             <div className="space-y-3 rounded-md border border-dashed p-3">
               <p className="text-xs text-muted-foreground">
                 Diese Kalkulation ist ein interner Entwurf. Bitte alle Angaben prüfen und final
@@ -1079,8 +1065,6 @@ function KalkulationPage() {
           </CardContent>
         </Card>
       </div>
-
     </div>
-
   );
 }
