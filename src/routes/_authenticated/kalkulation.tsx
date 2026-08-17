@@ -1034,6 +1034,26 @@ function KalkulationPage() {
               )}
             </div>
 
+            <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Grundkalkulation (netto)</span>
+                <span>{formatMoney(endNet)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Positionen (netto)</span>
+                <span>{formatMoney(aiTotal)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-medium">
+                <span>Gesamt netto</span>
+                <span>{formatMoney(endNet + aiTotal)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Brutto inkl. 19 % MwSt.</span>
+                <span>{formatMoney((endNet + aiTotal) * 1.19)}</span>
+              </div>
+            </div>
+
+
             <div className="space-y-3 rounded-md border border-dashed p-3">
               <p className="text-xs text-muted-foreground">
                 Diese Kalkulation ist ein interner Entwurf. Bitte alle Angaben prüfen und final
