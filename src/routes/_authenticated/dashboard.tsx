@@ -381,7 +381,8 @@ function AdminDashboard() {
         )}
       </div>
 
-      <div className="surface overflow-hidden">
+      <div id="euer" className="surface scroll-mt-24 overflow-hidden">
+
         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
           <div>
             <h2 className="font-semibold">EÜR {year} – Einnahmenüberschussrechnung</h2>

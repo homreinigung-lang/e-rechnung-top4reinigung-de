@@ -1,4 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useFileUrl } from "@/hooks/useFileUrl";
@@ -18,8 +20,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
+  BarChart3,
   Calculator,
   Clock,
+  FileSignature,
   FileText,
   FolderKanban,
   HardHat,
@@ -28,45 +32,87 @@ import {
   Map as MapIcon,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   MoreVertical,
   Repeat,
   Settings,
   ShieldCheck,
-
   TrendingDown,
   UserCircle,
   Users,
 } from "lucide-react";
+
 import type { ReactNode } from "react";
 
 
-const nav = [
-  { to: "/dashboard", label: "Startseite", icon: LayoutDashboard },
-  { to: "/dokumente", label: "Rechnungen & Angebote", icon: FileText },
-  { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
-  { to: "/projekte", label: "Projekte", icon: FolderKanban },
-  { to: "/personal", label: "Personal", icon: HardHat },
-  { to: "/arbeitsplanung", label: "Arbeitsplanung", icon: CalendarRange },
-  { to: "/wiederkehrend", label: "Wiederkehrend", icon: Repeat },
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  hash?: string;
+};
 
-  { to: "/kunden", label: "Kunden", icon: Users },
-  { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
-  { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock },
-  { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
-  { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
-  { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
-  { to: "/sicherheit", label: "Sicherheit & Backup", icon: ShieldCheck },
-  { to: "/profil", label: "Mein Profil", icon: UserCircle },
-  { to: "/einstellungen", label: "Einstellungen", icon: Settings },
+type NavGroup = { title: string; items: readonly NavItem[] };
 
+const navGroups: readonly NavGroup[] = [
+  {
+    title: "Allgemein",
+    items: [
+      { to: "/dashboard", label: "Startseite", icon: LayoutDashboard },
+      { to: "/kunden", label: "Kunden", icon: Users },
+      { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
+    ],
+  },
+  {
+    title: "Buchhaltung",
+    items: [
+      { to: "/dokumente", label: "Rechnungen", icon: FileText },
+      { to: "/wiederkehrend", label: "Wiederkehrende Rechnung", icon: Repeat },
+      { to: "/dashboard", label: "EÜR", icon: BarChart3, hash: "euer" },
+      { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
+    ],
+  },
+  {
+    title: "Personal",
+    items: [
+      { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock },
+      { to: "/arbeitsplanung", label: "Arbeitsplanung", icon: CalendarRange },
+      { to: "/personal", label: "Mitarbeiter", icon: HardHat },
+      { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
+    ],
+  },
+  {
+    title: "Vertrieb & Projekte",
+    items: [
+      { to: "/dokumente", label: "Angebot", icon: FileSignature },
+      { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
+      { to: "/projekte", label: "Projekte", icon: FolderKanban },
+    ],
+  },
+  {
+    title: "Verwaltung",
+    items: [
+      { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
+      { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
+      { to: "/sicherheit", label: "Sicherheit & Backup", icon: ShieldCheck },
+      { to: "/profil", label: "Mein Profil", icon: UserCircle },
+      { to: "/einstellungen", label: "Einstellungen", icon: Settings },
+    ],
+  },
 ] as const;
-
 
 // Menü für Mitarbeiterkonten (nur eigene Zeiten)
-const employeeNav = [
-  { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
-  { to: "/profil", label: "Mein Profil", icon: UserCircle },
+const employeeGroups: readonly NavGroup[] = [
+  {
+    title: "Mein Bereich",
+    items: [
+      { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
+      { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
+      { to: "/profil", label: "Mein Profil", icon: UserCircle },
+    ],
+  },
 ] as const;
+
 
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -74,10 +120,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: myEmployee } = useMyEmployee();
-  const menu = myEmployee ? employeeNav : nav;
+  const groups = myEmployee ? employeeGroups : navGroups;
+  const homeTo = groups[0]!.items[0]!.to;
+
+  // Rolle merken: eingeladene Mitarbeitende sehen die Startseite (Marketing) nicht mehr.
+  useEffect(() => {
+    if (myEmployee === undefined) return;
+    try {
+      localStorage.setItem("homr:role", myEmployee ? "employee" : "owner");
+    } catch {
+      /* Speicher nicht verfügbar – unkritisch */
+    }
+  }, [myEmployee]);
 
   // Echtzeit-Abgleich mit der Datenbank (Kunden, Rechnungen, Angebote)
   useRealtimeSync();
+
 
 
   const { data: settings } = useQuery({
@@ -103,7 +161,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <header className="no-print sticky top-0 z-30 border-b bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-          <Link to={menu[0].to} className="flex items-center gap-2">
+          <Link to={homeTo} className="flex items-center gap-2">
             {logoSrc ? (
               <img
                 src={logoSrc}
@@ -131,26 +189,32 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <MoreVertical className="size-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Menü</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {menu.map((item) => {
-                  const active = pathname.startsWith(item.to);
-                  return (
-                    <DropdownMenuItem key={item.to} asChild>
-                      <Link
-                        to={item.to}
-                        className={cn(
-                          "flex w-full cursor-pointer items-center gap-2",
-                          active && "bg-secondary text-secondary-foreground",
-                        )}
-                      >
-                        <item.icon className="size-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  );
-                })}
+              <DropdownMenuContent align="end" className="max-h-[80vh] w-64 overflow-y-auto">
+                {groups.map((group, gi) => (
+                  <div key={group.title}>
+                    {gi > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel>{group.title}</DropdownMenuLabel>
+                    {group.items.map((item) => {
+                      const active = pathname.startsWith(item.to);
+                      return (
+                        <DropdownMenuItem key={`${item.to}-${item.label}`} asChild>
+                          <Link
+                            to={item.to}
+                            {...(item.hash ? { hash: item.hash } : {})}
+                            className={cn(
+                              "flex w-full cursor-pointer items-center gap-2",
+                              active && "bg-secondary text-secondary-foreground",
+                            )}
+                          >
+                            <item.icon className="size-4" />
+                            <span>{item.label}</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
+                ))}
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => void signOut()}>
                   <LogOut className="size-4" />

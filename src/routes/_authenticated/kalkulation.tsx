@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Calculator, FileSignature, FileText, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeCalculation } from "@/lib/item-ai.functions";
+import { analyzeProject } from "@/lib/project-scan.functions";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
@@ -207,6 +209,65 @@ function KalkulationPage() {
 
   const patchAiItem = (id: string, patch: Partial<AiItem>) =>
     setAiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+
+  // ---- Projekt-Analyse direkt aus den hochgeladenen Unterlagen -------------
+  const runProjectScan = useServerFn(analyzeProject);
+  const [scanningPath, setScanningPath] = useState<string | null>(null);
+  const scanFile = useMutation({
+    mutationFn: async (a: Attachment) => {
+      setScanningPath(a.path);
+      const url = a.url || (await fileUrl(a.path));
+      const scan = await runProjectScan({
+        data: {
+          fileUrl: url,
+          mimeType: a.isImage ? "image/jpeg" : "application/pdf",
+          mode: a.isImage ? "floorplan" : "tender",
+        },
+      });
+      return { a, scan };
+    },
+    onSuccess: ({ a, scan }) => {
+      const sqm = scan.rooms.reduce((s, r) => s + Number(r.area_sqm || 0), 0);
+      const floorSet = new Set(scan.rooms.map((r) => r.floor).filter(Boolean));
+      updateAttachment(a.path, {
+        sqm: sqm > 0 ? String(Math.round(sqm * 100) / 100).replace(".", ",") : a.sqm,
+        rooms: scan.rooms.length > 0 ? String(scan.rooms.length) : a.rooms,
+        floors: floorSet.size > 0 ? String(floorSet.size) : a.floors,
+        note: [a.note.trim(), scan.executive_summary.trim(), ...scan.highlights]
+          .filter(Boolean)
+          .join(" · "),
+      });
+
+      if (sqm > 0) {
+        setMode("area");
+        setArea(String(Math.round(sqm * 100) / 100).replace(".", ","));
+      }
+      if (floorSet.size > 1) {
+        setStairs(true);
+        setFloors(String(floorSet.size));
+      }
+      if (scan.requirements.length > 0) {
+        const line = `Kundenanforderungen: ${scan.requirements.join("; ")}`;
+        setNote((prev) => (prev.trim() ? `${prev}\n${line}` : line));
+      }
+
+      const posFromItems = scan.items.map((it, n) => ({
+        id: `scan-${Date.now()}-${n}`,
+        description: [it.section, it.title, it.description].filter(Boolean).join(" – ").slice(0, 200),
+        quantity: String(it.quantity > 0 ? it.quantity : 1).replace(".", ","),
+        unit: it.unit || "Pauschal",
+        unit_price: hourlyRate,
+      }));
+      if (posFromItems.length > 0) setAiItems((prev) => [...prev, ...posFromItems]);
+
+      toast.success(
+        `Analyse übernommen – ${scan.rooms.length} Räume, ${posFromItems.length} Positionen`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+    onSettled: () => setScanningPath(null),
+  });
+
 
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
   const analysisTotals = useMemo(
@@ -760,6 +821,16 @@ function KalkulationPage() {
                           placeholder="Notiz zum Grundriss (z. B. Bodenbelag, Sanitärräume)"
                         />
                         <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={scanningPath === a.path || scanFile.isPending}
+                            onClick={() => scanFile.mutate(a)}
+                          >
+                            <Sparkles className="size-4" />
+                            {scanningPath === a.path ? "Wird analysiert …" : "Datei analysieren"}
+                          </Button>
+
                           <Button
                             type="button"
                             variant="outline"

@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,8 +56,28 @@ const features = [
 ];
 
 function Landing() {
+  const navigate = useNavigate();
+  // Eingeladene Mitarbeitende sehen ausschließlich die Anmeldung, keine Marketing-Seite.
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let role: string | null = null;
+    try {
+      role = localStorage.getItem("homr:role");
+    } catch {
+      role = null;
+    }
+    const invited = new URLSearchParams(window.location.search).has("mitarbeiter");
+    if (role === "employee" || invited) {
+      setHidden(true);
+      void navigate({ to: "/auth", replace: true });
+    }
+  }, [navigate]);
+
+  if (hidden) return null;
+
   return (
     <div className="min-h-screen bg-background">
+
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-2">
           <img
