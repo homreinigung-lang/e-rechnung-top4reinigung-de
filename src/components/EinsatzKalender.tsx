@@ -467,7 +467,7 @@ export function EinsatzKalender({
       list.sort((x, y) => (x.range || "zz").localeCompare(y.range || "zz"));
     }
     return map;
-  }, [assignments, employees, projects, filterEmployee, filterProject]);
+  }, [assignments, employees, projectName, filterEmployee, filterProject]);
 
   /**
    * Erfasste Zeiten mit der Planung zusammenführen: pro Mitarbeiter, Tag und
