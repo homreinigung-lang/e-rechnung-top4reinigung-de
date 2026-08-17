@@ -13,6 +13,8 @@ import { formatMoney, formatNumber } from "@/lib/format";
 import { fileUrl, openStoredFile } from "@/lib/storage";
 
 import { FileUploadButton } from "@/components/FileUploadButton";
+import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
+
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,6 +148,8 @@ function KalkulationPage() {
   const [discountReason, setDiscountReason] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
   const [finalTouched, setFinalTouched] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
+
   const [note, setNote] = useState(() => {
     const parts: string[] = [];
     if (search.objekt) parts.push(`Objekt: ${search.objekt}`);
@@ -320,6 +324,26 @@ function KalkulationPage() {
   const endNet = num(finalPrice);
   const vat = endNet * 0.19;
 
+  // Live-Kennzahlen für die integrierte Projekt-Analyse
+  const monthlyHours = useMemo(() => {
+    if (mode === "hours") return num(hours) * visitsPerMonth;
+    const rate = num(hourlyRate);
+    if (rate <= 0) return 0;
+    return (num(area) * num(pricePerSqm) * visitsPerMonth) / rate;
+  }, [mode, hours, area, pricePerSqm, hourlyRate, visitsPerMonth]);
+
+  const analyseSnapshot: KalkulationSnapshot = {
+    typeLabel: selected.label,
+    areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
+    monthlyHours,
+    visitsPerMonth,
+    positions: aiItems.length,
+    attachments: attachments.length,
+    netTotal: endNet + aiTotal,
+    confirmed,
+  };
+
+
   const toQuote = useMutation({
     mutationFn: async () => {
       const quoteId = await createDocument("quote");
@@ -421,6 +445,14 @@ function KalkulationPage() {
           manuell änderbar und geht mit einem Klick ins Angebot.
         </p>
       </div>
+
+      <ProjektAnalyse
+        projectId={projectId}
+        onProjectChange={setProjectId}
+        snapshot={analyseSnapshot}
+      />
+
+
 
       <Card>
         <CardHeader>
