@@ -819,7 +819,98 @@ function KalkulationPage() {
                 </>
               )}
             </div>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <Label>Positionen</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Vom Assistenten erzeugt oder manuell ergänzt – jede Zeile bleibt frei
+                    änderbar und geht direkt ins Angebot.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setAiItems((prev) => [
+                      ...prev,
+                      {
+                        id: `${Date.now()}`,
+                        description: "",
+                        quantity: "1",
+                        unit: "Std.",
+                        unit_price: "35",
+                      },
+                    ])
+                  }
+                >
+                  <Plus className="size-4" /> Position
+                </Button>
+              </div>
+
+              {aiItems.length === 0 ? (
+                <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  Noch keine Positionen. Beschreiben Sie die Arbeit oben im KI-Assistenten oder
+                  fügen Sie eine Position manuell hinzu.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
+                    <span>Leistung</span>
+                    <span>Menge</span>
+                    <span>Einheit</span>
+                    <span>Einzelpreis</span>
+                    <span className="text-right">Gesamt</span>
+                    <span />
+                  </div>
+                  {aiItems.map((i) => (
+                    <div
+                      key={i.id}
+                      className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center"
+                    >
+                      <Input
+                        value={i.description}
+                        placeholder="Leistung"
+                        onChange={(e) => patchAiItem(i.id, { description: e.target.value })}
+                      />
+                      <Input
+                        inputMode="decimal"
+                        value={i.quantity}
+                        onChange={(e) => patchAiItem(i.id, { quantity: e.target.value })}
+                      />
+                      <Input
+                        value={i.unit}
+                        onChange={(e) => patchAiItem(i.id, { unit: e.target.value })}
+                      />
+                      <Input
+                        inputMode="decimal"
+                        value={i.unit_price}
+                        onChange={(e) => patchAiItem(i.id, { unit_price: e.target.value })}
+                      />
+                      <span className="text-sm sm:text-right">
+                        {formatMoney(num(i.quantity) * num(i.unit_price))}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Position entfernen"
+                        onClick={() => setAiItems((prev) => prev.filter((x) => x.id !== i.id))}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <p className="text-right text-sm font-medium">
+                    Summe Positionen (netto): {formatMoney(aiTotal)}
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
+
         </Card>
 
         <Card>
