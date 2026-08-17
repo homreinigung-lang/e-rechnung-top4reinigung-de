@@ -993,9 +993,10 @@ function KalkulationPage() {
                       </Button>
                     </div>
                   ))}
-                  <p className="text-right text-sm font-medium">
-                    Summe Positionen (netto): {formatMoney(aiTotal)}
+                  <p className="text-right text-xs text-muted-foreground">
+                    {aiItems.length} Position(en) – fließen unten in die Gesamtsumme ein
                   </p>
+
                 </div>
               )}
             </div>
