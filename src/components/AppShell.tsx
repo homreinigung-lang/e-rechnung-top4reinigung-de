@@ -8,7 +8,6 @@ import { useMyEmployee } from "@/lib/employee";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
 
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,7 +42,6 @@ import {
 } from "lucide-react";
 
 import type { ReactNode } from "react";
-
 
 type NavItem = {
   to: string;
@@ -113,8 +111,6 @@ const employeeGroups: readonly NavGroup[] = [
   },
 ] as const;
 
-
-
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -136,8 +132,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Echtzeit-Abgleich mit der Datenbank (Kunden, Rechnungen, Angebote)
   useRealtimeSync();
 
-
-
   const { data: settings } = useQuery({
     queryKey: ["company_settings"],
     queryFn: async () => {
@@ -147,8 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     },
   });
   const logoSrc = useFileUrl((settings as { logo_url?: string } | null)?.logo_url);
-  const companyName =
-    (settings as { company_name?: string } | null)?.company_name || "HomR";
+  const companyName = (settings as { company_name?: string } | null)?.company_name || "HomR";
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -183,7 +176,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-1">
             <AssignmentBell />
             <DropdownMenu>
-
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Menü öffnen">
                   <MoreVertical className="size-5" />
@@ -223,7 +215,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
         </div>
       </header>
 

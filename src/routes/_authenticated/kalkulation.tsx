@@ -7,7 +7,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { analyzeCalculation } from "@/lib/item-ai.functions";
 import { analyzeProject } from "@/lib/project-scan.functions";
 
-
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { formatMoney, formatNumber } from "@/lib/format";
@@ -253,7 +252,10 @@ function KalkulationPage() {
 
       const posFromItems = scan.items.map((it, n) => ({
         id: `scan-${Date.now()}-${n}`,
-        description: [it.section, it.title, it.description].filter(Boolean).join(" – ").slice(0, 200),
+        description: [it.section, it.title, it.description]
+          .filter(Boolean)
+          .join(" – ")
+          .slice(0, 200),
         quantity: String(it.quantity > 0 ? it.quantity : 1).replace(".", ","),
         unit: it.unit || "Pauschal",
         unit_price: hourlyRate,
@@ -267,7 +269,6 @@ function KalkulationPage() {
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
     onSettled: () => setScanningPath(null),
   });
-
 
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
   const analysisTotals = useMemo(

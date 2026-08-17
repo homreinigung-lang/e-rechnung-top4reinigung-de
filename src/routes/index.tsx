@@ -77,7 +77,6 @@ function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-2">
           <img
@@ -137,8 +136,8 @@ function Landing() {
             Angebote und Rechnungen – sauber, schnell, ohne Umsatzsteuer.
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
-            Verwalten Sie Kunden, schreiben Sie Angebote und Rechnungen mit
-            Reverse-Charge-Hinweis für den EU-Raum und versenden Sie diese direkt per E-Mail.
+            Verwalten Sie Kunden, schreiben Sie Angebote und Rechnungen mit Reverse-Charge-Hinweis
+            für den EU-Raum und versenden Sie diese direkt per E-Mail.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
@@ -182,7 +181,6 @@ function Landing() {
           </nav>
         </div>
       </footer>
-
     </div>
   );
 }

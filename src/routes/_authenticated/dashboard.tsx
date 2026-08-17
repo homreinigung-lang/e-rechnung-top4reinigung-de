@@ -29,7 +29,6 @@ import {
   XCircle,
 } from "lucide-react";
 
-
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
@@ -39,7 +38,10 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
         content: "Offene Rechnungen, Umsatz und Umsatzsteuer je Quartal sowie Ausgaben im Blick.",
       },
       { property: "og:title", content: "Übersicht – Rechnungen & Angebote" },
-      { property: "og:description", content: "Umsatz, Umsatzsteuer und Quartalszahlen auf einen Blick." },
+      {
+        property: "og:description",
+        content: "Umsatz, Umsatzsteuer und Quartalszahlen auf einen Blick.",
+      },
     ],
   }),
   component: Dashboard,
@@ -118,7 +120,10 @@ function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
         ) : (
           <ul className="divide-y">
             {entries.slice(0, 10).map((e) => (
-              <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+              <li
+                key={e.id}
+                className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+              >
                 <div>
                   <div className="font-medium">{formatDate(String(e.work_date))}</div>
                   <div className="text-sm text-muted-foreground">
@@ -145,14 +150,31 @@ function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
 
 /** Schnellzugriff-Kacheln auf der Startseite. */
 const QUICK_LINKS = [
-  { to: "/dashboard", search: {}, label: "Startseite", hint: "Zahlen & offene Posten", icon: LayoutDashboard },
+  {
+    to: "/dashboard",
+    search: {},
+    label: "Startseite",
+    hint: "Zahlen & offene Posten",
+    icon: LayoutDashboard,
+  },
   { to: "/kunden", search: {}, label: "Kunden", hint: "Kundenstamm verwalten", icon: Users },
-  { to: "/dokumente", search: { tab: "quote" as const }, label: "Angebote", hint: "Angebote erstellen & prüfen", icon: FileText },
-  { to: "/dokumente", search: { tab: "invoice" as const }, label: "Rechnungen", hint: "Rechnungen & Zahlungen", icon: Receipt },
+  {
+    to: "/dokumente",
+    search: { tab: "quote" as const },
+    label: "Angebote",
+    hint: "Angebote erstellen & prüfen",
+    icon: FileText,
+  },
+  {
+    to: "/dokumente",
+    search: { tab: "invoice" as const },
+    label: "Rechnungen",
+    hint: "Rechnungen & Zahlungen",
+    icon: Receipt,
+  },
 ] as const;
 
 function AdminDashboard() {
-
   const navigate = useNavigate();
 
   const year = new Date().getFullYear();
@@ -213,7 +235,6 @@ function AdminDashboard() {
     return { q, net, vat, expNet, expVat, balance: vat - expVat, profit: net - expNet };
   });
 
-
   const inYear = (v?: string | null) => String(v ?? "").slice(0, 4) === String(year);
   const euer = computeEuer(
     docs.filter((d) => inYear(d.issue_date)),
@@ -234,8 +255,18 @@ function AdminDashboard() {
   const kpis = [
     { label: "Rechnungen", value: String(invoices.length), icon: Receipt, accent: "text-primary" },
     { label: "Angebote", value: String(quotes.length), icon: FileText, accent: "text-primary" },
-    { label: "Angenommen", value: String(acceptedQuotes), icon: CheckCircle2, accent: "text-primary" },
-    { label: "Abgelehnt", value: String(declinedQuotes), icon: XCircle, accent: "text-destructive" },
+    {
+      label: "Angenommen",
+      value: String(acceptedQuotes),
+      icon: CheckCircle2,
+      accent: "text-primary",
+    },
+    {
+      label: "Abgelehnt",
+      value: String(declinedQuotes),
+      icon: XCircle,
+      accent: "text-destructive",
+    },
   ];
 
   return (
@@ -257,7 +288,13 @@ function AdminDashboard() {
             <DropdownMenuItem
               onSelect={() => {
                 void createDocument("invoice")
-                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId }, search: { bearbeiten: true } }))
+                  .then((docId) =>
+                    navigate({
+                      to: "/dokumente/$id",
+                      params: { id: docId },
+                      search: { bearbeiten: true },
+                    }),
+                  )
                   .catch((e: Error) => toast.error(e.message));
               }}
             >
@@ -266,7 +303,13 @@ function AdminDashboard() {
             <DropdownMenuItem
               onSelect={() => {
                 void createDocument("quote")
-                  .then((docId) => navigate({ to: "/dokumente/$id", params: { id: docId }, search: { bearbeiten: true } }))
+                  .then((docId) =>
+                    navigate({
+                      to: "/dokumente/$id",
+                      params: { id: docId },
+                      search: { bearbeiten: true },
+                    }),
+                  )
                   .catch((e: Error) => toast.error(e.message));
               }}
             >
@@ -277,7 +320,6 @@ function AdminDashboard() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
       </div>
 
       {/* Schnellzugriff: direkter Einstieg ohne Umweg über das Menü */}
@@ -299,8 +341,6 @@ function AdminDashboard() {
           </Link>
         ))}
       </nav>
-
-
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
@@ -333,7 +373,6 @@ function AdminDashboard() {
           ))}
         </div>
       </div>
-
 
       <div className="surface overflow-hidden">
         <div className="flex items-center justify-between border-b px-5 py-4">
@@ -382,7 +421,6 @@ function AdminDashboard() {
       </div>
 
       <div id="euer" className="surface scroll-mt-24 overflow-hidden">
-
         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
           <div>
             <h2 className="font-semibold">EÜR {year} – Einnahmenüberschussrechnung</h2>
@@ -402,9 +440,7 @@ function AdminDashboard() {
             <div className="mt-2 font-display text-2xl font-semibold">
               {formatMoney(euer.incomeNet)}
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {euer.incomeCount} Rechnungen
-            </div>
+            <div className="mt-1 text-xs text-muted-foreground">{euer.incomeCount} Rechnungen</div>
           </div>
           <div className="bg-card p-5">
             <div className="text-sm text-muted-foreground">Betriebsausgaben (netto)</div>
@@ -435,12 +471,9 @@ function AdminDashboard() {
         </div>
       </div>
 
-
       <div className="surface overflow-hidden">
         <div className="border-b px-5 py-4">
-          <h2 className="font-semibold">
-            Quartale {year} – Umsatzsteuer-Voranmeldung
-          </h2>
+          <h2 className="font-semibold">Quartale {year} – Umsatzsteuer-Voranmeldung</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Endabrechnung je Quartal: Umsatzsteuer abzüglich Vorsteuer ergibt Zahllast (an das
             Finanzamt) oder Erstattung (vom Finanzamt).
@@ -488,8 +521,6 @@ function AdminDashboard() {
           </table>
         </div>
       </div>
-
-
 
       <div className="surface overflow-hidden">
         <div className="border-b px-5 py-4">
