@@ -24,4 +24,3 @@ export const analyzeCalculation = createServerFn({ method: "POST" })
     const { generateCalculation } = await import("@/lib/item-ai.server");
     return await generateCalculation(data.prompt);
   });
-
