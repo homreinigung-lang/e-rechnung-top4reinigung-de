@@ -62,10 +62,12 @@ type PlanShift = {
   key: string;
   employeeId: string;
   employeeName: string;
+  projectId: string | null;
   projectName: string;
   range: string;
   hours: number;
 };
+
 
 
 
@@ -458,6 +460,7 @@ export function EinsatzKalender({
           key: `${a.id}-${i}`,
           employeeId: a.employee_id!,
           employeeName: employees.find((e) => e.id === a.employee_id)?.name ?? "Mitarbeiter",
+          projectId: a.project_id ?? null,
           projectName: projectName(a.project_id) || "Ohne Objekt",
           range: formatDayTime(times[i]),
           hours: h,
@@ -471,7 +474,45 @@ export function EinsatzKalender({
     return map;
   }, [assignments, employees, projects, filterEmployee, filterProject]);
 
+  /**
+   * Erfasste Zeiten mit der Planung zusammenführen: pro Mitarbeiter, Tag und
+   * (falls vorhanden) Objekt wird genau EIN Block angezeigt – die erfasste Zeit
+   * ersetzt die geplante Schicht und gilt als erledigt.
+   */
+  const { matchedPlanKeys, doneEntries } = useMemo(() => {
+    const matched = new Set<string>();
+    const done = new Map<string, PlanShift>();
+    for (const [date, plans] of planByDay) {
+      const dayList = (byDay.get(date) ?? []).filter((e) => !isAbsence(e) && e.employee_id);
+      const used = new Set<string>();
+      for (const p of plans) {
+        const hit =
+          dayList.find(
+            (e) =>
+              !used.has(e.id) &&
+              e.employee_id === p.employeeId &&
+              p.projectId &&
+              e.project_id === p.projectId,
+          ) ??
+          dayList.find((e) => !used.has(e.id) && e.employee_id === p.employeeId);
+        if (!hit) continue;
+        used.add(hit.id);
+        matched.add(p.key);
+        done.set(hit.id, p);
+      }
+    }
+    return { matchedPlanKeys: matched, doneEntries: done };
+  }, [planByDay, byDay]);
+
+  /** Nur noch offene (nicht erfasste) Planungen eines Tages. */
+  const openPlans = (key: string, employeeId?: string) =>
+    (planByDay.get(key) ?? []).filter(
+      (p) => !matchedPlanKeys.has(p.key) && (!employeeId || p.employeeId === employeeId),
+    );
+
   const today = isoDay(new Date());
+
+
 
 
 
@@ -730,6 +771,7 @@ export function EinsatzKalender({
                   <div className="mt-1 space-y-0.5">
                     {list.slice(0, 3).map((e) => {
                       const reason = absenceReason(e);
+                      const donePlan = doneEntries.get(e.id);
                       return (
                         <button
                           key={e.id}
@@ -738,14 +780,25 @@ export function EinsatzKalender({
                             ev.stopPropagation();
                             setDetail(e);
                           }}
-                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${statusClasses(e)}`}
-                          title={`${e.employee_name} · ${statusLabel(e)}`}
+                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${
+                            donePlan
+                              ? "border-emerald-600 bg-emerald-600 text-white"
+                              : statusClasses(e)
+                          }`}
+                          title={
+                            donePlan
+                              ? `Erledigt: ${e.employee_name} · ${donePlan.projectName} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`} · Ist ${Number(e.hours ?? 0).toFixed(2)} Std.`
+                              : `${e.employee_name} · ${statusLabel(e)}`
+                          }
                         >
                           {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
                           <span className="truncate">
                             {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
                             {e.employee_name}
-                            {!reason && e.location ? ` · ${e.location}` : ""}
+                            {!reason && (donePlan?.projectName || e.location)
+                              ? ` · ${donePlan?.projectName || e.location}`
+                              : ""}
+                            {donePlan ? " · Erledigt" : ""}
                           </span>
                         </button>
                       );
@@ -755,7 +808,7 @@ export function EinsatzKalender({
                         +{list.length - 3} weitere
                       </div>
                     )}
-                    {(planByDay.get(key) ?? []).slice(0, 3).map((p) => (
+                    {openPlans(key).slice(0, 3).map((p) => (
                       <div
                         key={p.key}
                         title={`Planung: ${p.employeeName} · ${p.projectName} · ${p.range || `${p.hours.toFixed(2)} Std.`}`}
@@ -765,11 +818,12 @@ export function EinsatzKalender({
                         {p.employeeName} · {p.projectName}
                       </div>
                     ))}
-                    {(planByDay.get(key) ?? []).length > 3 && (
+                    {openPlans(key).length > 3 && (
                       <div className="text-[10px] text-muted-foreground">
-                        +{(planByDay.get(key) ?? []).length - 3} weitere Planungen
+                        +{openPlans(key).length - 3} weitere Planungen
                       </div>
                     )}
+
                   </div>
 
                 </div>
@@ -839,6 +893,7 @@ export function EinsatzKalender({
                       >
                         {list.map((e) => {
                           const reason = absenceReason(e);
+                          const donePlan = doneEntries.get(e.id);
                           return (
                             <button
                               key={e.id}
@@ -847,8 +902,16 @@ export function EinsatzKalender({
                                 ev.stopPropagation();
                                 setDetail(e);
                               }}
-                              title={statusLabel(e)}
-                              className={`w-full rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${statusClasses(e)}`}
+                              title={
+                                donePlan
+                                  ? `Erledigt · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`}`
+                                  : statusLabel(e)
+                              }
+                              className={`w-full rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${
+                                donePlan
+                                  ? "border-emerald-600 bg-emerald-600 text-white"
+                                  : statusClasses(e)
+                              }`}
                             >
                               {reason ? (
                                 <span className="flex items-center gap-1">
@@ -861,8 +924,11 @@ export function EinsatzKalender({
                                     {(e.start_time ?? "").slice(0, 5)}–
                                     {(e.end_time ?? "").slice(0, 5)}
                                   </div>
-                                  <div className="truncate">{e.location || "ohne Objekt"}</div>
+                                  <div className="truncate">
+                                    {donePlan?.projectName || e.location || "ohne Objekt"}
+                                  </div>
                                   <div className="text-[10px] opacity-80">
+                                    {donePlan ? "Erledigt · " : ""}
                                     {Number(e.hours ?? 0).toFixed(2)} Std.
                                   </div>
                                 </>
@@ -870,9 +936,7 @@ export function EinsatzKalender({
                             </button>
                           );
                         })}
-                        {(planByDay.get(key) ?? [])
-                          .filter((p) => p.employeeId === emp.id)
-                          .map((p) => (
+                        {openPlans(key, emp.id).map((p) => (
                             <div
                               key={p.key}
                               title={`Planung: ${p.projectName}`}
@@ -887,6 +951,7 @@ export function EinsatzKalender({
                               </div>
                             </div>
                           ))}
+
                       </div>
 
 
