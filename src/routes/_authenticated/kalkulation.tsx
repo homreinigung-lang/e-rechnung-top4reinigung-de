@@ -364,10 +364,40 @@ function KalkulationPage() {
       <div>
         <h1 className="font-display text-2xl font-semibold">Kalkulation</h1>
         <p className="text-sm text-muted-foreground">
-          Preise für Reinigungsaufträge vorab berechnen, Endpreis frei anpassen und direkt als
-          Angebot übernehmen.
+          Leistung beschreiben – der Assistent füllt Leistungsdaten und Positionen aus. Alles
+          bleibt manuell änderbar und geht mit einem Klick ins Angebot.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="size-5" /> KI-Assistent
+          </CardTitle>
+          <CardDescription>
+            Auftrag kurz beschreiben – Reinigungstyp, Fläche, Turnus, Etagen und die
+            Leistungspositionen werden automatisch in die Kalkulation unten übernommen.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            rows={3}
+            placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+          />
+          <Button
+            type="button"
+            disabled={aiSuggest.isPending || aiPrompt.trim().length < 5}
+            onClick={() => aiSuggest.mutate()}
+          >
+            <Sparkles className="size-4" />
+            {aiSuggest.isPending ? "Wird kalkuliert…" : "Kalkulation erstellen"}
+          </Button>
+        </CardContent>
+      </Card>
+
+
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card>
