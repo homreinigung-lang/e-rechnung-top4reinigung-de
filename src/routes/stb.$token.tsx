@@ -97,10 +97,9 @@ function downloadExcel(name: string, sheets: { title: string; rows: Table[] }[])
   }
   download(
     name,
-    new Blob(
-      [`\uFEFF<html><head><meta charset="utf-8" /></head><body>${tables}</body></html>`],
-      { type: "application/vnd.ms-excel;charset=utf-8" },
-    ),
+    new Blob([`\uFEFF<html><head><meta charset="utf-8" /></head><body>${tables}</body></html>`], {
+      type: "application/vnd.ms-excel;charset=utf-8",
+    }),
   );
 }
 
@@ -258,8 +257,6 @@ function AccountantPortal() {
     })();
   }
 
-
-
   const data = report.data;
   const documents: Row[] = data?.documents ?? [];
   const expenses: Row[] = data?.expenses ?? [];
@@ -314,7 +311,8 @@ function AccountantPortal() {
           Steuerberater-Zugang {data?.companyName ? `– ${data.companyName}` : ""}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Nur-Lese-Zugriff auf Rechnungen, Ausgaben und Stundenzettel aller Mitarbeiter inkl. DATEV- und Excel-Export.
+          Nur-Lese-Zugriff auf Rechnungen, Ausgaben und Stundenzettel aller Mitarbeiter inkl. DATEV-
+          und Excel-Export.
         </p>
       </header>
 
@@ -361,16 +359,21 @@ function AccountantPortal() {
             <Lock className="size-4" /> {report.isPending ? "Lädt…" : "Daten laden"}
           </Button>
         </div>
-
       </section>
 
       {data && (
         <>
           <section className="no-print flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows)}>
+            <Button
+              variant="outline"
+              onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows)}
+            >
               <Download className="size-4" /> Rechnungen (CSV)
             </Button>
-            <Button variant="outline" onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows)}>
+            <Button
+              variant="outline"
+              onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows)}
+            >
               <Download className="size-4" /> Ausgaben (CSV)
             </Button>
             <Button

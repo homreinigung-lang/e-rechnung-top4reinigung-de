@@ -216,7 +216,14 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
 
   let contactY = headTop - 8;
   for (const line of [d.contactEmail, d.contactPhone].filter(Boolean) as string[]) {
-    text(ctx, line, { x: M_X, y: contactY, width: CONTENT_W, align: "right", size: 8, color: COLOR_MUTED });
+    text(ctx, line, {
+      x: M_X,
+      y: contactY,
+      width: CONTENT_W,
+      align: "right",
+      size: 8,
+      color: COLOR_MUTED,
+    });
     contactY -= 11;
   }
 
@@ -288,7 +295,6 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     }
     ctx.y -= 4;
   }
-
 
   // ---- Positionstabelle ---------------------------------------------------
   const fractions = [0.07, 0.43, 0.1, 0.1, 0.15, 0.15];
@@ -387,9 +393,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
         if (section.current === "regular" && d.regularSubtotal) {
           drawBandRow("Monatlicher Festpreis (netto)", d.regularSubtotal, false);
         }
-        drawBandRow(
-          wanted === "regular" ? "Regelmäßige Leistungen" : "Optionale Zusatzleistungen",
-        );
+        drawBandRow(wanted === "regular" ? "Regelmäßige Leistungen" : "Optionale Zusatzleistungen");
         section.current = wanted;
       }
     }
@@ -451,7 +455,6 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
 
   ctx.y -= 8;
-
 
   // ---- Leistungsbeschreibung ---------------------------------------------
   if (d.serviceDescription) {

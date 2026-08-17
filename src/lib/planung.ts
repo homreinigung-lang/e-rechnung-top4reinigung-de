@@ -50,7 +50,7 @@ export function timeToHours(time: DayTime | undefined | null): number {
   if (!time?.start || !time?.end) return 0;
   const [sh, sm] = time.start.split(":").map(Number);
   const [eh, em] = time.end.split(":").map(Number);
-  let minutes = (eh! * 60 + em!) - (sh! * 60 + sm!);
+  let minutes = eh! * 60 + em! - (sh! * 60 + sm!);
   if (minutes < 0) minutes += 24 * 60;
   minutes -= Math.max(0, Number(time.breakMin) || 0);
   if (minutes <= 0) return 0;

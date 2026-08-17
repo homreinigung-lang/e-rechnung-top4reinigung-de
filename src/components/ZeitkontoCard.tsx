@@ -215,12 +215,12 @@ export function ZeitkontoCard({
               <tr key={r.employee.id}>
                 <td className="py-2 font-medium">{r.employee.name}</td>
                 <td className="py-2 text-right text-muted-foreground">
-                  {sollHours(Number(r.employee.weekly_hours ?? 0)).toFixed(2).replace(".", ",")}{" "}
+                  {sollHours(Number(r.employee.weekly_hours ?? 0))
+                    .toFixed(2)
+                    .replace(".", ",")}{" "}
                   Std.
                 </td>
-                <td className="py-2 text-right">
-                  {r.month.ist.toFixed(2).replace(".", ",")} Std.
-                </td>
+                <td className="py-2 text-right">{r.month.ist.toFixed(2).replace(".", ",")} Std.</td>
                 <td className="py-2 text-right">{formatStunden(r.month.korrektur)}</td>
                 <td
                   className={`py-2 text-right font-semibold ${r.month.saldo < 0 ? "text-destructive" : "text-emerald-600"}`}

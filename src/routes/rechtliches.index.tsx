@@ -23,8 +23,18 @@ export const Route = createFileRoute("/rechtliches/")({
 });
 
 const items = [
-  { to: "/rechtliches/impressum", icon: Scale, title: "Impressum", text: "Anbieterkennzeichnung nach § 5 TMG." },
-  { to: "/rechtliches/agb", icon: FileText, title: "AGB", text: "Allgemeine Geschäftsbedingungen." },
+  {
+    to: "/rechtliches/impressum",
+    icon: Scale,
+    title: "Impressum",
+    text: "Anbieterkennzeichnung nach § 5 TMG.",
+  },
+  {
+    to: "/rechtliches/agb",
+    icon: FileText,
+    title: "AGB",
+    text: "Allgemeine Geschäftsbedingungen.",
+  },
   {
     to: "/rechtliches/datenschutz",
     icon: ShieldCheck,
@@ -48,7 +58,11 @@ function LegalIndex() {
       </p>
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {items.map((i) => (
-          <Link key={i.to} to={i.to} className="surface block p-6 transition-colors hover:bg-muted/40">
+          <Link
+            key={i.to}
+            to={i.to}
+            className="surface block p-6 transition-colors hover:bg-muted/40"
+          >
             <i.icon className="size-6 text-primary" />
             <h2 className="mt-4 text-base font-semibold">{i.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{i.text}</p>

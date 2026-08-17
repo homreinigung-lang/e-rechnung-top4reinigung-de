@@ -15,7 +15,6 @@ import { DateiVorschau } from "@/components/DateiVorschau";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
 import { Download, Eye, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
 
-
 export const Route = createFileRoute("/_authenticated/ausgaben")({
   head: () => ({
     meta: [
@@ -130,7 +129,6 @@ function Ausgaben() {
       setScanning(false);
     }
   }
-
 
   const { data: rows = [] } = useQuery({
     queryKey: ["expenses"],
@@ -360,46 +358,46 @@ function ExpenseRow({
 }) {
   return (
     <li className="flex items-center gap-3 px-5 py-4">
-                <div className="flex-1">
-                  <div className="font-medium">{r.supplier || "Ohne Lieferant"}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {formatDate(r.expense_date)} · {r.category}
-                    {r.document_number ? ` · ${r.document_number}` : ""}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium">{formatMoney(Number(r.gross_amount))}</div>
-                  <div className="text-xs text-muted-foreground">
-                    netto {formatMoney(Number(r.net_amount))}
-                  </div>
-                </div>
-                {r.receipt_url && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Beleg ansehen"
-                      onClick={() => onPreview(r.receipt_url)}
-                    >
-                      <Eye className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Beleg herunterladen"
-                      onClick={() =>
-                        void downloadStoredFile(r.receipt_url).catch(() =>
-                          toast.error("Beleg konnte nicht geladen werden."),
-                        )
-                      }
-                    >
-                      <Download className="size-4" />
-                    </Button>
-                  </>
-                )}
-                <Button variant="ghost" size="icon" onClick={onDelete}>
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
+      <div className="flex-1">
+        <div className="font-medium">{r.supplier || "Ohne Lieferant"}</div>
+        <div className="text-sm text-muted-foreground">
+          {formatDate(r.expense_date)} · {r.category}
+          {r.document_number ? ` · ${r.document_number}` : ""}
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="font-medium">{formatMoney(Number(r.gross_amount))}</div>
+        <div className="text-xs text-muted-foreground">
+          netto {formatMoney(Number(r.net_amount))}
+        </div>
+      </div>
+      {r.receipt_url && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Beleg ansehen"
+            onClick={() => onPreview(r.receipt_url)}
+          >
+            <Eye className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Beleg herunterladen"
+            onClick={() =>
+              void downloadStoredFile(r.receipt_url).catch(() =>
+                toast.error("Beleg konnte nicht geladen werden."),
+              )
+            }
+          >
+            <Download className="size-4" />
+          </Button>
+        </>
+      )}
+      <Button variant="ghost" size="icon" onClick={onDelete}>
+        <Trash2 className="size-4 text-destructive" />
+      </Button>
     </li>
   );
 }

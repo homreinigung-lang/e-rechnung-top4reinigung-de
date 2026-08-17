@@ -6,9 +6,7 @@ import { z } from "zod";
  * Läuft serverseitig, damit CORS und User-Agent-Vorgaben eingehalten werden.
  */
 export const geocodeAddresses = createServerFn({ method: "POST" })
-  .inputValidator((data) =>
-    z.object({ addresses: z.array(z.string().min(3)).max(12) }).parse(data),
-  )
+  .inputValidator((data) => z.object({ addresses: z.array(z.string().min(3)).max(12) }).parse(data))
   .handler(async ({ data }) => {
     const unique = Array.from(new Set(data.addresses.map((a) => a.trim()).filter(Boolean)));
     const result: Record<string, { lat: number; lon: number; label: string }> = {};
@@ -38,7 +36,10 @@ export const geocodeAddresses = createServerFn({ method: "POST" })
 
     for (const address of unique) {
       // Varianten: Original, mit ausgeschriebenem "Straße", nur PLZ/Ort
-      const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+      const parts = address
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
       const expanded = address.replace(/(\S)str\.?\b/gi, "$1straße");
       const variants = Array.from(
         new Set([address, expanded, parts.slice(1).join(", "), parts.slice(-2).join(", ")]),

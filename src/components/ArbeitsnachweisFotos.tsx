@@ -87,9 +87,7 @@ export function ArbeitsnachweisFotos({
             onToggle={() =>
               setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]))
             }
-            {...(canUpload || canDelete
-              ? { onRemove: () => removeOne(p, canDelete) }
-              : {})}
+            {...(canUpload || canDelete ? { onRemove: () => removeOne(p, canDelete) } : {})}
           />
         ))}
 

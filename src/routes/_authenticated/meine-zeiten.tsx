@@ -22,7 +22,13 @@ import { Clock, MapPin, Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { mapsUrl, projectAddress } from "@/lib/maps";
-import { DAY_NAMES, effectiveDayHours, normalizeDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
+import {
+  DAY_NAMES,
+  effectiveDayHours,
+  normalizeDayHours,
+  normalizeDayTimes,
+  formatDayTime,
+} from "@/lib/planung";
 import {
   absenceClasses,
   absenceLabel,
@@ -37,7 +43,6 @@ import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 import { MeinEinsatzkalender } from "@/components/MeinEinsatzkalender";
-
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
@@ -113,7 +118,9 @@ function MeineZeiten() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,assignment_role,hours_per_week,day_hours,day_times,start_date,end_date")
+        .select(
+          "id,project_id,assignment_role,hours_per_week,day_hours,day_times,start_date,end_date",
+        )
         .eq("employee_id", me!.id);
       if (error) return [];
       // Alle Planungen sind sichtbar; noch nicht freigegebene Wochen werden markiert.
@@ -124,8 +131,6 @@ function MeineZeiten() {
       }));
     },
   });
-
-
 
   const projectName = useMemo(() => {
     const map = new Map(projects.map((p) => [p.id, p.name || "Projekt"]));
@@ -247,8 +252,6 @@ function MeineZeiten() {
             asRequest
           />
         </div>
-
-
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -299,7 +302,6 @@ function MeineZeiten() {
         entries={entries as never}
         onSelectProject={(id) => setSelectedProjectId(id)}
       />
-
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="surface p-5">
@@ -484,7 +486,6 @@ function MeineZeiten() {
                     <Trash2 className="size-4" />
                   </Button>
                 )}
-
               </li>
             ))}
           </ul>
@@ -509,20 +510,26 @@ function ProjectDetailDialog({
 }: {
   projectId: string | null;
   projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
-  assignments: { id: string; project_id: string | null; assignment_role: string; hours_per_week: number; day_hours?: unknown; day_times?: unknown; start_date: string | null; end_date: string | null }[];
+  assignments: {
+    id: string;
+    project_id: string | null;
+    assignment_role: string;
+    hours_per_week: number;
+    day_hours?: unknown;
+    day_times?: unknown;
+    start_date: string | null;
+    end_date: string | null;
+  }[];
   onClose: () => void;
 }) {
-  const project = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
+  const project = projectId ? (projects.find((p) => p.id === projectId) ?? null) : null;
   const address = project ? projectAddress(project) : "";
   const projectAssignments = assignments.filter((a) => a.project_id === projectId);
   // Tageswerte aus der Arbeitsplanung; ältere Einträge ohne Tageswerte auf Mo–Fr verteilen.
-  const dayTotals = projectAssignments.reduce<number[]>(
-    (acc, a) => {
-      const effective = effectiveDayHours(a.day_hours, a.hours_per_week, a.day_times);
-      return acc.map((v, i) => v + (effective[i] ?? 0));
-    },
-    normalizeDayHours(null),
-  );
+  const dayTotals = projectAssignments.reduce<number[]>((acc, a) => {
+    const effective = effectiveDayHours(a.day_hours, a.hours_per_week, a.day_times);
+    return acc.map((v, i) => v + (effective[i] ?? 0));
+  }, normalizeDayHours(null));
   const totalHours = dayTotals.reduce((s, n) => s + n, 0);
   // Arbeitszeiten (Von–Bis) je Wochentag aus der Planung.
   const dayRanges = Array.from({ length: 7 }, (_, i) =>
@@ -542,9 +549,7 @@ function ProjectDetailDialog({
         <div className="space-y-4">
           <div>
             <div className="text-xs text-muted-foreground">Adresse</div>
-            <div className="mt-1 text-sm font-medium">
-              {address || "Keine Adresse hinterlegt"}
-            </div>
+            <div className="mt-1 text-sm font-medium">{address || "Keine Adresse hinterlegt"}</div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -623,7 +628,7 @@ function ZeitErfassenDialog({
     const [sh, sm] = start.split(":").map(Number);
     const [eh, em] = end.split(":").map(Number);
     if ([sh, sm, eh, em].some((v) => Number.isNaN(v))) return 0;
-    let minutes = (eh! * 60 + em!) - (sh! * 60 + sm!);
+    let minutes = eh! * 60 + em! - (sh! * 60 + sm!);
     if (minutes < 0) minutes += 24 * 60; // Nachtschicht über Mitternacht
     minutes -= Math.max(0, Number(breakMinutes) || 0);
     return Math.max(0, Math.round((minutes / 60) * 100) / 100);

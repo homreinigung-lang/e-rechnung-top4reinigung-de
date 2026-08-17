@@ -57,7 +57,6 @@ export function AssignmentBell() {
       return ((data ?? []) as Assignment[]).filter(
         (a) => !a.start_date || released.has(String(a.start_date)),
       );
-
     },
   });
 
@@ -112,28 +111,22 @@ export function AssignmentBell() {
           queryClient.invalidateQueries({ queryKey: ["my_assignments"] });
         },
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "plan_releases" },
-        () => {
-          toast.info("Wochenplan wurde freigegeben");
-          queryClient.invalidateQueries({ queryKey: ["plan_release_notifications"] });
-          queryClient.invalidateQueries({ queryKey: ["my_assignments"] });
-        },
-      );
+      .on("postgres_changes", { event: "*", schema: "public", table: "plan_releases" }, () => {
+        toast.info("Wochenplan wurde freigegeben");
+        queryClient.invalidateQueries({ queryKey: ["plan_release_notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["my_assignments"] });
+      });
     channel.subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [me?.id, queryClient]);
 
-
   const unreadReleases = releases.filter((r) => !seenAt || r.released_at > seenAt);
   const unread = [
     ...assignments.filter((a) => !seenAt || a.created_at > seenAt),
     ...unreadReleases,
   ];
-
 
   if (!me) return null;
 
@@ -195,7 +188,9 @@ export function AssignmentBell() {
               </span>
               <span className="text-xs text-muted-foreground">
                 {a.assignment_role ? `${a.assignment_role} · ` : ""}
-                {a.start_date ? `ab ${formatDate(a.start_date)}` : formatDate(a.created_at.slice(0, 10))}
+                {a.start_date
+                  ? `ab ${formatDate(a.start_date)}`
+                  : formatDate(a.created_at.slice(0, 10))}
               </span>
             </DropdownMenuItem>
           );

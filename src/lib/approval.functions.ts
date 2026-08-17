@@ -19,8 +19,9 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const mail = await import("./approval-mail.server");
 
-    const { data: userData, error: userError } =
-      await supabaseAdmin.auth.admin.getUserById(data.authUserId);
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(
+      data.authUserId,
+    );
     if (userError || !userData.user) throw new Error("Benutzer nicht gefunden.");
     const user = userData.user;
     const email = (user.email ?? "").toLowerCase();
@@ -42,7 +43,6 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
     const createdMs = new Date(user.created_at ?? Date.now()).getTime();
     const isLegacy = Date.now() - createdMs > 3600_000;
     const autoApprove = (employee.data ?? []).length > 0 || isLegacy;
-
 
     const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
     const fullName =

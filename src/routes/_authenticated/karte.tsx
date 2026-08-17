@@ -52,7 +52,10 @@ const FILTER_ICON = {
 } as const;
 
 function buildAddress(parts: (string | null | undefined)[]) {
-  const line = parts.map((p) => (p ?? "").trim()).filter(Boolean).join(", ");
+  const line = parts
+    .map((p) => (p ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
   return line.length > 4 ? line : "";
 }
 
@@ -176,7 +179,6 @@ function KartePage() {
       });
     }
 
-
     for (const p of data.projects) {
       const address = buildAddress([p.address_line, p.postal_code, p.city]);
       if (!address) continue;
@@ -276,8 +278,8 @@ function KartePage() {
           <p className="text-muted-foreground">
             Mitarbeiter können auf jeden Marker oder Listeneintrag tippen und über die Schaltfläche
             „Navigieren" Google Maps mit der Routenführung zum ausgewählten Einsatzort öffnen. So
-            spart das Team Zeit bei der Anfahrt und die Verwaltung sieht alle Standorte übersichtlich
-            auf einen Blick.
+            spart das Team Zeit bei der Anfahrt und die Verwaltung sieht alle Standorte
+            übersichtlich auf einen Blick.
           </p>
         </div>
       </div>
@@ -370,11 +372,15 @@ function KartePage() {
         </p>
       )}
 
-
-
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="surface h-[520px] overflow-hidden">
-          <ClientOnly fallback={<div className="grid h-full place-items-center text-sm text-muted-foreground">Karte wird geladen …</div>}>
+          <ClientOnly
+            fallback={
+              <div className="grid h-full place-items-center text-sm text-muted-foreground">
+                Karte wird geladen …
+              </div>
+            }
+          >
             <Suspense
               fallback={
                 <div className="grid h-full place-items-center text-sm text-muted-foreground">

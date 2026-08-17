@@ -15,11 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import {
-  deleteBlockedMessage,
-  describeGobdError,
-  isLockedDocument,
-} from "@/lib/gobd-guard";
+import { deleteBlockedMessage, describeGobdError, isLockedDocument } from "@/lib/gobd-guard";
 import {
   DOC_TYPE_LABEL,
   STATUS_LABEL,
@@ -35,7 +31,6 @@ import {
   convertQuoteToInvoice,
   declineQuote,
   dueInfo,
-
   mahnLabel,
   mahnungAllowed,
   markInvoicePaid,
@@ -85,7 +80,6 @@ function DokumenteListe() {
   const search = Route.useSearch();
   const [tab, setTab] = useState<"invoice" | "quote">(search.tab ?? "invoice");
 
-
   const { data: documents = [] } = useQuery({
     queryKey: ["documents"],
     queryFn: async () => {
@@ -104,7 +98,6 @@ function DokumenteListe() {
   const [deleteTarget, setDeleteTarget] = useState<DocTarget>(null);
   const [declineTarget, setDeclineTarget] = useState<DocTarget>(null);
   const [declineReason, setDeclineReason] = useState("");
-
 
   const create = useMutation({
     mutationFn: async (type: "invoice" | "quote") => {
@@ -254,7 +247,6 @@ function DokumenteListe() {
     onError: (e: unknown) => toast.error(describeGobdError(e), { duration: 9000 }),
   });
 
-
   const markPaid = useMutation({
     mutationFn: ({ docId, date }: { docId: string; date: string }) => markInvoicePaid(docId, date),
     onSuccess: () => {
@@ -313,7 +305,6 @@ function DokumenteListe() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
 
   const list = documents.filter((d) => d.type === tab);
 
@@ -453,7 +444,10 @@ function DokumenteListe() {
                         size="icon"
                         title="Als bezahlt markieren (Zahlungsdatum erfassen)"
                         onClick={() => {
-                          setPayTarget({ id: d.id, label: `${DOC_TYPE_LABEL[d.type]} ${d.number}` });
+                          setPayTarget({
+                            id: d.id,
+                            label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
+                          });
                           setPayDate(formatDate(today()));
                         }}
                         disabled={markPaid.isPending}
@@ -605,7 +599,6 @@ function DokumenteListe() {
         </DialogContent>
       </Dialog>
     </div>
-
   );
 }
 
@@ -620,7 +613,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const label = status === "accepted" ? "Angenommen (Auftrag)" : STATUS_LABEL[status] ?? status;
+  const label = status === "accepted" ? "Angenommen (Auftrag)" : (STATUS_LABEL[status] ?? status);
   return (
     <span
       className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[status] ?? STATUS_STYLES["draft"]}`}
@@ -646,7 +639,10 @@ type DocRow = {
 
 interface AngebotsTabelleProps {
   list: DocRow[];
-  decide: { mutate: (v: { docId: string; decision: "accepted" | "declined" }) => void; isPending: boolean };
+  decide: {
+    mutate: (v: { docId: string; decision: "accepted" | "declined" }) => void;
+    isPending: boolean;
+  };
   decline: (id: string, label: string) => void;
   convert: { mutate: (id: string) => void; isPending: boolean };
   complete: { mutate: (id: string) => void; isPending: boolean };
@@ -700,7 +696,6 @@ function AngebotsTabelle({
                 onClick={() => navigate({ to: "/dokumente/$id", params: { id: d.id } })}
               >
                 <td className="px-4 py-3">
-
                   <Link
                     to="/dokumente/$id"
                     params={{ id: d.id }}
@@ -708,22 +703,19 @@ function AngebotsTabelle({
                   >
                     {d.number}
                   </Link>
-                  <div className="text-xs text-muted-foreground">
-                    {formatDate(d.issue_date)}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{formatDate(d.issue_date)}</div>
                 </td>
                 <td className="px-4 py-3">
                   {d.customer_company || d.customer_name || "Ohne Kunde"}
                 </td>
-                <td className="px-4 py-3 text-right font-medium">
-                  {formatMoney(Number(d.total))}
-                </td>
+                <td className="px-4 py-3 text-right font-medium">{formatMoney(Number(d.total))}</td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={isAuftrag && d.status === "accepted" ? "accepted" : d.status} />
+                  <StatusBadge
+                    status={isAuftrag && d.status === "accepted" ? "accepted" : d.status}
+                  />
                 </td>
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-
                     {(d.status === "sent" || d.status === "draft") && (
                       <>
                         <Button
@@ -808,4 +800,3 @@ function AngebotsTabelle({
     </div>
   );
 }
-

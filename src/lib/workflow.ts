@@ -101,7 +101,8 @@ export async function markInvoicePaid(id: string, paidDate?: string): Promise<st
     .single();
   if (error) throw error;
   if (doc.type !== "invoice") throw new Error("Nur Rechnungen können als bezahlt markiert werden.");
-  if (doc.status === "cancelled") throw new Error("Stornierte Rechnungen können nicht bezahlt werden.");
+  if (doc.status === "cancelled")
+    throw new Error("Stornierte Rechnungen können nicht bezahlt werden.");
 
   const { error: updateError } = await supabase
     .from("documents")
@@ -184,7 +185,6 @@ export async function completeQuote(id: string): Promise<void> {
 function formatToday(): string {
   return new Date().toLocaleDateString("de-DE-u-ca-gregory-nu-latn");
 }
-
 
 /** Angenommenes Angebot mit einem Klick in eine Rechnung (Entwurf) umwandeln. */
 export async function convertQuoteToInvoice(quoteId: string): Promise<string> {

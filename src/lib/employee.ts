@@ -16,8 +16,6 @@ export type MyEmployee = {
   work_location?: string | null;
 };
 
-
-
 /**
  * Verknüpft das angemeldete Konto (per E-Mail) mit dem Mitarbeiter-Stammsatz
  * und liefert diesen zurück. Für Inhaber-/Admin-Konten ist das Ergebnis null.
@@ -32,12 +30,13 @@ export function useMyEmployee() {
       if (!uid) return null;
 
       // Inhaber/Administrator: niemals auf die Mitarbeiteransicht einschränken.
-      const asEmployee = (row: MyEmployee | null) =>
-        row && row.user_id !== uid ? row : null;
+      const asEmployee = (row: MyEmployee | null) => (row && row.user_id !== uid ? row : null);
 
       const { data: existing } = await supabase
         .from("employees")
-        .select("id,name,role,hourly_rate,email,phone,personnel_number,user_id,contract_type,contract_start,weekly_hours,work_location")
+        .select(
+          "id,name,role,hourly_rate,email,phone,personnel_number,user_id,contract_type,contract_start,weekly_hours,work_location",
+        )
         .eq("auth_user_id", uid)
         .maybeSingle();
       if (existing) return asEmployee(existing as MyEmployee);
@@ -47,7 +46,9 @@ export function useMyEmployee() {
 
       const { data: linked } = await supabase
         .from("employees")
-        .select("id,name,role,hourly_rate,email,phone,personnel_number,user_id,contract_type,contract_start,weekly_hours,work_location")
+        .select(
+          "id,name,role,hourly_rate,email,phone,personnel_number,user_id,contract_type,contract_start,weekly_hours,work_location",
+        )
         .eq("id", linkedId as string)
         .maybeSingle();
       return asEmployee((linked as MyEmployee | null) ?? null);

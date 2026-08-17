@@ -9,7 +9,15 @@ import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { buildGobdExport, downloadBlob } from "@/lib/gobd";
 import { saveFile } from "@/lib/download";
-import { Archive, Calculator, Download, FileSpreadsheet, FileText, Printer, ShieldCheck } from "lucide-react";
+import {
+  Archive,
+  Calculator,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Printer,
+  ShieldCheck,
+} from "lucide-react";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 
@@ -142,8 +150,6 @@ function Steuerberater() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-
-
   const { data: settings } = useQuery({
     queryKey: ["stb_settings"],
     queryFn: async () => {
@@ -176,12 +182,24 @@ function Steuerberater() {
       (s, d) => s + num((d as Record<string, unknown>)["net_total"] ?? d.total),
       0,
     );
-    const vat = documents.reduce((s, d) => s + num((d as Record<string, unknown>)["vat_amount"]), 0);
+    const vat = documents.reduce(
+      (s, d) => s + num((d as Record<string, unknown>)["vat_amount"]),
+      0,
+    );
     const gross = documents.reduce((s, d) => s + num(d.total), 0);
     const expNet = expenses.reduce((s, e) => s + num(e.net_amount), 0);
     const expVat = expenses.reduce((s, e) => s + num(e.vat_amount), 0);
     const expGross = expenses.reduce((s, e) => s + num(e.gross_amount), 0);
-    return { net, vat, gross, expNet, expVat, expGross, zahllast: vat - expVat, ergebnis: net - expNet };
+    return {
+      net,
+      vat,
+      gross,
+      expNet,
+      expVat,
+      expGross,
+      zahllast: vat - expVat,
+      ergebnis: net - expNet,
+    };
   }, [documents, expenses]);
 
   const docRows: Row[] = documents.map((d) => ({
@@ -317,7 +335,10 @@ function Steuerberater() {
         <Button variant="outline" onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows)}>
           <Download className="size-4" /> Rechnungen (CSV)
         </Button>
-        <Button variant="outline" onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows)}>
+        <Button
+          variant="outline"
+          onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows)}
+        >
           <Download className="size-4" /> Ausgaben (CSV)
         </Button>
         <Button
@@ -359,7 +380,6 @@ function Steuerberater() {
         <Table rows={auditRows} empty="Noch keine protokollierten Vorgänge im Zeitraum." />
       </section>
 
-
       <section className="print-area rounded-lg border bg-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -376,7 +396,10 @@ function Steuerberater() {
               <FileText className="size-4" />
               {euerPdf.isPending ? "PDF wird erstellt…" : "EÜR als PDF"}
             </Button>
-            <Button variant="outline" onClick={() => download(`EUER_${period}.csv`, buildEuerCsv(euer))}>
+            <Button
+              variant="outline"
+              onClick={() => download(`EUER_${period}.csv`, buildEuerCsv(euer))}
+            >
               <Download className="size-4" /> EÜR als CSV
             </Button>
           </div>

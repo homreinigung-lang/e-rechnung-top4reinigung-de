@@ -66,7 +66,9 @@ function strList(value: unknown): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const entry of value) {
-    const text = String(entry ?? "").replace(/^[-•*\s]+/, "").trim();
+    const text = String(entry ?? "")
+      .replace(/^[-•*\s]+/, "")
+      .trim();
     if (!text) continue;
     const key = text.toLowerCase();
     if (seen.has(key)) continue;
@@ -78,7 +80,7 @@ function strList(value: unknown): string[] {
 
 function isoDate(value: unknown): string {
   const s = String(value ?? "").trim();
-  const de = s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/);
+  const de = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
   if (de) {
     const [, d, m, y] = de;
     const year = y!.length === 2 ? `20${y}` : y!;
@@ -124,7 +126,6 @@ STRIKTE ZEILEN-REGELN (wichtigster Teil):
 ${NO_GUESS}
 Antworte ausschließlich mit reinem JSON.`;
 
-
 const TENDER_SYSTEM = `Du bist ein Ausschreibungs-Experte für ein deutsches Gebäudereinigungsunternehmen.
 Lies die Ausschreibung / das Leistungsverzeichnis und extrahiere:
 - jede einzelne LV-Position wörtlich (section = Titel des Leistungsbereichs, title = Positionstext, description = ergänzender Text)
@@ -137,7 +138,6 @@ Lies die Ausschreibung / das Leistungsverzeichnis und extrahiere:
 rooms bleibt eine leere Liste.
 ${NO_GUESS}
 Antworte ausschließlich mit reinem JSON.`;
-
 
 const SCHEMA = {
   type: "object",
@@ -328,7 +328,6 @@ export async function analyzeProjectFile(
     : [];
 
   const rooms = sanitizeRooms(rawRooms);
-
 
   const items = Array.isArray(parsed["items"])
     ? (parsed["items"] as Record<string, unknown>[]).map((i) => ({

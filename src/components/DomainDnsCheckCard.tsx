@@ -19,7 +19,8 @@ export function normalizeVerifyToken(raw: string): { value: string; error?: stri
     return { value: cleaned, error: "Der Wert enthält noch einen Platzhalter (… bzw. ...)." };
   const withPrefix = cleaned.startsWith("lovable_verify=") ? cleaned : `lovable_verify=${cleaned}`;
   const token = withPrefix.slice("lovable_verify=".length);
-  if (token.length < 8) return { value: withPrefix, error: "Der Token ist zu kurz – bitte vollständig kopieren." };
+  if (token.length < 8)
+    return { value: withPrefix, error: "Der Token ist zu kurz – bitte vollständig kopieren." };
   if (/^_?lovable\./i.test(token))
     return { value: withPrefix, error: "Hier steht der Record-Name statt des Tokens." };
   return { value: withPrefix };
@@ -100,7 +101,6 @@ export function DomainDnsCheckCard() {
     return () => clearInterval(id);
   }, [autoCheck, verified]);
 
-
   return (
     <section className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
@@ -111,7 +111,6 @@ export function DomainDnsCheckCard() {
         Vergleicht den beim Host hinterlegten Verifizierungs-TXT-Record live mit dem erwarteten Wert
         und meldet jede Abweichung.
       </p>
-
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -141,7 +140,8 @@ export function DomainDnsCheckCard() {
             const { value, error } = normalizeVerifyToken(expected);
             if (error) {
               toast.error(error, {
-                description: "Wert aus Settings → Project → Domains → Configure per Copy-Button einfügen.",
+                description:
+                  "Wert aus Settings → Project → Domains → Configure per Copy-Button einfügen.",
               });
               return;
             }
@@ -160,10 +160,7 @@ export function DomainDnsCheckCard() {
           <Copy className="size-4" />
           Erwarteten TXT-Wert kopieren
         </Button>
-        <Button
-          onClick={() => run.mutate({})}
-          disabled={run.isPending || domain.trim().length < 3}
-        >
+        <Button onClick={() => run.mutate({})} disabled={run.isPending || domain.trim().length < 3}>
           <RefreshCw className={run.isPending ? "size-4 animate-spin" : "size-4"} />
           {run.isPending ? "Prüfe…" : "Erneut prüfen (Retry)"}
         </Button>
@@ -183,13 +180,16 @@ export function DomainDnsCheckCard() {
         )}
       </div>
 
-
       {result && (
         <div className="mt-5 space-y-3">
           <Row
             ok={result.aOk}
             label="A-Record → 185.158.133.1"
-            value={result.aRecords.length ? result.aRecords.join(", ") : (result.aError ?? "kein Eintrag gefunden")}
+            value={
+              result.aRecords.length
+                ? result.aRecords.join(", ")
+                : (result.aError ?? "kein Eintrag gefunden")
+            }
           />
           {result.txtRecords.map((r) => (
             <Row
@@ -205,7 +205,11 @@ export function DomainDnsCheckCard() {
           <Row
             ok={result.httpsOk}
             label="HTTPS-Antwort"
-            value={result.httpStatus === null ? "keine Antwort / kein Zertifikat" : `Status ${result.httpStatus}`}
+            value={
+              result.httpStatus === null
+                ? "keine Antwort / kein Zertifikat"
+                : `Status ${result.httpStatus}`
+            }
           />
 
           {result.issues.length > 0 ? (

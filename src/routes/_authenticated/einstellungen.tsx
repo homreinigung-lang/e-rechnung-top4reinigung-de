@@ -80,7 +80,6 @@ function downloadCsv(name: string, rows: Record<string, unknown>[]) {
     ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(";")),
   ].join("\n");
   void saveFile(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), name);
-
 }
 
 function Einstellungen() {
@@ -142,7 +141,6 @@ function Einstellungen() {
       website_url: String(d["website_url"] ?? ""),
       facebook_url: String(d["facebook_url"] ?? ""),
     });
-
   }, [data]);
 
   const save = useMutation({
@@ -174,7 +172,10 @@ function Einstellungen() {
       .gte("issue_date", from)
       .lte("issue_date", to)
       .order("issue_date");
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     downloadCsv(
       `Rechnungen_${from}_${to}.csv`,
       (docs ?? []).map((d) => ({
@@ -191,7 +192,9 @@ function Einstellungen() {
           .replace(".", ","),
         Brutto: Number(d.total).toFixed(2).replace(".", ","),
         Steuerart:
-          (d as Record<string, unknown>)["tax_mode"] === "domestic" ? "19% Inland" : "Reverse-Charge",
+          (d as Record<string, unknown>)["tax_mode"] === "domestic"
+            ? "19% Inland"
+            : "Reverse-Charge",
         Status: d.status,
       })),
     );
@@ -204,7 +207,10 @@ function Einstellungen() {
       .gte("expense_date", from)
       .lte("expense_date", to)
       .order("expense_date");
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     downloadCsv(
       `Ausgaben_${from}_${to}.csv`,
       (rows ?? []).map((e) => ({
@@ -295,7 +301,8 @@ function Einstellungen() {
       }
       const objects = toObjects(headers, rows);
       const kind = detectKind(file.name, headers);
-      const mapper = kind === "customers" ? mapCustomer : kind === "expenses" ? mapExpense : mapDocument;
+      const mapper =
+        kind === "customers" ? mapCustomer : kind === "expenses" ? mapExpense : mapDocument;
       const valid = objects
         .map((o) => mapper(o) as Record<string, unknown> | null)
         .filter(Boolean) as Record<string, unknown>[];
@@ -327,7 +334,11 @@ function Einstellungen() {
         return;
       }
       const table =
-        preview.kind === "customers" ? "customers" : preview.kind === "expenses" ? "expenses" : "documents";
+        preview.kind === "customers"
+          ? "customers"
+          : preview.kind === "expenses"
+            ? "expenses"
+            : "documents";
       const { error } = await supabase
         .from(table)
         .insert(preview.rows.map((v) => ({ ...v, user_id: userId })) as never);
@@ -344,8 +355,6 @@ function Einstellungen() {
       setSaving(false);
     }
   }
-
-
 
   return (
     <div className="space-y-6">
@@ -378,7 +387,9 @@ function Einstellungen() {
             rows={5}
             value={form["email_signature"] ?? ""}
             onChange={(e) => setForm({ ...form, email_signature: e.target.value })}
-            placeholder={"Mit freundlichen Grüßen\nHom Reinigung Service\nPoststraße 8, 66333 Völklingen"}
+            placeholder={
+              "Mit freundlichen Grüßen\nHom Reinigung Service\nPoststraße 8, 66333 Völklingen"
+            }
           />
           <p className="text-xs text-muted-foreground">
             Die Signatur wird automatisch unter jede Rechnungs- und Angebots-E-Mail gesetzt.
@@ -403,7 +414,9 @@ function Einstellungen() {
                   const url = await permanentFileUrl(path);
                   setForm((prev) => ({ ...prev, email_signature_logo_url: url }));
                 } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Bild-Adresse konnte nicht erstellt werden");
+                  toast.error(
+                    e instanceof Error ? e.message : "Bild-Adresse konnte nicht erstellt werden",
+                  );
                 }
               }}
             />
@@ -442,7 +455,9 @@ function Einstellungen() {
             className="font-mono text-xs"
             value={form["email_signature_html"] ?? ""}
             onChange={(e) => setForm({ ...form, email_signature_html: e.target.value })}
-            placeholder={'<p><strong>Hom Reinigung Service</strong><br />Poststraße 8, 66333 Völklingen</p>\n<img src="https://…/banner.png" alt="Logo" style="max-height:70px" />'}
+            placeholder={
+              '<p><strong>Hom Reinigung Service</strong><br />Poststraße 8, 66333 Völklingen</p>\n<img src="https://…/banner.png" alt="Logo" style="max-height:70px" />'
+            }
           />
           <div className="flex flex-wrap gap-2">
             <input
@@ -501,7 +516,9 @@ function Einstellungen() {
             <div
               className="rounded-md border bg-white p-4 text-sm text-black"
               // Vorschau der bereinigten Signatur
-              dangerouslySetInnerHTML={{ __html: buildSignatureHtml(form) || "<em>Keine Signatur hinterlegt</em>" }}
+              dangerouslySetInnerHTML={{
+                __html: buildSignatureHtml(form) || "<em>Keine Signatur hinterlegt</em>",
+              }}
             />
           </div>
         </div>
@@ -558,7 +575,6 @@ function Einstellungen() {
             <Link to="/steuerberater">Steuerberater-Bereich öffnen (DATEV, Excel, PDF)</Link>
           </Button>
         </div>
-
       </div>
 
       <div className="surface space-y-4 p-6">
@@ -621,10 +637,7 @@ function Einstellungen() {
         )}
       </div>
 
-      <Dialog
-        open={previewOpen}
-        onOpenChange={(o) => setPreviewOpen(o)}
-      >
+      <Dialog open={previewOpen} onOpenChange={(o) => setPreviewOpen(o)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>

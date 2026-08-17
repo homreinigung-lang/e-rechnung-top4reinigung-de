@@ -33,8 +33,7 @@ export async function receiptFileToPdf(
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  const image =
-    file.type === "image/png" ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+  const image = file.type === "image/png" ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
 
   const [y, m, d] = meta.date.split("-");
   const dateLabel = y && m && d ? `${d}.${m}.${y}` : meta.date;

@@ -20,7 +20,8 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
     const resendKey = process.env["RESEND_API_KEY"];
     if (!lovableKey || !resendKey) throw new Error("E-Mail-Versand ist nicht konfiguriert.");
 
-    const fromAddress = process.env["RESEND_FROM"] || "Hom Reinigung Service <info@top4reinigung.de>";
+    const fromAddress =
+      process.env["RESEND_FROM"] || "Hom Reinigung Service <info@top4reinigung.de>";
 
     const response = await fetch(`${GATEWAY_URL}/emails`, {
       method: "POST",

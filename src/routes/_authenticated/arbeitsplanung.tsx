@@ -6,7 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { MapPin, Navigation, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, Send, Save } from "lucide-react";
+import {
+  MapPin,
+  Navigation,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  CheckCircle2,
+  Send,
+  Save,
+} from "lucide-react";
 import { mapsUrl, projectAddress } from "@/lib/maps";
 import { isoWeek, isoWeekYear } from "@/lib/kw";
 import {
@@ -19,7 +28,6 @@ import {
   type DayTime,
 } from "@/lib/planung";
 import { formatDate } from "@/lib/format";
-
 
 export const Route = createFileRoute("/_authenticated/arbeitsplanung")({
   head: () => ({
@@ -83,7 +91,6 @@ type Assignment = {
   end_date: string | null;
 };
 
-
 function isoDay(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -109,7 +116,6 @@ function Arbeitsplanung() {
   const [monday, setMonday] = React.useState(() => mondayOf(new Date()));
   const weekStart = isoDay(monday);
   const weekEnd = isoDay(addDays(monday, 6));
-
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees", "planung"],
@@ -153,7 +159,9 @@ function Arbeitsplanung() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,employee_id,hours_per_week,day_hours,day_times,assignment_role,start_date,end_date")
+        .select(
+          "id,project_id,employee_id,hours_per_week,day_hours,day_times,assignment_role,start_date,end_date",
+        )
         .eq("start_date", weekStart);
       if (error) throw error;
       return data as Assignment[];
@@ -178,12 +186,15 @@ function Arbeitsplanung() {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) throw new Error("Nicht angemeldet");
-      const { error } = await supabase
-        .from("plan_releases")
-        .upsert(
-          { user_id: uid, week_start: weekStart, week_end: weekEnd, released_at: new Date().toISOString() },
-          { onConflict: "user_id,week_start" },
-        );
+      const { error } = await supabase.from("plan_releases").upsert(
+        {
+          user_id: uid,
+          week_start: weekStart,
+          week_end: weekEnd,
+          released_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,week_start" },
+      );
       if (error) throw error;
     },
     onSuccess: () => {
@@ -205,8 +216,6 @@ function Arbeitsplanung() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-
 
   const objects = React.useMemo<GridObject[]>(() => {
     const linked = new Set(
@@ -269,12 +278,7 @@ function Arbeitsplanung() {
   const cellHours = (e: string, p: string) =>
     cellDayHours(e, p).reduce((s, n) => s + (Number(n) || 0), 0);
 
-  const setDayTime = (
-    e: string,
-    p: string,
-    index: number,
-    patch: Partial<DayTime>,
-  ) =>
+  const setDayTime = (e: string, p: string, index: number, patch: Partial<DayTime>) =>
     setDraft((d) => {
       const current = [...(d[key(e, p)] ?? savedTimes(e, p))];
       current[index] = { ...(current[index] ?? EMPTY_DAY_TIME), ...patch };
@@ -297,10 +301,7 @@ function Arbeitsplanung() {
     const existing = map.get(key(employee.id, object.id));
     if (hours <= 0) {
       if (existing) {
-        const { error } = await supabase
-          .from("project_assignments")
-          .delete()
-          .eq("id", existing.id);
+        const { error } = await supabase.from("project_assignments").delete().eq("id", existing.id);
         if (error) throw error;
       }
       return;
@@ -335,21 +336,19 @@ function Arbeitsplanung() {
     }
     // Upsert anhand (Projekt, Mitarbeiter, Wochenstart): existiert für diese Woche
     // schon ein Eintrag, wird er aktualisiert – sonst neu angelegt.
-    const { error } = await supabase
-      .from("project_assignments")
-      .upsert(
-        {
-          project_id: projectId,
-          employee_id: employee.id,
-          user_id: employee.user_id,
-          hours_per_week: hours,
-          day_hours: days,
-          day_times: times,
-          start_date: weekStart,
-          end_date: weekEnd,
-        },
-        { onConflict: "project_id,employee_id,start_date" },
-      );
+    const { error } = await supabase.from("project_assignments").upsert(
+      {
+        project_id: projectId,
+        employee_id: employee.id,
+        user_id: employee.user_id,
+        hours_per_week: hours,
+        day_hours: days,
+        day_times: times,
+        start_date: weekStart,
+        end_date: weekEnd,
+      },
+      { onConflict: "project_id,employee_id,start_date" },
+    );
     if (error) throw error;
   }
 
@@ -381,22 +380,19 @@ function Arbeitsplanung() {
     );
   }, [objects, filter]);
 
-  const employeeTotal = (id: string) =>
-    objects.reduce((s, o) => s + cellHours(id, o.id), 0);
+  const employeeTotal = (id: string) => objects.reduce((s, o) => s + cellHours(id, o.id), 0);
 
-  const projectTotal = (id: string) =>
-    employees.reduce((s, e) => s + cellHours(e.id, id), 0);
+  const projectTotal = (id: string) => employees.reduce((s, e) => s + cellHours(e.id, id), 0);
 
   const grandTotal = employees.reduce((s, e) => s + employeeTotal(e.id), 0);
-
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Arbeitsplanung</h1>
         <p className="mt-1 text-muted-foreground">
-          Auf eine Zelle klicken und Stunden je Wochentag (Mo–So) eintragen – die Wochensumme
-          wird automatisch berechnet und nach der Freigabe im Mitarbeiterportal angezeigt.
+          Auf eine Zelle klicken und Stunden je Wochentag (Mo–So) eintragen – die Wochensumme wird
+          automatisch berechnet und nach der Freigabe im Mitarbeiterportal angezeigt.
         </p>
       </div>
 
@@ -462,9 +458,7 @@ function Arbeitsplanung() {
               KW {isoWeek(monday)}
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  release
-                    ? "bg-primary/10 text-primary"
-                    : "bg-muted text-muted-foreground"
+                  release ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                 }`}
               >
                 {release ? "Freigegeben" : "Entwurf"}
@@ -515,10 +509,6 @@ function Arbeitsplanung() {
           </Button>
         </div>
       </div>
-
-
-
-
 
       <section className="surface overflow-x-auto p-0">
         {employees.length === 0 || visibleProjects.length === 0 ? (
@@ -653,7 +643,6 @@ function Arbeitsplanung() {
                       );
                     })}
 
-
                     <td
                       className={`p-3 text-right font-semibold ${over ? "text-destructive" : ""}`}
                     >
@@ -670,7 +659,6 @@ function Arbeitsplanung() {
                   </td>
                 ))}
                 <td className="p-3 text-right font-semibold">{grandTotal.toFixed(1)} Std.</td>
-
               </tr>
             </tbody>
           </table>

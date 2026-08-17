@@ -54,13 +54,9 @@ export function zeitkontoFor(
 ): Zeitkonto {
   const rows = entries.filter(
     (e) =>
-      e.employee_id === employeeId &&
-      isEffective(e) &&
-      (!month || monthOf(e.work_date) === month),
+      e.employee_id === employeeId && isEffective(e) && (!month || monthOf(e.work_date) === month),
   );
-  const ist = rows
-    .filter((e) => !isAbsence(e))
-    .reduce((s, e) => s + Number(e.hours || 0), 0);
+  const ist = rows.filter((e) => !isAbsence(e)).reduce((s, e) => s + Number(e.hours || 0), 0);
 
   const korrektur = adjustments
     .filter((a) => a.employee_id === employeeId && (!month || monthOf(a.entry_date) === month))

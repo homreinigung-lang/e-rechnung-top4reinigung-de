@@ -179,7 +179,6 @@ function ProjektDetail() {
     },
   });
 
-
   const patchProject = useMutation({
     mutationFn: async (values: ProjectUpdate) => {
       const { error } = await supabase.from("projects").update(values).eq("id", id);
@@ -283,10 +282,7 @@ function ProjektDetail() {
 
   const unassign = useMutation({
     mutationFn: async (assignmentId: string) => {
-      const { error } = await supabase
-        .from("project_assignments")
-        .delete()
-        .eq("id", assignmentId);
+      const { error } = await supabase.from("project_assignments").delete().eq("id", assignmentId);
       if (error) throw error;
     },
     onSuccess: invalidate,
@@ -371,7 +367,6 @@ function ProjektDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   if (!project) return <p className="text-muted-foreground">Projekt wird geladen …</p>;
 
   const isTender = project.mode === "tender";
@@ -383,9 +378,7 @@ function ProjektDetail() {
   const hours = perf > 0 ? totalSqm / perf : 0;
   const monthKey = new Date().toISOString().slice(0, 7);
   const effectiveEntries = timeEntries.filter(
-    (t) =>
-      (t.entry_type ?? "work") === "work" &&
-      (t.approval_status ?? "approved") !== "rejected",
+    (t) => (t.entry_type ?? "work") === "work" && (t.approval_status ?? "approved") !== "rejected",
   );
   const istHoursTotal = effectiveEntries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
   const istHoursMonth = effectiveEntries
@@ -409,14 +402,16 @@ function ProjektDetail() {
   const usageTotals = new Map<string, number>();
   for (const r of rooms) {
     const cover = (r.floor_covering || "").trim();
-    if (cover) coveringTotals.set(cover, (coveringTotals.get(cover) ?? 0) + Number(r.area_sqm || 0));
+    if (cover)
+      coveringTotals.set(cover, (coveringTotals.get(cover) ?? 0) + Number(r.area_sqm || 0));
     const usage = (r.usage_type || "").trim();
     if (usage) usageTotals.set(usage, (usageTotals.get(usage) ?? 0) + Number(r.area_sqm || 0));
   }
   const topList = (map: Map<string, number>) =>
     [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
   const derivedFacts: string[] = [];
-  if (totalSqm > 0) derivedFacts.push(`Erkannte Fläche: ca. ${formatNumber(totalSqm)} m² (${rooms.length} Räume)`);
+  if (totalSqm > 0)
+    derivedFacts.push(`Erkannte Fläche: ca. ${formatNumber(totalSqm)} m² (${rooms.length} Räume)`);
   const topUsage = topList(usageTotals);
   if (topUsage.length > 0) {
     derivedFacts.push(
@@ -431,14 +426,21 @@ function ProjektDetail() {
   }
   const aiHighlights = (project.analysis_highlights ?? []) as string[];
   const aiRequirements = (project.analysis_requirements ?? []) as string[];
-  const hasAnalysis = aiHighlights.length > 0 || aiRequirements.length > 0 || derivedFacts.length > 0;
+  const hasAnalysis =
+    aiHighlights.length > 0 || aiRequirements.length > 0 || derivedFacts.length > 0;
 
-  const lvTotal = items.reduce((sum, i) => sum + Number(i.quantity || 0) * Number(i.unit_price || 0), 0);
+  const lvTotal = items.reduce(
+    (sum, i) => sum + Number(i.quantity || 0) * Number(i.unit_price || 0),
+    0,
+  );
   const openCritical = items.filter((i) => i.critical && !i.done);
 
   return (
     <div className="space-y-6">
-      <Link to="/projekte" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/projekte"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="size-4" /> Alle Projekte
       </Link>
 
@@ -487,7 +489,8 @@ function ProjektDetail() {
 
         {project.source_file_name && (
           <p className="text-sm text-muted-foreground">
-            Datei: {project.source_file_path ? (
+            Datei:{" "}
+            {project.source_file_path ? (
               <button
                 type="button"
                 className="underline"
@@ -571,7 +574,10 @@ function ProjektDetail() {
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               <div>
                 {openCritical.length} kritische bzw. fristgebundene Punkte sind noch offen:{" "}
-                {openCritical.map((i) => i.title).filter(Boolean).join(", ")}
+                {openCritical
+                  .map((i) => i.title)
+                  .filter(Boolean)
+                  .join(", ")}
               </div>
             </div>
           )}
@@ -886,9 +892,7 @@ function ProjektDetail() {
           </Button>
         </div>
         {assignments.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            Noch niemand zugewiesen.
-          </p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Noch niemand zugewiesen.</p>
         ) : (
           <ul className="divide-y">
             {assignments.map((a) => {

@@ -92,9 +92,8 @@ export function TwoFactorCard() {
             Zwei-Faktor-Authentifizierung (2FA)
           </h2>
           <p className="text-sm text-muted-foreground">
-            Zusätzliche Sicherheitsstufe: Beim Anmelden wird neben dem Passwort ein 6-stelliger
-            Code aus Ihrer Authenticator-App abgefragt. Dringend empfohlen für alle
-            Administrator-Konten.
+            Zusätzliche Sicherheitsstufe: Beim Anmelden wird neben dem Passwort ein 6-stelliger Code
+            aus Ihrer Authenticator-App abgefragt. Dringend empfohlen für alle Administrator-Konten.
           </p>
         </div>
       </div>

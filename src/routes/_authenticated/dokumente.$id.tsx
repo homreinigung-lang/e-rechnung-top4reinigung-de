@@ -32,7 +32,6 @@ import {
   taxNoteForTaxMode,
   today,
   vatRateForTaxMode,
-
 } from "@/lib/format";
 import { buildEpcPayload } from "@/lib/epc";
 import { QUOTE_INTRO, deriveServiceName, quoteHeadline } from "@/lib/document-texts";
@@ -91,7 +90,6 @@ export const Route = createFileRoute("/_authenticated/dokumente/$id")({
   validateSearch: (search: Record<string, unknown>): { bearbeiten?: boolean } =>
     search["bearbeiten"] === true || search["bearbeiten"] === "1" ? { bearbeiten: true } : {},
 
-
   head: () => ({
     meta: [
       { title: "Beleg-Vorschau – Rechnungen & Angebote" },
@@ -106,7 +104,6 @@ export const Route = createFileRoute("/_authenticated/dokumente/$id")({
   }),
   component: DokumentDetail,
 });
-
 
 type Item = {
   id: string;
@@ -125,8 +122,6 @@ const OPTIONAL_NOTE = "Zusatzleistungen werden nur bei tatsächlicher Durchführ
 const DEFAULT_NET_RATE = 29.41;
 const UNIT_OPTIONS: string[] = ["Std.", "m²", "Pauschal", "Karton", "Kanister / Gallone"];
 
-
-
 function DokumentDetail() {
   const { id } = Route.useParams();
   const { bearbeiten } = Route.useSearch();
@@ -134,8 +129,6 @@ function DokumentDetail() {
   const navigate = useNavigate();
   // Standard ist die saubere Vorschau; Bearbeiten wird bewusst geöffnet.
   const [editMode, setEditMode] = useState(Boolean(bearbeiten));
-
-
 
   const { data, isLoading } = useQuery({
     queryKey: ["document", id],
@@ -172,8 +165,6 @@ function DokumentDetail() {
   } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [payDate, setPayDate] = useState<string>("");
-
-
 
   useEffect(() => {
     if (!data) return;
@@ -249,7 +240,6 @@ function DokumentDetail() {
   const vatAmount = (netTotal * vatRate) / 100;
   const grossTotal = netTotal + vatAmount;
 
-
   const save = useMutation({
     mutationFn: async () => {
       const current = data?.doc as unknown as Record<string, unknown> | undefined;
@@ -277,7 +267,6 @@ function DokumentDetail() {
         vat_amount: vatAmount,
         total: grossTotal,
       };
-
 
       const { error: docError } = await supabase
         .from("documents")
@@ -458,7 +447,11 @@ function DokumentDetail() {
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Beleg nicht gefunden");
-      await logAudit(next === "sent" ? "marked_sent" : "marked_draft", { id, number: docNumber }, {});
+      await logAudit(
+        next === "sent" ? "marked_sent" : "marked_draft",
+        { id, number: docNumber },
+        {},
+      );
       return next;
     },
     onSuccess: (next) => {
@@ -467,14 +460,12 @@ function DokumentDetail() {
         next === "sent"
           ? "Status auf Versendet gesetzt – ohne erneute E-Mail an den Kunden."
           : "Status auf Entwurf zurückgesetzt.",
-
       );
       queryClient.invalidateQueries({ queryKey: ["document", id] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
-
 
   const decide = useMutation({
     mutationFn: (decision: "accepted" | "declined") => setQuoteDecision(id, decision),
@@ -562,7 +553,6 @@ function DokumentDetail() {
             : "domestic",
     }));
   }
-
 
   function updateItem(index: number, patch: Partial<Item>) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
@@ -769,9 +759,7 @@ function DokumentDetail() {
       regularSubtotal: formatMoney(regularTotal),
       optionalNote: OPTIONAL_NOTE,
       serviceDescription:
-        !isInvoice && form["service_description"]
-          ? String(form["service_description"])
-          : undefined,
+        !isInvoice && form["service_description"] ? String(form["service_description"]) : undefined,
       summary,
       taxNote: taxNote || undefined,
       notes: form["notes"] ? String(form["notes"]) : undefined,
@@ -890,7 +878,10 @@ function DokumentDetail() {
           )}
 
           {!locked && (
-            <Button variant={editMode ? "secondary" : "default"} onClick={() => setEditMode((v) => !v)}>
+            <Button
+              variant={editMode ? "secondary" : "default"}
+              onClick={() => setEditMode((v) => !v)}
+            >
               <Pencil className="size-4" /> {editMode ? "Vorschau" : "Bearbeiten"}
             </Button>
           )}
@@ -900,155 +891,151 @@ function DokumentDetail() {
       <div className="no-print flex flex-wrap items-center justify-end gap-2">
         {editMode && (
           <>
-          <Button
-            variant="outline"
-            onClick={() => duplicate.mutate()}
-            disabled={duplicate.isPending}
-          >
-            <Copy className="size-4" /> Duplizieren
-          </Button>
-          {isInvoice && (
-            <>
-              <Button variant="outline" onClick={() => void exportXRechnung()}>
-                <FileCode2 className="size-4" /> XRechnung (XML)
-              </Button>
-              <Button variant="outline" onClick={() => void exportZugferd()}>
-                <FileDown className="size-4" /> ZUGFeRD-PDF
-              </Button>
-            </>
-          )}
+            <Button
+              variant="outline"
+              onClick={() => duplicate.mutate()}
+              disabled={duplicate.isPending}
+            >
+              <Copy className="size-4" /> Duplizieren
+            </Button>
+            {isInvoice && (
+              <>
+                <Button variant="outline" onClick={() => void exportXRechnung()}>
+                  <FileCode2 className="size-4" /> XRechnung (XML)
+                </Button>
+                <Button variant="outline" onClick={() => void exportZugferd()}>
+                  <FileDown className="size-4" /> ZUGFeRD-PDF
+                </Button>
+              </>
+            )}
           </>
         )}
 
-          {isInvoice && !isStorno && doc.status !== "paid" && doc.status !== "cancelled" && (
+        {isInvoice && !isStorno && doc.status !== "paid" && doc.status !== "cancelled" && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setPayDate(formatDate(String(form["paid_at"] ?? today())));
+              setPayOpen(true);
+            }}
+            disabled={markPaid.isPending}
+          >
+            <BadgeEuro className="size-4" /> Als bezahlt markieren
+          </Button>
+        )}
+        {isInvoice && doc.status === "paid" && (
+          <>
+            <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+              Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
+            </span>
             <Button
               variant="outline"
-              onClick={() => {
-                setPayDate(formatDate(String(form["paid_at"] ?? today())));
-                setPayOpen(true);
-              }}
-              disabled={markPaid.isPending}
+              onClick={() =>
+                setConfirmDialog({
+                  title: "Zahlung zurücknehmen",
+                  description: "Die Rechnung gilt danach wieder als offen.",
+                  confirmLabel: "Zurücknehmen",
+                  action: () => unmarkPaid.mutate(),
+                })
+              }
+              disabled={unmarkPaid.isPending}
             >
-              <BadgeEuro className="size-4" /> Als bezahlt markieren
+              <BadgeEuro className="size-4" /> Zahlung zurücknehmen
             </Button>
-          )}
-          {isInvoice && doc.status === "paid" && (
+          </>
+        )}
+
+        {isInvoice &&
+          !isStorno &&
+          doc.status !== "paid" &&
+          doc.status !== "cancelled" &&
+          doc.status !== "draft" && (
             <>
-              <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-                Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
-              </span>
               <Button
                 variant="outline"
                 onClick={() =>
                   setConfirmDialog({
-                    title: "Zahlung zurücknehmen",
-                    description: "Die Rechnung gilt danach wieder als offen.",
-                    confirmLabel: "Zurücknehmen",
-                    action: () => unmarkPaid.mutate(),
+                    title: "Zahlungserinnerung senden",
+                    description: "Freundliche Zahlungserinnerung jetzt erfassen und versenden?",
+                    confirmLabel: "Jetzt senden",
+                    action: () => reminder.mutate("erinnerung"),
                   })
                 }
-                disabled={unmarkPaid.isPending}
+                disabled={reminder.isPending}
               >
-                <BadgeEuro className="size-4" /> Zahlung zurücknehmen
+                <BellRing className="size-4" /> Zahlungserinnerung
               </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setConfirmDialog({
+                    title: `${mahnLabel(Math.max(2, reminderLevel + 1))} senden`,
+                    description:
+                      "Dieser Schritt wird GoBD-konform protokolliert. Jetzt offiziell mahnen?",
+                    confirmLabel: "Jetzt senden",
+                    action: () => reminder.mutate("mahnung"),
+                  })
+                }
 
+                disabled={reminder.isPending || !canMahnen}
+                title={
+                  canMahnen
+                    ? undefined
+                    : "Erst möglich, wenn die Zahlungsfrist (14 Tage) vollständig abgelaufen ist."
+                }
+              >
+                <BellRing className="size-4" />
+                {reminderLevel > 1 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
+              </Button>
             </>
           )}
 
-
-          {isInvoice &&
-            !isStorno &&
-            doc.status !== "paid" &&
-            doc.status !== "cancelled" &&
-            doc.status !== "draft" && (
+        {!isInvoice && (
+          <>
+            {doc.status !== "accepted" && doc.status !== "declined" && (
               <>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setConfirmDialog({
-                      title: "Zahlungserinnerung senden",
-                      description:
-                        "Freundliche Zahlungserinnerung jetzt erfassen und versenden?",
-                      confirmLabel: "Jetzt senden",
-                      action: () => reminder.mutate("erinnerung"),
-                    })
-                  }
-                  disabled={reminder.isPending}
-                >
-                  <BellRing className="size-4" /> Zahlungserinnerung
+                <Button variant="outline" onClick={() => decide.mutate("accepted")}>
+                  <Check className="size-4" /> Angebot annehmen
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setConfirmDialog({
-                      title: `${mahnLabel(Math.max(2, reminderLevel + 1))} senden`,
-                      description:
-                        "Dieser Schritt wird GoBD-konform protokolliert. Jetzt offiziell mahnen?",
-                      confirmLabel: "Jetzt senden",
-                      action: () => reminder.mutate("mahnung"),
-                    })
-                  }
-
-                  disabled={reminder.isPending || !canMahnen}
-                  title={
-                    canMahnen
-                      ? undefined
-                      : "Erst möglich, wenn die Zahlungsfrist (14 Tage) vollständig abgelaufen ist."
-                  }
-                >
-                  <BellRing className="size-4" />
-                  {reminderLevel > 1 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
+                <Button variant="outline" onClick={() => decide.mutate("declined")}>
+                  <X className="size-4" /> Angebot ablehnen
                 </Button>
               </>
             )}
+            {!convertedId && (
+              <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
+                <ArrowRightLeft className="size-4" /> In Auftrag umwandeln
+              </Button>
+            )}
+          </>
+        )}
 
-          {!isInvoice && (
-            <>
-              {doc.status !== "accepted" && doc.status !== "declined" && (
-                <>
-                  <Button variant="outline" onClick={() => decide.mutate("accepted")}>
-                    <Check className="size-4" /> Angebot annehmen
-                  </Button>
-                  <Button variant="outline" onClick={() => decide.mutate("declined")}>
-                    <X className="size-4" /> Angebot ablehnen
-                  </Button>
-                </>
-              )}
-              {!convertedId && (
-                <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
-                  <ArrowRightLeft className="size-4" /> In Auftrag umwandeln
-                </Button>
-              )}
-            </>
-          )}
+        {!locked && editMode && (
+          <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
+            <Save className="size-4" /> Speichern
+          </Button>
+        )}
 
-          {!locked && editMode && (
-            <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
-              <Save className="size-4" /> Speichern
-            </Button>
-          )}
+        {locked && isInvoice && !isStorno && !cancelledBy && (
+          <Button
+            variant="destructive"
+            onClick={() =>
+              setConfirmDialog({
+                title: "Stornorechnung erstellen",
+                description:
+                  "Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
+                confirmLabel: "Storno erstellen",
+                destructive: true,
+                action: () => storno.mutate(),
+              })
+            }
 
-          {locked && isInvoice && !isStorno && !cancelledBy && (
-            <Button
-              variant="destructive"
-              onClick={() =>
-                setConfirmDialog({
-                  title: "Stornorechnung erstellen",
-                  description:
-                    "Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
-                  confirmLabel: "Storno erstellen",
-                  destructive: true,
-                  action: () => storno.mutate(),
-                })
-              }
-
-              disabled={storno.isPending}
-            >
-              <Ban className="size-4" /> Stornorechnung
-            </Button>
-          )}
+            disabled={storno.isPending}
+          >
+            <Ban className="size-4" /> Stornorechnung
+          </Button>
+        )}
       </div>
-
 
       {locked && lockedAt && (
         <div className="no-print flex flex-wrap items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
@@ -1087,7 +1074,6 @@ function DokumentDetail() {
         </div>
       )}
 
-
       {(due || reminderLevel > 0) && (
         <div
           className={`no-print rounded-lg border p-4 text-sm ${
@@ -1114,7 +1100,6 @@ function DokumentDetail() {
         hidden={!editMode}
         className="no-print surface space-y-6 p-6 disabled:opacity-90"
       >
-
         <h2 className="font-display text-xl font-semibold">
           {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
         </h2>
@@ -1140,7 +1125,6 @@ function DokumentDetail() {
               ? "Es werden 19 % Umsatzsteuer ausgewiesen. Es wird kein Steuerhinweis gedruckt."
               : `0 % Umsatzsteuer. Folgender Pflichthinweis erscheint automatisch auf dem Dokument: „${taxNote}“`}
           </p>
-
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -1319,9 +1303,7 @@ function DokumentDetail() {
                 <Label className="text-xs text-muted-foreground">Einheit</Label>
                 <Select
                   value={UNIT_OPTIONS.includes(item.unit) ? item.unit : "__custom"}
-                  onValueChange={(v) =>
-                    updateItem(index, { unit: v === "__custom" ? "" : v })
-                  }
+                  onValueChange={(v) => updateItem(index, { unit: v === "__custom" ? "" : v })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Einheit" />
@@ -1430,7 +1412,6 @@ function DokumentDetail() {
               <span>{formatMoney(grossTotal)}</span>
             </div>
           </div>
-
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -1455,7 +1436,9 @@ function DokumentDetail() {
 
         {!isInvoice && (
           <div className="space-y-2">
-            <Label htmlFor="service_description">Detaillierte Leistungsbeschreibung (optional)</Label>
+            <Label htmlFor="service_description">
+              Detaillierte Leistungsbeschreibung (optional)
+            </Label>
             <Textarea
               id="service_description"
               rows={8}
@@ -1476,7 +1459,6 @@ function DokumentDetail() {
           </div>
         )}
       </fieldset>
-
 
       {/* Druckansicht – DIN 5008 */}
       <article className="paper print-area mx-auto text-sm">
@@ -1641,32 +1623,30 @@ function DokumentDetail() {
                         </tr>
                       </>
                     )}
-                  <tr className="border-b border-border align-top">
-                    <td className="px-2 py-2 tabular-nums">{n + 1}</td>
-                    <td className="px-2 py-2 break-words whitespace-pre-line">{i.description}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">
-                      {formatNumber(i.quantity)}
-                    </td>
-                    <td className="px-2 py-2">{i.unit}</td>
-                    <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">
-                      {formatMoney(i.unit_price)}
-                    </td>
-                    <td className="px-2 py-2 text-right font-medium tabular-nums whitespace-nowrap">
-                      {formatMoney(i.quantity * i.unit_price)}
-                    </td>
-                  </tr>
-                    {hasOptionalItems &&
-                      !i.is_optional &&
-                      n === arr.length - 1 && (
-                        <tr className="border-b border-border">
-                          <td colSpan={5} className="px-2 py-2 text-sm font-semibold">
-                            Monatlicher Festpreis (netto)
-                          </td>
-                          <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums whitespace-nowrap">
-                            {formatMoney(regularTotal)}
-                          </td>
-                        </tr>
-                      )}
+                    <tr className="border-b border-border align-top">
+                      <td className="px-2 py-2 tabular-nums">{n + 1}</td>
+                      <td className="px-2 py-2 break-words whitespace-pre-line">{i.description}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">
+                        {formatNumber(i.quantity)}
+                      </td>
+                      <td className="px-2 py-2">{i.unit}</td>
+                      <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">
+                        {formatMoney(i.unit_price)}
+                      </td>
+                      <td className="px-2 py-2 text-right font-medium tabular-nums whitespace-nowrap">
+                        {formatMoney(i.quantity * i.unit_price)}
+                      </td>
+                    </tr>
+                    {hasOptionalItems && !i.is_optional && n === arr.length - 1 && (
+                      <tr className="border-b border-border">
+                        <td colSpan={5} className="px-2 py-2 text-sm font-semibold">
+                          Monatlicher Festpreis (netto)
+                        </td>
+                        <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums whitespace-nowrap">
+                          {formatMoney(regularTotal)}
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 ))}
               </tbody>
@@ -1702,7 +1682,6 @@ function DokumentDetail() {
             </section>
           )}
         </div>
-
 
         <div className="invoice-summary-block">
           <div className="invoice-closing">
@@ -1741,9 +1720,7 @@ function DokumentDetail() {
               </div>
             </div>
 
-            {taxNote && (
-              <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{taxNote}</p>
-            )}
+            {taxNote && <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{taxNote}</p>}
 
             {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
 
@@ -1836,7 +1813,6 @@ function DokumentDetail() {
           await queryClient.invalidateQueries({ queryKey: ["documents"] });
           await queryClient.refetchQueries({ queryKey: ["documents"] });
         }}
-
       />
 
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
@@ -1902,4 +1878,3 @@ function DokumentDetail() {
     </div>
   );
 }
-

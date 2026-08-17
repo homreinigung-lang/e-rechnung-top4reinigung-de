@@ -61,8 +61,8 @@ function SicherheitPage() {
       <div>
         <h1 className="font-display text-2xl font-bold">Sicherheit & Datensicherung</h1>
         <p className="text-sm text-muted-foreground">
-          Zugriffsschutz, Aufbewahrungsfristen und das Vorgehen zur Sicherung und
-          Wiederherstellung Ihrer Daten.
+          Zugriffsschutz, Aufbewahrungsfristen und das Vorgehen zur Sicherung und Wiederherstellung
+          Ihrer Daten.
         </p>
       </div>
 
@@ -101,8 +101,8 @@ function SicherheitPage() {
             </h2>
             <p className="text-sm text-muted-foreground">
               Arbeitsnachweis-Fotos werden nach Ablauf der Frist täglich um 03:20 Uhr automatisch
-              gelöscht. Rechnungen, Angebote, Vorlagen und das GoBD-Archiv bleiben unberührt. Wert
-              0 = keine automatische Löschung.
+              gelöscht. Rechnungen, Angebote, Vorlagen und das GoBD-Archiv bleiben unberührt. Wert 0
+              = keine automatische Löschung.
             </p>
             <div className="mt-4 max-w-xs space-y-2">
               <Label htmlFor="retention">Aufbewahrung in Tagen</Label>
@@ -136,8 +136,8 @@ function SicherheitPage() {
               </li>
               <li>Aufbewahrungsfrist der Belege: 10 Jahre, automatisch vermerkt.</li>
               <li>
-                Der vollständige Prüfexport (Belege, Positionen, Protokoll, PDF, XRechnung) steht
-                im Bereich Steuerberater bereit.
+                Der vollständige Prüfexport (Belege, Positionen, Protokoll, PDF, XRechnung) steht im
+                Bereich Steuerberater bereit.
               </li>
             </ul>
           </div>
@@ -158,23 +158,21 @@ function SicherheitPage() {
               Zeiterfassung und Prüfprotokoll.
             </p>
 
-            <h3 className="mt-4 text-sm font-semibold">2. Eigene Sicherung (monatlich empfohlen)</h3>
+            <h3 className="mt-4 text-sm font-semibold">
+              2. Eigene Sicherung (monatlich empfohlen)
+            </h3>
             <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
               <li>
                 Bereich <strong>Steuerberater</strong> öffnen und den GoBD-Prüfexport für das
                 laufende Jahr erzeugen. Das ZIP enthält alle Belege als CSV, die Original-PDF und
                 die XRechnung-XML.
               </li>
-              <li>
-                Zusätzlich den DATEV-Export des jeweiligen Quartals herunterladen.
-              </li>
+              <li>Zusätzlich den DATEV-Export des jeweiligen Quartals herunterladen.</li>
               <li>
                 Beide Dateien auf zwei getrennten Medien ablegen (z. B. verschlüsselte externe
                 Festplatte und Firmen-Cloud), Dateiname mit Datum versehen.
               </li>
-              <li>
-                Sicherungen 10 Jahre aufbewahren – die gesetzliche Frist für Rechnungen.
-              </li>
+              <li>Sicherungen 10 Jahre aufbewahren – die gesetzliche Frist für Rechnungen.</li>
             </ol>
 
             <h3 className="mt-4 text-sm font-semibold">3. Wiederherstellung</h3>
@@ -185,8 +183,7 @@ function SicherheitPage() {
               </li>
               <li>
                 Fehlende Einzelbelege können aus dem GoBD-Export erneut eingespielt bzw. dem
-                Finanzamt direkt vorgelegt werden; die SHA-256-Prüfsumme belegt die
-                Unverändertheit.
+                Finanzamt direkt vorgelegt werden; die SHA-256-Prüfsumme belegt die Unverändertheit.
               </li>
               <li>
                 Nach jeder Wiederherstellung stichprobenartig Rechnungsnummern auf Lückenlosigkeit

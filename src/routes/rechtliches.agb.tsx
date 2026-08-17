@@ -10,7 +10,10 @@ export const Route = createFileRoute("/rechtliches/agb")({
           "Allgemeine Geschäftsbedingungen für Reinigungsdienstleistungen und die Nutzung der HomR Rechnungssoftware.",
       },
       { property: "og:title", content: "AGB – HomR" },
-      { property: "og:description", content: "Allgemeine Geschäftsbedingungen: Leistungen, Preise, Zahlung, Haftung." },
+      {
+        property: "og:description",
+        content: "Allgemeine Geschäftsbedingungen: Leistungen, Preise, Zahlung, Haftung.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -73,7 +76,8 @@ function Agb() {
         </section>
       ))}
       <p className="text-xs text-muted-foreground">
-        Hinweis: Diese AGB sind eine anpassbare Vorlage und ersetzen keine individuelle Rechtsberatung.
+        Hinweis: Diese AGB sind eine anpassbare Vorlage und ersetzen keine individuelle
+        Rechtsberatung.
       </p>
     </article>
   );

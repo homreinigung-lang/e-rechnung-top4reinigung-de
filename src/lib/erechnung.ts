@@ -59,7 +59,9 @@ export function unitCode(unit: string): string {
 
 /** ISO-3166-Alpha-2 aus dem deutschen Ländernamen. */
 export function countryCode(name: unknown): string {
-  const n = String(name ?? "").trim().toLowerCase();
+  const n = String(name ?? "")
+    .trim()
+    .toLowerCase();
   const map: Record<string, string> = {
     deutschland: "DE",
     germany: "DE",

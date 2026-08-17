@@ -29,11 +29,10 @@ type Antrag = {
 
 /** Offene Anträge zu zusammenhängenden Zeiträumen bündeln. */
 function toAntraege(rows: Row[]): Antrag[] {
-  const sorted = [...rows].sort(
-    (a, b) =>
-      `${a.employee_id}${a.absence_reason}${a.work_date}`.localeCompare(
-        `${b.employee_id}${b.absence_reason}${b.work_date}`,
-      ),
+  const sorted = [...rows].sort((a, b) =>
+    `${a.employee_id}${a.absence_reason}${a.work_date}`.localeCompare(
+      `${b.employee_id}${b.absence_reason}${b.work_date}`,
+    ),
   );
   const out: Antrag[] = [];
   for (const r of sorted) {

@@ -8,13 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/bankverbindung")({
   head: () => ({
@@ -57,10 +51,7 @@ function BankverbindungPage() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["company_settings"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("company_settings")
-        .select("*")
-        .maybeSingle();
+      const { data, error } = await supabase.from("company_settings").select("*").maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -114,9 +105,7 @@ function BankverbindungPage() {
       <Card>
         <CardHeader>
           <CardTitle>Bankdaten</CardTitle>
-          <CardDescription>
-            Kontoinhaber, IBAN und BIC für Zahlungen Ihrer Kunden.
-          </CardDescription>
+          <CardDescription>Kontoinhaber, IBAN und BIC für Zahlungen Ihrer Kunden.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
@@ -156,16 +145,13 @@ function BankverbindungPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <Button
-              onClick={() => save.mutate()}
-              disabled={isLoading || save.isPending}
-            >
+            <Button onClick={() => save.mutate()} disabled={isLoading || save.isPending}>
               {save.isPending ? "Speichern…" : "Speichern"}
             </Button>
           </div>
           <p className="sm:col-span-2 text-sm text-muted-foreground">
-            Zahlungseingänge werden manuell verwaltet: Rechnungen können in der
-            Belegübersicht direkt als bezahlt markiert werden.
+            Zahlungseingänge werden manuell verwaltet: Rechnungen können in der Belegübersicht
+            direkt als bezahlt markiert werden.
           </p>
         </CardContent>
       </Card>

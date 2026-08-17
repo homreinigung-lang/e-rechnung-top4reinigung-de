@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { PasswordInput } from "@/components/PasswordInput";
 import { requestAccountApproval, getApprovalStatus } from "@/lib/approval.functions";
 
-
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
@@ -20,7 +19,10 @@ export const Route = createFileRoute("/auth")({
         content: "Melden Sie sich an, um Angebote und Rechnungen zu verwalten und zu versenden.",
       },
       { property: "og:title", content: "Anmelden – Rechnungen & Angebote" },
-      { property: "og:description", content: "Zugang zum Rechnungsprogramm für Reinigungsdienste." },
+      {
+        property: "og:description",
+        content: "Zugang zum Rechnungsprogramm für Reinigungsdienste.",
+      },
     ],
   }),
   component: AuthPage,
@@ -35,7 +37,6 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
-
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -78,7 +79,6 @@ function AuthPage() {
     navigate({ to: "/dashboard", replace: true });
   }
 
-
   async function verifyMfa(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -104,7 +104,6 @@ function AuthPage() {
     if (!ok) return;
     navigate({ to: "/dashboard", replace: true });
   }
-
 
   async function forgotPassword() {
     if (!email) {
@@ -149,7 +148,8 @@ function AuthPage() {
         if (res.status === "approved") {
           setLoading(false);
           if (data.session) navigate({ to: "/dashboard", replace: true });
-          else toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
+          else
+            toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
           return;
         }
       } catch {
@@ -187,7 +187,6 @@ function AuthPage() {
     }
     navigate({ to: "/dashboard", replace: true });
   }
-
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
@@ -241,86 +240,83 @@ function AuthPage() {
               </button>
             </form>
           ) : (
-          <Tabs defaultValue="login">
+            <Tabs defaultValue="login">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Anmelden</TabsTrigger>
+                <TabsTrigger value="register">Registrieren</TabsTrigger>
+              </TabsList>
 
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Anmelden</TabsTrigger>
-              <TabsTrigger value="register">Registrieren</TabsTrigger>
-            </TabsList>
+              <TabsContent value="login">
+                <form onSubmit={signIn} className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-Mail</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Passwort</Label>
+                    <PasswordInput
+                      id="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    Anmelden
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => void forgotPassword()}
+                    className="w-full text-center text-sm text-muted-foreground underline"
+                  >
+                    Passwort vergessen?
+                  </button>
+                </form>
+              </TabsContent>
 
-            <TabsContent value="login">
-              <form onSubmit={signIn} className="mt-6 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-Mail</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Passwort</Label>
-                  <PasswordInput
-                    id="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  Anmelden
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => void forgotPassword()}
-                  className="w-full text-center text-sm text-muted-foreground underline"
-                >
-                  Passwort vergessen?
-                </button>
-
-              </form>
-            </TabsContent>
-
-            <TabsContent value="register">
-              <form onSubmit={signUp} className="mt-6 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name2">Name</Label>
-                  <Input
-                    id="name2"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-
-                  <Label htmlFor="email2">E-Mail</Label>
-                  <Input
-                    id="email2"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password2">Passwort (min. 6 Zeichen)</Label>
-                  <PasswordInput
-                    id="password2"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  Konto erstellen
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="register">
+                <form onSubmit={signUp} className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name2">Name</Label>
+                    <Input
+                      id="name2"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email2">E-Mail</Label>
+                    <Input
+                      id="email2"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password2">Passwort (min. 6 Zeichen)</Label>
+                    <PasswordInput
+                      id="password2"
+                      required
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    Konto erstellen
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           )}
 
           {!mfaRequired && (
@@ -337,7 +333,6 @@ function AuthPage() {
             </>
           )}
         </div>
-
       </div>
     </div>
   );

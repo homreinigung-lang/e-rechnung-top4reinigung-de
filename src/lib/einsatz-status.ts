@@ -4,7 +4,8 @@
  */
 import { absenceReason, isAbsence, isPending, isRejected } from "@/lib/absence";
 
-export type EinsatzStatus = "done" | "running" | "planned" | "cancelled" | "vacation" | "sick" | "absence" | "requested";
+export type EinsatzStatus =
+  "done" | "running" | "planned" | "cancelled" | "vacation" | "sick" | "absence" | "requested";
 
 type EntryLike = {
   work_date: string;
@@ -44,7 +45,6 @@ export function einsatzStatus(entry: EntryLike): EinsatzStatus {
   }
   return "planned";
 }
-
 
 export const STATUS_LABELS: Record<EinsatzStatus, string> = {
   done: "Abgeschlossen",

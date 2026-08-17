@@ -38,7 +38,6 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
     },
   });
 
-
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -165,11 +164,8 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
     cursor = end;
   }
 
-
   return new Uint8Array(pdf.output("arraybuffer"));
 }
-
-
 
 /** Fügt zwei PDF-Dateien zu einer einzigen zusammen (z. B. Rechnung + Stundennachweis). */
 export async function mergePdfs(parts: Uint8Array[]): Promise<Uint8Array> {

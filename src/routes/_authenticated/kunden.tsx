@@ -218,10 +218,7 @@ function Kunden() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(v) => setForm({ ...form, status: v })}
-                >
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -301,9 +298,7 @@ function Kunden() {
                       city: c.city,
                       country: c.country,
                       vat_id: c.vat_id,
-                      is_eu_customer: Boolean(
-                        (c as { is_eu_customer?: boolean }).is_eu_customer,
-                      ),
+                      is_eu_customer: Boolean((c as { is_eu_customer?: boolean }).is_eu_customer),
                       notes: c.notes,
                       status: c.status ?? "active",
                     });
