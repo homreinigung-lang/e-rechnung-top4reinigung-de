@@ -80,7 +80,7 @@ function strList(value: unknown): string[] {
 
 function isoDate(value: unknown): string {
   const s = String(value ?? "").trim();
-  const de = s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/);
+  const de = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
   if (de) {
     const [, d, m, y] = de;
     const year = y!.length === 2 ? `20${y}` : y!;
