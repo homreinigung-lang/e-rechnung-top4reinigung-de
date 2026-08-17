@@ -11,9 +11,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
 import { toast } from "sonner";
-import { MapPin, Navigation, Trash2 } from "lucide-react";
+import { Clock, MapPin, Navigation, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { mapsUrl, projectAddress } from "@/lib/maps";
@@ -228,13 +233,21 @@ function MeineZeiten() {
             {me.role ? ` · ${me.role}` : ""}
           </p>
         </div>
-        <AbwesenheitZeitraum
-          employees={[{ id: me.id, name: me.name, user_id: me.user_id }]}
-          fixedEmployeeId={me.id}
-          triggerLabel="Urlaub / Abwesenheit beantragen"
-          variant="default"
-          asRequest
-        />
+        <div className="flex flex-wrap gap-2">
+          <ZeitErfassenDialog
+            employee={me}
+            projects={projects}
+            assignments={assignments as { project_id: string | null }[]}
+          />
+          <AbwesenheitZeitraum
+            employees={[{ id: me.id, name: me.name, user_id: me.user_id }]}
+            fixedEmployeeId={me.id}
+            triggerLabel="Urlaub / Abwesenheit beantragen"
+            variant="outline"
+            asRequest
+          />
+        </div>
+
 
       </div>
 
@@ -570,6 +583,198 @@ function ProjectDetailDialog({
             </Button>
           )}
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Manuelle Arbeitszeit-Erfassung durch Mitarbeitende (Von–Bis mit Pause). */
+function ZeitErfassenDialog({
+  employee,
+  projects,
+  assignments,
+}: {
+  employee: { id: string; name: string; user_id: string; hourly_rate?: number | null };
+  projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
+  assignments: { project_id: string | null }[];
+}) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [workDate, setWorkDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [projectId, setProjectId] = useState("");
+  const [location, setLocation] = useState("");
+  const [start, setStart] = useState("08:00");
+  const [end, setEnd] = useState("16:00");
+  const [breakMinutes, setBreakMinutes] = useState("30");
+  const [note, setNote] = useState("");
+
+  /** Zuerst die eigenen Einsatzorte, danach alle übrigen Objekte. */
+  const options = useMemo(() => {
+    const mine = new Set(assignments.map((a) => a.project_id).filter(Boolean) as string[]);
+    return [...projects].sort((a, b) => {
+      const d = (mine.has(b.id) ? 1 : 0) - (mine.has(a.id) ? 1 : 0);
+      return d !== 0 ? d : a.name.localeCompare(b.name, "de-DE");
+    });
+  }, [projects, assignments]);
+
+  const hours = useMemo(() => {
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    if ([sh, sm, eh, em].some((v) => Number.isNaN(v))) return 0;
+    let minutes = (eh! * 60 + em!) - (sh! * 60 + sm!);
+    if (minutes < 0) minutes += 24 * 60; // Nachtschicht über Mitternacht
+    minutes -= Math.max(0, Number(breakMinutes) || 0);
+    return Math.max(0, Math.round((minutes / 60) * 100) / 100);
+  }, [start, end, breakMinutes]);
+
+  const reset = () => {
+    setProjectId("");
+    setLocation("");
+    setStart("08:00");
+    setEnd("16:00");
+    setBreakMinutes("30");
+    setNote("");
+  };
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (hours <= 0) throw new Error("Bitte eine gültige Arbeitszeit angeben.");
+      const project = projects.find((p) => p.id === projectId);
+      const { error } = await supabase.from("time_entries").insert({
+        user_id: employee.user_id,
+        employee_id: employee.id,
+        employee_name: employee.name,
+        entry_type: "work",
+        work_date: workDate,
+        start_time: start,
+        end_time: end,
+        break_minutes: Math.max(0, Number(breakMinutes) || 0),
+        hours,
+        hourly_rate: Number(employee.hourly_rate ?? 0),
+        project_id: projectId || null,
+        location: location.trim() || project?.name || "",
+        note: note.trim(),
+        billed: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(`Arbeitszeit erfasst – ${hours.toFixed(2)} Std.`);
+      queryClient.invalidateQueries({ queryKey: ["my_time_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["time_entries"] });
+      reset();
+      setOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Clock className="size-4" /> Zeit erfassen
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Arbeitszeit erfassen</DialogTitle>
+          <DialogDescription>
+            Erfassen Sie Ihre Arbeitszeit als Zeitraum (Von–Bis). Die Stunden werden automatisch
+            abzüglich der Pause berechnet.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="ze-datum">Datum</Label>
+              <Input
+                id="ze-datum"
+                type="date"
+                value={workDate}
+                onChange={(e) => setWorkDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="ze-objekt">Objekt / Einsatzort</Label>
+              <select
+                id="ze-objekt"
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="mt-0 h-9 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="">— ohne Objekt —</option>
+                {options.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.city ? ` · ${p.city}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div>
+              <Label htmlFor="ze-von">Von</Label>
+              <Input
+                id="ze-von"
+                type="time"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="ze-bis">Bis</Label>
+              <Input id="ze-bis" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="ze-pause">Pause (Min.)</Label>
+              <Input
+                id="ze-pause"
+                type="number"
+                min={0}
+                step={5}
+                value={breakMinutes}
+                onChange={(e) => setBreakMinutes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="ze-ort">Freitext-Einsatzort (optional)</Label>
+            <Input
+              id="ze-ort"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="z. B. Baustelle Saarbrücken, Hauptstraße 5"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="ze-notiz">Tätigkeit / Notiz</Label>
+            <Textarea
+              id="ze-notiz"
+              rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="z. B. Unterhaltsreinigung Erdgeschoss"
+            />
+          </div>
+
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            Berechnete Arbeitszeit: <span className="font-semibold">{hours.toFixed(2)} Std.</span>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Abbrechen
+          </Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending || hours <= 0}>
+            {save.isPending ? "Wird gespeichert …" : "Zeit speichern"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
