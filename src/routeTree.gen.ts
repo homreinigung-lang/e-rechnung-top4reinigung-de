@@ -24,6 +24,7 @@ import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenti
 import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/karte'
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
+import { Route as AuthenticatedNachrichtenRouteImport } from './routes/_authenticated/nachrichten'
 import { Route as AuthenticatedPersonalRouteImport } from './routes/_authenticated/personal'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSicherheitRouteImport } from './routes/_authenticated/sicherheit'
@@ -120,6 +121,12 @@ const AuthenticatedMeineZeitenRoute =
   AuthenticatedMeineZeitenRouteImport.update({
     id: '/meine-zeiten',
     path: '/meine-zeiten',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedNachrichtenRoute =
+  AuthenticatedNachrichtenRouteImport.update({
+    id: '/nachrichten',
+    path: '/nachrichten',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedPersonalRoute = AuthenticatedPersonalRouteImport.update({
@@ -234,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/karte': typeof AuthenticatedKarteRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
@@ -267,6 +275,7 @@ export interface FileRoutesByTo {
   '/karte': typeof AuthenticatedKarteRoute
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
@@ -303,6 +312,7 @@ export interface FileRoutesById {
   '/_authenticated/karte': typeof AuthenticatedKarteRoute
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
+  '/_authenticated/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/_authenticated/personal': typeof AuthenticatedPersonalRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/sicherheit': typeof AuthenticatedSicherheitRoute
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/karte'
     | '/kunden'
     | '/meine-zeiten'
+    | '/nachrichten'
     | '/personal'
     | '/profil'
     | '/sicherheit'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/karte'
     | '/kunden'
     | '/meine-zeiten'
+    | '/nachrichten'
     | '/personal'
     | '/profil'
     | '/sicherheit'
@@ -407,6 +419,7 @@ export interface FileRouteTypes {
     | '/_authenticated/karte'
     | '/_authenticated/kunden'
     | '/_authenticated/meine-zeiten'
+    | '/_authenticated/nachrichten'
     | '/_authenticated/personal'
     | '/_authenticated/profil'
     | '/_authenticated/sicherheit'
@@ -544,6 +557,13 @@ declare module '@tanstack/react-router' {
       path: '/meine-zeiten'
       fullPath: '/meine-zeiten'
       preLoaderRoute: typeof AuthenticatedMeineZeitenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/nachrichten': {
+      id: '/_authenticated/nachrichten'
+      path: '/nachrichten'
+      fullPath: '/nachrichten'
+      preLoaderRoute: typeof AuthenticatedNachrichtenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/personal': {
@@ -685,6 +705,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKarteRoute: typeof AuthenticatedKarteRoute
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
+  AuthenticatedNachrichtenRoute: typeof AuthenticatedNachrichtenRoute
   AuthenticatedPersonalRoute: typeof AuthenticatedPersonalRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSicherheitRoute: typeof AuthenticatedSicherheitRoute
@@ -707,6 +728,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKarteRoute: AuthenticatedKarteRoute,
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
+  AuthenticatedNachrichtenRoute: AuthenticatedNachrichtenRoute,
   AuthenticatedPersonalRoute: AuthenticatedPersonalRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSicherheitRoute: AuthenticatedSicherheitRoute,

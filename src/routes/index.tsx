@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +56,25 @@ const features = [
 ];
 
 function Landing() {
+  const navigate = useNavigate();
+  // Eingeladene Mitarbeitende sehen ausschließlich die Anmeldung, keine Marketing-Seite.
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let role: string | null = null;
+    try {
+      role = localStorage.getItem("homr:role");
+    } catch {
+      role = null;
+    }
+    const invited = new URLSearchParams(window.location.search).has("mitarbeiter");
+    if (role === "employee" || invited) {
+      setHidden(true);
+      void navigate({ to: "/auth", replace: true });
+    }
+  }, [navigate]);
+
+  if (hidden) return null;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
@@ -115,8 +136,8 @@ function Landing() {
             Angebote und Rechnungen – sauber, schnell, ohne Umsatzsteuer.
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
-            Verwalten Sie Kunden, schreiben Sie Angebote und Rechnungen mit
-            Reverse-Charge-Hinweis für den EU-Raum und versenden Sie diese direkt per E-Mail.
+            Verwalten Sie Kunden, schreiben Sie Angebote und Rechnungen mit Reverse-Charge-Hinweis
+            für den EU-Raum und versenden Sie diese direkt per E-Mail.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
@@ -160,7 +181,6 @@ function Landing() {
           </nav>
         </div>
       </footer>
-
     </div>
   );
 }
