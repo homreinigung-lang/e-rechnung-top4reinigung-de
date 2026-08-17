@@ -271,11 +271,13 @@ export function EinsatzKalender({
     return c ? c.company || c.name : "";
   };
 
-  const projectName = (id: string | null) => {
-    if (!id) return "";
-    const p = projects.find((x) => x.id === id);
-    return p?.name || "";
-  };
+  const projectName = useCallback(
+    (id: string | null) => {
+      if (!id) return "";
+      return projects.find((x) => x.id === id)?.name || "";
+    },
+    [projects],
+  );
 
   /** Excel-Export des sichtbaren Zeitraums (inkl. Filter). */
   const exportXlsx = async () => {
