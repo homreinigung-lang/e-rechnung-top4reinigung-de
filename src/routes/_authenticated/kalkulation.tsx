@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Calculator, FileSignature, FileText, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { suggestItems } from "@/lib/item-ai.functions";
+import { analyzeCalculation } from "@/lib/item-ai.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
@@ -165,10 +165,30 @@ function KalkulationPage() {
   // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiItems, setAiItems] = useState<AiItem[]>([]);
-  const suggest = useServerFn(suggestItems);
+  const analyze = useServerFn(analyzeCalculation);
   const aiSuggest = useMutation({
-    mutationFn: async () => suggest({ data: { prompt: aiPrompt } }),
+    mutationFn: async () => analyze({ data: { prompt: aiPrompt } }),
     onSuccess: (res) => {
+      const dec = (v: number) => String(v).replace(".", ",");
+      const preset = CLEANING_TYPES.find((t) => t.value === res.cleaning_type);
+      if (preset) {
+        setType(preset.value);
+        setPricePerSqm(dec(res.price_per_sqm > 0 ? res.price_per_sqm : preset.area));
+        setHourlyRate(dec(res.hourly_rate > 0 ? res.hourly_rate : preset.hourly));
+      }
+      setMode(res.mode);
+      if (res.area_sqm > 0) setArea(dec(res.area_sqm));
+      if (res.hours > 0) setHours(dec(res.hours));
+      if (res.frequency > 0) setFrequency(dec(res.frequency));
+      setFrequencyUnit(res.frequency_unit);
+      if (res.travel > 0) setTravel(dec(res.travel));
+      if (res.stairs) {
+        setStairs(true);
+        if (res.floors > 0) setFloors(dec(res.floors));
+      }
+      if (res.note.trim()) setNote((prev) => (prev.trim() ? `${prev}\n${res.note}` : res.note));
+      setFinalTouched(false);
+
       const list = res.items.map((i, n) => ({
         id: `${Date.now()}-${n}`,
         description: i.description,
@@ -177,10 +197,13 @@ function KalkulationPage() {
         unit_price: String(i.unit_price).replace(".", ","),
       }));
       setAiItems((prev) => [...prev, ...list]);
-      toast.success(`${list.length} Positionen vorgeschlagen – frei anpassbar`);
+      toast.success(
+        `Kalkulation übernommen – ${list.length} Positionen erstellt (frei anpassbar)`,
+      );
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
+
 
   const aiTotal = useMemo(
     () => aiItems.reduce((s, i) => s + num(i.quantity) * num(i.unit_price), 0),
@@ -341,10 +364,40 @@ function KalkulationPage() {
       <div>
         <h1 className="font-display text-2xl font-semibold">Kalkulation</h1>
         <p className="text-sm text-muted-foreground">
-          Preise für Reinigungsaufträge vorab berechnen, Endpreis frei anpassen und direkt als
-          Angebot übernehmen.
+          Leistung beschreiben – der Assistent füllt Leistungsdaten und Positionen aus. Alles
+          bleibt manuell änderbar und geht mit einem Klick ins Angebot.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="size-5" /> KI-Assistent
+          </CardTitle>
+          <CardDescription>
+            Auftrag kurz beschreiben – Reinigungstyp, Fläche, Turnus, Etagen und die
+            Leistungspositionen werden automatisch in die Kalkulation unten übernommen.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            rows={3}
+            placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+          />
+          <Button
+            type="button"
+            disabled={aiSuggest.isPending || aiPrompt.trim().length < 5}
+            onClick={() => aiSuggest.mutate()}
+          >
+            <Sparkles className="size-4" />
+            {aiSuggest.isPending ? "Wird kalkuliert…" : "Kalkulation erstellen"}
+          </Button>
+        </CardContent>
+      </Card>
+
+
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <Card>
@@ -796,7 +849,98 @@ function KalkulationPage() {
                 </>
               )}
             </div>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <Label>Positionen</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Vom Assistenten erzeugt oder manuell ergänzt – jede Zeile bleibt frei
+                    änderbar und geht direkt ins Angebot.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setAiItems((prev) => [
+                      ...prev,
+                      {
+                        id: `${Date.now()}`,
+                        description: "",
+                        quantity: "1",
+                        unit: "Std.",
+                        unit_price: "35",
+                      },
+                    ])
+                  }
+                >
+                  <Plus className="size-4" /> Position
+                </Button>
+              </div>
+
+              {aiItems.length === 0 ? (
+                <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  Noch keine Positionen. Beschreiben Sie die Arbeit oben im KI-Assistenten oder
+                  fügen Sie eine Position manuell hinzu.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
+                    <span>Leistung</span>
+                    <span>Menge</span>
+                    <span>Einheit</span>
+                    <span>Einzelpreis</span>
+                    <span className="text-right">Gesamt</span>
+                    <span />
+                  </div>
+                  {aiItems.map((i) => (
+                    <div
+                      key={i.id}
+                      className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center"
+                    >
+                      <Input
+                        value={i.description}
+                        placeholder="Leistung"
+                        onChange={(e) => patchAiItem(i.id, { description: e.target.value })}
+                      />
+                      <Input
+                        inputMode="decimal"
+                        value={i.quantity}
+                        onChange={(e) => patchAiItem(i.id, { quantity: e.target.value })}
+                      />
+                      <Input
+                        value={i.unit}
+                        onChange={(e) => patchAiItem(i.id, { unit: e.target.value })}
+                      />
+                      <Input
+                        inputMode="decimal"
+                        value={i.unit_price}
+                        onChange={(e) => patchAiItem(i.id, { unit_price: e.target.value })}
+                      />
+                      <span className="text-sm sm:text-right">
+                        {formatMoney(num(i.quantity) * num(i.unit_price))}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Position entfernen"
+                        onClick={() => setAiItems((prev) => prev.filter((x) => x.id !== i.id))}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <p className="text-right text-sm font-medium">
+                    Summe Positionen (netto): {formatMoney(aiTotal)}
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
+
         </Card>
 
         <Card>
@@ -890,6 +1034,26 @@ function KalkulationPage() {
               )}
             </div>
 
+            <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Grundkalkulation (netto)</span>
+                <span>{formatMoney(endNet)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Positionen (netto)</span>
+                <span>{formatMoney(aiTotal)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-medium">
+                <span>Gesamt netto</span>
+                <span>{formatMoney(endNet + aiTotal)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Brutto inkl. 19 % MwSt.</span>
+                <span>{formatMoney((endNet + aiTotal) * 1.19)}</span>
+              </div>
+            </div>
+
+
             <div className="space-y-3 rounded-md border border-dashed p-3">
               <p className="text-xs text-muted-foreground">
                 Diese Kalkulation ist ein interner Entwurf. Bitte alle Angaben prüfen und final
@@ -916,94 +1080,6 @@ function KalkulationPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="size-5" /> KI-Assistent: Positionen vorschlagen
-          </CardTitle>
-          <CardDescription>
-            Arbeit kurz beschreiben – der Assistent schlägt passende Leistungspositionen inkl.
-            Menge und Preis vor. Alle Werte bleiben vollständig manuell änderbar.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea
-            rows={3}
-            placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              disabled={aiSuggest.isPending || aiPrompt.trim().length < 5}
-              onClick={() => aiSuggest.mutate()}
-            >
-              <Sparkles className="size-4" />
-              {aiSuggest.isPending ? "Wird erstellt…" : "Positionen generieren"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                setAiItems((prev) => [
-                  ...prev,
-                  {
-                    id: `${Date.now()}`,
-                    description: "",
-                    quantity: "1",
-                    unit: "Std.",
-                    unit_price: "35",
-                  },
-                ])
-              }
-            >
-              <Plus className="size-4" /> Position manuell
-            </Button>
-          </div>
-
-          {aiItems.length > 0 && (
-            <div className="space-y-2">
-              {aiItems.map((i) => (
-                <div key={i.id} className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_2.5rem]">
-                  <Input
-                    value={i.description}
-                    placeholder="Leistung"
-                    onChange={(e) => patchAiItem(i.id, { description: e.target.value })}
-                  />
-                  <Input
-                    inputMode="decimal"
-                    value={i.quantity}
-                    onChange={(e) => patchAiItem(i.id, { quantity: e.target.value })}
-                  />
-                  <Input
-                    value={i.unit}
-                    onChange={(e) => patchAiItem(i.id, { unit: e.target.value })}
-                  />
-                  <Input
-                    inputMode="decimal"
-                    value={i.unit_price}
-                    onChange={(e) => patchAiItem(i.id, { unit_price: e.target.value })}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setAiItems((prev) => prev.filter((x) => x.id !== i.id))}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-              <p className="text-right text-sm font-medium">
-                Summe Zusatzpositionen (netto): {formatMoney(aiTotal)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Diese Positionen werden zusätzlich zur Kalkulation in das Angebot übernommen.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
 
   );
