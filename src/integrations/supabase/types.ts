@@ -217,6 +217,7 @@ export type Database = {
           sender_auth_user_id: string
           sender_name: string
           sender_role: string
+          thread_employee_id: string | null
           updated_at: string
           user_id: string
         }
@@ -227,6 +228,7 @@ export type Database = {
           sender_auth_user_id?: string
           sender_name?: string
           sender_role?: string
+          thread_employee_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -237,10 +239,19 @@ export type Database = {
           sender_auth_user_id?: string
           sender_name?: string
           sender_role?: string
+          thread_employee_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_employee_id_fkey"
+            columns: ["thread_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_settings: {
         Row: {
