@@ -1024,13 +1024,12 @@ function KalkulationPage() {
                   <span>{formatMoney(stairsTotal)}</span>
                 </div>
               )}
-
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Anfahrt</span>
                 <span>{formatMoney(num(travel))}</span>
               </div>
-              <div className="flex justify-between border-t pt-1">
-                <span className="text-muted-foreground">Zwischensumme (netto)</span>
+              <div className="flex justify-between border-t pt-1 font-medium">
+                <span>Zwischensumme (netto)</span>
                 <span>{formatMoney(subtotal)}</span>
               </div>
             </div>
@@ -1063,13 +1062,8 @@ function KalkulationPage() {
               </div>
             )}
 
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Berechneter Preis (netto)</span>
-              <span>{formatMoney(suggested)}</span>
-            </div>
-
             <div className="space-y-2 rounded-md border p-3">
-              <Label>Endpreis netto (frei anpassbar)</Label>
+              <Label>Endpreis Grundkalkulation netto (frei anpassbar)</Label>
               <Input
                 inputMode="decimal"
                 value={finalPrice}
@@ -1078,10 +1072,9 @@ function KalkulationPage() {
                   setFinalPrice(e.target.value);
                 }}
               />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>zzgl. 19 % MwSt. {formatMoney(vat)}</span>
-                <span>Brutto {formatMoney(endNet + vat)}</span>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Berechneter Vorschlag: {formatMoney(suggested)}
+              </p>
               {finalTouched && (
                 <Button
                   variant="ghost"
@@ -1099,19 +1092,26 @@ function KalkulationPage() {
                 <span className="text-muted-foreground">Grundkalkulation (netto)</span>
                 <span>{formatMoney(endNet)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Positionen (netto)</span>
-                <span>{formatMoney(aiTotal)}</span>
-              </div>
+              {aiItems.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Positionen (netto)</span>
+                  <span>{formatMoney(aiTotal)}</span>
+                </div>
+              )}
               <div className="flex justify-between border-t pt-1 font-medium">
                 <span>Gesamt netto</span>
                 <span>{formatMoney(endNet + aiTotal)}</span>
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Brutto inkl. 19 % MwSt.</span>
+                <span>zzgl. 19 % MwSt.</span>
+                <span>{formatMoney((endNet + aiTotal) * 0.19)}</span>
+              </div>
+              <div className="flex justify-between text-base font-semibold">
+                <span>Gesamt brutto</span>
                 <span>{formatMoney((endNet + aiTotal) * 1.19)}</span>
               </div>
             </div>
+
 
             <div className="space-y-3 rounded-md border border-dashed p-3">
               <p className="text-xs text-muted-foreground">
