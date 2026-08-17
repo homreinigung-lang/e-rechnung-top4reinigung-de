@@ -1,5 +1,5 @@
 import { holidayName } from "@/lib/feiertage";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { isoWeek } from "@/lib/kw";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
