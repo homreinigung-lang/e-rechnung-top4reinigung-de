@@ -53,6 +53,18 @@ type DayTask = {
   range: string;
   role: string | null;
   released: boolean;
+  done: boolean;
+  actual: string;
+};
+
+export type KalenderZeiteintrag = {
+  id: string;
+  work_date: string;
+  project_id: string | null;
+  entry_type?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  hours?: number | string | null;
 };
 
 
@@ -63,10 +75,12 @@ type DayTask = {
 export function MeinEinsatzkalender({
   assignments,
   projects,
+  entries = [],
   onSelectProject,
 }: {
   assignments: KalenderAssignment[];
   projects: KalenderProjekt[];
+  entries?: KalenderZeiteintrag[];
   onSelectProject?: (projectId: string) => void;
 }) {
   const [cursor, setCursor] = React.useState(() => {
@@ -79,9 +93,23 @@ export function MeinEinsatzkalender({
     [projects],
   );
 
-  /** Tagesdatum -> geplante Einsätze (aus Wochenplanung abgeleitet). */
+  /** Erfasste Arbeitszeiten je Tag – dienen zum Zusammenführen mit der Planung. */
+  const workByDay = React.useMemo(() => {
+    const m = new Map<string, KalenderZeiteintrag[]>();
+    for (const e of entries) {
+      if ((e.entry_type ?? "work") !== "work") continue;
+      const d = String(e.work_date).slice(0, 10);
+      const list = m.get(d) ?? [];
+      list.push(e);
+      m.set(d, list);
+    }
+    return m;
+  }, [entries]);
+
+  /** Tagesdatum -> geplante Einsätze (aus Wochenplanung abgeleitet, mit Ist-Zeit zusammengeführt). */
   const byDay = React.useMemo(() => {
     const m = new Map<string, DayTask[]>();
+    const used = new Set<string>();
     for (const a of assignments) {
       if (!a.start_date) continue;
       const monday = mondayOf(new Date(`${a.start_date}T12:00:00`));
@@ -91,6 +119,10 @@ export function MeinEinsatzkalender({
         if (!hours || hours <= 0) return;
         const date = isoDay(addDays(monday, i));
         const p = a.project_id ? projectMap.get(a.project_id) : undefined;
+        const candidates = (workByDay.get(date) ?? []).filter((e) => !used.has(e.id));
+        const hit =
+          candidates.find((e) => a.project_id && e.project_id === a.project_id) ?? candidates[0];
+        if (hit) used.add(hit.id);
         const list = m.get(date) ?? [];
         list.push({
           key: `${a.id}-${i}`,
@@ -101,13 +133,17 @@ export function MeinEinsatzkalender({
           range: formatDayTime(times[i]),
           role: a.assignment_role ?? null,
           released: a.released !== false,
+          done: Boolean(hit),
+          actual: hit
+            ? `${(hit.start_time ?? "").slice(0, 5)}–${(hit.end_time ?? "").slice(0, 5)}`.replace(/^–$/, "")
+            : "",
 
         });
         m.set(date, list);
       });
     }
     return m;
-  }, [assignments, projectMap]);
+  }, [assignments, projectMap, workByDay]);
 
   const monthLabel = cursor.toLocaleDateString("de-DE-u-ca-gregory-nu-latn", {
     month: "long",
@@ -199,26 +235,28 @@ export function MeinEinsatzkalender({
                     type="button"
                     onClick={() => t.projectId && onSelectProject?.(t.projectId)}
                     className={`block w-full rounded border px-1.5 py-1 text-left transition ${
-                      t.released
-                        ? "border-primary/30 bg-primary/10 hover:bg-primary/20"
-                        : "border-dashed border-muted-foreground/40 bg-muted hover:bg-muted/70"
+                      t.done
+                        ? "border-emerald-600 bg-emerald-600 text-white hover:brightness-95"
+                        : t.released
+                          ? "border-primary/30 bg-primary/10 hover:bg-primary/20"
+                          : "border-dashed border-muted-foreground/40 bg-muted hover:bg-muted/70"
                     }`}
                   >
                     <span className="block truncate font-medium">{t.name}</span>
                     {t.address && (
-                      <span className="flex items-center gap-1 truncate text-[10px] text-muted-foreground">
+                      <span className={`flex items-center gap-1 truncate text-[10px] ${t.done ? "text-white/80" : "text-muted-foreground"}`}>
                         <MapPin className="h-3 w-3 shrink-0" />
                         <span className="truncate">{t.address}</span>
                       </span>
                     )}
                     <span
                       className={`block text-[10px] font-semibold ${
-                        t.released ? "text-primary" : "text-muted-foreground"
+                        t.done ? "text-white" : t.released ? "text-primary" : "text-muted-foreground"
                       }`}
                     >
-                      {t.range ? `${t.range} · ` : ""}
+                      {(t.done && t.actual ? t.actual : t.range) ? `${t.done && t.actual ? t.actual : t.range} · ` : ""}
                       {t.hours.toFixed(2)} Std.
-                      {!t.released && " · vorläufig"}
+                      {t.done ? " · Erledigt" : !t.released ? " · vorläufig" : ""}
                     </span>
 
                   </button>
