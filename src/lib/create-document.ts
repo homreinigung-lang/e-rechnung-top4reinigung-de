@@ -15,7 +15,10 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
     supabase.from("documents").select("number").eq("type", type),
   ]);
 
-  const number = nextNumber(type, (existing ?? []).map((d) => d.number));
+  const number = nextNumber(
+    type,
+    (existing ?? []).map((d) => d.number),
+  );
   const issue = today();
 
   const { data, error } = await supabase

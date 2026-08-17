@@ -11,8 +11,6 @@ import { FileUploadButton } from "@/components/FileUploadButton";
 import { useMyEmployee, type MyEmployee } from "@/lib/employee";
 import { LoginMethodsCard } from "@/components/LoginMethodsCard";
 
-
-
 export const Route = createFileRoute("/_authenticated/profil")({
   head: () => ({
     meta: [
@@ -66,7 +64,6 @@ const GROUPS = [
 ] as const;
 
 const ALL_KEYS = [...GROUPS.flatMap((g) => g.fields.map((f) => f.key)), "logo_url"];
-
 
 function Profil() {
   const { data: myEmployee, isPending } = useMyEmployee();
@@ -137,7 +134,6 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
               dir="ltr"
             />
           </div>
-
         </div>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           Speichern
@@ -150,7 +146,6 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
 }
 
 function CompanyProfil() {
-
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
 
@@ -261,7 +256,6 @@ function CompanyProfil() {
           )}
         </div>
       </div>
-
 
       <Button onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         Speichern

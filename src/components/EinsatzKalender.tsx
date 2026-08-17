@@ -68,15 +68,11 @@ type PlanShift = {
   hours: number;
 };
 
-
-
-
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const NO_PROJECT = "__none__";
 const ALL = "__all__";
 
 type TimeEntry = import("@/integrations/supabase/types").Tables<"time_entries">;
-
 
 export type KalenderEmployee = {
   id: string;
@@ -135,7 +131,6 @@ function hoursFromTimes(start: string, end: string, breakMinutes: number) {
   return Number.isFinite(hours) ? Math.max(0, hours) : 0;
 }
 
-
 type PlanForm = {
   employeeIds: string[];
   entryType: EntryType;
@@ -176,10 +171,7 @@ export function EinsatzKalender({
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id,name,city")
-        .order("name");
+      const { data, error } = await supabase.from("projects").select("id,name,city").order("name");
       if (error) throw error;
       return data as KalenderProject[];
     },
@@ -288,7 +280,9 @@ export function EinsatzKalender({
   /** Excel-Export des sichtbaren Zeitraums (inkl. Filter). */
   const exportXlsx = async () => {
     const rows = [...entries]
-      .sort((a, b) => (a.work_date + (a.start_time ?? "")).localeCompare(b.work_date + (b.start_time ?? "")))
+      .sort((a, b) =>
+        (a.work_date + (a.start_time ?? "")).localeCompare(b.work_date + (b.start_time ?? "")),
+      )
       .map((e) => ({
         Datum: formatDate(e.work_date),
         Mitarbeiter: e.employee_name,
@@ -332,7 +326,6 @@ export function EinsatzKalender({
     window.print();
     setTimeout(cleanup, 3000);
   };
-
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["time_entries"] });
@@ -431,7 +424,9 @@ export function EinsatzKalender({
       from.setDate(from.getDate() - 6);
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,employee_id,project_id,assignment_role,start_date,hours_per_week,day_hours,day_times")
+        .select(
+          "id,employee_id,project_id,assignment_role,start_date,hours_per_week,day_hours,day_times",
+        )
         .gte("start_date", isoDay(from))
         .lte("start_date", rangeTo);
       if (error) throw error;
@@ -493,8 +488,7 @@ export function EinsatzKalender({
               e.employee_id === p.employeeId &&
               p.projectId &&
               e.project_id === p.projectId,
-          ) ??
-          dayList.find((e) => !used.has(e.id) && e.employee_id === p.employeeId);
+          ) ?? dayList.find((e) => !used.has(e.id) && e.employee_id === p.employeeId);
         if (!hit) continue;
         used.add(hit.id);
         matched.add(p.key);
@@ -511,10 +505,6 @@ export function EinsatzKalender({
     );
 
   const today = isoDay(new Date());
-
-
-
-
 
   const shift = (delta: number) => {
     if (view === "week") {
@@ -574,7 +564,6 @@ export function EinsatzKalender({
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   const openDay = (key: string, employeeId?: string) => {
     const preset = employeeId ?? (filterEmployee !== ALL ? filterEmployee : "");
     setForm({
@@ -597,7 +586,6 @@ export function EinsatzKalender({
           <p className="hidden text-sm font-medium print:block">{periodLabel}</p>
         </div>
         <div className="kalender-no-print flex flex-wrap items-center gap-2">
-
           <div className="flex overflow-hidden rounded-md border">
             <Button
               variant={view === "month" ? "default" : "ghost"}
@@ -644,7 +632,6 @@ export function EinsatzKalender({
       </div>
 
       <div className="kalender-no-print flex flex-wrap items-center gap-2">
-
         <Select value={filterEmployee} onValueChange={setFilterEmployee}>
           <SelectTrigger className="w-56">
             <SelectValue placeholder="Alle Mitarbeiter" />
@@ -695,8 +682,6 @@ export function EinsatzKalender({
         ))}
       </div>
 
-
-
       {view === "month" && visibleEmployees.length > 0 && (
         <div className="flex flex-wrap gap-2 text-xs">
           {visibleEmployees.map((emp) => {
@@ -714,7 +699,9 @@ export function EinsatzKalender({
 
       {view === "month" ? (
         <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] gap-px overflow-hidden rounded-lg border bg-border text-sm">
-          <div className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground">KW</div>
+          <div className="bg-muted/60 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+            KW
+          </div>
           {WEEKDAYS.map((w) => (
             <div
               key={w}
@@ -808,26 +795,27 @@ export function EinsatzKalender({
                         +{list.length - 3} weitere
                       </div>
                     )}
-                    {openPlans(key).slice(0, 3).map((p) => (
-                      <div
-                        key={p.key}
-                        title={`Planung: ${p.employeeName} · ${p.projectName} · ${p.range || `${p.hours.toFixed(2)} Std.`}`}
-                        className="truncate rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[10px] leading-tight text-primary"
-                      >
-                        <span className="font-semibold">{p.range || `${p.hours.toFixed(2)} Std.`}</span>{" "}
-                        {p.employeeName} · {p.projectName}
-                      </div>
-                    ))}
+                    {openPlans(key)
+                      .slice(0, 3)
+                      .map((p) => (
+                        <div
+                          key={p.key}
+                          title={`Planung: ${p.employeeName} · ${p.projectName} · ${p.range || `${p.hours.toFixed(2)} Std.`}`}
+                          className="truncate rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[10px] leading-tight text-primary"
+                        >
+                          <span className="font-semibold">
+                            {p.range || `${p.hours.toFixed(2)} Std.`}
+                          </span>{" "}
+                          {p.employeeName} · {p.projectName}
+                        </div>
+                      ))}
                     {openPlans(key).length > 3 && (
                       <div className="text-[10px] text-muted-foreground">
                         +{openPlans(key).length - 3} weitere Planungen
                       </div>
                     )}
-
                   </div>
-
                 </div>
-
               </Fragment>
             );
           })}
@@ -937,24 +925,21 @@ export function EinsatzKalender({
                           );
                         })}
                         {openPlans(key, emp.id).map((p) => (
-                            <div
-                              key={p.key}
-                              title={`Planung: ${p.projectName}`}
-                              className="rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[11px] leading-tight text-primary"
-                            >
-                              <div className="font-semibold">
-                                {p.range || `${p.hours.toFixed(2)} Std.`}
-                              </div>
-                              <div className="truncate">{p.projectName}</div>
-                              <div className="text-[10px] opacity-80">
-                                Plan · {p.hours.toFixed(2)} Std.
-                              </div>
+                          <div
+                            key={p.key}
+                            title={`Planung: ${p.projectName}`}
+                            className="rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[11px] leading-tight text-primary"
+                          >
+                            <div className="font-semibold">
+                              {p.range || `${p.hours.toFixed(2)} Std.`}
                             </div>
-                          ))}
-
+                            <div className="truncate">{p.projectName}</div>
+                            <div className="text-[10px] opacity-80">
+                              Plan · {p.hours.toFixed(2)} Std.
+                            </div>
+                          </div>
+                        ))}
                       </div>
-
-
                     );
                   })}
                 </Fragment>
@@ -963,7 +948,6 @@ export function EinsatzKalender({
           </div>
         </div>
       )}
-
 
       <Dialog open={day !== null} onOpenChange={(o) => !o && setDay(null)}>
         <DialogContent className="sm:max-w-xl">
@@ -1062,7 +1046,6 @@ export function EinsatzKalender({
                 angelegt.
               </p>
             </div>
-
 
             <div className="space-y-2">
               <Label>Art des Eintrags</Label>
@@ -1200,7 +1183,6 @@ export function EinsatzKalender({
               <Plus className="size-4" /> {isAbsent ? "Abwesenheit eintragen" : "Einsatz eintragen"}
             </Button>
           </DialogFooter>
-
         </DialogContent>
       </Dialog>
 
@@ -1264,7 +1246,10 @@ export function EinsatzKalender({
                   onClick={() =>
                     setEntryStatus.mutate({
                       id: detail.id,
-                      patch: { completed_at: new Date().toISOString(), approval_status: "approved" },
+                      patch: {
+                        completed_at: new Date().toISOString(),
+                        approval_status: "approved",
+                      },
                     })
                   }
                 >
@@ -1300,7 +1285,6 @@ export function EinsatzKalender({
             </div>
           )}
           <DialogFooter>
-
             {detail && (
               <Button
                 variant="outline"
@@ -1320,6 +1304,5 @@ export function EinsatzKalender({
         </DialogContent>
       </Dialog>
     </section>
-
   );
 }

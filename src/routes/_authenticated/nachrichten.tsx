@@ -123,7 +123,11 @@ function NachrichtenPage() {
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
-      return (data ?? []) as { thread_employee_id: string | null; body: string; created_at: string }[];
+      return (data ?? []) as {
+        thread_employee_id: string | null;
+        body: string;
+        created_at: string;
+      }[];
     },
   });
 
@@ -213,9 +217,7 @@ function NachrichtenPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const headerTitle = isOwner
-    ? (activePartner?.name ?? "Kein Gespräch ausgewählt")
-    : "Verwaltung";
+  const headerTitle = isOwner ? (activePartner?.name ?? "Kein Gespräch ausgewählt") : "Verwaltung";
 
   return (
     <div className="space-y-4">
@@ -340,9 +342,7 @@ function NachrichtenPage() {
               rows={2}
               value={text}
               disabled={!threadId}
-              placeholder={
-                threadId ? "Nachricht schreiben …" : "Zuerst eine Person auswählen …"
-              }
+              placeholder={threadId ? "Nachricht schreiben …" : "Zuerst eine Person auswählen …"}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {

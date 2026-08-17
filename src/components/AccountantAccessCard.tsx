@@ -112,9 +112,9 @@ export function AccountantAccessCard() {
       <div>
         <h2 className="font-display text-lg font-semibold">Steuerberater-Zugang einrichten</h2>
         <p className="text-sm text-muted-foreground">
-          Erstellen Sie einen sicheren Nur-Lese-Zugang mit dauerhaftem Passwort (ohne
-          Ablaufdatum): Ihr Steuerberater sieht Rechnungen und Ausgaben und kann DATEV-, Excel- und
-          PDF-Exporte selbst herunterladen.
+          Erstellen Sie einen sicheren Nur-Lese-Zugang mit dauerhaftem Passwort (ohne Ablaufdatum):
+          Ihr Steuerberater sieht Rechnungen und Ausgaben und kann DATEV-, Excel- und PDF-Exporte
+          selbst herunterladen.
         </p>
       </div>
 
@@ -196,9 +196,7 @@ export function AccountantAccessCard() {
                   size="sm"
                   variant="outline"
                   disabled={changePassword.isPending || !(edits[a.id] ?? "").trim()}
-                  onClick={() =>
-                    changePassword.mutate({ id: a.id, password: edits[a.id] ?? "" })
-                  }
+                  onClick={() => changePassword.mutate({ id: a.id, password: edits[a.id] ?? "" })}
                 >
                   <Save className="size-4" /> Speichern
                 </Button>
@@ -210,4 +208,3 @@ export function AccountantAccessCard() {
     </div>
   );
 }
-

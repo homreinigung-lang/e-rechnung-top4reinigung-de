@@ -131,9 +131,7 @@ function ProjekteIndex() {
           .eq("id", projectId);
 
         setStep(
-          mode === "tender"
-            ? "Ausschreibung wird analysiert …"
-            : "Grundriss wird analysiert …",
+          mode === "tender" ? "Ausschreibung wird analysiert …" : "Grundriss wird analysiert …",
         );
         try {
           const url = await fileUrl(path);
@@ -141,10 +139,7 @@ function ProjekteIndex() {
             data: { fileUrl: url, mimeType: file.type || "application/pdf", mode },
           });
           if (!name.trim() && scan.project_name) {
-            await supabase
-              .from("projects")
-              .update({ name: scan.project_name })
-              .eq("id", projectId);
+            await supabase.from("projects").update({ name: scan.project_name }).eq("id", projectId);
           }
         } catch (e) {
           toast.error(
@@ -239,7 +234,6 @@ function ProjekteIndex() {
     setPendingId(null);
     if (projectId) navigate({ to: "/projekte/$id", params: { id: projectId } });
   }
-
 
   const remove = useMutation({
     mutationFn: async (id: string) => {

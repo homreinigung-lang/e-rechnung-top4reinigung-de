@@ -53,8 +53,12 @@ export function buildSignatureHtml(settings: SignatureSettings | null | undefine
   const links: string[] = [];
   const website = String(settings?.website_url ?? "").trim();
   const facebook = String(settings?.facebook_url ?? "").trim();
-  if (website) links.push(`<a href="${escapeHtml(website)}" style="color:#0b6bcb">${escapeHtml(website)}</a>`);
-  if (facebook) links.push(`<a href="${escapeHtml(facebook)}" style="color:#0b6bcb">${escapeHtml(facebook)}</a>`);
+  if (website)
+    links.push(`<a href="${escapeHtml(website)}" style="color:#0b6bcb">${escapeHtml(website)}</a>`);
+  if (facebook)
+    links.push(
+      `<a href="${escapeHtml(facebook)}" style="color:#0b6bcb">${escapeHtml(facebook)}</a>`,
+    );
   if (links.length > 0) parts.push(`<div style="margin-top:6px">${links.join(" · ")}</div>`);
 
   if (parts.length === 0) return "";

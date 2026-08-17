@@ -28,12 +28,13 @@ async function resolve(name: string, type: "TXT" | "A", resolver: "google" | "cl
 export const checkDomainDns = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => schema.parse(data))
   .handler(async ({ data }) => {
-    const domain = data.domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
+    const domain = data.domain
+      .replace(/^https?:\/\//, "")
+      .replace(/\/.*$/, "")
+      .toLowerCase();
     const parts = domain.split(".");
     const apex = parts.slice(-2).join(".");
-    const txtNames = Array.from(
-      new Set([`_lovable.${domain}`, `_lovable.${apex}`]),
-    );
+    const txtNames = Array.from(new Set([`_lovable.${domain}`, `_lovable.${apex}`]));
 
     const txtRecords: { name: string; values: string[]; error?: string }[] = [];
     for (const name of txtNames) {
@@ -63,9 +64,7 @@ export const checkDomainDns = createServerFn({ method: "POST" })
     const aOk = aRecords.includes("185.158.133.1");
     if (!aRecords.length) issues.push(`Kein A-Record für ${domain} gefunden.`);
     else if (!aOk)
-      issues.push(
-        `A-Record zeigt auf ${aRecords.join(", ")} statt auf 185.158.133.1.`,
-      );
+      issues.push(`A-Record zeigt auf ${aRecords.join(", ")} statt auf 185.158.133.1.`);
 
     let txtOk = false;
     if (!allTxt.length) {

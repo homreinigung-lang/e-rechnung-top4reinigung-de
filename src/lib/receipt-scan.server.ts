@@ -54,22 +54,20 @@ Kategorie nur aus: Material, Reinigungsmittel, Fahrzeug, Löhne, Miete, Versiche
 Antworte ausschließlich mit reinem JSON ohne Erklärung.`;
 
 /** Extrahiert Belegdaten mit dem KI-Gateway aus PDF- oder Bilddateien. */
-export async function extractReceipt(
-  dataUrl: string,
-  mimeType: string,
-): Promise<ScannedReceipt> {
+export async function extractReceipt(dataUrl: string, mimeType: string): Promise<ScannedReceipt> {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
 
-  const content = mimeType === "application/pdf"
-    ? [
-        { type: "text", text: "Extrahiere die Belegdaten aus dieser PDF-Rechnung." },
-        { type: "file", file: { filename: "beleg.pdf", file_data: dataUrl } },
-      ]
-    : [
-        { type: "text", text: "Extrahiere die Belegdaten aus diesem Beleg-Foto." },
-        { type: "image_url", image_url: { url: dataUrl } },
-      ];
+  const content =
+    mimeType === "application/pdf"
+      ? [
+          { type: "text", text: "Extrahiere die Belegdaten aus dieser PDF-Rechnung." },
+          { type: "file", file: { filename: "beleg.pdf", file_data: dataUrl } },
+        ]
+      : [
+          { type: "text", text: "Extrahiere die Belegdaten aus diesem Beleg-Foto." },
+          { type: "image_url", image_url: { url: dataUrl } },
+        ];
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",

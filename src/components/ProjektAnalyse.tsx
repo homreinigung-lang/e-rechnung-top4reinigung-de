@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { ProjektUnterlagen } from "@/components/ProjektUnterlagen";
 
-
 const WEEKS_PER_MONTH = 4.33;
 
 export type KalkulationSnapshot = {
@@ -97,10 +96,7 @@ export function ProjektAnalyse({
     enabled: Boolean(projectId),
     queryFn: async () => {
       const [rooms, lv, assignments] = await Promise.all([
-        supabase
-          .from("project_rooms")
-          .select("id,area_sqm,confirmed")
-          .eq("project_id", projectId!),
+        supabase.from("project_rooms").select("id,area_sqm,confirmed").eq("project_id", projectId!),
         supabase.from("project_lv_items").select("id,done,critical").eq("project_id", projectId!),
         supabase
           .from("project_assignments")
@@ -257,7 +253,11 @@ export function ProjektAnalyse({
               <div>
                 <p className="font-medium">{project.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {[project.customer_name, project.address_line, `${project.postal_code} ${project.city}`.trim()]
+                  {[
+                    project.customer_name,
+                    project.address_line,
+                    `${project.postal_code} ${project.city}`.trim(),
+                  ]
                     .filter((v) => v && v.trim())
                     .join(" · ")}
                 </p>
@@ -295,7 +295,6 @@ export function ProjektAnalyse({
         )}
 
         <ProjektUnterlagen projectId={projectId} />
-
       </CardContent>
     </Card>
   );

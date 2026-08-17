@@ -124,7 +124,6 @@ export function AbwesenheitZeitraum({
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

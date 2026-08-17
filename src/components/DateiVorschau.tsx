@@ -87,13 +87,14 @@ export function DateiVorschau({
               Die Datei konnte nicht geladen werden. Bitte den Download verwenden.
             </div>
           )}
-          {!loading && !failed && url && (
-            isImage ? (
+          {!loading &&
+            !failed &&
+            url &&
+            (isImage ? (
               <img src={url} alt={name} className="mx-auto max-h-full object-contain" />
             ) : (
               <iframe src={url} title={name} className="h-full w-full" />
-            )
-          )}
+            ))}
         </div>
 
         <div className="flex justify-end">

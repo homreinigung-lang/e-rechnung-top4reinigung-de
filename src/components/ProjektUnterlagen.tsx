@@ -86,8 +86,8 @@ export function ProjektUnterlagen({ projectId }: { projectId: string | null }) {
             <FolderOpen className="size-4" /> Projektunterlagen
           </p>
           <p className="text-xs text-muted-foreground">
-            Grundrisse, Leistungsverzeichnisse, PDFs und Fotos – fest mit diesem Projekt
-            verknüpft und jederzeit wieder abrufbar.
+            Grundrisse, Leistungsverzeichnisse, PDFs und Fotos – fest mit diesem Projekt verknüpft
+            und jederzeit wieder abrufbar.
           </p>
         </div>
         {projectId && (

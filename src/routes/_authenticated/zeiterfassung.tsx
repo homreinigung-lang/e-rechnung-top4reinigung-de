@@ -557,17 +557,17 @@ function Zeiterfassung() {
               </DialogHeader>
               <Urlaubsantraege />
 
-      <ZeitkontoCard
-        employees={employees.map((e) => ({
-          id: e.id,
-          name: e.name,
-          weekly_hours: (e as unknown as { weekly_hours?: number }).weekly_hours ?? 0,
-        }))}
-        entries={entries as never}
-        month={month}
-      />
+              <ZeitkontoCard
+                employees={employees.map((e) => ({
+                  id: e.id,
+                  name: e.name,
+                  weekly_hours: (e as unknown as { weekly_hours?: number }).weekly_hours ?? 0,
+                }))}
+                entries={entries as never}
+                month={month}
+              />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="emp-name">Name</Label>
                   <Input

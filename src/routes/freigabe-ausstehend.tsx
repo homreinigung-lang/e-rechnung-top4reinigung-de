@@ -6,8 +6,7 @@ export const Route = createFileRoute("/freigabe-ausstehend")({
       { title: "Konto wartet auf Freigabe – HomR Office" },
       {
         name: "description",
-        content:
-          "Ihr neues Konto wurde registriert und wartet auf die Freigabe durch den Inhaber.",
+        content: "Ihr neues Konto wurde registriert und wartet auf die Freigabe durch den Inhaber.",
       },
       { property: "og:title", content: "Konto wartet auf Freigabe – HomR Office" },
       {
@@ -27,8 +26,8 @@ function PendingPage() {
       <div className="surface w-full max-w-md space-y-4 p-6 text-center">
         <h1 className="font-display text-xl font-semibold">Konto wartet auf Freigabe</h1>
         <p className="text-sm text-muted-foreground">
-          Ihre Registrierung wurde übermittelt. Der Inhaber prüft den Zugang und gibt ihn frei –
-          Sie erhalten anschließend eine E-Mail und können sich dann anmelden.
+          Ihre Registrierung wurde übermittelt. Der Inhaber prüft den Zugang und gibt ihn frei – Sie
+          erhalten anschließend eine E-Mail und können sich dann anmelden.
         </p>
         <Link to="/auth" className="inline-block text-sm underline">
           Zurück zur Anmeldung

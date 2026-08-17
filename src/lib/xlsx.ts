@@ -24,7 +24,8 @@ function colName(index: number) {
 
 function cell(ref: string, value: unknown) {
   if (value === null || value === undefined || value === "") return `<c r="${ref}"/>`;
-  if (typeof value === "number" && Number.isFinite(value)) return `<c r="${ref}"><v>${value}</v></c>`;
+  if (typeof value === "number" && Number.isFinite(value))
+    return `<c r="${ref}"><v>${value}</v></c>`;
   if (typeof value === "boolean")
     return `<c r="${ref}" t="inlineStr"><is><t>${value ? "Ja" : "Nein"}</t></is></c>`;
   const text = typeof value === "object" ? JSON.stringify(value) : String(value);
@@ -34,9 +35,7 @@ function cell(ref: string, value: unknown) {
 function sheetXml(rows: Record<string, unknown>[]) {
   const headers = rows.length ? Object.keys(rows[0]!) : ["–"];
   const lines: string[] = [];
-  lines.push(
-    `<row r="1">${headers.map((h, i) => cell(`${colName(i)}1`, h)).join("")}</row>`,
-  );
+  lines.push(`<row r="1">${headers.map((h, i) => cell(`${colName(i)}1`, h)).join("")}</row>`);
   rows.forEach((row, r) => {
     const cells = headers.map((h, i) => cell(`${colName(i)}${r + 2}`, row[h])).join("");
     lines.push(`<row r="${r + 2}">${cells}</row>`);

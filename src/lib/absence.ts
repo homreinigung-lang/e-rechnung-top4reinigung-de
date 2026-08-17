@@ -69,7 +69,9 @@ export function isRejected(entry: ApprovableLike) {
  * Abwesenheiten erst nach der Genehmigung durch die Verwaltung.
  */
 export function isEffective(entry: ApprovableLike) {
-  return !isAbsence(entry) ? approvalStatus(entry) !== "rejected" : approvalStatus(entry) === "approved";
+  return !isAbsence(entry)
+    ? approvalStatus(entry) !== "rejected"
+    : approvalStatus(entry) === "approved";
 }
 
 export function approvalLabel(status: ApprovalStatus) {

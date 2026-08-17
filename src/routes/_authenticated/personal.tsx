@@ -24,9 +24,14 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
-import { absenceClasses, absenceLabel, absenceReason, absenceShort, isAbsence, isEffective } from "@/lib/absence";
-
-
+import {
+  absenceClasses,
+  absenceLabel,
+  absenceReason,
+  absenceShort,
+  isAbsence,
+  isEffective,
+} from "@/lib/absence";
 
 export const Route = createFileRoute("/_authenticated/personal")({
   head: () => ({
@@ -221,8 +226,6 @@ function EinsatzortCell({
   );
 }
 
-
-
 function Personal() {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -231,7 +234,6 @@ function Personal() {
   const [monthCursor, setMonthCursor] = React.useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12),
   );
-
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["employees"] });
@@ -316,7 +318,6 @@ function Personal() {
         work_location?: string;
       };
     }) => {
-
       const { error } = await supabase.from("employees").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -447,9 +448,7 @@ function Personal() {
       .reduce((s, t) => s + Number(t.hours || 0), 0);
     const days = (reason: string) =>
       new Set(
-        rows
-          .filter((t) => absenceReason(t) === reason && isEffective(t))
-          .map((t) => t.work_date),
+        rows.filter((t) => absenceReason(t) === reason && isEffective(t)).map((t) => t.work_date),
       ).size;
     const rate = Number(e.hourly_rate ?? 0);
     return {
@@ -463,7 +462,6 @@ function Personal() {
       otherDays: days("other"),
     };
   });
-
 
   const shiftWeek = (delta: number) => {
     const d = new Date(weekStart);
@@ -587,7 +585,6 @@ function Personal() {
               </tr>
             </thead>
 
-
             <tbody>
               {employees.map((e) => {
                 const assignment = primaryAssignment(e.id);
@@ -646,8 +643,6 @@ function Personal() {
                       />
                     </td>
 
-
-
                     <td className="px-3 py-2">
                       <Input
                         key={`h-${e.id}-${e.weekly_hours ?? 0}`}
@@ -660,7 +655,6 @@ function Personal() {
                           if (hours !== Number(e.weekly_hours ?? assignment?.hours_per_week ?? 0))
                             setWeeklyHours.mutate({ employeeId: e.id, hours });
                         }}
-
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -882,7 +876,6 @@ function Personal() {
           </div>
         )}
       </section>
-
 
       {/* Einsatzübersicht je Projekt */}
       <section className="surface space-y-3 p-5">

@@ -15,7 +15,6 @@ import { fileUrl, openStoredFile } from "@/lib/storage";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
 
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -343,7 +342,6 @@ function KalkulationPage() {
     confirmed,
   };
 
-
   const toQuote = useMutation({
     mutationFn: async () => {
       const quoteId = await createDocument("quote");
@@ -451,8 +449,6 @@ function KalkulationPage() {
         onProjectChange={setProjectId}
         snapshot={analyseSnapshot}
       />
-
-
 
       <Card>
         <CardHeader>
@@ -1028,7 +1024,6 @@ function KalkulationPage() {
                   <p className="text-right text-xs text-muted-foreground">
                     {aiItems.length} Position(en) – fließen unten in die Gesamtsumme ein
                   </p>
-
                 </div>
               )}
             </div>
@@ -1143,7 +1138,6 @@ function KalkulationPage() {
                 <span>{formatMoney((endNet + aiTotal) * 1.19)}</span>
               </div>
             </div>
-
 
             <div className="space-y-3 rounded-md border border-dashed p-3">
               <p className="text-xs text-muted-foreground">

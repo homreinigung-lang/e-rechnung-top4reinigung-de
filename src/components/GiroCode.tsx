@@ -28,7 +28,9 @@ export function GiroCode({ payload, size = 104 }: { payload: string | null; size
   return (
     <div className="inline-flex items-center gap-4 rounded-md border bg-white px-4 py-3">
       <div className="text-xs">
-        <div className="font-display text-sm font-semibold text-foreground">Überweisen per Code</div>
+        <div className="font-display text-sm font-semibold text-foreground">
+          Überweisen per Code
+        </div>
         <div className="mt-1 text-muted-foreground">
           Ganz bequem Code mit der Banking-App scannen.
         </div>

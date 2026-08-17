@@ -34,7 +34,12 @@ export function FileUploadButton({
 
   return (
     <>
-      <Button type="button" variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+      >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
         {label}
       </Button>

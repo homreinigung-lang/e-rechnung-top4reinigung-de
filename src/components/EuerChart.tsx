@@ -16,10 +16,7 @@ import {
 } from "recharts";
 import { formatMoney } from "@/lib/format";
 
-const MONTHS = [
-  "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
-  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez",
-];
+const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
 type DocLite = {
   type: string;
@@ -144,7 +141,12 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="einnahmen" name="Einnahmen" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="einnahmen"
+                    name="Einnahmen"
+                    fill="hsl(var(--primary))"
+                    radius={[4, 4, 0, 0]}
+                  />
                   <Bar dataKey="ausgaben" name="Ausgaben" fill="#f97316" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -155,11 +157,17 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
           <div className="space-y-6">
             <div className="surface p-4">
               <h3 className="mb-1 text-sm font-semibold">Gewinn-Verlauf</h3>
-              <p className="mb-4 text-xs text-muted-foreground">Netto-Monatsergebnis über das Jahr.</p>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Netto-Monatsergebnis über das Jahr.
+              </p>
               <div className="h-32 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={monthly} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      className="stroke-border"
+                      vertical={false}
+                    />
                     <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
                     <YAxis hide />
                     <Tooltip
@@ -188,7 +196,9 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
             {pieData.length > 0 && (
               <div className="surface p-4">
                 <h3 className="mb-1 text-sm font-semibold">Verteilung Einnahmen/Ausgaben</h3>
-                <p className="mb-2 text-xs text-muted-foreground">Anteile am gesamten Netto-Umsatz.</p>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Anteile am gesamten Netto-Umsatz.
+                </p>
                 <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>

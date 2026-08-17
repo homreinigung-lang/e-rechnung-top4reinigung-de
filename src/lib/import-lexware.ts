@@ -62,7 +62,6 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
   const clean = text.replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
   const sep = detectSeparator(clean);
 
-
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";
@@ -149,7 +148,6 @@ function pick(row: Record_, candidates: string[]): string {
   return "";
 }
 
-
 /** Deutsche Zahl ("1.234,56 €") => number */
 export function parseNumber(value: string): number {
   if (!value) return 0;
@@ -176,9 +174,31 @@ export function parseDate(value: string): string | null {
   return null;
 }
 
-const DOC_HINTS = ["rechnungsnummer", "belegnummer", "rechnungsdatum", "belegdatum", "gesamtbetrag", "bruttobetrag"];
-const EXPENSE_HINTS = ["lieferant", "kreditor", "eingangsrechnung", "ausgabe", "aufwand", "kategorie"];
-const CUSTOMER_HINTS = ["kundennummer", "firma", "ansprechpartner", "plz", "ort", "strasse", "ustidnr"];
+const DOC_HINTS = [
+  "rechnungsnummer",
+  "belegnummer",
+  "rechnungsdatum",
+  "belegdatum",
+  "gesamtbetrag",
+  "bruttobetrag",
+];
+const EXPENSE_HINTS = [
+  "lieferant",
+  "kreditor",
+  "eingangsrechnung",
+  "ausgabe",
+  "aufwand",
+  "kategorie",
+];
+const CUSTOMER_HINTS = [
+  "kundennummer",
+  "firma",
+  "ansprechpartner",
+  "plz",
+  "ort",
+  "strasse",
+  "ustidnr",
+];
 
 /** Erkennt anhand von Dateiname + Spalten, worum es sich handelt. */
 export function detectKind(fileName: string, headers: string[]): ImportKind {
@@ -213,7 +233,14 @@ export type CustomerRow = {
 
 export function mapCustomer(row: Record_): CustomerRow | null {
   const company = pick(row, [
-    "Firma", "Firmenname", "Person/Firma", "Company", "Unternehmen", "Name1", "Kunde", "Empfänger",
+    "Firma",
+    "Firmenname",
+    "Person/Firma",
+    "Company",
+    "Unternehmen",
+    "Name1",
+    "Kunde",
+    "Empfänger",
   ]);
   const name = pick(row, ["Ansprechpartner", "Name", "Nachname", "Kontakt", "Vorname", "Person"]);
   if (!company && !name) return null;
@@ -254,18 +281,43 @@ export type DocumentRow = {
 };
 
 export function mapDocument(row: Record_): DocumentRow | null {
-  const number = pick(row, ["Belegnummer", "Rechnungsnummer", "Nummer", "Nr", "Dokumentnummer", "Beleg"]);
+  const number = pick(row, [
+    "Belegnummer",
+    "Rechnungsnummer",
+    "Nummer",
+    "Nr",
+    "Dokumentnummer",
+    "Beleg",
+  ]);
   const date = parseDate(
     pick(row, ["Belegdatum", "Rechnungsdatum", "Datum", "Ausstellungsdatum", "Buchungsdatum"]),
   );
   const company = pick(row, [
-    "Kunde", "Kundenname", "Firma", "Person/Firma", "Person", "Empfänger", "Empfaenger",
-    "Name1", "Name", "Debitor", "Kontakt",
+    "Kunde",
+    "Kundenname",
+    "Firma",
+    "Person/Firma",
+    "Person",
+    "Empfänger",
+    "Empfaenger",
+    "Name1",
+    "Name",
+    "Debitor",
+    "Kontakt",
   ]);
   let net = parseNumber(pick(row, ["Netto", "Nettobetrag", "Nettosumme", "Betrag netto"]));
   const vat = parseNumber(pick(row, ["Umsatzsteuer", "MwSt", "Steuer", "Steuerbetrag", "USt"]));
   let gross = parseNumber(
-    pick(row, ["Betrag brutto", "Bruttobetrag", "Brutto", "Gesamtbetrag", "Gesamt", "Endbetrag", "Betrag", "Summe"]),
+    pick(row, [
+      "Betrag brutto",
+      "Bruttobetrag",
+      "Brutto",
+      "Gesamtbetrag",
+      "Gesamt",
+      "Endbetrag",
+      "Betrag",
+      "Summe",
+    ]),
   );
 
   if (!gross && (net || vat)) gross = net + vat;
@@ -277,11 +329,12 @@ export function mapDocument(row: Record_): DocumentRow | null {
   return {
     type: typeRaw.includes("angebot") || typeRaw.includes("quote") ? "quote" : "invoice",
     number: number || `IMP-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-    status: statusRaw.includes("bezahlt") || statusRaw.includes("paid")
-      ? "paid"
-      : statusRaw.includes("offen") || statusRaw.includes("versend") || statusRaw.includes("sent")
-        ? "sent"
-        : "draft",
+    status:
+      statusRaw.includes("bezahlt") || statusRaw.includes("paid")
+        ? "paid"
+        : statusRaw.includes("offen") || statusRaw.includes("versend") || statusRaw.includes("sent")
+          ? "sent"
+          : "draft",
     issue_date: date ?? new Date().toISOString().slice(0, 10),
     customer_name: pick(row, ["Ansprechpartner", "Kontakt"]),
     customer_company: company,
@@ -314,14 +367,32 @@ export type ExpenseRow = {
 
 export function mapExpense(row: Record_): ExpenseRow | null {
   const supplier = pick(row, [
-    "Lieferant", "Kreditor", "Person/Firma", "Person", "Firma", "Empfänger", "Empfaenger",
-    "Zahlungsempfänger", "Name1", "Name",
+    "Lieferant",
+    "Kreditor",
+    "Person/Firma",
+    "Person",
+    "Firma",
+    "Empfänger",
+    "Empfaenger",
+    "Zahlungsempfänger",
+    "Name1",
+    "Name",
   ]);
   const date = parseDate(pick(row, ["Belegdatum", "Rechnungsdatum", "Datum", "Buchungsdatum"]));
   let net = parseNumber(pick(row, ["Netto", "Nettobetrag", "Betrag netto"]));
-  const vat = parseNumber(pick(row, ["Vorsteuer", "Umsatzsteuer", "MwSt", "Steuer", "Steuerbetrag"]));
+  const vat = parseNumber(
+    pick(row, ["Vorsteuer", "Umsatzsteuer", "MwSt", "Steuer", "Steuerbetrag"]),
+  );
   let gross = parseNumber(
-    pick(row, ["Betrag brutto", "Bruttobetrag", "Brutto", "Gesamtbetrag", "Gesamt", "Betrag", "Summe"]),
+    pick(row, [
+      "Betrag brutto",
+      "Bruttobetrag",
+      "Brutto",
+      "Gesamtbetrag",
+      "Gesamt",
+      "Betrag",
+      "Summe",
+    ]),
   );
 
   if (!gross && (net || vat)) gross = net + vat;

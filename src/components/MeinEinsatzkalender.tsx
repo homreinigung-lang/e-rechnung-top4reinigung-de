@@ -15,7 +15,6 @@ export type KalenderAssignment = {
   released?: boolean;
 };
 
-
 export type KalenderProjekt = {
   id: string;
   name: string;
@@ -67,7 +66,6 @@ export type KalenderZeiteintrag = {
   hours?: number | string | null;
 };
 
-
 /**
  * Einsatzkalender im Mitarbeiterportal: zeigt die in der Arbeitsplanung
  * freigegebenen Tagesstunden je Objekt automatisch als Monatskalender an.
@@ -88,10 +86,7 @@ export function MeinEinsatzkalender({
     return new Date(d.getFullYear(), d.getMonth(), 1, 12, 0, 0, 0);
   });
 
-  const projectMap = React.useMemo(
-    () => new Map(projects.map((p) => [p.id, p])),
-    [projects],
-  );
+  const projectMap = React.useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
 
   /** Erfasste Arbeitszeiten je Tag – dienen zum Zusammenführen mit der Planung. */
   const workByDay = React.useMemo(() => {
@@ -135,9 +130,11 @@ export function MeinEinsatzkalender({
           released: a.released !== false,
           done: Boolean(hit),
           actual: hit
-            ? `${(hit.start_time ?? "").slice(0, 5)}–${(hit.end_time ?? "").slice(0, 5)}`.replace(/^–$/, "")
+            ? `${(hit.start_time ?? "").slice(0, 5)}–${(hit.end_time ?? "").slice(0, 5)}`.replace(
+                /^–$/,
+                "",
+              )
             : "",
-
         });
         m.set(date, list);
       });
@@ -192,9 +189,7 @@ export function MeinEinsatzkalender({
             variant="outline"
             size="icon"
             aria-label="Vorheriger Monat"
-            onClick={() =>
-              setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1, 12))
-            }
+            onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1, 12))}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -203,9 +198,7 @@ export function MeinEinsatzkalender({
             variant="outline"
             size="icon"
             aria-label="Nächster Monat"
-            onClick={() =>
-              setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1, 12))
-            }
+            onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1, 12))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -244,21 +237,28 @@ export function MeinEinsatzkalender({
                   >
                     <span className="block truncate font-medium">{t.name}</span>
                     {t.address && (
-                      <span className={`flex items-center gap-1 truncate text-[10px] ${t.done ? "text-white/80" : "text-muted-foreground"}`}>
+                      <span
+                        className={`flex items-center gap-1 truncate text-[10px] ${t.done ? "text-white/80" : "text-muted-foreground"}`}
+                      >
                         <MapPin className="h-3 w-3 shrink-0" />
                         <span className="truncate">{t.address}</span>
                       </span>
                     )}
                     <span
                       className={`block text-[10px] font-semibold ${
-                        t.done ? "text-white" : t.released ? "text-primary" : "text-muted-foreground"
+                        t.done
+                          ? "text-white"
+                          : t.released
+                            ? "text-primary"
+                            : "text-muted-foreground"
                       }`}
                     >
-                      {(t.done && t.actual ? t.actual : t.range) ? `${t.done && t.actual ? t.actual : t.range} · ` : ""}
+                      {(t.done && t.actual ? t.actual : t.range)
+                        ? `${t.done && t.actual ? t.actual : t.range} · `
+                        : ""}
                       {t.hours.toFixed(2)} Std.
                       {t.done ? " · Erledigt" : !t.released ? " · vorläufig" : ""}
                     </span>
-
                   </button>
                 ))}
               </div>

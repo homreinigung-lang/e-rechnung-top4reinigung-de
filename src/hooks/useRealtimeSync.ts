@@ -30,15 +30,11 @@ export function useRealtimeSync() {
 
     const channel = supabase.channel("app-data-sync");
     for (const { table, keys } of TABLES) {
-      channel.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        () => {
-          for (const key of keys) {
-            queryClient.invalidateQueries({ queryKey: [key] });
-          }
-        },
-      );
+      channel.on("postgres_changes", { event: "*", schema: "public", table }, () => {
+        for (const key of keys) {
+          queryClient.invalidateQueries({ queryKey: [key] });
+        }
+      });
     }
     channel.subscribe();
 

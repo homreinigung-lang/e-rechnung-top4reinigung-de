@@ -37,7 +37,10 @@ export function DateRangeField({
         <Button
           type="button"
           variant="outline"
-          className={cn("w-full justify-start text-left font-normal", !value && "text-muted-foreground")}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !value && "text-muted-foreground",
+          )}
         >
           <CalendarIcon className="size-4" />
           {value || placeholder}

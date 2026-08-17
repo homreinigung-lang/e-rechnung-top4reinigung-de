@@ -19,7 +19,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { sendInvoiceEmail } from "@/lib/email.functions";
 import { buildEmailHtml } from "@/lib/signature";
 
-
 export type SendEmailDefaults = {
   to: string;
   subject: string;
@@ -114,15 +113,12 @@ export function SendEmailDialog({
         duration: 8000,
       });
       onOpenChange(false);
-
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "E-Mail konnte nicht gesendet werden");
     } finally {
       setBusy(false);
     }
   }
-
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
