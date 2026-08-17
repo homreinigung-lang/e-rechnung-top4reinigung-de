@@ -291,6 +291,9 @@ export function ProjektAnalyse({
             Mitarbeiterstunden hier direkt mitlaufen zu lassen.
           </p>
         )}
+
+        <ProjektUnterlagen projectId={projectId} />
+
       </CardContent>
     </Card>
   );
