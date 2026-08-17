@@ -755,7 +755,23 @@ export function EinsatzKalender({
                         +{list.length - 3} weitere
                       </div>
                     )}
+                    {(planByDay.get(key) ?? []).slice(0, 3).map((p) => (
+                      <div
+                        key={p.key}
+                        title={`Planung: ${p.employeeName} · ${p.projectName} · ${p.range || `${p.hours.toFixed(2)} Std.`}`}
+                        className="truncate rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[10px] leading-tight text-primary"
+                      >
+                        <span className="font-semibold">{p.range || `${p.hours.toFixed(2)} Std.`}</span>{" "}
+                        {p.employeeName} · {p.projectName}
+                      </div>
+                    ))}
+                    {(planByDay.get(key) ?? []).length > 3 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        +{(planByDay.get(key) ?? []).length - 3} weitere Planungen
+                      </div>
+                    )}
                   </div>
+
                 </div>
 
               </Fragment>
@@ -854,7 +870,25 @@ export function EinsatzKalender({
                             </button>
                           );
                         })}
+                        {(planByDay.get(key) ?? [])
+                          .filter((p) => p.employeeId === emp.id)
+                          .map((p) => (
+                            <div
+                              key={p.key}
+                              title={`Planung: ${p.projectName}`}
+                              className="rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[11px] leading-tight text-primary"
+                            >
+                              <div className="font-semibold">
+                                {p.range || `${p.hours.toFixed(2)} Std.`}
+                              </div>
+                              <div className="truncate">{p.projectName}</div>
+                              <div className="text-[10px] opacity-80">
+                                Plan · {p.hours.toFixed(2)} Std.
+                              </div>
+                            </div>
+                          ))}
                       </div>
+
 
                     );
                   })}
