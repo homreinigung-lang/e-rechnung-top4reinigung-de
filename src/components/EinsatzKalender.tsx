@@ -870,7 +870,25 @@ export function EinsatzKalender({
                             </button>
                           );
                         })}
+                        {(planByDay.get(key) ?? [])
+                          .filter((p) => p.employeeId === emp.id)
+                          .map((p) => (
+                            <div
+                              key={p.key}
+                              title={`Planung: ${p.projectName}`}
+                              className="rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[11px] leading-tight text-primary"
+                            >
+                              <div className="font-semibold">
+                                {p.range || `${p.hours.toFixed(2)} Std.`}
+                              </div>
+                              <div className="truncate">{p.projectName}</div>
+                              <div className="text-[10px] opacity-80">
+                                Plan · {p.hours.toFixed(2)} Std.
+                              </div>
+                            </div>
+                          ))}
                       </div>
+
 
                     );
                   })}
