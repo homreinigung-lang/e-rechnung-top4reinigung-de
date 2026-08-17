@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProjektUnterlagen } from "@/components/ProjektUnterlagen";
+
 
 const WEEKS_PER_MONTH = 4.33;
 
@@ -291,6 +293,9 @@ export function ProjektAnalyse({
             Mitarbeiterstunden hier direkt mitlaufen zu lassen.
           </p>
         )}
+
+        <ProjektUnterlagen projectId={projectId} />
+
       </CardContent>
     </Card>
   );
