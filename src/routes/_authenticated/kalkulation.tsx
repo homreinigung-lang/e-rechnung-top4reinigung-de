@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Calculator, FileSignature, FileText, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { suggestItems } from "@/lib/item-ai.functions";
+import { analyzeCalculation } from "@/lib/item-ai.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
