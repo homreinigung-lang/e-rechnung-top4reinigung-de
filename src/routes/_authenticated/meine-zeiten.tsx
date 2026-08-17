@@ -228,13 +228,21 @@ function MeineZeiten() {
             {me.role ? ` · ${me.role}` : ""}
           </p>
         </div>
-        <AbwesenheitZeitraum
-          employees={[{ id: me.id, name: me.name, user_id: me.user_id }]}
-          fixedEmployeeId={me.id}
-          triggerLabel="Urlaub / Abwesenheit beantragen"
-          variant="default"
-          asRequest
-        />
+        <div className="flex flex-wrap gap-2">
+          <ZeitErfassenDialog
+            employee={me}
+            projects={projects}
+            assignments={assignments as { project_id: string | null }[]}
+          />
+          <AbwesenheitZeitraum
+            employees={[{ id: me.id, name: me.name, user_id: me.user_id }]}
+            fixedEmployeeId={me.id}
+            triggerLabel="Urlaub / Abwesenheit beantragen"
+            variant="outline"
+            asRequest
+          />
+        </div>
+
 
       </div>
 
