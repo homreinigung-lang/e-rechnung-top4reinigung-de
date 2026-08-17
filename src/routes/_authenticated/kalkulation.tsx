@@ -165,10 +165,30 @@ function KalkulationPage() {
   // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiItems, setAiItems] = useState<AiItem[]>([]);
-  const suggest = useServerFn(suggestItems);
+  const analyze = useServerFn(analyzeCalculation);
   const aiSuggest = useMutation({
-    mutationFn: async () => suggest({ data: { prompt: aiPrompt } }),
+    mutationFn: async () => analyze({ data: { prompt: aiPrompt } }),
     onSuccess: (res) => {
+      const dec = (v: number) => String(v).replace(".", ",");
+      const preset = CLEANING_TYPES.find((t) => t.value === res.cleaning_type);
+      if (preset) {
+        setType(preset.value);
+        setPricePerSqm(dec(res.price_per_sqm > 0 ? res.price_per_sqm : preset.area));
+        setHourlyRate(dec(res.hourly_rate > 0 ? res.hourly_rate : preset.hourly));
+      }
+      setMode(res.mode);
+      if (res.area_sqm > 0) setArea(dec(res.area_sqm));
+      if (res.hours > 0) setHours(dec(res.hours));
+      if (res.frequency > 0) setFrequency(dec(res.frequency));
+      setFrequencyUnit(res.frequency_unit);
+      if (res.travel > 0) setTravel(dec(res.travel));
+      if (res.stairs) {
+        setStairs(true);
+        if (res.floors > 0) setFloors(dec(res.floors));
+      }
+      if (res.note.trim()) setNote((prev) => (prev.trim() ? `${prev}\n${res.note}` : res.note));
+      setFinalTouched(false);
+
       const list = res.items.map((i, n) => ({
         id: `${Date.now()}-${n}`,
         description: i.description,
@@ -177,10 +197,13 @@ function KalkulationPage() {
         unit_price: String(i.unit_price).replace(".", ","),
       }));
       setAiItems((prev) => [...prev, ...list]);
-      toast.success(`${list.length} Positionen vorgeschlagen – frei anpassbar`);
+      toast.success(
+        `Kalkulation übernommen – ${list.length} Positionen erstellt (frei anpassbar)`,
+      );
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
+
 
   const aiTotal = useMemo(
     () => aiItems.reduce((s, i) => s + num(i.quantity) * num(i.unit_price), 0),
