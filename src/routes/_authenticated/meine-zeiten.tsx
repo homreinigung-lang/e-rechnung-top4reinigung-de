@@ -296,8 +296,10 @@ function MeineZeiten() {
       <MeinEinsatzkalender
         assignments={assignments as never}
         projects={projects}
+        entries={entries as never}
         onSelectProject={(id) => setSelectedProjectId(id)}
       />
+
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="surface p-5">
