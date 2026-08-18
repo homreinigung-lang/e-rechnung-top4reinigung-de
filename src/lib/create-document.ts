@@ -28,9 +28,8 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
       type,
       number,
       issue_date: issue,
-      // Bei Angeboten dient das Datum als „gültig bis“ (30 Tage Bindefrist).
-      due_date:
-        type === "invoice" ? addDays(issue, settings?.payment_terms_days ?? 14) : addDays(issue, 30),
+      // Bei Angeboten ist „gültig bis“ optional und wird nicht vorbelegt.
+      due_date: type === "invoice" ? addDays(issue, settings?.payment_terms_days ?? 14) : null,
       reverse_charge: type === "invoice",
       tax_mode: type === "quote" ? "domestic" : "eu_reverse_charge",
       vat_rate: type === "quote" ? 19 : 0,
