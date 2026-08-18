@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { DAY_LABELS, effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
 import { projectAddress } from "@/lib/maps";
 
@@ -43,13 +43,17 @@ function mondayOf(date: Date) {
   return d;
 }
 
-type DayTask = {
+export type DayTask = {
   key: string;
+  date: string;
   projectId: string | null;
   name: string;
   address: string;
   hours: number;
   range: string;
+  start: string;
+  end: string;
+  breakMin: number;
   role: string | null;
   released: boolean;
   done: boolean;
@@ -75,11 +79,16 @@ export function MeinEinsatzkalender({
   projects,
   entries = [],
   onSelectProject,
+  onConfirm,
+  confirmingKey = null,
 }: {
   assignments: KalenderAssignment[];
   projects: KalenderProjekt[];
   entries?: KalenderZeiteintrag[];
   onSelectProject?: (projectId: string) => void;
+  /** Einsatz als erledigt bestätigen – überträgt die Planzeit in die Arbeitszeit. */
+  onConfirm?: (task: DayTask) => void;
+  confirmingKey?: string | null;
 }) {
   const [cursor, setCursor] = React.useState(() => {
     const d = new Date();
@@ -121,11 +130,15 @@ export function MeinEinsatzkalender({
         const list = m.get(date) ?? [];
         list.push({
           key: `${a.id}-${i}`,
+          date,
           projectId: a.project_id,
           name: p?.name || "Objekt",
           address: p ? projectAddress(p) : "",
           hours,
           range: formatDayTime(times[i]),
+          start: times[i]?.start ?? "",
+          end: times[i]?.end ?? "",
+          breakMin: times[i]?.breakMin ?? 0,
           role: a.assignment_role ?? null,
           released: a.released !== false,
           done: Boolean(hit),
@@ -223,45 +236,64 @@ export function MeinEinsatzkalender({
               <div className="mb-1 text-right text-[11px] text-muted-foreground">{cell.day}</div>
               <div className="space-y-1">
                 {tasks.map((t) => (
-                  <button
+                  <div
                     key={t.key}
-                    type="button"
-                    onClick={() => t.projectId && onSelectProject?.(t.projectId)}
-                    className={`block w-full rounded border px-1.5 py-1 text-left transition ${
+                    className={`rounded border transition ${
                       t.done
-                        ? "border-emerald-600 bg-emerald-600 text-white hover:brightness-95"
+                        ? "border-emerald-600 bg-emerald-600 text-white"
                         : t.released
-                          ? "border-primary/30 bg-primary/10 hover:bg-primary/20"
-                          : "border-dashed border-muted-foreground/40 bg-muted hover:bg-muted/70"
+                          ? "border-primary/30 bg-primary/10"
+                          : "border-dashed border-muted-foreground/40 bg-muted"
                     }`}
                   >
-                    <span className="block truncate font-medium">{t.name}</span>
-                    {t.address && (
-                      <span
-                        className={`flex items-center gap-1 truncate text-[10px] ${t.done ? "text-white/80" : "text-muted-foreground"}`}
-                      >
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{t.address}</span>
-                      </span>
-                    )}
-                    <span
-                      className={`block text-[10px] font-semibold ${
-                        t.done
-                          ? "text-white"
-                          : t.released
-                            ? "text-primary"
-                            : "text-muted-foreground"
-                      }`}
+                    <button
+                      type="button"
+                      onClick={() => t.projectId && onSelectProject?.(t.projectId)}
+                      className="block w-full px-1.5 py-1 text-left"
                     >
-                      {(t.done && t.actual ? t.actual : t.range)
-                        ? `${t.done && t.actual ? t.actual : t.range} · `
-                        : ""}
-                      {t.hours.toFixed(2)} Std.
-                      {t.done ? " · Erledigt" : !t.released ? " · vorläufig" : ""}
-                    </span>
-                  </button>
+                      <span className="flex items-center gap-1 font-medium">
+                        {t.done && <Check className="h-3 w-3 shrink-0" />}
+                        <span className="truncate">{t.name}</span>
+                      </span>
+                      {t.address && (
+                        <span
+                          className={`flex items-center gap-1 truncate text-[10px] ${t.done ? "text-white/80" : "text-muted-foreground"}`}
+                        >
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{t.address}</span>
+                        </span>
+                      )}
+                      <span
+                        className={`block text-[10px] font-semibold ${
+                          t.done
+                            ? "text-white"
+                            : t.released
+                              ? "text-primary"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        {(t.done && t.actual ? t.actual : t.range)
+                          ? `${t.done && t.actual ? t.actual : t.range} · `
+                          : ""}
+                        {t.hours.toFixed(2)} Std.
+                        {t.done ? " · Erledigt" : !t.released ? " · geplant" : ""}
+                      </span>
+                    </button>
+                    {!t.done && onConfirm && cell.date <= today && (
+                      <button
+                        type="button"
+                        disabled={confirmingKey === t.key}
+                        onClick={() => onConfirm(t)}
+                        className="flex w-full items-center justify-center gap-1 rounded-b border-t border-primary/20 px-1 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/15 disabled:opacity-50"
+                      >
+                        <Check className="h-3 w-3" />
+                        {confirmingKey === t.key ? "…" : "Erledigt bestätigen"}
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
+
             </div>
           );
         })}

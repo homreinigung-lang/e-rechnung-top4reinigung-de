@@ -42,7 +42,7 @@ import {
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
-import { MeinEinsatzkalender } from "@/components/MeinEinsatzkalender";
+import { MeinEinsatzkalender, type DayTask } from "@/components/MeinEinsatzkalender";
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
@@ -211,6 +211,45 @@ function MeineZeiten() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  /**
+   * Einsatz bestätigen: überträgt die geplanten Zeiten des Tages als
+   * tatsächliche Arbeitszeit in die Zeiterfassung (Ist-Stunden).
+   */
+  const [confirmingKey, setConfirmingKey] = useState<string | null>(null);
+  const confirmShift = useMutation({
+    mutationFn: async (task: DayTask) => {
+      if (!me) throw new Error("Kein Mitarbeiter");
+      if (!(task.hours > 0)) throw new Error("Für diesen Tag sind keine Stunden geplant.");
+      const project = projects.find((p) => p.id === task.projectId);
+      const { error } = await supabase.from("time_entries").insert({
+        user_id: me.user_id,
+        employee_id: me.id,
+        employee_name: me.name,
+        entry_type: "work",
+        work_date: task.date,
+        start_time: task.start || null,
+        end_time: task.end || null,
+        break_minutes: Math.max(0, Number(task.breakMin) || 0),
+        hours: task.hours,
+        hourly_rate: Number(me.hourly_rate ?? 0),
+        project_id: task.projectId,
+        location: project?.name ?? "",
+        note: "Einsatz aus der Planung bestätigt",
+        billed: false,
+      });
+      if (error) throw error;
+    },
+    onMutate: (task: DayTask) => setConfirmingKey(task.key),
+    onSettled: () => setConfirmingKey(null),
+    onSuccess: () => {
+      toast.success("Einsatz bestätigt – Arbeitszeit übernommen");
+      queryClient.invalidateQueries({ queryKey: ["my_time_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["time_entries"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Wird geladen …</p>;
   }
@@ -301,6 +340,8 @@ function MeineZeiten() {
         projects={projects}
         entries={entries as never}
         onSelectProject={(id) => setSelectedProjectId(id)}
+        onConfirm={(task) => confirmShift.mutate(task)}
+        confirmingKey={confirmingKey}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
