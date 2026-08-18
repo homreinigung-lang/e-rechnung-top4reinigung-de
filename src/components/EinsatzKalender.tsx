@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   FileSpreadsheet,
@@ -1230,7 +1231,7 @@ export function EinsatzKalender({
           )}
           {detail && !isAbsence(detail) && (
             <div className="flex flex-wrap gap-2 border-t pt-3">
-              {einsatzStatus(detail) === "done" && detail.completed_at ? (
+              {detail.completed_at ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -1241,7 +1242,7 @@ export function EinsatzKalender({
                 >
                   Abschluss zurücknehmen
                 </Button>
-              ) : einsatzStatus(detail) !== "done" ? (
+              ) : (
                 <Button
                   size="sm"
                   disabled={setEntryStatus.isPending}
@@ -1255,9 +1256,9 @@ export function EinsatzKalender({
                     })
                   }
                 >
-                  Als abgeschlossen markieren
+                  <Check className="size-4" /> Erledigt bestätigen
                 </Button>
-              ) : null}
+              )}
               {einsatzStatus(detail) === "cancelled" ? (
                 <Button
                   size="sm"
