@@ -320,6 +320,40 @@ function AccountantPortal() {
   const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
   const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
 
+  /** Lohn-Sammelzeile je Mitarbeiter: Ist-Stunden, K- und U-Tage. */
+  const payrollRows: Table[] = Array.from(
+    timeEntries
+      .reduce(
+        (acc, t) => {
+          const name = String(t["employee_name"] || "Ohne Zuordnung");
+          const code = String(t["lohnart"] ?? "A");
+          const cur = acc.get(name) ?? {
+            Mitarbeiter: name,
+            "Personal-Nr.": String(t["personnel_number"] ?? ""),
+            Stunden: 0,
+            Lohn: 0,
+            "Kranktage (K)": 0,
+            "Urlaubstage (U)": 0,
+          };
+          if (code === "A") {
+            cur["Stunden"] = (cur["Stunden"] as number) + num(t["hours"]);
+            cur["Lohn"] = (cur["Lohn"] as number) + num(t["hours"]) * num(t["hourly_rate"]);
+          }
+          if (code === "K") cur["Kranktage (K)"] = (cur["Kranktage (K)"] as number) + 1;
+          if (code === "U") cur["Urlaubstage (U)"] = (cur["Urlaubstage (U)"] as number) + 1;
+          acc.set(name, cur);
+          return acc;
+        },
+        new Map<string, Record<string, string | number>>(),
+      )
+      .values(),
+  ).map((r) => ({
+    ...r,
+    Stunden: de(r["Stunden"] as number),
+    Lohn: de(r["Lohn"] as number),
+  })) as Table[];
+
+
 
   const netTotal = documents.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const vatTotal = documents.reduce((s, d) => s + num(d["vat_amount"]), 0);
