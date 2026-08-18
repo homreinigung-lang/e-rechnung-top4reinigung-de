@@ -366,6 +366,10 @@ function Einstellungen() {
         </p>
       </div>
 
+      <Leistungswerte />
+
+
+
       <div className="surface space-y-4 p-6">
         <h2 className="font-display text-lg font-semibold">E-Mail (SMTP) & Signatur</h2>
         <div className="grid gap-4 sm:grid-cols-2">
