@@ -784,7 +784,7 @@ export function EinsatzKalender({
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter" || ev.key === " ") openDay(key);
                   }}
-                  className={`min-h-[92px] cursor-pointer bg-background p-1.5 text-left transition hover:bg-accent/60 ${
+                  className={`min-h-[132px] cursor-pointer space-y-1 bg-background p-2 text-left transition hover:bg-accent/60 ${
                     inMonth ? "" : "opacity-45"
                   } ${key === today ? "ring-1 ring-inset ring-primary" : ""} ${
                     holiday ? "bg-amber-50 dark:bg-amber-950/30" : ""
@@ -934,7 +934,7 @@ export function EinsatzKalender({
                         onKeyDown={(ev) => {
                           if (ev.key === "Enter" || ev.key === " ") openDay(key, emp.id);
                         }}
-                        className={`min-h-[76px] cursor-pointer space-y-0.5 bg-background p-1 text-left align-top transition hover:bg-accent/60 ${
+                        className={`min-h-[112px] cursor-pointer space-y-1 bg-background p-1.5 text-left align-top transition hover:bg-accent/60 ${
                           key === today ? "ring-1 ring-inset ring-primary" : ""
                         }`}
                       >
