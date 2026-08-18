@@ -142,6 +142,23 @@ function Steuerberater() {
     },
   });
 
+  // Zeiterfassung inkl. bestätigter Schichten und Abwesenheiten (K/U) – Basis der Lohnabrechnung.
+  const { data: timeEntries = [] } = useQuery({
+    queryKey: ["stb_time_entries", from, to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("*, employees(name, personnel_number)")
+        .gte("work_date", from)
+        .lte("work_date", to)
+        .neq("approval_status", "rejected")
+        .order("work_date");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+
   const gobdExport = useMutation({
     mutationFn: async () => {
       const blob = await buildGobdExport(from, to);
