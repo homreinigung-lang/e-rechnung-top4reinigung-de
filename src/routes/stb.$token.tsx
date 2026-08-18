@@ -452,6 +452,12 @@ function AccountantPortal() {
             >
               <FileText className="size-4" /> Stundenliste (PDF)
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows)}
+            >
+              <Download className="size-4" /> Lohnabrechnung (CSV)
+            </Button>
 
             <Button
               variant="outline"
@@ -460,11 +466,13 @@ function AccountantPortal() {
                   { title: "Rechnungen", rows: docRows },
                   { title: "Ausgaben", rows: expenseRows },
                   { title: "Stundenzettel", rows: timeRows },
+                  { title: "Lohnabrechnung", rows: payrollRows },
                 ])
               }
             >
               <FileSpreadsheet className="size-4" /> Excel-Export
             </Button>
+
             <div className="flex items-center gap-2 rounded-md border px-2">
               <Label htmlFor="zipMonth" className="text-xs text-muted-foreground">
                 Belege-Monat
