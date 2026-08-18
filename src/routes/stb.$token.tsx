@@ -141,7 +141,9 @@ async function exportHoursPdf(
 
   doc.setFontSize(10);
   doc.text("Mitarbeiter", 15, y);
-  doc.text("Stunden", 120, y, { align: "right" });
+  doc.text("Krank (K)", 100, y, { align: "right" });
+  doc.text("Urlaub (U)", 130, y, { align: "right" });
+  doc.text("Stunden", 160, y, { align: "right" });
   doc.text("Vergütung", 195, y, { align: "right" });
   y += 2;
   doc.line(15, y, 195, y);
@@ -152,8 +154,10 @@ async function exportHoursPdf(
   for (const [name, v] of per) {
     totalH += v.hours;
     totalA += v.amount;
-    doc.text(name.slice(0, 45), 15, y);
-    doc.text(`${de(v.hours)} Std.`, 120, y, { align: "right" });
+    doc.text(name.slice(0, 40), 15, y);
+    doc.text(`${v.sick}`, 100, y, { align: "right" });
+    doc.text(`${v.vacation}`, 130, y, { align: "right" });
+    doc.text(`${de(v.hours)} Std.`, 160, y, { align: "right" });
     doc.text(formatMoney(v.amount), 195, y, { align: "right" });
     y += 6;
     if (y > 275) {
@@ -166,12 +170,12 @@ async function exportHoursPdf(
   y += 6;
   doc.setFontSize(10);
   doc.text("Gesamt", 15, y);
-  doc.text(`${de(totalH)} Std.`, 120, y, { align: "right" });
+  doc.text(`${de(totalH)} Std.`, 160, y, { align: "right" });
   doc.text(formatMoney(totalA), 195, y, { align: "right" });
 
   y += 12;
   doc.setFontSize(11);
-  doc.text("Einzelnachweis", 15, y);
+  doc.text("Einzelnachweis (A = Arbeit, K = Krank, U = Urlaub, F = Feiertag)", 15, y);
   y += 6;
   doc.setFontSize(8);
   for (const e of entries) {
@@ -179,19 +183,22 @@ async function exportHoursPdf(
       doc.addPage();
       y = 20;
     }
+    const code = String(e["lohnart"] ?? "A");
     const time =
       e["start_time"] && e["end_time"]
         ? `${String(e["start_time"]).slice(0, 5)}–${String(e["end_time"]).slice(0, 5)}`
         : "-";
     doc.text(
-      `${formatDate(String(e["work_date"] ?? ""))}  ${String(e["employee_name"] || "Ohne Zuordnung").slice(0, 28)}  ${time}  Pause ${num(e["break_minutes"])} Min.`,
+      `${formatDate(String(e["work_date"] ?? ""))}  [${code}]  ${String(e["employee_name"] || "Ohne Zuordnung").slice(0, 26)}  ${time}  Pause ${num(e["break_minutes"])} Min.`,
       15,
       y,
     );
-    doc.text(`${de(num(e["hours"]))} Std.`, 150, y, { align: "right" });
-    doc.text(formatMoney(num(e["hours"]) * num(e["hourly_rate"])), 195, y, { align: "right" });
+    const h = code === "A" ? num(e["hours"]) : 0;
+    doc.text(code === "A" ? `${de(h)} Std.` : "-", 150, y, { align: "right" });
+    doc.text(formatMoney(h * num(e["hourly_rate"])), 195, y, { align: "right" });
     y += 5;
   }
+
   download(filename, doc.output("blob"));
 }
 
