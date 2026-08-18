@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { fileUrl, openStoredFile } from "@/lib/storage";
+import { useRaumbuch } from "@/lib/raumbuch";
 
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
@@ -160,6 +161,23 @@ function KalkulationPage() {
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
 
+  /**
+   * Raumbuch des verknüpften Projekts. Liegen erfasste Räume vor, kommen
+   * Fläche und Stundenbedarf daraus statt aus der KI-Schätzung.
+   */
+  const { data: raumbuch } = useRaumbuch(projectId);
+  const [raumbuchApplied, setRaumbuchApplied] = useState(false);
+
+  useEffect(() => {
+    if (!raumbuch) {
+      setRaumbuchApplied(false);
+      return;
+    }
+    setArea(String(raumbuch.totalArea).replace(".", ","));
+    if (raumbuch.hoursPerVisit > 0) setHours(String(raumbuch.hoursPerVisit).replace(".", ","));
+    setRaumbuchApplied(true);
+  }, [raumbuch]);
+
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
@@ -179,8 +197,16 @@ function KalkulationPage() {
         setHourlyRate(dec(res.hourly_rate > 0 ? res.hourly_rate : preset.hourly));
       }
       setMode(res.mode);
-      if (res.area_sqm > 0) setArea(dec(res.area_sqm));
-      if (res.hours > 0) setHours(dec(res.hours));
+      // Fläche/Stunden kommen aus dem Raumbuch, sobald ein Projekt mit erfassten
+      // Räumen verknüpft ist – sonst weiterhin aus der KI-Schätzung.
+      if (raumbuch) {
+        setArea(String(raumbuch.totalArea).replace(".", ","));
+        if (raumbuch.hoursPerVisit > 0) setHours(String(raumbuch.hoursPerVisit).replace(".", ","));
+      } else {
+        if (res.area_sqm > 0) setArea(dec(res.area_sqm));
+        if (res.hours > 0) setHours(dec(res.hours));
+      }
+
       if (res.frequency > 0) setFrequency(dec(res.frequency));
       setFrequencyUnit(res.frequency_unit);
       if (res.travel > 0) setTravel(dec(res.travel));
@@ -240,10 +266,11 @@ function KalkulationPage() {
           .join(" · "),
       });
 
-      if (sqm > 0) {
+      if (sqm > 0 && !raumbuch) {
         setMode("area");
         setArea(String(Math.round(sqm * 100) / 100).replace(".", ","));
       }
+
       if (floorSet.size > 1) {
         setStairs(true);
         setFloors(String(floorSet.size));
@@ -536,7 +563,14 @@ function KalkulationPage() {
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                   />
+                  {raumbuchApplied && raumbuch ? (
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      Aus Raumbuch übernommen – {raumbuch.roomCount} Räume aus dem Grundriss-Scan
+                      (manuell überschreibbar).
+                    </p>
+                  ) : null}
                 </div>
+
                 <div className="space-y-2">
                   <Label>Preis pro m² (netto)</Label>
                   <Input
@@ -555,7 +589,15 @@ function KalkulationPage() {
                     value={hours}
                     onChange={(e) => setHours(e.target.value)}
                   />
+                  {raumbuchApplied && raumbuch ? (
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      Aus Raumbuch berechnet – Leistungswerte für {raumbuch.matched} Räume
+                      {raumbuch.unmatched > 0 ? `, ${raumbuch.unmatched} pauschal` : ""} (manuell
+                      überschreibbar).
+                    </p>
+                  ) : null}
                 </div>
+
                 <div className="space-y-2">
                   <Label>Stundensatz (netto)</Label>
                   <Input
