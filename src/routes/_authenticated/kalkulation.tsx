@@ -199,8 +199,16 @@ function KalkulationPage() {
         setHourlyRate(dec(res.hourly_rate > 0 ? res.hourly_rate : preset.hourly));
       }
       setMode(res.mode);
-      if (res.area_sqm > 0) setArea(dec(res.area_sqm));
-      if (res.hours > 0) setHours(dec(res.hours));
+      // Fläche/Stunden kommen aus dem Raumbuch, sobald ein Projekt mit erfassten
+      // Räumen verknüpft ist – sonst weiterhin aus der KI-Schätzung.
+      if (raumbuch) {
+        setArea(String(raumbuch.totalArea).replace(".", ","));
+        if (raumbuch.hoursPerVisit > 0) setHours(String(raumbuch.hoursPerVisit).replace(".", ","));
+      } else {
+        if (res.area_sqm > 0) setArea(dec(res.area_sqm));
+        if (res.hours > 0) setHours(dec(res.hours));
+      }
+
       if (res.frequency > 0) setFrequency(dec(res.frequency));
       setFrequencyUnit(res.frequency_unit);
       if (res.travel > 0) setTravel(dec(res.travel));
