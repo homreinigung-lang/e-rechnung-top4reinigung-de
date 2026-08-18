@@ -18,3 +18,7 @@ export function deriveServiceName(
   if (!raw) return "Gebäudereinigung";
   return raw.length > 60 ? `${raw.slice(0, 57).trimEnd()}…` : raw;
 }
+
+/** Rechtlicher Hinweis am Ende jedes Angebots. */
+export const QUOTE_DISCLAIMER =
+  "Dieses Angebot basiert auf der durchgeführten Besichtigung des Objekts und den dabei erfassten Angaben. Änderungen im Leistungsumfang können zu einer Anpassung des Preises führen. Wir würden uns über eine Zusammenarbeit freuen.";

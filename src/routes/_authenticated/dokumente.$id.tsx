@@ -34,7 +34,12 @@ import {
   vatRateForTaxMode,
 } from "@/lib/format";
 import { buildEpcPayload } from "@/lib/epc";
-import { QUOTE_INTRO, deriveServiceName, quoteHeadline } from "@/lib/document-texts";
+import {
+  QUOTE_DISCLAIMER,
+  QUOTE_INTRO,
+  deriveServiceName,
+  quoteHeadline,
+} from "@/lib/document-texts";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -684,8 +689,11 @@ function DokumentDetail() {
     });
     if (form["service_period"])
       meta.push({ label: "Leistungszeitraum", value: String(form["service_period"]) });
-    if (isInvoice && form["due_date"])
-      meta.push({ label: "Fällig am", value: formatDate(String(form["due_date"])) });
+    if (form["due_date"])
+      meta.push({
+        label: isInvoice ? "Fällig am" : "Gültig bis",
+        value: formatDate(String(form["due_date"])),
+      });
     if (form["order_number"])
       meta.push({ label: "Bestellnummer", value: String(form["order_number"]) });
 
@@ -762,14 +770,20 @@ function DokumentDetail() {
         !isInvoice && form["service_description"] ? String(form["service_description"]) : undefined,
       summary,
       taxNote: taxNote || undefined,
-      notes: form["notes"] ? String(form["notes"]) : undefined,
+      notes: isInvoice
+        ? form["notes"]
+          ? String(form["notes"])
+          : undefined
+        : [form["notes"] ? String(form["notes"]) : "", QUOTE_DISCLAIMER]
+            .filter(Boolean)
+            .join("\n\n"),
       paymentLines: isInvoice
         ? [
-            `Zahlüberweisung in ${paymentTermsDays} Tagen`,
+            `Zahlungsbedingungen: Zahlüberweisung in ${paymentTermsDays} Tagen`,
             "Vielen Dank für die gute Zusammenarbeit.",
             `${bankName} · IBAN ${iban} · BIC ${bic}`,
           ]
-        : undefined,
+        : [`Zahlungsbedingungen: Zahlüberweisung in ${paymentTermsDays} Tagen`],
       qrPayload: epc,
       footer: [
         {
@@ -1176,16 +1190,14 @@ function DokumentDetail() {
               onChange={(e) => setField("issue_date", e.target.value)}
             />
           </div>
-          {isInvoice && (
-            <div className="space-y-2">
-              <Label>Fällig am</Label>
-              <Input
-                type="date"
-                value={String(form["due_date"] ?? "")}
-                onChange={(e) => setField("due_date", e.target.value)}
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>{isInvoice ? "Fällig am" : "Gültig bis"}</Label>
+            <Input
+              type="date"
+              value={String(form["due_date"] ?? "")}
+              onChange={(e) => setField("due_date", e.target.value)}
+            />
+          </div>
           {isInvoice && (
             <div className="space-y-2">
               <Label>Zahlungsdatum (bezahlt am)</Label>
@@ -1539,9 +1551,11 @@ function DokumentDetail() {
                   <dd className="inline">{String(form["service_period"])}</dd>
                 </div>
               )}
-              {isInvoice && form["due_date"] && (
+              {form["due_date"] && (
                 <div>
-                  <dt className="inline text-muted-foreground">Fällig am: </dt>
+                  <dt className="inline text-muted-foreground">
+                    {isInvoice ? "Fällig am" : "Gültig bis"}:{" "}
+                  </dt>
                   <dd className="inline">{formatDate(String(form["due_date"]))}</dd>
                 </div>
               )}
@@ -1724,10 +1738,10 @@ function DokumentDetail() {
 
             {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
 
-            {isInvoice && (
+            {isInvoice ? (
               <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
                 <div className="space-y-0.5 text-sm">
-                  <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
+                  <p>Zahlungsbedingungen: Zahlüberweisung in {paymentTermsDays} Tagen</p>
                   <p>Vielen Dank für die gute Zusammenarbeit.</p>
                   <p className="pt-1 text-xs text-muted-foreground">
                     {bankName} · IBAN {iban} · BIC {bic}
@@ -1735,6 +1749,11 @@ function DokumentDetail() {
                 </div>
 
                 <GiroCode payload={epc} size={84} />
+              </div>
+            ) : (
+              <div className="mt-4 space-y-2 text-sm">
+                <p>Zahlungsbedingungen: Zahlüberweisung in {paymentTermsDays} Tagen</p>
+                <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>
               </div>
             )}
           </div>
