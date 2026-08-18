@@ -13,7 +13,6 @@ import { formatMoney, formatNumber } from "@/lib/format";
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { useRaumbuch } from "@/lib/raumbuch";
 
-
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
 
@@ -182,7 +181,6 @@ function KalkulationPage() {
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
-
 
   // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
   const [aiPrompt, setAiPrompt] = useState("");
