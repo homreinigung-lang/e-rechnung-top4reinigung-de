@@ -221,6 +221,18 @@ function MeineZeiten() {
       if (!me) throw new Error("Kein Mitarbeiter");
       if (!(task.hours > 0)) throw new Error("Für diesen Tag sind keine Stunden geplant.");
       const project = projects.find((p) => p.id === task.projectId);
+      // Doppelbuchung vermeiden: pro Tag nur eine bestätigte Arbeitszeit
+      const { data: existing, error: dupError } = await supabase
+        .from("time_entries")
+        .select("id")
+        .eq("employee_id", me.id)
+        .eq("work_date", task.date)
+        .eq("entry_type", "work")
+        .limit(1);
+      if (dupError) throw dupError;
+      if (existing && existing.length > 0) {
+        throw new Error("Für diesen Tag ist bereits eine Arbeitszeit erfasst.");
+      }
       const { error } = await supabase.from("time_entries").insert({
         user_id: me.user_id,
         employee_id: me.id,
