@@ -197,6 +197,8 @@ export function EinsatzKalender({
   const [filterProject, setFilterProject] = useState<string>(ALL);
   const [day, setDay] = useState<string | null>(null);
   const [detail, setDetail] = useState<TimeEntry | null>(null);
+  const [planDetail, setPlanDetail] = useState<PlanShift | null>(null);
+
 
   const [form, setForm] = useState<PlanForm>(emptyForm);
 
@@ -466,6 +468,11 @@ export function EinsatzKalender({
           projectName: projectName(a.project_id) || "Ohne Objekt",
           range: formatDayTime(times[i]),
           hours: h,
+          start: times[i]?.start ?? "",
+          end: times[i]?.end ?? "",
+          breakMin: times[i]?.breakMin ?? 0,
+          date: key,
+
         });
         map.set(key, list);
       });
@@ -570,6 +577,43 @@ export function EinsatzKalender({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  /** Geplante Schicht als erledigt übernehmen: Planzeit wird zur Ist-Arbeitszeit. */
+  const confirmPlan = useMutation({
+    mutationFn: async (p: PlanShift) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const emp = employees.find((e) => e.id === p.employeeId);
+      const { error } = await supabase.from("time_entries").insert({
+        user_id: userId,
+        employee_id: p.employeeId,
+        employee_name: emp?.name ?? p.employeeName,
+        work_date: p.date,
+        start_time: p.start || null,
+        end_time: p.end || null,
+        break_minutes: p.breakMin || 0,
+        hours: Number(p.hours.toFixed(2)),
+        hourly_rate: Number(emp?.hourly_rate ?? 0),
+        project_id: p.projectId,
+        location: p.projectName === "Ohne Objekt" ? "" : p.projectName,
+        note: "",
+        entry_type: "work",
+        absence_reason: "",
+        completed_at: new Date().toISOString(),
+        approval_status: "approved",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Einsatz als erledigt übernommen");
+      setPlanDetail(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
 
   const openDay = (key: string, employeeId?: string) => {
     const preset = employeeId ?? (filterEmployee !== ALL ? filterEmployee : "");
@@ -740,7 +784,7 @@ export function EinsatzKalender({
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter" || ev.key === " ") openDay(key);
                   }}
-                  className={`min-h-[92px] cursor-pointer bg-background p-1.5 text-left transition hover:bg-accent/60 ${
+                  className={`min-h-[132px] cursor-pointer space-y-1 bg-background p-2 text-left transition hover:bg-accent/60 ${
                     inMonth ? "" : "opacity-45"
                   } ${key === today ? "ring-1 ring-inset ring-primary" : ""} ${
                     holiday ? "bg-amber-50 dark:bg-amber-950/30" : ""
@@ -805,17 +849,25 @@ export function EinsatzKalender({
                     {openPlans(key)
                       .slice(0, 3)
                       .map((p) => (
-                        <div
+                        <button
                           key={p.key}
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setPlanDetail(p);
+                          }}
                           title={`Planung: ${p.employeeName} · ${p.projectName} · ${p.range || `${p.hours.toFixed(2)} Std.`}`}
-                          className="truncate rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[10px] leading-tight text-primary"
+                          className="block w-full rounded-md border border-dashed border-primary/50 bg-primary/5 px-1.5 py-1 text-left text-[11px] leading-tight text-primary hover:bg-primary/10"
                         >
-                          <span className="font-semibold">
-                            {p.range || `${p.hours.toFixed(2)} Std.`}
-                          </span>{" "}
-                          {p.employeeName} · {p.projectName}
-                        </div>
+                          <div className="truncate font-semibold">{p.employeeName}</div>
+                          <div className="truncate opacity-90">{p.projectName}</div>
+                          <div className="text-[10px] opacity-80">
+                            {p.range ? `${p.range} · ` : ""}
+                            {p.hours.toFixed(2)} Std. · Plan
+                          </div>
+                        </button>
                       ))}
+
                     {openPlans(key).length > 3 && (
                       <div className="text-[10px] text-muted-foreground">
                         +{openPlans(key).length - 3} weitere Planungen
@@ -882,7 +934,7 @@ export function EinsatzKalender({
                         onKeyDown={(ev) => {
                           if (ev.key === "Enter" || ev.key === " ") openDay(key, emp.id);
                         }}
-                        className={`min-h-[76px] cursor-pointer space-y-0.5 bg-background p-1 text-left align-top transition hover:bg-accent/60 ${
+                        className={`min-h-[112px] cursor-pointer space-y-1 bg-background p-1.5 text-left align-top transition hover:bg-accent/60 ${
                           key === today ? "ring-1 ring-inset ring-primary" : ""
                         }`}
                       >
@@ -932,20 +984,25 @@ export function EinsatzKalender({
                           );
                         })}
                         {openPlans(key, emp.id).map((p) => (
-                          <div
+                          <button
                             key={p.key}
-                            title={`Planung: ${p.projectName}`}
-                            className="rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[11px] leading-tight text-primary"
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setPlanDetail(p);
+                            }}
+                            title={`Planung: ${p.employeeName} · ${p.projectName}`}
+                            className="block w-full rounded-md border border-dashed border-primary/50 bg-primary/5 px-1.5 py-1 text-left text-[11px] leading-tight text-primary hover:bg-primary/10"
                           >
-                            <div className="font-semibold">
-                              {p.range || `${p.hours.toFixed(2)} Std.`}
-                            </div>
+                            <div className="truncate font-semibold">{p.employeeName}</div>
                             <div className="truncate">{p.projectName}</div>
                             <div className="text-[10px] opacity-80">
-                              Plan · {p.hours.toFixed(2)} Std.
+                              {p.range ? `${p.range} · ` : ""}
+                              {p.hours.toFixed(2)} Std. · Plan
                             </div>
-                          </div>
+                          </button>
                         ))}
+
                       </div>
                     );
                   })}
@@ -1308,6 +1365,52 @@ export function EinsatzKalender({
               Schließen
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Plan-Details: geplante Schicht bestätigen */}
+      <Dialog open={planDetail !== null} onOpenChange={(o) => !o && setPlanDetail(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Plan-Details</DialogTitle>
+          </DialogHeader>
+          {planDetail && (
+            <div className="space-y-3 text-sm">
+              <span className="inline-flex items-center gap-1 rounded border border-dashed border-primary/50 bg-primary/5 px-2 py-0.5 text-xs font-medium text-primary">
+                Geplanter Einsatz
+              </span>
+              <dl className="grid grid-cols-[9rem_1fr] gap-x-3 gap-y-2">
+                <dt className="text-muted-foreground">Datum</dt>
+                <dd className="font-medium">{formatDate(planDetail.date)}</dd>
+                <dt className="text-muted-foreground">Mitarbeiter</dt>
+                <dd className="font-medium">{planDetail.employeeName}</dd>
+                <dt className="text-muted-foreground">Objekt / Einsatzort</dt>
+                <dd>{planDetail.projectName}</dd>
+                <dt className="text-muted-foreground">Zeit</dt>
+                <dd>
+                  {planDetail.range || "—"}
+                  {planDetail.breakMin ? ` (Pause ${planDetail.breakMin} Min.)` : ""}
+                </dd>
+                <dt className="text-muted-foreground">Planstunden</dt>
+                <dd className="font-medium">{planDetail.hours.toFixed(2)} Std.</dd>
+              </dl>
+              <p className="text-xs text-muted-foreground">
+                Mit „Erledigt bestätigen“ werden die Planzeiten als tatsächliche Arbeitszeit
+                übernommen.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2 border-t pt-3">
+            <Button
+              size="sm"
+              disabled={confirmPlan.isPending}
+              onClick={() => planDetail && confirmPlan.mutate(planDetail)}
+            >
+              <Check className="size-4" /> Erledigt bestätigen
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setPlanDetail(null)}>
+              Schließen
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </section>
