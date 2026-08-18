@@ -849,17 +849,25 @@ export function EinsatzKalender({
                     {openPlans(key)
                       .slice(0, 3)
                       .map((p) => (
-                        <div
+                        <button
                           key={p.key}
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setPlanDetail(p);
+                          }}
                           title={`Planung: ${p.employeeName} · ${p.projectName} · ${p.range || `${p.hours.toFixed(2)} Std.`}`}
-                          className="truncate rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[10px] leading-tight text-primary"
+                          className="block w-full rounded-md border border-dashed border-primary/50 bg-primary/5 px-1.5 py-1 text-left text-[11px] leading-tight text-primary hover:bg-primary/10"
                         >
-                          <span className="font-semibold">
-                            {p.range || `${p.hours.toFixed(2)} Std.`}
-                          </span>{" "}
-                          {p.employeeName} · {p.projectName}
-                        </div>
+                          <div className="truncate font-semibold">{p.employeeName}</div>
+                          <div className="truncate opacity-90">{p.projectName}</div>
+                          <div className="text-[10px] opacity-80">
+                            {p.range ? `${p.range} · ` : ""}
+                            {p.hours.toFixed(2)} Std. · Plan
+                          </div>
+                        </button>
                       ))}
+
                     {openPlans(key).length > 3 && (
                       <div className="text-[10px] text-muted-foreground">
                         +{openPlans(key).length - 3} weitere Planungen
