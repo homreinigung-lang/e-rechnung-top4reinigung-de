@@ -585,6 +585,18 @@ export function EinsatzKalender({
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       const emp = employees.find((e) => e.id === p.employeeId);
+      // Doppelte Ist-Zeiten verhindern (Mehrfachklick oder bereits im Portal bestätigt)
+      const { data: existing, error: dupError } = await supabase
+        .from("time_entries")
+        .select("id")
+        .eq("employee_id", p.employeeId)
+        .eq("work_date", p.date)
+        .eq("entry_type", "work")
+        .limit(1);
+      if (dupError) throw dupError;
+      if (existing && existing.length > 0) {
+        throw new Error("Für diesen Tag ist bereits eine Arbeitszeit erfasst.");
+      }
       const { error } = await supabase.from("time_entries").insert({
         user_id: userId,
         employee_id: p.employeeId,
