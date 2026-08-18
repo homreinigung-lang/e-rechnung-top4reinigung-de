@@ -512,13 +512,20 @@ function AccountantPortal() {
               <Kpi label="Umsatzsteuer" value={formatMoney(vatTotal)} />
               <Kpi label="Ausgaben netto" value={formatMoney(expNet)} />
               <Kpi label="USt-Zahllast" value={formatMoney(vatTotal - expVat)} />
-              <Kpi label="Arbeitsstunden" value={`${de(hoursTotal)} Std.`} />
+              <Kpi label="Arbeitsstunden (bestätigt)" value={`${de(hoursTotal)} Std.`} />
+              <Kpi label="Kranktage (K)" value={`${sickDays}`} />
+              <Kpi label="Urlaubstage (U)" value={`${vacationDays}`} />
             </div>
 
             <h3 className="mt-6 font-display text-sm font-semibold">Rechnungen</h3>
             <DataTable rows={docRows} empty="Keine Rechnungen im Zeitraum." />
             <h3 className="mt-6 font-display text-sm font-semibold">Ausgaben</h3>
             <DataTable rows={expenseRows} empty="Keine Ausgaben im Zeitraum." />
+            <h3 className="mt-6 font-display text-sm font-semibold">
+              Lohnabrechnung je Mitarbeiter
+            </h3>
+            <DataTable rows={payrollRows} empty="Keine Arbeitszeiten im Zeitraum." />
+
 
             <h3 className="mt-6 font-display text-sm font-semibold">Belege (PDF/Bild)</h3>
             {expenses.filter((e) => String(e["receipt_url"] ?? "")).length === 0 ? (
