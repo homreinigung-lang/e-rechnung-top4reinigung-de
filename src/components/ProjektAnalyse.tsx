@@ -15,6 +15,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProjektUnterlagen } from "@/components/ProjektUnterlagen";
+import {
+  DEFAULT_PERFORMANCE_RATES,
+  hoursPerVisit,
+  type PerformanceRate,
+} from "@/lib/leistungswerte";
+
+type RoomRow = {
+  id: string;
+  name: string;
+  area_sqm: number;
+  confirmed: boolean;
+  usage_type: string;
+  floor_covering: string;
+};
 
 const WEEKS_PER_MONTH = 4.33;
 
