@@ -565,7 +565,14 @@ function KalkulationPage() {
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                   />
+                  {raumbuchApplied && raumbuch ? (
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      Aus Raumbuch übernommen – {raumbuch.roomCount} Räume aus dem Grundriss-Scan
+                      (manuell überschreibbar).
+                    </p>
+                  ) : null}
                 </div>
+
                 <div className="space-y-2">
                   <Label>Preis pro m² (netto)</Label>
                   <Input
