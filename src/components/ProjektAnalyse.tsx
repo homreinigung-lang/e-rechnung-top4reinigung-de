@@ -15,6 +15,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProjektUnterlagen } from "@/components/ProjektUnterlagen";
+import {
+  DEFAULT_PERFORMANCE_RATES,
+  hoursPerVisit,
+  type PerformanceRate,
+} from "@/lib/leistungswerte";
+
+type RoomRow = {
+  id: string;
+  name: string;
+  area_sqm: number;
+  confirmed: boolean;
+  usage_type: string;
+  floor_covering: string;
+};
 
 const WEEKS_PER_MONTH = 4.33;
 
@@ -91,23 +105,39 @@ export function ProjektAnalyse({
     [projects, projectId],
   );
 
+  const { data: rates = [] } = useQuery({
+    queryKey: ["performance_rates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("performance_rates")
+        .select("id,label,usage_type,floor_covering,sqm_per_hour,active")
+        .order("label");
+      if (error) throw error;
+      return (data ?? []) as PerformanceRate[];
+    },
+  });
+
   const { data: detail } = useQuery({
     queryKey: ["kalkulation_project_detail", projectId],
     enabled: Boolean(projectId),
     queryFn: async () => {
-      const [rooms, lv, assignments] = await Promise.all([
-        supabase.from("project_rooms").select("id,area_sqm,confirmed").eq("project_id", projectId!),
+      const [rooms, lv, assignments, projectRow] = await Promise.all([
+        supabase
+          .from("project_rooms")
+          .select("id,name,area_sqm,confirmed,usage_type,floor_covering")
+          .eq("project_id", projectId!),
         supabase.from("project_lv_items").select("id,done,critical").eq("project_id", projectId!),
         supabase
           .from("project_assignments")
           .select("id,hours_per_week,employee_id,employees(name)")
           .eq("project_id", projectId!),
+        supabase.from("projects").select("sqm_per_hour").eq("id", projectId!).maybeSingle(),
       ]);
       if (rooms.error) throw rooms.error;
       if (lv.error) throw lv.error;
       if (assignments.error) throw assignments.error;
       return {
-        rooms: (rooms.data ?? []) as { id: string; area_sqm: number; confirmed: boolean }[],
+        rooms: (rooms.data ?? []) as RoomRow[],
         lv: (lv.data ?? []) as { id: string; done: boolean; critical: boolean }[],
         assignments: (assignments.data ?? []) as {
           id: string;
@@ -115,11 +145,12 @@ export function ProjektAnalyse({
           employee_id: string;
           employees: { name: string } | null;
         }[],
+        fallbackSqmPerHour: Number(projectRow.data?.sqm_per_hour ?? 0),
       };
     },
   });
 
-  const rooms = detail?.rooms ?? [];
+  const rooms = useMemo(() => detail?.rooms ?? [], [detail?.rooms]);
   const lv = detail?.lv ?? [];
   const assignments = detail?.assignments ?? [];
 
@@ -127,6 +158,28 @@ export function ProjektAnalyse({
     (s, a) => s + Number(a.hours_per_week || 0) * WEEKS_PER_MONTH,
     0,
   );
+
+  /**
+   * Stundenbedarf aus den erfassten Räumen: Fläche je Raum geteilt durch den
+   * passenden Leistungswert (Nutzungstyp/Bodenbelag). Ohne Treffer greift der
+   * pauschale sqm_per_hour-Wert des Projekts als Fallback.
+   */
+  const roomBased = useMemo(() => {
+    if (rooms.length === 0) return null;
+    const usable: PerformanceRate[] =
+      rates.length > 0
+        ? rates
+        : DEFAULT_PERFORMANCE_RATES.map((r, n) => ({ ...r, id: `default-${n}`, active: true }));
+    const { hours, matched, unmatched } = hoursPerVisit(
+      rooms,
+      usable,
+      detail?.fallbackSqmPerHour ?? 0,
+    );
+    if (hours <= 0) return null;
+    return { monthly: hours * snapshot.visitsPerMonth, matched, unmatched };
+  }, [rooms, rates, detail?.fallbackSqmPerHour, snapshot.visitsPerMonth]);
+
+  const effectiveMonthlyHours = roomBased ? roomBased.monthly : snapshot.monthlyHours;
 
   // Vollständigkeit der aktuellen Kalkulation (aktualisiert sich live)
   const readiness = useMemo(() => {
@@ -142,7 +195,7 @@ export function ProjektAnalyse({
 
   const roomsProgress = pct(rooms.filter((r) => r.confirmed).length, rooms.length);
   const lvProgress = pct(lv.filter((i) => i.done).length, lv.length);
-  const capacityProgress = pct(plannedMonthlyHours, snapshot.monthlyHours);
+  const capacityProgress = pct(plannedMonthlyHours, effectiveMonthlyHours);
 
   const statusLabel = snapshot.confirmed
     ? "final bestätigt"
@@ -194,11 +247,17 @@ export function ProjektAnalyse({
           </div>
           <div className="rounded-md border p-3">
             <p className="text-xs text-muted-foreground">Stundenbedarf / Monat</p>
-            <p className="text-lg font-semibold">{formatNumber(snapshot.monthlyHours)} Std.</p>
+            <p className="text-lg font-semibold">{formatNumber(effectiveMonthlyHours)} Std.</p>
             <p className="text-[11px] text-muted-foreground">
               {formatNumber(snapshot.visitsPerMonth)} Einsätze pro Monat
+              {roomBased
+                ? ` · aus ${rooms.length} Räumen (${roomBased.matched} mit Leistungswert${
+                    roomBased.unmatched > 0 ? `, ${roomBased.unmatched} pauschal` : ""
+                  })`
+                : ""}
             </p>
           </div>
+
           <div className="rounded-md border p-3">
             <p className="text-xs text-muted-foreground">Geplante Mitarbeiterstunden</p>
             <p className="text-lg font-semibold">{formatNumber(plannedMonthlyHours)} Std.</p>
@@ -225,8 +284,8 @@ export function ProjektAnalyse({
             label="Personaldeckung"
             value={capacityProgress}
             hint={
-              snapshot.monthlyHours > 0
-                ? `${formatNumber(plannedMonthlyHours)} von ${formatNumber(snapshot.monthlyHours)} Std. eingeplant`
+              effectiveMonthlyHours > 0
+                ? `${formatNumber(plannedMonthlyHours)} von ${formatNumber(effectiveMonthlyHours)} Std. eingeplant`
                 : "Noch kein Stundenbedarf berechnet"
             }
           />

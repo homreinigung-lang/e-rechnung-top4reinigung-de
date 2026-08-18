@@ -850,6 +850,42 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_rates: {
+        Row: {
+          active: boolean
+          created_at: string
+          floor_covering: string
+          id: string
+          label: string
+          sqm_per_hour: number
+          updated_at: string
+          usage_type: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          floor_covering?: string
+          id?: string
+          label?: string
+          sqm_per_hour?: number
+          updated_at?: string
+          usage_type?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          floor_covering?: string
+          id?: string
+          label?: string
+          sqm_per_hour?: number
+          updated_at?: string
+          usage_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_releases: {
         Row: {
           created_at: string

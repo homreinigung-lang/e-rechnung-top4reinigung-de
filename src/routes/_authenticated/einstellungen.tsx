@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/format";
 import { saveFile } from "@/lib/download";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
+import { Leistungswerte } from "@/components/Leistungswerte";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { permanentFileUrl, uploadUserFile } from "@/lib/storage";
 import {
@@ -365,6 +366,8 @@ function Einstellungen() {
           Profil“.
         </p>
       </div>
+
+      <Leistungswerte />
 
       <div className="surface space-y-4 p-6">
         <h2 className="font-display text-lg font-semibold">E-Mail (SMTP) & Signatur</h2>
