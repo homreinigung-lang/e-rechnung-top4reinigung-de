@@ -442,10 +442,24 @@ function Steuerberater() {
         </Button>
         <Button
           variant="outline"
+          onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows)}
+        >
+          <Download className="size-4" /> Stundenzettel (CSV)
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows)}
+        >
+          <Download className="size-4" /> Lohnabrechnung (CSV)
+        </Button>
+        <Button
+          variant="outline"
           onClick={() =>
             downloadExcel(`Steuerauswertung_${period}.xls`, [
               { title: "Rechnungen", rows: docRows },
               { title: "Ausgaben", rows: expenseRows },
+              { title: "Stundenzettel", rows: timeRows },
+              { title: "Lohnabrechnung", rows: payrollRows },
             ])
           }
         >
@@ -455,6 +469,15 @@ function Steuerberater() {
           <Printer className="size-4" /> Als PDF drucken
         </Button>
       </section>
+
+      <section className="print-area rounded-lg border bg-card p-6">
+        <h2 className="font-display text-lg font-semibold">Lohnabrechnung je Mitarbeiter</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Bestätigte Ist-Stunden aus dem Control Center inkl. Kranktagen (K) und Urlaubstagen (U).
+        </p>
+        <Table rows={payrollRows} empty="Keine Arbeitszeiten im Zeitraum." />
+      </section>
+
 
       <section className="no-print rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
