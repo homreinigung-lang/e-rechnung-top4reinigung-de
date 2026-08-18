@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,26 +33,6 @@ import {
   isEffective,
 } from "@/lib/absence";
 
-export const Route = createFileRoute("/_authenticated/personal")({
-  head: () => ({
-    meta: [
-      { title: "Personal – Einsatzorte, Stunden & Wochenplan" },
-      {
-        name: "description",
-        content:
-          "Mitarbeiter verwalten, Einsatzorte und Baustellen zuordnen, Stunden pro Projekt auswerten und die Wochenübersicht planen.",
-      },
-      { property: "og:title", content: "Personal- und Einsatzplanung" },
-      {
-        property: "og:description",
-        content: "Team, Objektzuordnung, Projektstunden und Wochenübersicht in einer Ansicht.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: Personal,
-});
 
 const ROLES = ["Reinigungskraft", "Vorarbeiter", "Objektleiter", "Springer", "Verwaltung"];
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];

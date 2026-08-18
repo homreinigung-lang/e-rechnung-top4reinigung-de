@@ -2,9 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarRange, Clock, HardHat } from "lucide-react";
-import { Personal } from "./personal";
-import { Arbeitsplanung } from "./arbeitsplanung";
-import { Zeiterfassung } from "./zeiterfassung";
+import { Personal } from "@/components/PersonalPanel";
+import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
+import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 
 export const Route = createFileRoute("/_authenticated/team")({
   head: () => ({

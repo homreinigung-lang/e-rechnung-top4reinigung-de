@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,26 +46,6 @@ function de(n: number) {
   return n.toFixed(2).replace(".", ",");
 }
 
-export const Route = createFileRoute("/_authenticated/zeiterfassung")({
-  head: () => ({
-    meta: [
-      { title: "Mitarbeiter-Zeiterfassung – HomR" },
-      {
-        name: "description",
-        content:
-          "Arbeitszeiten und Stunden der Mitarbeiter erfassen, auswerten und als Grundlage für Rechnungen verwalten.",
-      },
-      { property: "og:title", content: "Mitarbeiter-Zeiterfassung" },
-      {
-        property: "og:description",
-        content: "Arbeitsstunden pro Mitarbeiter, Kunde und Einsatzort übersichtlich erfassen.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: Zeiterfassung,
-});
 
 type Employee = {
   id: string;

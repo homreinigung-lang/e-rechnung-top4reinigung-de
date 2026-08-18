@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,26 +28,6 @@ import {
 } from "@/lib/planung";
 import { formatDate } from "@/lib/format";
 
-export const Route = createFileRoute("/_authenticated/arbeitsplanung")({
-  head: () => ({
-    meta: [
-      { title: "Arbeitsplanung – Team & Objekte im Raster" },
-      {
-        name: "description",
-        content:
-          "Mitarbeiter im Raster auf Objekte verteilen, Wochenstunden planen und Einsatzorte direkt navigieren.",
-      },
-      { property: "og:title", content: "Arbeitsplanung" },
-      {
-        property: "og:description",
-        content: "Personaleinsatz je Objekt planen und Auslastung im Blick behalten.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: Arbeitsplanung,
-});
 
 type Employee = {
   id: string;
