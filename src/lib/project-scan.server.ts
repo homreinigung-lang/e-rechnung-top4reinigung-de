@@ -421,6 +421,18 @@ export async function analyzeProjectFile(
     : [];
 
   const expected = Math.max(num(parsed["expected_room_count"]), rooms.length);
+  const finalRooms = rooms.filter((r) => r.name || r.area_sqm > 0);
+  const highlights = strList(parsed["highlights"]);
+
+  // Self-Check nur im Grundriss-Modus: genannte Gesamtfläche vs. Summe der Räume.
+  if (mode === "floorplan" && finalRooms.length > 0) {
+    const roomSum = finalRooms.reduce((sum, r) => sum + r.area_sqm, 0);
+    if (roomSum > 0) {
+      const statedTotal = await readStatedTotalArea(apiKey, dataUrl, mimeType);
+      const warning = buildAreaWarning(roomSum, statedTotal);
+      if (warning) highlights.push(warning);
+    }
+  }
 
   return {
     project_name: String(parsed["project_name"] ?? "").trim(),
@@ -430,9 +442,9 @@ export async function analyzeProjectFile(
     customer_name: String(parsed["customer_name"] ?? "").trim(),
     expected_room_count: Math.round(expected),
     executive_summary: String(parsed["executive_summary"] ?? "").trim(),
-    highlights: strList(parsed["highlights"]),
+    highlights,
     requirements: strList(parsed["requirements"]),
-    rooms: rooms.filter((r) => r.name || r.area_sqm > 0),
+    rooms: finalRooms,
     items: items.filter((i) => i.title || i.section),
   };
 }
