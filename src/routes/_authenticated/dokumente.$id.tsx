@@ -34,7 +34,12 @@ import {
   vatRateForTaxMode,
 } from "@/lib/format";
 import { buildEpcPayload } from "@/lib/epc";
-import { QUOTE_INTRO, deriveServiceName, quoteHeadline } from "@/lib/document-texts";
+import {
+  QUOTE_DISCLAIMER,
+  QUOTE_INTRO,
+  deriveServiceName,
+  quoteHeadline,
+} from "@/lib/document-texts";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
