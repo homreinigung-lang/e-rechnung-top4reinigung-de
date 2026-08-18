@@ -197,6 +197,8 @@ export function EinsatzKalender({
   const [filterProject, setFilterProject] = useState<string>(ALL);
   const [day, setDay] = useState<string | null>(null);
   const [detail, setDetail] = useState<TimeEntry | null>(null);
+  const [planDetail, setPlanDetail] = useState<PlanShift | null>(null);
+
 
   const [form, setForm] = useState<PlanForm>(emptyForm);
 
