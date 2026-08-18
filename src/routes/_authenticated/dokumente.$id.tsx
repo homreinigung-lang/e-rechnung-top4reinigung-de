@@ -1551,9 +1551,11 @@ function DokumentDetail() {
                   <dd className="inline">{String(form["service_period"])}</dd>
                 </div>
               )}
-              {isInvoice && form["due_date"] && (
+              {form["due_date"] && (
                 <div>
-                  <dt className="inline text-muted-foreground">Fällig am: </dt>
+                  <dt className="inline text-muted-foreground">
+                    {isInvoice ? "Fällig am" : "Gültig bis"}:{" "}
+                  </dt>
                   <dd className="inline">{formatDate(String(form["due_date"]))}</dd>
                 </div>
               )}
