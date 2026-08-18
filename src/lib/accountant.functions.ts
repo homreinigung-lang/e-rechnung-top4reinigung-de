@@ -9,7 +9,9 @@ export type AccountantReport = {
   documents: Row[];
   expenses: Row[];
   timeEntries: Row[];
+  adjustments: Row[];
 };
+
 
 /** Kein Ablaufdatum: Zugang gilt dauerhaft. */
 const NO_EXPIRY = "2999-12-31T00:00:00.000Z";
