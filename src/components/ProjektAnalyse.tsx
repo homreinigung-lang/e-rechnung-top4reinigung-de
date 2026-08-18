@@ -166,7 +166,10 @@ export function ProjektAnalyse({
    */
   const roomBased = useMemo(() => {
     if (rooms.length === 0) return null;
-    const usable = rates.length > 0 ? rates : (DEFAULT_PERFORMANCE_RATES as PerformanceRate[]);
+    const usable: PerformanceRate[] =
+      rates.length > 0
+        ? rates
+        : DEFAULT_PERFORMANCE_RATES.map((r, n) => ({ ...r, id: `default-${n}`, active: true }));
     const { hours, matched, unmatched } = hoursPerVisit(
       rooms,
       usable,
