@@ -1758,7 +1758,7 @@ function DokumentDetail() {
             {isInvoice ? (
               <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
                 <div className="space-y-0.5 text-sm">
-                  <p>Zahlungsbedingungen: Zahlüberweisung in {paymentTermsDays} Tagen</p>
+                  <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
                   <p>Vielen Dank für die gute Zusammenarbeit.</p>
                   <p className="pt-1 text-xs text-muted-foreground">
                     {bankName} · IBAN {iban} · BIC {bic}
@@ -1769,7 +1769,7 @@ function DokumentDetail() {
               </div>
             ) : (
               <div className="mt-4 space-y-2 text-sm">
-                <p>Zahlungsbedingungen: Zahlüberweisung in {paymentTermsDays} Tagen</p>
+                <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
                 <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>
               </div>
             )}
