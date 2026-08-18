@@ -466,6 +466,11 @@ export function EinsatzKalender({
           projectName: projectName(a.project_id) || "Ohne Objekt",
           range: formatDayTime(times[i]),
           hours: h,
+          start: times[i]?.start ?? "",
+          end: times[i]?.end ?? "",
+          breakMin: times[i]?.breakMin ?? 0,
+          date: key,
+
         });
         map.set(key, list);
       });
