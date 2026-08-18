@@ -984,20 +984,25 @@ export function EinsatzKalender({
                           );
                         })}
                         {openPlans(key, emp.id).map((p) => (
-                          <div
+                          <button
                             key={p.key}
-                            title={`Planung: ${p.projectName}`}
-                            className="rounded border border-dashed border-primary/40 bg-primary/5 px-1 py-0.5 text-[11px] leading-tight text-primary"
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setPlanDetail(p);
+                            }}
+                            title={`Planung: ${p.employeeName} · ${p.projectName}`}
+                            className="block w-full rounded-md border border-dashed border-primary/50 bg-primary/5 px-1.5 py-1 text-left text-[11px] leading-tight text-primary hover:bg-primary/10"
                           >
-                            <div className="font-semibold">
-                              {p.range || `${p.hours.toFixed(2)} Std.`}
-                            </div>
+                            <div className="truncate font-semibold">{p.employeeName}</div>
                             <div className="truncate">{p.projectName}</div>
                             <div className="text-[10px] opacity-80">
-                              Plan · {p.hours.toFixed(2)} Std.
+                              {p.range ? `${p.range} · ` : ""}
+                              {p.hours.toFixed(2)} Std. · Plan
                             </div>
-                          </div>
+                          </button>
                         ))}
+
                       </div>
                     );
                   })}
