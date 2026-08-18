@@ -29,6 +29,7 @@ import { Route as AuthenticatedPersonalRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSicherheitRouteImport } from './routes/_authenticated/sicherheit'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
+import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
 import { Route as AuthenticatedZeiterfassungRouteImport } from './routes/_authenticated/zeiterfassung'
 import { Route as RechtlichesIndexRouteImport } from './routes/rechtliches.index'
@@ -150,6 +151,11 @@ const AuthenticatedSteuerberaterRoute =
     path: '/steuerberater',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedWiederkehrendRoute =
   AuthenticatedWiederkehrendRouteImport.update({
     id: '/wiederkehrend',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/team': typeof AuthenticatedTeamRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
@@ -280,6 +287,7 @@ export interface FileRoutesByTo {
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/team': typeof AuthenticatedTeamRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
@@ -317,6 +325,7 @@ export interface FileRoutesById {
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/sicherheit': typeof AuthenticatedSicherheitRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/_authenticated/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
     | '/profil'
     | '/sicherheit'
     | '/steuerberater'
+    | '/team'
     | '/wiederkehrend'
     | '/zeiterfassung'
     | '/rechtliches/agb'
@@ -388,6 +398,7 @@ export interface FileRouteTypes {
     | '/profil'
     | '/sicherheit'
     | '/steuerberater'
+    | '/team'
     | '/wiederkehrend'
     | '/zeiterfassung'
     | '/rechtliches/agb'
@@ -424,6 +435,7 @@ export interface FileRouteTypes {
     | '/_authenticated/profil'
     | '/_authenticated/sicherheit'
     | '/_authenticated/steuerberater'
+    | '/_authenticated/team'
     | '/_authenticated/wiederkehrend'
     | '/_authenticated/zeiterfassung'
     | '/rechtliches/agb'
@@ -594,6 +606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSteuerberaterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/team': {
+      id: '/_authenticated/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof AuthenticatedTeamRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/wiederkehrend': {
       id: '/_authenticated/wiederkehrend'
       path: '/wiederkehrend'
@@ -710,6 +729,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSicherheitRoute: typeof AuthenticatedSicherheitRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
+  AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
   AuthenticatedZeiterfassungRoute: typeof AuthenticatedZeiterfassungRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
@@ -733,6 +753,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSicherheitRoute: AuthenticatedSicherheitRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
+  AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
   AuthenticatedZeiterfassungRoute: AuthenticatedZeiterfassungRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
