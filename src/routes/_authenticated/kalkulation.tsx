@@ -160,9 +160,27 @@ function KalkulationPage() {
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
 
+  /**
+   * Raumbuch des verknüpften Projekts. Liegen erfasste Räume vor, kommen
+   * Fläche und Stundenbedarf daraus statt aus der KI-Schätzung.
+   */
+  const { data: raumbuch } = useRaumbuch(projectId);
+  const [raumbuchApplied, setRaumbuchApplied] = useState(false);
+
+  useEffect(() => {
+    if (!raumbuch) {
+      setRaumbuchApplied(false);
+      return;
+    }
+    setArea(String(raumbuch.totalArea).replace(".", ","));
+    if (raumbuch.hoursPerVisit > 0) setHours(String(raumbuch.hoursPerVisit).replace(".", ","));
+    setRaumbuchApplied(true);
+  }, [raumbuch]);
+
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
+
 
   // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
   const [aiPrompt, setAiPrompt] = useState("");
