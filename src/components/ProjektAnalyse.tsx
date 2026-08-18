@@ -245,11 +245,17 @@ export function ProjektAnalyse({
           </div>
           <div className="rounded-md border p-3">
             <p className="text-xs text-muted-foreground">Stundenbedarf / Monat</p>
-            <p className="text-lg font-semibold">{formatNumber(snapshot.monthlyHours)} Std.</p>
+            <p className="text-lg font-semibold">{formatNumber(effectiveMonthlyHours)} Std.</p>
             <p className="text-[11px] text-muted-foreground">
               {formatNumber(snapshot.visitsPerMonth)} Einsätze pro Monat
+              {roomBased
+                ? ` · aus ${rooms.length} Räumen (${roomBased.matched} mit Leistungswert${
+                    roomBased.unmatched > 0 ? `, ${roomBased.unmatched} pauschal` : ""
+                  })`
+                : ""}
             </p>
           </div>
+
           <div className="rounded-md border p-3">
             <p className="text-xs text-muted-foreground">Geplante Mitarbeiterstunden</p>
             <p className="text-lg font-semibold">{formatNumber(plannedMonthlyHours)} Std.</p>
