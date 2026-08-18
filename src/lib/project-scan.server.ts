@@ -258,6 +258,84 @@ async function toDataUrl(fileUrl: string, mimeType: string): Promise<string> {
   return `data:${mimeType};base64,${btoa(binary)}`;
 }
 
+const TOTALS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    total_area_sqm: { type: "number" },
+    source: { type: "string" },
+  },
+  required: ["total_area_sqm", "source"],
+} as const;
+
+/**
+ * Zweite Prüfrunde: liest eine im Dokument ausdrücklich genannte Gesamtfläche.
+ * Gibt 0 zurück, wenn keine genannt ist oder der Request fehlschlägt.
+ */
+async function readStatedTotalArea(
+  apiKey: string,
+  dataUrl: string,
+  mimeType: string,
+): Promise<number> {
+  const prompt =
+    "Nenne ausschließlich die im Dokument ausdrücklich geschriebene Gesamtfläche des Objekts in m² (z. B. 'Gesamtfläche', 'Summe', 'NGF', 'Reinigungsfläche gesamt'). Steht keine Gesamtsumme geschrieben, gib 0 zurück. Niemals schätzen, niemals Räume selbst addieren.";
+  const content =
+    mimeType === "application/pdf"
+      ? [
+          { type: "text", text: prompt },
+          { type: "file", file: { filename: "projekt.pdf", file_data: dataUrl } },
+        ]
+      : [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: dataUrl } },
+        ];
+
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-3.1-pro-preview",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Du prüfst Grundrisse und Raumbücher. Antworte ausschließlich mit reinem JSON. Nur wörtlich im Dokument stehende Werte; sonst 0 und source = \"\".",
+          },
+          { role: "user", content },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "gesamtflaeche", strict: true, schema: TOTALS_SCHEMA },
+        },
+      }),
+    });
+    if (!res.ok) return 0;
+    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const match = (json.choices?.[0]?.message?.content ?? "").match(/\{[\s\S]*\}/);
+    if (!match) return 0;
+    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
+    const total = num(parsed["total_area_sqm"]);
+    return total > 0 ? total : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function fmtArea(value: number): string {
+  return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(value);
+}
+
+/** Ergänzt bei relevanter Abweichung (>10 %) eine Warnung in den highlights. */
+function buildAreaWarning(roomSum: number, statedTotal: number): string | null {
+  if (roomSum <= 0 || statedTotal <= 0) return null;
+  const deviation = Math.abs(roomSum - statedTotal) / statedTotal;
+  if (deviation <= 0.1) return null;
+  return `Achtung: Summe der Räume (${fmtArea(roomSum)} m²) weicht von genannter Gesamtfläche (${fmtArea(statedTotal)} m²) ab – bitte prüfen.`;
+}
+
+
 /** Analysiert einen Grundriss oder eine Ausschreibung mit dem KI-Gateway. */
 export async function analyzeProjectFile(
   fileUrl: string,
@@ -343,6 +421,18 @@ export async function analyzeProjectFile(
     : [];
 
   const expected = Math.max(num(parsed["expected_room_count"]), rooms.length);
+  const finalRooms = rooms.filter((r) => r.name || r.area_sqm > 0);
+  const highlights = strList(parsed["highlights"]);
+
+  // Self-Check nur im Grundriss-Modus: genannte Gesamtfläche vs. Summe der Räume.
+  if (mode === "floorplan" && finalRooms.length > 0) {
+    const roomSum = finalRooms.reduce((sum, r) => sum + r.area_sqm, 0);
+    if (roomSum > 0) {
+      const statedTotal = await readStatedTotalArea(apiKey, dataUrl, mimeType);
+      const warning = buildAreaWarning(roomSum, statedTotal);
+      if (warning) highlights.push(warning);
+    }
+  }
 
   return {
     project_name: String(parsed["project_name"] ?? "").trim(),
@@ -352,9 +442,9 @@ export async function analyzeProjectFile(
     customer_name: String(parsed["customer_name"] ?? "").trim(),
     expected_room_count: Math.round(expected),
     executive_summary: String(parsed["executive_summary"] ?? "").trim(),
-    highlights: strList(parsed["highlights"]),
+    highlights,
     requirements: strList(parsed["requirements"]),
-    rooms: rooms.filter((r) => r.name || r.area_sqm > 0),
+    rooms: finalRooms,
     items: items.filter((i) => i.title || i.section),
   };
 }
