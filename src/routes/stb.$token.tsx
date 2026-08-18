@@ -124,13 +124,20 @@ async function exportHoursPdf(
   doc.text(`${companyName || "Stundenübersicht"} · Stunden je Mitarbeiter`, 15, y);
   y += 10;
 
-  const per = new Map<string, { hours: number; amount: number }>();
+  const per = new Map<string, { hours: number; amount: number; sick: number; vacation: number }>();
   for (const e of entries) {
     const name = String(e["employee_name"] || "Ohne Zuordnung");
-    const h = num(e["hours"]);
-    const cur = per.get(name) ?? { hours: 0, amount: 0 };
-    per.set(name, { hours: cur.hours + h, amount: cur.amount + h * num(e["hourly_rate"]) });
+    const code = String(e["lohnart"] ?? "A");
+    const h = code === "A" ? num(e["hours"]) : 0;
+    const cur = per.get(name) ?? { hours: 0, amount: 0, sick: 0, vacation: 0 };
+    per.set(name, {
+      hours: cur.hours + h,
+      amount: cur.amount + h * num(e["hourly_rate"]),
+      sick: cur.sick + (code === "K" ? 1 : 0),
+      vacation: cur.vacation + (code === "U" ? 1 : 0),
+    });
   }
+
 
   doc.setFontSize(10);
   doc.text("Mitarbeiter", 15, y);
