@@ -591,7 +591,15 @@ function KalkulationPage() {
                     value={hours}
                     onChange={(e) => setHours(e.target.value)}
                   />
+                  {raumbuchApplied && raumbuch ? (
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      Aus Raumbuch berechnet – Leistungswerte für {raumbuch.matched} Räume
+                      {raumbuch.unmatched > 0 ? `, ${raumbuch.unmatched} pauschal` : ""} (manuell
+                      überschreibbar).
+                    </p>
+                  ) : null}
                 </div>
+
                 <div className="space-y-2">
                   <Label>Stundensatz (netto)</Label>
                   <Input
