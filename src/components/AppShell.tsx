@@ -26,7 +26,6 @@ import {
   FileText,
   FolderKanban,
   HardHat,
-  CalendarRange,
   Landmark,
   Map as MapIcon,
   LayoutDashboard,
