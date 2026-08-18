@@ -684,8 +684,11 @@ function DokumentDetail() {
     });
     if (form["service_period"])
       meta.push({ label: "Leistungszeitraum", value: String(form["service_period"]) });
-    if (isInvoice && form["due_date"])
-      meta.push({ label: "Fällig am", value: formatDate(String(form["due_date"])) });
+    if (form["due_date"])
+      meta.push({
+        label: isInvoice ? "Fällig am" : "Gültig bis",
+        value: formatDate(String(form["due_date"])),
+      });
     if (form["order_number"])
       meta.push({ label: "Bestellnummer", value: String(form["order_number"]) });
 
@@ -762,14 +765,20 @@ function DokumentDetail() {
         !isInvoice && form["service_description"] ? String(form["service_description"]) : undefined,
       summary,
       taxNote: taxNote || undefined,
-      notes: form["notes"] ? String(form["notes"]) : undefined,
+      notes: isInvoice
+        ? form["notes"]
+          ? String(form["notes"])
+          : undefined
+        : [form["notes"] ? String(form["notes"]) : "", QUOTE_DISCLAIMER]
+            .filter(Boolean)
+            .join("\n\n"),
       paymentLines: isInvoice
         ? [
-            `Zahlüberweisung in ${paymentTermsDays} Tagen`,
+            `Zahlungsbedingungen: Zahlüberweisung in ${paymentTermsDays} Tagen`,
             "Vielen Dank für die gute Zusammenarbeit.",
             `${bankName} · IBAN ${iban} · BIC ${bic}`,
           ]
-        : undefined,
+        : [`Zahlungsbedingungen: Zahlüberweisung in ${paymentTermsDays} Tagen`],
       qrPayload: epc,
       footer: [
         {
@@ -1176,16 +1185,14 @@ function DokumentDetail() {
               onChange={(e) => setField("issue_date", e.target.value)}
             />
           </div>
-          {isInvoice && (
-            <div className="space-y-2">
-              <Label>Fällig am</Label>
-              <Input
-                type="date"
-                value={String(form["due_date"] ?? "")}
-                onChange={(e) => setField("due_date", e.target.value)}
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>{isInvoice ? "Fällig am" : "Gültig bis"}</Label>
+            <Input
+              type="date"
+              value={String(form["due_date"] ?? "")}
+              onChange={(e) => setField("due_date", e.target.value)}
+            />
+          </div>
           {isInvoice && (
             <div className="space-y-2">
               <Label>Zahlungsdatum (bezahlt am)</Label>
