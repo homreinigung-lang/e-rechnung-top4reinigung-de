@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/format";
 import { saveFile } from "@/lib/download";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
+import { Leistungswerte } from "@/components/Leistungswerte";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { permanentFileUrl, uploadUserFile } from "@/lib/storage";
 import {
