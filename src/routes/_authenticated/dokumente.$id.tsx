@@ -1191,12 +1191,29 @@ function DokumentDetail() {
             />
           </div>
           <div className="space-y-2">
-            <Label>{isInvoice ? "Fällig am" : "Gültig bis"}</Label>
-            <Input
-              type="date"
-              value={String(form["due_date"] ?? "")}
-              onChange={(e) => setField("due_date", e.target.value)}
-            />
+            <Label>{isInvoice ? "Fällig am" : "Gültig bis (optional)"}</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={String(form["due_date"] ?? "")}
+                onChange={(e) => setField("due_date", e.target.value)}
+              />
+              {!isInvoice && form["due_date"] ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setField("due_date", "")}
+                >
+                  Löschen
+                </Button>
+              ) : null}
+            </div>
+            {!isInvoice && (
+              <p className="text-xs text-muted-foreground">
+                Ohne Datum wird „Gültig bis“ nicht auf dem Angebot angezeigt.
+              </p>
+            )}
           </div>
           {isInvoice && (
             <div className="space-y-2">
