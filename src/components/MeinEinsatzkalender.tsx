@@ -43,13 +43,17 @@ function mondayOf(date: Date) {
   return d;
 }
 
-type DayTask = {
+export type DayTask = {
   key: string;
+  date: string;
   projectId: string | null;
   name: string;
   address: string;
   hours: number;
   range: string;
+  start: string;
+  end: string;
+  breakMin: number;
   role: string | null;
   released: boolean;
   done: boolean;
