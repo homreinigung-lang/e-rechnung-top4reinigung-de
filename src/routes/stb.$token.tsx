@@ -284,19 +284,28 @@ function AccountantPortal() {
     Brutto: de(num(e["gross_amount"])),
   }));
 
+  const workEntries = timeEntries.filter((t) => String(t["lohnart"] ?? "A") === "A");
+  const absenceEntries = timeEntries.filter((t) => String(t["lohnart"] ?? "A") !== "A");
+
   const timeRows: Table[] = timeEntries.map((t) => ({
     Datum: formatDate(String(t["work_date"] ?? "")),
     Mitarbeiter: String(t["employee_name"] ?? ""),
+    "Personal-Nr.": String(t["personnel_number"] ?? ""),
+    Lohnart: String(t["lohnart"] ?? "A"),
     Von: String(t["start_time"] ?? "").slice(0, 5),
     Bis: String(t["end_time"] ?? "").slice(0, 5),
     "Pause (Min.)": String(t["break_minutes"] ?? 0),
     Stunden: de(num(t["hours"])),
     Stundensatz: de(num(t["hourly_rate"])),
     Lohn: de(num(t["hours"]) * num(t["hourly_rate"])),
+    Status: t["is_absence"] ? String(t["approval_status"] ?? "") : t["completed_at"] ? "erledigt" : "offen",
     Einsatzort: String(t["location"] ?? ""),
-    Notiz: String(t["note"] ?? ""),
+    Notiz: String(t["note"] || t["absence_reason"] || ""),
   }));
-  const hoursTotal = timeEntries.reduce((s, t) => s + num(t["hours"]), 0);
+  const hoursTotal = workEntries.reduce((s, t) => s + num(t["hours"]), 0);
+  const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
+  const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
+
 
   const netTotal = documents.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const vatTotal = documents.reduce((s, d) => s + num(d["vat_amount"]), 0);
