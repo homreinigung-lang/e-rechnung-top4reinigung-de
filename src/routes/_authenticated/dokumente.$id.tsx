@@ -779,11 +779,11 @@ function DokumentDetail() {
             .join("\n\n"),
       paymentLines: isInvoice
         ? [
-            `Zahlungsbedingungen: Zahlüberweisung in ${paymentTermsDays} Tagen`,
+            `Zahlüberweisung in ${paymentTermsDays} Tagen`,
             "Vielen Dank für die gute Zusammenarbeit.",
             `${bankName} · IBAN ${iban} · BIC ${bic}`,
           ]
-        : [`Zahlungsbedingungen: Zahlüberweisung in ${paymentTermsDays} Tagen`],
+        : [`Zahlüberweisung in ${paymentTermsDays} Tagen`],
       qrPayload: epc,
       footer: [
         {
