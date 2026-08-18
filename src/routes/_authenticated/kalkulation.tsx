@@ -268,10 +268,11 @@ function KalkulationPage() {
           .join(" · "),
       });
 
-      if (sqm > 0) {
+      if (sqm > 0 && !raumbuch) {
         setMode("area");
         setArea(String(Math.round(sqm * 100) / 100).replace(".", ","));
       }
+
       if (floorSet.size > 1) {
         setStairs(true);
         setFloors(String(floorSet.size));
