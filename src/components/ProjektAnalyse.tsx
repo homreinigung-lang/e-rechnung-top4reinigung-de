@@ -150,7 +150,7 @@ export function ProjektAnalyse({
     },
   });
 
-  const rooms = detail?.rooms ?? [];
+  const rooms = useMemo(() => detail?.rooms ?? [], [detail?.rooms]);
   const lv = detail?.lv ?? [];
   const assignments = detail?.assignments ?? [];
 
