@@ -67,6 +67,10 @@ type PlanShift = {
   projectName: string;
   range: string;
   hours: number;
+  start: string;
+  end: string;
+  breakMin: number;
+  date: string;
 };
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
