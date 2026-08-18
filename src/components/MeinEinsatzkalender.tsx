@@ -130,11 +130,15 @@ export function MeinEinsatzkalender({
         const list = m.get(date) ?? [];
         list.push({
           key: `${a.id}-${i}`,
+          date,
           projectId: a.project_id,
           name: p?.name || "Objekt",
           address: p ? projectAddress(p) : "",
           hours,
           range: formatDayTime(times[i]),
+          start: times[i]?.start ?? "",
+          end: times[i]?.end ?? "",
+          breakMin: times[i]?.breakMin ?? 0,
           role: a.assignment_role ?? null,
           released: a.released !== false,
           done: Boolean(hit),
