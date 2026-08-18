@@ -226,7 +226,7 @@ function EinsatzortCell({
   );
 }
 
-function Personal() {
+export function Personal() {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState<EmployeeForm>(empty);

@@ -110,7 +110,7 @@ function addDays(date: Date, n: number) {
   return d;
 }
 
-function Arbeitsplanung() {
+export function Arbeitsplanung() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = React.useState("");
   const [monday, setMonday] = React.useState(() => mondayOf(new Date()));

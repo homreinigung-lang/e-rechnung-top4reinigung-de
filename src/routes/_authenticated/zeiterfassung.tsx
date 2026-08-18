@@ -148,7 +148,7 @@ function monthKey(d: string) {
   return d.slice(0, 7);
 }
 
-function Zeiterfassung() {
+export function Zeiterfassung() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: myEmployee } = useMyEmployee();
