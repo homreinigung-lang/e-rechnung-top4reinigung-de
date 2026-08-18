@@ -282,8 +282,8 @@ export function ProjektAnalyse({
             label="Personaldeckung"
             value={capacityProgress}
             hint={
-              snapshot.monthlyHours > 0
-                ? `${formatNumber(plannedMonthlyHours)} von ${formatNumber(snapshot.monthlyHours)} Std. eingeplant`
+              effectiveMonthlyHours > 0
+                ? `${formatNumber(plannedMonthlyHours)} von ${formatNumber(effectiveMonthlyHours)} Std. eingeplant`
                 : "Noch kein Stundenbedarf berechnet"
             }
           />
