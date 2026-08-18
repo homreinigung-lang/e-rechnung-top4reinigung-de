@@ -197,7 +197,6 @@ export function ProjektAnalyse({
   const lvProgress = pct(lv.filter((i) => i.done).length, lv.length);
   const capacityProgress = pct(plannedMonthlyHours, effectiveMonthlyHours);
 
-
   const statusLabel = snapshot.confirmed
     ? "final bestätigt"
     : snapshot.netTotal > 0

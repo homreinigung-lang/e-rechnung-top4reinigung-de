@@ -21,14 +21,34 @@ export const DEFAULT_PERFORMANCE_RATES: PerformanceRateSeed[] = [
   { label: "Büro – Fliesen", usage_type: "Büro", floor_covering: "Fliesen", sqm_per_hour: 200 },
   { label: "Flur / Verkehrsfläche", usage_type: "Flur", floor_covering: "", sqm_per_hour: 300 },
   { label: "Treppenhaus", usage_type: "Treppenhaus", floor_covering: "", sqm_per_hour: 120 },
-  { label: "WC / Sanitär – Fliesen", usage_type: "WC", floor_covering: "Fliesen", sqm_per_hour: 60 },
+  {
+    label: "WC / Sanitär – Fliesen",
+    usage_type: "WC",
+    floor_covering: "Fliesen",
+    sqm_per_hour: 60,
+  },
   { label: "Teeküche / Sozialraum", usage_type: "Küche", floor_covering: "", sqm_per_hour: 100 },
   { label: "Besprechungsraum", usage_type: "Besprechung", floor_covering: "", sqm_per_hour: 260 },
   { label: "Lager / Technik", usage_type: "Lager", floor_covering: "", sqm_per_hour: 400 },
   { label: "Produktion / Halle", usage_type: "Halle", floor_covering: "Beton", sqm_per_hour: 500 },
-  { label: "Umkleide / Dusche", usage_type: "Umkleide", floor_covering: "Fliesen", sqm_per_hour: 80 },
-  { label: "Treppe / Podest – Fliesen", usage_type: "Treppe", floor_covering: "Fliesen", sqm_per_hour: 130 },
-  { label: "Glas- / Fensterfläche", usage_type: "Fenster", floor_covering: "Glas", sqm_per_hour: 40 },
+  {
+    label: "Umkleide / Dusche",
+    usage_type: "Umkleide",
+    floor_covering: "Fliesen",
+    sqm_per_hour: 80,
+  },
+  {
+    label: "Treppe / Podest – Fliesen",
+    usage_type: "Treppe",
+    floor_covering: "Fliesen",
+    sqm_per_hour: 130,
+  },
+  {
+    label: "Glas- / Fensterfläche",
+    usage_type: "Fenster",
+    floor_covering: "Glas",
+    sqm_per_hour: 40,
+  },
 ];
 
 function norm(value: string): string {
