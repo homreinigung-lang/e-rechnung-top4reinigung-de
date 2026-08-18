@@ -15,7 +15,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as FreigabeAusstehendRouteImport } from './routes/freigabe-ausstehend'
 import { Route as RechtlichesRouteImport } from './routes/rechtliches'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as AuthenticatedArbeitsplanungRouteImport } from './routes/_authenticated/arbeitsplanung'
 import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
 import { Route as AuthenticatedBankverbindungRouteImport } from './routes/_authenticated/bankverbindung'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -25,13 +24,11 @@ import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedNachrichtenRouteImport } from './routes/_authenticated/nachrichten'
-import { Route as AuthenticatedPersonalRouteImport } from './routes/_authenticated/personal'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSicherheitRouteImport } from './routes/_authenticated/sicherheit'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
-import { Route as AuthenticatedZeiterfassungRouteImport } from './routes/_authenticated/zeiterfassung'
 import { Route as RechtlichesIndexRouteImport } from './routes/rechtliches.index'
 import { Route as RechtlichesAgbRouteImport } from './routes/rechtliches.agb'
 import { Route as RechtlichesBibliothekenRouteImport } from './routes/rechtliches.bibliotheken'
@@ -74,12 +71,6 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedArbeitsplanungRoute =
-  AuthenticatedArbeitsplanungRouteImport.update({
-    id: '/arbeitsplanung',
-    path: '/arbeitsplanung',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedAusgabenRoute = AuthenticatedAusgabenRouteImport.update({
   id: '/ausgaben',
   path: '/ausgaben',
@@ -130,11 +121,6 @@ const AuthenticatedNachrichtenRoute =
     path: '/nachrichten',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedPersonalRoute = AuthenticatedPersonalRouteImport.update({
-  id: '/personal',
-  path: '/personal',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -160,12 +146,6 @@ const AuthenticatedWiederkehrendRoute =
   AuthenticatedWiederkehrendRouteImport.update({
     id: '/wiederkehrend',
     path: '/wiederkehrend',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedZeiterfassungRoute =
-  AuthenticatedZeiterfassungRouteImport.update({
-    id: '/zeiterfassung',
-    path: '/zeiterfassung',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const RechtlichesIndexRoute = RechtlichesIndexRouteImport.update({
@@ -238,7 +218,6 @@ export interface FileRoutesByFullPath {
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
-  '/arbeitsplanung': typeof AuthenticatedArbeitsplanungRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -248,13 +227,11 @@ export interface FileRoutesByFullPath {
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
-  '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/team': typeof AuthenticatedTeamRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
-  '/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -273,7 +250,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/arbeitsplanung': typeof AuthenticatedArbeitsplanungRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -283,13 +259,11 @@ export interface FileRoutesByTo {
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
-  '/personal': typeof AuthenticatedPersonalRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/team': typeof AuthenticatedTeamRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
-  '/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -311,7 +285,6 @@ export interface FileRoutesById {
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
-  '/_authenticated/arbeitsplanung': typeof AuthenticatedArbeitsplanungRoute
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
   '/_authenticated/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -321,13 +294,11 @@ export interface FileRoutesById {
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/nachrichten': typeof AuthenticatedNachrichtenRoute
-  '/_authenticated/personal': typeof AuthenticatedPersonalRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/sicherheit': typeof AuthenticatedSicherheitRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
-  '/_authenticated/zeiterfassung': typeof AuthenticatedZeiterfassungRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
@@ -349,7 +320,6 @@ export interface FileRouteTypes {
     | '/freigabe-ausstehend'
     | '/rechtliches'
     | '/reset-password'
-    | '/arbeitsplanung'
     | '/ausgaben'
     | '/bankverbindung'
     | '/dashboard'
@@ -359,13 +329,11 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/meine-zeiten'
     | '/nachrichten'
-    | '/personal'
     | '/profil'
     | '/sicherheit'
     | '/steuerberater'
     | '/team'
     | '/wiederkehrend'
-    | '/zeiterfassung'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -384,7 +352,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/freigabe-ausstehend'
     | '/reset-password'
-    | '/arbeitsplanung'
     | '/ausgaben'
     | '/bankverbindung'
     | '/dashboard'
@@ -394,13 +361,11 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/meine-zeiten'
     | '/nachrichten'
-    | '/personal'
     | '/profil'
     | '/sicherheit'
     | '/steuerberater'
     | '/team'
     | '/wiederkehrend'
-    | '/zeiterfassung'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -421,7 +386,6 @@ export interface FileRouteTypes {
     | '/freigabe-ausstehend'
     | '/rechtliches'
     | '/reset-password'
-    | '/_authenticated/arbeitsplanung'
     | '/_authenticated/ausgaben'
     | '/_authenticated/bankverbindung'
     | '/_authenticated/dashboard'
@@ -431,13 +395,11 @@ export interface FileRouteTypes {
     | '/_authenticated/kunden'
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/nachrichten'
-    | '/_authenticated/personal'
     | '/_authenticated/profil'
     | '/_authenticated/sicherheit'
     | '/_authenticated/steuerberater'
     | '/_authenticated/team'
     | '/_authenticated/wiederkehrend'
-    | '/_authenticated/zeiterfassung'
     | '/rechtliches/agb'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
@@ -508,13 +470,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/arbeitsplanung': {
-      id: '/_authenticated/arbeitsplanung'
-      path: '/arbeitsplanung'
-      fullPath: '/arbeitsplanung'
-      preLoaderRoute: typeof AuthenticatedArbeitsplanungRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/ausgaben': {
       id: '/_authenticated/ausgaben'
       path: '/ausgaben'
@@ -578,13 +533,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNachrichtenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/personal': {
-      id: '/_authenticated/personal'
-      path: '/personal'
-      fullPath: '/personal'
-      preLoaderRoute: typeof AuthenticatedPersonalRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/profil': {
       id: '/_authenticated/profil'
       path: '/profil'
@@ -618,13 +566,6 @@ declare module '@tanstack/react-router' {
       path: '/wiederkehrend'
       fullPath: '/wiederkehrend'
       preLoaderRoute: typeof AuthenticatedWiederkehrendRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/zeiterfassung': {
-      id: '/_authenticated/zeiterfassung'
-      path: '/zeiterfassung'
-      fullPath: '/zeiterfassung'
-      preLoaderRoute: typeof AuthenticatedZeiterfassungRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/rechtliches/': {
@@ -715,7 +656,6 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedArbeitsplanungRoute: typeof AuthenticatedArbeitsplanungRoute
   AuthenticatedAusgabenRoute: typeof AuthenticatedAusgabenRoute
   AuthenticatedBankverbindungRoute: typeof AuthenticatedBankverbindungRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -725,13 +665,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedNachrichtenRoute: typeof AuthenticatedNachrichtenRoute
-  AuthenticatedPersonalRoute: typeof AuthenticatedPersonalRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSicherheitRoute: typeof AuthenticatedSicherheitRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
-  AuthenticatedZeiterfassungRoute: typeof AuthenticatedZeiterfassungRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
   AuthenticatedProjekteIdRoute: typeof AuthenticatedProjekteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
@@ -739,7 +677,6 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedArbeitsplanungRoute: AuthenticatedArbeitsplanungRoute,
   AuthenticatedAusgabenRoute: AuthenticatedAusgabenRoute,
   AuthenticatedBankverbindungRoute: AuthenticatedBankverbindungRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
@@ -749,13 +686,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedNachrichtenRoute: AuthenticatedNachrichtenRoute,
-  AuthenticatedPersonalRoute: AuthenticatedPersonalRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSicherheitRoute: AuthenticatedSicherheitRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
-  AuthenticatedZeiterfassungRoute: AuthenticatedZeiterfassungRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
   AuthenticatedProjekteIdRoute: AuthenticatedProjekteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,
