@@ -124,17 +124,26 @@ async function exportHoursPdf(
   doc.text(`${companyName || "Stundenübersicht"} · Stunden je Mitarbeiter`, 15, y);
   y += 10;
 
-  const per = new Map<string, { hours: number; amount: number }>();
+  const per = new Map<string, { hours: number; amount: number; sick: number; vacation: number }>();
   for (const e of entries) {
     const name = String(e["employee_name"] || "Ohne Zuordnung");
-    const h = num(e["hours"]);
-    const cur = per.get(name) ?? { hours: 0, amount: 0 };
-    per.set(name, { hours: cur.hours + h, amount: cur.amount + h * num(e["hourly_rate"]) });
+    const code = String(e["lohnart"] ?? "A");
+    const h = code === "A" ? num(e["hours"]) : 0;
+    const cur = per.get(name) ?? { hours: 0, amount: 0, sick: 0, vacation: 0 };
+    per.set(name, {
+      hours: cur.hours + h,
+      amount: cur.amount + h * num(e["hourly_rate"]),
+      sick: cur.sick + (code === "K" ? 1 : 0),
+      vacation: cur.vacation + (code === "U" ? 1 : 0),
+    });
   }
+
 
   doc.setFontSize(10);
   doc.text("Mitarbeiter", 15, y);
-  doc.text("Stunden", 120, y, { align: "right" });
+  doc.text("Krank (K)", 100, y, { align: "right" });
+  doc.text("Urlaub (U)", 130, y, { align: "right" });
+  doc.text("Stunden", 160, y, { align: "right" });
   doc.text("Vergütung", 195, y, { align: "right" });
   y += 2;
   doc.line(15, y, 195, y);
@@ -145,8 +154,10 @@ async function exportHoursPdf(
   for (const [name, v] of per) {
     totalH += v.hours;
     totalA += v.amount;
-    doc.text(name.slice(0, 45), 15, y);
-    doc.text(`${de(v.hours)} Std.`, 120, y, { align: "right" });
+    doc.text(name.slice(0, 40), 15, y);
+    doc.text(`${v.sick}`, 100, y, { align: "right" });
+    doc.text(`${v.vacation}`, 130, y, { align: "right" });
+    doc.text(`${de(v.hours)} Std.`, 160, y, { align: "right" });
     doc.text(formatMoney(v.amount), 195, y, { align: "right" });
     y += 6;
     if (y > 275) {
@@ -159,12 +170,12 @@ async function exportHoursPdf(
   y += 6;
   doc.setFontSize(10);
   doc.text("Gesamt", 15, y);
-  doc.text(`${de(totalH)} Std.`, 120, y, { align: "right" });
+  doc.text(`${de(totalH)} Std.`, 160, y, { align: "right" });
   doc.text(formatMoney(totalA), 195, y, { align: "right" });
 
   y += 12;
   doc.setFontSize(11);
-  doc.text("Einzelnachweis", 15, y);
+  doc.text("Einzelnachweis (A = Arbeit, K = Krank, U = Urlaub, F = Feiertag)", 15, y);
   y += 6;
   doc.setFontSize(8);
   for (const e of entries) {
@@ -172,19 +183,22 @@ async function exportHoursPdf(
       doc.addPage();
       y = 20;
     }
+    const code = String(e["lohnart"] ?? "A");
     const time =
       e["start_time"] && e["end_time"]
         ? `${String(e["start_time"]).slice(0, 5)}–${String(e["end_time"]).slice(0, 5)}`
         : "-";
     doc.text(
-      `${formatDate(String(e["work_date"] ?? ""))}  ${String(e["employee_name"] || "Ohne Zuordnung").slice(0, 28)}  ${time}  Pause ${num(e["break_minutes"])} Min.`,
+      `${formatDate(String(e["work_date"] ?? ""))}  [${code}]  ${String(e["employee_name"] || "Ohne Zuordnung").slice(0, 26)}  ${time}  Pause ${num(e["break_minutes"])} Min.`,
       15,
       y,
     );
-    doc.text(`${de(num(e["hours"]))} Std.`, 150, y, { align: "right" });
-    doc.text(formatMoney(num(e["hours"]) * num(e["hourly_rate"])), 195, y, { align: "right" });
+    const h = code === "A" ? num(e["hours"]) : 0;
+    doc.text(code === "A" ? `${de(h)} Std.` : "-", 150, y, { align: "right" });
+    doc.text(formatMoney(h * num(e["hourly_rate"])), 195, y, { align: "right" });
     y += 5;
   }
+
   download(filename, doc.output("blob"));
 }
 
@@ -284,19 +298,62 @@ function AccountantPortal() {
     Brutto: de(num(e["gross_amount"])),
   }));
 
+  const workEntries = timeEntries.filter((t) => String(t["lohnart"] ?? "A") === "A");
+  const absenceEntries = timeEntries.filter((t) => String(t["lohnart"] ?? "A") !== "A");
+
   const timeRows: Table[] = timeEntries.map((t) => ({
     Datum: formatDate(String(t["work_date"] ?? "")),
     Mitarbeiter: String(t["employee_name"] ?? ""),
+    "Personal-Nr.": String(t["personnel_number"] ?? ""),
+    Lohnart: String(t["lohnart"] ?? "A"),
     Von: String(t["start_time"] ?? "").slice(0, 5),
     Bis: String(t["end_time"] ?? "").slice(0, 5),
     "Pause (Min.)": String(t["break_minutes"] ?? 0),
     Stunden: de(num(t["hours"])),
     Stundensatz: de(num(t["hourly_rate"])),
     Lohn: de(num(t["hours"]) * num(t["hourly_rate"])),
+    Status: t["is_absence"] ? String(t["approval_status"] ?? "") : t["completed_at"] ? "erledigt" : "offen",
     Einsatzort: String(t["location"] ?? ""),
-    Notiz: String(t["note"] ?? ""),
+    Notiz: String(t["note"] || t["absence_reason"] || ""),
   }));
-  const hoursTotal = timeEntries.reduce((s, t) => s + num(t["hours"]), 0);
+  const hoursTotal = workEntries.reduce((s, t) => s + num(t["hours"]), 0);
+  const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
+  const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
+
+  /** Lohn-Sammelzeile je Mitarbeiter: Ist-Stunden, K- und U-Tage. */
+  const payrollRows: Table[] = Array.from(
+    timeEntries
+      .reduce(
+        (acc, t) => {
+          const name = String(t["employee_name"] || "Ohne Zuordnung");
+          const code = String(t["lohnart"] ?? "A");
+          const cur = acc.get(name) ?? {
+            Mitarbeiter: name,
+            "Personal-Nr.": String(t["personnel_number"] ?? ""),
+            Stunden: 0,
+            Lohn: 0,
+            "Kranktage (K)": 0,
+            "Urlaubstage (U)": 0,
+          };
+          if (code === "A") {
+            cur["Stunden"] = (cur["Stunden"] as number) + num(t["hours"]);
+            cur["Lohn"] = (cur["Lohn"] as number) + num(t["hours"]) * num(t["hourly_rate"]);
+          }
+          if (code === "K") cur["Kranktage (K)"] = (cur["Kranktage (K)"] as number) + 1;
+          if (code === "U") cur["Urlaubstage (U)"] = (cur["Urlaubstage (U)"] as number) + 1;
+          acc.set(name, cur);
+          return acc;
+        },
+        new Map<string, Record<string, string | number>>(),
+      )
+      .values(),
+  ).map((r) => ({
+    ...r,
+    Stunden: de(r["Stunden"] as number),
+    Lohn: de(r["Lohn"] as number),
+  })) as Table[];
+
+
 
   const netTotal = documents.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const vatTotal = documents.reduce((s, d) => s + num(d["vat_amount"]), 0);
@@ -395,6 +452,12 @@ function AccountantPortal() {
             >
               <FileText className="size-4" /> Stundenliste (PDF)
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows)}
+            >
+              <Download className="size-4" /> Lohnabrechnung (CSV)
+            </Button>
 
             <Button
               variant="outline"
@@ -403,11 +466,13 @@ function AccountantPortal() {
                   { title: "Rechnungen", rows: docRows },
                   { title: "Ausgaben", rows: expenseRows },
                   { title: "Stundenzettel", rows: timeRows },
+                  { title: "Lohnabrechnung", rows: payrollRows },
                 ])
               }
             >
               <FileSpreadsheet className="size-4" /> Excel-Export
             </Button>
+
             <div className="flex items-center gap-2 rounded-md border px-2">
               <Label htmlFor="zipMonth" className="text-xs text-muted-foreground">
                 Belege-Monat
@@ -447,13 +512,20 @@ function AccountantPortal() {
               <Kpi label="Umsatzsteuer" value={formatMoney(vatTotal)} />
               <Kpi label="Ausgaben netto" value={formatMoney(expNet)} />
               <Kpi label="USt-Zahllast" value={formatMoney(vatTotal - expVat)} />
-              <Kpi label="Arbeitsstunden" value={`${de(hoursTotal)} Std.`} />
+              <Kpi label="Arbeitsstunden (bestätigt)" value={`${de(hoursTotal)} Std.`} />
+              <Kpi label="Kranktage (K)" value={`${sickDays}`} />
+              <Kpi label="Urlaubstage (U)" value={`${vacationDays}`} />
             </div>
 
             <h3 className="mt-6 font-display text-sm font-semibold">Rechnungen</h3>
             <DataTable rows={docRows} empty="Keine Rechnungen im Zeitraum." />
             <h3 className="mt-6 font-display text-sm font-semibold">Ausgaben</h3>
             <DataTable rows={expenseRows} empty="Keine Ausgaben im Zeitraum." />
+            <h3 className="mt-6 font-display text-sm font-semibold">
+              Lohnabrechnung je Mitarbeiter
+            </h3>
+            <DataTable rows={payrollRows} empty="Keine Arbeitszeiten im Zeitraum." />
+
 
             <h3 className="mt-6 font-display text-sm font-semibold">Belege (PDF/Bild)</h3>
             {expenses.filter((e) => String(e["receipt_url"] ?? "")).length === 0 ? (

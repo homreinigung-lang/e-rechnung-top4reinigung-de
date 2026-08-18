@@ -9,7 +9,9 @@ export type AccountantReport = {
   documents: Row[];
   expenses: Row[];
   timeEntries: Row[];
+  adjustments: Row[];
 };
+
 
 /** Kein Ablaufdatum: Zugang gilt dauerhaft. */
 const NO_EXPIRY = "2999-12-31T00:00:00.000Z";
@@ -95,7 +97,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", access.id);
 
-    const [documents, expenses, timeEntries, settings] = await Promise.all([
+    const [documents, expenses, timeEntries, employees, adjustments, settings] = await Promise.all([
       supabaseAdmin
         .from("documents")
         .select("*")
@@ -119,19 +121,71 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .lte("work_date", data.to)
         .order("work_date"),
       supabaseAdmin
+        .from("employees")
+        .select("id, name, personnel_number, hourly_rate, weekly_hours, contract_type")
+        .eq("user_id", access.user_id),
+      supabaseAdmin
+        .from("time_account_adjustments")
+        .select("*")
+        .eq("user_id", access.user_id)
+        .gte("entry_date", data.from)
+        .lte("entry_date", data.to)
+        .order("entry_date"),
+      supabaseAdmin
         .from("company_settings")
         .select("company_name")
         .eq("user_id", access.user_id)
         .maybeSingle(),
     ]);
 
+    const empById = new Map(
+      (employees.data ?? []).map((e) => [e.id as string, e as Record<string, unknown>]),
+    );
+
+    /** Kürzel für die Lohnabrechnung: A = Arbeit, U = Urlaub, K = Krank, F = Feiertag, S = Sonstige. */
+    function absenceCode(entryType: string, reason: string) {
+      if (entryType === "work") return "A";
+      const r = (reason || "").toLowerCase();
+      if (r.includes("krank") || r.includes("sick")) return "K";
+      if (r.includes("urlaub") || r.includes("vacation")) return "U";
+      if (r.includes("feiertag") || r.includes("holiday")) return "F";
+      if (entryType === "vacation") return "U";
+      if (entryType === "sick") return "K";
+      if (entryType === "holiday") return "F";
+      return "S";
+    }
+
+    const enrichedTime = (timeEntries.data ?? [])
+      // Abgelehnte Anträge fließen nicht in die Lohnabrechnung ein.
+      .filter((t) => String(t.approval_status ?? "") !== "rejected")
+      .map((t) => {
+        const emp = t.employee_id ? empById.get(t.employee_id as string) : undefined;
+        const entryType = String(t.entry_type ?? "work");
+        const code = absenceCode(entryType, String(t.absence_reason ?? ""));
+        // Nur bestätigte (erledigte) Schichten zählen als Ist-Arbeitszeit.
+        const confirmed = entryType !== "work" || Boolean(t.completed_at) || Number(t.hours ?? 0) > 0;
+        return {
+          ...t,
+          employee_name: String(t.employee_name || emp?.["name"] || ""),
+          personnel_number: String(emp?.["personnel_number"] ?? ""),
+          contract_type: String(emp?.["contract_type"] ?? ""),
+          weekly_hours: Number(emp?.["weekly_hours"] ?? 0),
+          hourly_rate: Number(t.hourly_rate ?? emp?.["hourly_rate"] ?? 0),
+          lohnart: code,
+          is_absence: entryType !== "work",
+          confirmed,
+        };
+      });
+
     return {
       companyName: settings.data?.company_name ?? "",
       documents: (documents.data ?? []) as unknown as Row[],
       expenses: (expenses.data ?? []) as unknown as Row[],
-      timeEntries: (timeEntries.data ?? []) as unknown as Row[],
+      timeEntries: enrichedTime as unknown as Row[],
+      adjustments: (adjustments.data ?? []) as unknown as Row[],
     };
   });
+
 
 /** Liefert eine zeitlich begrenzte Download-Adresse für den Beleg einer Ausgabe. */
 export const getAccountantReceiptUrl = createServerFn({ method: "POST" })

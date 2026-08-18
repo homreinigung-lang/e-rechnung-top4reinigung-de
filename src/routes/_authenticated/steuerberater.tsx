@@ -142,6 +142,23 @@ function Steuerberater() {
     },
   });
 
+  // Zeiterfassung inkl. bestätigter Schichten und Abwesenheiten (K/U) – Basis der Lohnabrechnung.
+  const { data: timeEntries = [] } = useQuery({
+    queryKey: ["stb_time_entries", from, to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("*, employees(name, personnel_number)")
+        .gte("work_date", from)
+        .lte("work_date", to)
+        .neq("approval_status", "rejected")
+        .order("work_date");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+
   const gobdExport = useMutation({
     mutationFn: async () => {
       const blob = await buildGobdExport(from, to);
@@ -274,7 +291,89 @@ function Steuerberater() {
     Details: JSON.stringify(a.details),
   }));
 
+  /** Lohnart-Kürzel: A = Arbeit, K = Krank, U = Urlaub, F = Feiertag, S = Sonstige. */
+  function lohnart(t: Record<string, unknown>) {
+    const type = String(t["entry_type"] ?? "work");
+    if (type === "work") return "A";
+    const r = String(t["absence_reason"] ?? "").toLowerCase();
+    if (r.includes("krank") || type === "sick") return "K";
+    if (r.includes("urlaub") || type === "vacation") return "U";
+    if (r.includes("feiertag") || type === "holiday") return "F";
+    return "S";
+  }
+
+  const timeList = timeEntries as unknown as Record<string, unknown>[];
+
+  const timeRows: Row[] = timeList.map((t) => {
+    const emp = (t["employees"] ?? null) as { name?: string; personnel_number?: string } | null;
+    const code = lohnart(t);
+    return {
+      Datum: formatDate(String(t["work_date"] ?? "")),
+      Mitarbeiter: String(t["employee_name"] || emp?.name || ""),
+      "Personal-Nr.": String(emp?.personnel_number ?? ""),
+      Lohnart: code,
+      Von: String(t["start_time"] ?? "").slice(0, 5),
+      Bis: String(t["end_time"] ?? "").slice(0, 5),
+      "Pause (Min.)": String(t["break_minutes"] ?? 0),
+      Stunden: de(code === "A" ? num(t["hours"]) : 0),
+      Stundensatz: de(num(t["hourly_rate"])),
+      Lohn: de(code === "A" ? num(t["hours"]) * num(t["hourly_rate"]) : 0),
+      Status: t["completed_at"] ? "erledigt" : String(t["approval_status"] ?? "offen"),
+      Einsatzort: String(t["location"] ?? ""),
+    };
+  });
+
+  const payrollRows: Row[] = Array.from(
+    timeList
+      .reduce(
+        (acc, t) => {
+          const emp = (t["employees"] ?? null) as {
+            name?: string;
+            personnel_number?: string;
+          } | null;
+          const name = String(t["employee_name"] || emp?.name || "Ohne Zuordnung");
+          const code = lohnart(t);
+          const cur = acc.get(name) ?? {
+            name,
+            pnr: String(emp?.personnel_number ?? ""),
+            hours: 0,
+            amount: 0,
+            sick: 0,
+            vacation: 0,
+          };
+          if (code === "A") {
+            cur.hours += num(t["hours"]);
+            cur.amount += num(t["hours"]) * num(t["hourly_rate"]);
+          }
+          if (code === "K") cur.sick += 1;
+          if (code === "U") cur.vacation += 1;
+          acc.set(name, cur);
+          return acc;
+        },
+        new Map<
+          string,
+          {
+            name: string;
+            pnr: string;
+            hours: number;
+            amount: number;
+            sick: number;
+            vacation: number;
+          }
+        >(),
+      )
+      .values(),
+  ).map((v) => ({
+    Mitarbeiter: v.name,
+    "Personal-Nr.": v.pnr,
+    Stunden: de(v.hours),
+    Lohn: de(v.amount),
+    "Kranktage (K)": String(v.sick),
+    "Urlaubstage (U)": String(v.vacation),
+  }));
+
   const period = `${from}_${to}`;
+
 
   return (
     <div className="space-y-6">
@@ -343,10 +442,24 @@ function Steuerberater() {
         </Button>
         <Button
           variant="outline"
+          onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows)}
+        >
+          <Download className="size-4" /> Stundenzettel (CSV)
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows)}
+        >
+          <Download className="size-4" /> Lohnabrechnung (CSV)
+        </Button>
+        <Button
+          variant="outline"
           onClick={() =>
             downloadExcel(`Steuerauswertung_${period}.xls`, [
               { title: "Rechnungen", rows: docRows },
               { title: "Ausgaben", rows: expenseRows },
+              { title: "Stundenzettel", rows: timeRows },
+              { title: "Lohnabrechnung", rows: payrollRows },
             ])
           }
         >
@@ -356,6 +469,15 @@ function Steuerberater() {
           <Printer className="size-4" /> Als PDF drucken
         </Button>
       </section>
+
+      <section className="print-area rounded-lg border bg-card p-6">
+        <h2 className="font-display text-lg font-semibold">Lohnabrechnung je Mitarbeiter</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Bestätigte Ist-Stunden aus dem Control Center inkl. Kranktagen (K) und Urlaubstagen (U).
+        </p>
+        <Table rows={payrollRows} empty="Keine Arbeitszeiten im Zeitraum." />
+      </section>
+
 
       <section className="no-print rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
