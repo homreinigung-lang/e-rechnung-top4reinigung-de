@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { fileUrl, openStoredFile } from "@/lib/storage";
+import { useRaumbuch } from "@/lib/raumbuch";
+
 
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
