@@ -578,6 +578,43 @@ export function EinsatzKalender({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  /** Geplante Schicht als erledigt übernehmen: Planzeit wird zur Ist-Arbeitszeit. */
+  const confirmPlan = useMutation({
+    mutationFn: async (p: PlanShift) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const emp = employees.find((e) => e.id === p.employeeId);
+      const { error } = await supabase.from("time_entries").insert({
+        user_id: userId,
+        employee_id: p.employeeId,
+        employee_name: emp?.name ?? p.employeeName,
+        work_date: p.date,
+        start_time: p.start || null,
+        end_time: p.end || null,
+        break_minutes: p.breakMin || 0,
+        hours: Number(p.hours.toFixed(2)),
+        hourly_rate: Number(emp?.hourly_rate ?? 0),
+        project_id: p.projectId,
+        location: p.projectName === "Ohne Objekt" ? "" : p.projectName,
+        note: "",
+        entry_type: "work",
+        absence_reason: "",
+        completed_at: new Date().toISOString(),
+        approval_status: "approved",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Einsatz als erledigt übernommen");
+      setPlanDetail(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
+
   const openDay = (key: string, employeeId?: string) => {
     const preset = employeeId ?? (filterEmployee !== ALL ? filterEmployee : "");
     setForm({
