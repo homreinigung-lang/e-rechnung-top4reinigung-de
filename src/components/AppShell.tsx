@@ -73,9 +73,7 @@ const navGroups: readonly NavGroup[] = [
   {
     title: "Personal",
     items: [
-      { to: "/zeiterfassung", label: "Zeiterfassung", icon: Clock },
-      { to: "/arbeitsplanung", label: "Arbeitsplanung", icon: CalendarRange },
-      { to: "/personal", label: "Mitarbeiter", icon: HardHat },
+      { to: "/team", label: "Control Center", icon: HardHat },
       { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
     ],
   },
