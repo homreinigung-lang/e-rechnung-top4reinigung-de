@@ -79,11 +79,16 @@ export function MeinEinsatzkalender({
   projects,
   entries = [],
   onSelectProject,
+  onConfirm,
+  confirmingKey = null,
 }: {
   assignments: KalenderAssignment[];
   projects: KalenderProjekt[];
   entries?: KalenderZeiteintrag[];
   onSelectProject?: (projectId: string) => void;
+  /** Einsatz als erledigt bestätigen – überträgt die Planzeit in die Arbeitszeit. */
+  onConfirm?: (task: DayTask) => void;
+  confirmingKey?: string | null;
 }) {
   const [cursor, setCursor] = React.useState(() => {
     const d = new Date();
