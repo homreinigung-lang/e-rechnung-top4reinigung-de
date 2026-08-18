@@ -340,6 +340,8 @@ function MeineZeiten() {
         projects={projects}
         entries={entries as never}
         onSelectProject={(id) => setSelectedProjectId(id)}
+        onConfirm={(task) => confirmShift.mutate(task)}
+        confirmingKey={confirmingKey}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
