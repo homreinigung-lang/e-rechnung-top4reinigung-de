@@ -42,7 +42,7 @@ import {
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
-import { MeinEinsatzkalender } from "@/components/MeinEinsatzkalender";
+import { MeinEinsatzkalender, type DayTask } from "@/components/MeinEinsatzkalender";
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
