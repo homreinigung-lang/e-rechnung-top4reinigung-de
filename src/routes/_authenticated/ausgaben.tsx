@@ -406,6 +406,8 @@ function Ausgaben() {
         )}
       </div>
 
+      <WiederkehrendeAusgaben categories={CATEGORIES} />
+
       <DateiVorschau path={preview} onClose={() => setPreview(null)} />
     </div>
   );
