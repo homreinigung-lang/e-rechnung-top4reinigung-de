@@ -352,6 +352,7 @@ function DokumenteListe() {
           duplicate={duplicate}
           remove={remove}
           isLocked={(r: Record<string, unknown>) => isLockedDocument(r)}
+          onDelete={(id, label) => setDeleteTarget({ id, label })}
         />
       ) : (
         <div className="surface overflow-hidden">
@@ -649,6 +650,8 @@ interface AngebotsTabelleProps {
   duplicate: { mutate: (id: string) => void };
   remove: { mutate: (id: string) => void };
   isLocked: (r: Record<string, unknown>) => boolean;
+  /** Öffnet den gemeinsamen Lösch-Bestätigungsdialog (deleteTarget) aus DokumenteListe. */
+  onDelete: (id: string, label: string) => void;
 }
 
 function AngebotsTabelle({
@@ -660,6 +663,7 @@ function AngebotsTabelle({
   duplicate,
   remove,
   isLocked,
+  onDelete,
 }: AngebotsTabelleProps) {
   const navigate = useNavigate();
 
@@ -781,7 +785,7 @@ function AngebotsTabelle({
                           toast.error(deleteBlockedMessage(r), { duration: 9000 });
                           return;
                         }
-                        remove.mutate(d.id);
+                        onDelete(d.id, `Angebot ${d.number}`);
                       }}
                     >
                       <Trash2
