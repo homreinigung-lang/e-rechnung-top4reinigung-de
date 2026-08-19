@@ -1089,6 +1089,24 @@ function DokumentDetail() {
           </Button>
         )}
 
+        {isOrder && !locked && (
+          <Button
+            variant="destructive"
+            onClick={() =>
+              setConfirmDialog({
+                title: "Auftragsbestätigung löschen?",
+                description: `„${doc.number ?? ""}" wird in den Papierkorb verschoben und kann dort 30 Tage lang wiederhergestellt werden.`,
+                confirmLabel: "In Papierkorb verschieben",
+                destructive: true,
+                action: () => remove.mutate(),
+              })
+            }
+            disabled={remove.isPending}
+          >
+            <Trash2 className="size-4" /> Löschen
+          </Button>
+        )}
+
         {!locked && editMode && (
           <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
             <Save className="size-4" /> Speichern
