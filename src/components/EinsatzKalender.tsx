@@ -843,6 +843,8 @@ export function EinsatzKalender({
                           }
                         >
                           {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
+                          {(((e as { photo_paths?: string[] }).photo_paths ?? []) as string[])
+                            .length > 0 && <Camera className="size-3 shrink-0" />}
                           <span className="truncate">
                             {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
                             {e.employee_name}
