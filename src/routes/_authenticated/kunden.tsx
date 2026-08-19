@@ -318,9 +318,32 @@ function Kunden() {
                 >
                   <Pencil className="size-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => remove.mutate(c.id)}>
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Kunde wirklich löschen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Der Kunde „{c.company || c.name || "ohne Namen}"
+                        wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig
+                        gemacht werden.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction
+                        className={buttonVariants({ variant: "destructive" })}
+                        onClick={() => remove.mutate(c.id)}
+                      >
+                        Löschen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </li>
             ))}
           </ul>
