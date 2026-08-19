@@ -24,7 +24,17 @@ import { receiptFileToPdf } from "@/lib/receipt-pdf";
 import { downloadStoredFile, uploadUserFile } from "@/lib/storage";
 import { DateiVorschau } from "@/components/DateiVorschau";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
-import { Download, Eye, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
+import { readIncomingEInvoice, type IncomingEInvoice } from "@/lib/e-invoice-import";
+import {
+  Download,
+  Eye,
+  FileCode2,
+  Loader2,
+  Paperclip,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ausgaben")({
   head: () => ({
@@ -88,6 +98,42 @@ function Ausgaben() {
   const [scanning, setScanning] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
+  const [eInvoice, setEInvoice] = useState<IncomingEInvoice | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  /** Eingehende E-Rechnung (XRechnung/ZUGFeRD) einlesen und die Felder vorbelegen. */
+  async function handleEInvoice(path: string, file: File) {
+    setImporting(true);
+    try {
+      const inv = await readIncomingEInvoice(file);
+      setEInvoice(inv);
+      setScanned(false);
+      setForm((f) => ({
+        ...f,
+        receipt_url: path,
+        supplier: inv.supplier || f.supplier,
+        document_number: inv.document_number || f.document_number,
+        expense_date: inv.issue_date || f.expense_date,
+        net_amount: inv.net_amount ? inv.net_amount.toFixed(2) : f.net_amount,
+        vat_amount: inv.vat_amount ? inv.vat_amount.toFixed(2) : f.vat_amount,
+        notes: [
+          `E-Rechnung ${inv.format}`,
+          inv.supplier_vat_id ? `USt-IdNr. ${inv.supplier_vat_id}` : "",
+          inv.notes,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      }));
+      toast.success(`${inv.format} eingelesen`, {
+        description: "Beträge und Datum wurden übernommen – bitte kurz prüfen.",
+      });
+    } catch (e) {
+      setForm((f) => ({ ...f, receipt_url: path }));
+      toast.error(e instanceof Error ? e.message : "E-Rechnung konnte nicht gelesen werden.");
+    } finally {
+      setImporting(false);
+    }
+  }
   const runScan = useServerFn(scanReceipt);
 
   /** Nimmt den Upload entgegen: Beleg auslesen und Fotos sofort in ein PDF wandeln. */
@@ -178,6 +224,7 @@ function Ausgaben() {
       toast.success("Ausgabe erfasst");
       setForm({ ...empty, expense_date: today(), receipt_url: "" });
       setScanned(false);
+      setEInvoice(null);
 
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -280,6 +327,23 @@ function Ausgaben() {
             label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
             onUploaded={(path, file) => void handleReceipt(path, file)}
           />
+          <FileUploadButton
+            folder="e-rechnungen"
+            accept=".xml,application/xml,text/xml,application/pdf"
+            label="E-Rechnung empfangen (XRechnung/ZUGFeRD)"
+            onUploaded={(path, file) => void handleEInvoice(path, file)}
+          />
+          {importing && (
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> E-Rechnung wird gelesen…
+            </span>
+          )}
+          {!importing && eInvoice && (
+            <span className="inline-flex items-center gap-1 text-sm text-primary">
+              <FileCode2 className="size-4" /> {eInvoice.format} · Nr. {eInvoice.document_number} ·{" "}
+              {formatMoney(eInvoice.gross_amount)}
+            </span>
+          )}
           {scanning && (
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> Beleg wird ausgelesen…
