@@ -74,6 +74,8 @@ export async function runRecurring(recurringId: string): Promise<string> {
     converted_document_id: _cv,
     reminder_level: _rl,
     last_reminder_at: _lr,
+    retention_until: _ru,
+    deleted_at: _dl,
     ...rest
   } = src as unknown as Record<string, unknown>;
 

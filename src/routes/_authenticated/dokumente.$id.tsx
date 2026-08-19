@@ -344,6 +344,8 @@ function DokumentDetail() {
         is_storno: _st,
         cancels_document_id: _cd,
         cancelled_by_document_id: _cb,
+        retention_until: _ru,
+        deleted_at: _dl,
         ...rest
       } = doc as unknown as Record<string, unknown>;
 

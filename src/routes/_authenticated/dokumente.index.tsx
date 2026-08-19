@@ -187,6 +187,8 @@ function DokumenteListe() {
         is_storno: _st,
         cancels_document_id: _cd,
         cancelled_by_document_id: _cb,
+        retention_until: _ru,
+        deleted_at: _dl,
         ...rest
       } = src as unknown as Record<string, unknown>;
       const { data: created, error: insErr } = await supabase
