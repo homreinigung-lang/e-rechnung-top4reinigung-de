@@ -98,6 +98,42 @@ function Ausgaben() {
   const [scanning, setScanning] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
+  const [eInvoice, setEInvoice] = useState<IncomingEInvoice | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  /** Eingehende E-Rechnung (XRechnung/ZUGFeRD) einlesen und die Felder vorbelegen. */
+  async function handleEInvoice(path: string, file: File) {
+    setImporting(true);
+    try {
+      const inv = await readIncomingEInvoice(file);
+      setEInvoice(inv);
+      setScanned(false);
+      setForm((f) => ({
+        ...f,
+        receipt_url: path,
+        supplier: inv.supplier || f.supplier,
+        document_number: inv.document_number || f.document_number,
+        expense_date: inv.issue_date || f.expense_date,
+        net_amount: inv.net_amount ? inv.net_amount.toFixed(2) : f.net_amount,
+        vat_amount: inv.vat_amount ? inv.vat_amount.toFixed(2) : f.vat_amount,
+        notes: [
+          `E-Rechnung ${inv.format}`,
+          inv.supplier_vat_id ? `USt-IdNr. ${inv.supplier_vat_id}` : "",
+          inv.notes,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      }));
+      toast.success(`${inv.format} eingelesen`, {
+        description: "Beträge und Datum wurden übernommen – bitte kurz prüfen.",
+      });
+    } catch (e) {
+      setForm((f) => ({ ...f, receipt_url: path }));
+      toast.error(e instanceof Error ? e.message : "E-Rechnung konnte nicht gelesen werden.");
+    } finally {
+      setImporting(false);
+    }
+  }
   const runScan = useServerFn(scanReceipt);
 
   /** Nimmt den Upload entgegen: Beleg auslesen und Fotos sofort in ein PDF wandeln. */
