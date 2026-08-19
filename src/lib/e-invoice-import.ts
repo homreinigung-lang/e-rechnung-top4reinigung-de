@@ -143,8 +143,8 @@ export async function extractXmlFromPdf(bytes: Uint8Array): Promise<string | nul
   for (let i = 0; i < list.size(); i += 2) {
     const spec = list.lookupMaybe(i + 1, PDFDict);
     const ef = spec?.lookupMaybe(PDFName.of("EF"), PDFDict);
-    const stream = ef?.lookupMaybe(PDFName.of("F"), PDFRawStream);
-    if (!stream) continue;
+    const stream = ef?.lookup(PDFName.of("F"));
+    if (!(stream instanceof PDFRawStream)) continue;
     const content = decodePDFRawStream(stream).decode();
     const xml = new TextDecoder("utf-8").decode(content);
     if (/CrossIndustryInvoice|<(\w+:)?Invoice/.test(xml)) return xml;
