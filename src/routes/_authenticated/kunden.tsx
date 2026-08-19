@@ -328,9 +328,7 @@ function Kunden() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Kunde wirklich löschen?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Der Kunde „{c.company || c.name || "ohne Namen}"
-                        wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig
-                        gemacht werden.
+                        {`Der Kunde „${c.company || c.name || "ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
