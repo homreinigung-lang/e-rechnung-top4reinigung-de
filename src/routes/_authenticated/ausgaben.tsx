@@ -224,6 +224,7 @@ function Ausgaben() {
       toast.success("Ausgabe erfasst");
       setForm({ ...empty, expense_date: today(), receipt_url: "" });
       setScanned(false);
+      setEInvoice(null);
 
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
