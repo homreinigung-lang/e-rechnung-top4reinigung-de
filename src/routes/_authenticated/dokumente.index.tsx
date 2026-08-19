@@ -659,6 +659,8 @@ type DocRow = {
 };
 
 interface AngebotsTabelleProps {
+  /** "quote" = Angebote, "order" = Auftragsbestätigungen. */
+  kind: "quote" | "order";
   list: DocRow[];
   decide: {
     mutate: (v: { docId: string; decision: "accepted" | "declined" }) => void;
@@ -675,6 +677,7 @@ interface AngebotsTabelleProps {
 }
 
 function AngebotsTabelle({
+  kind,
   list,
   decide,
   decline,
@@ -686,11 +689,13 @@ function AngebotsTabelle({
   onDelete,
 }: AngebotsTabelleProps) {
   const navigate = useNavigate();
+  const isOrder = kind === "order";
+  const label = isOrder ? "Auftragsbestätigung" : "Angebot";
 
   if (list.length === 0) {
     return (
       <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-        Noch keine Angebote vorhanden.
+        {isOrder ? "Noch keine Auftragsbestätigungen vorhanden." : "Noch keine Angebote vorhanden."}
       </p>
     );
   }
@@ -700,7 +705,7 @@ function AngebotsTabelle({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <th className="px-4 py-3 font-medium">Angebot</th>
+            <th className="px-4 py-3 font-medium">{label}</th>
             <th className="px-4 py-3 font-medium">Kunde</th>
             <th className="px-4 py-3 text-right font-medium">Betrag</th>
             <th className="px-4 py-3 font-medium">Status</th>
@@ -716,7 +721,7 @@ function AngebotsTabelle({
               <tr
                 key={d.id}
                 className="cursor-pointer align-middle hover:bg-muted/40"
-                title="Angebot öffnen und bearbeiten"
+                title={`${label} öffnen und bearbeiten`}
                 onClick={() => navigate({ to: "/dokumente/$id", params: { id: d.id } })}
               >
                 <td className="px-4 py-3">
@@ -740,7 +745,7 @@ function AngebotsTabelle({
                 </td>
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    {(d.status === "sent" || d.status === "draft") && (
+                    {!isOrder && (d.status === "sent" || d.status === "draft") && (
                       <>
                         <Button
                           size="sm"
@@ -759,19 +764,26 @@ function AngebotsTabelle({
                       </>
                     )}
 
-                    {d.status === "accepted" && !d.converted_document_id && (
+                    {((isOrder && !d.converted_document_id) ||
+                      (!isOrder && d.status === "accepted" && !d.converted_document_id)) && (
                       <Button
                         size="sm"
                         variant="secondary"
-                        title="Rechnung direkt aus dem Auftrag erstellen"
+                        title={
+                          isOrder
+                            ? "Rechnung aus der Auftragsbestätigung erstellen"
+                            : "Auftragsbestätigung aus dem Angebot erstellen"
+                        }
                         onClick={() => convert.mutate(d.id)}
                         disabled={convert.isPending}
                       >
-                        <ArrowRightLeft className="size-4" /> Rechnung erstellen
+                        <ArrowRightLeft className="size-4" />
+                        {isOrder ? "Rechnung erstellen" : "Auftragsbestätigung erstellen"}
                       </Button>
                     )}
 
-                    {(d.status === "accepted" || Boolean(d.converted_document_id)) &&
+                    {!isOrder &&
+                      (d.status === "accepted" || Boolean(d.converted_document_id)) &&
                       d.status !== "paid" && (
                         <Button
                           size="sm"
@@ -805,7 +817,7 @@ function AngebotsTabelle({
                           toast.error(deleteBlockedMessage(r), { duration: 9000 });
                           return;
                         }
-                        onDelete(d.id, `Angebot ${d.number}`);
+                        onDelete(d.id, `${label} ${d.number}`);
                       }}
                     >
                       <Trash2
