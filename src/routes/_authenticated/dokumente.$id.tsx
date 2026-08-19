@@ -36,6 +36,9 @@ import {
 import { buildEpcPayload } from "@/lib/epc";
 import {
   QUOTE_DISCLAIMER,
+  CANCELLATION_TERMS,
+  ORDER_INTRO,
+  orderHeadline,
   QUOTE_INTRO,
   deriveServiceName,
   quoteHeadline,
@@ -48,7 +51,8 @@ import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
 import { describeGobdError, editBlockedMessage, isLockedDocument } from "@/lib/gobd-guard";
 import {
-  convertQuoteToInvoice,
+  convertQuoteToOrder,
+  convertOrderToInvoice,
   dueInfo,
   mahnLabel,
   mahnungAllowed,
@@ -483,9 +487,14 @@ function DokumentDetail() {
   });
 
   const convert = useMutation({
-    mutationFn: () => convertQuoteToInvoice(id),
-    onSuccess: (newId) => {
-      toast.success("Rechnung aus Angebot erstellt");
+    mutationFn: (): Promise<string> =>
+      doc.type === "order" ? convertOrderToInvoice(id) : convertQuoteToOrder(id),
+    onSuccess: (newId: string) => {
+      toast.success(
+        doc.type === "order"
+          ? "Rechnung aus Auftragsbestätigung erstellt"
+          : "Auftragsbestätigung aus Angebot erstellt",
+      );
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
@@ -504,6 +513,8 @@ function DokumentDetail() {
   const cancelledBy = (docRecord["cancelled_by_document_id"] as string | null) ?? null;
   const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
+  const isOrder = doc.type === "order";
+  const isQuote = doc.type === "quote";
   const reminderLevel = Number(docRecord["reminder_level"] ?? 0);
   const canMahnen = mahnungAllowed(docRecord["due_date"] as string | null);
 
