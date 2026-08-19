@@ -49,7 +49,12 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
-import { describeGobdError, editBlockedMessage, isLockedDocument } from "@/lib/gobd-guard";
+import {
+  deleteBlockedMessage,
+  describeGobdError,
+  editBlockedMessage,
+  isLockedDocument,
+} from "@/lib/gobd-guard";
 import {
   convertQuoteToOrder,
   convertOrderToInvoice,
