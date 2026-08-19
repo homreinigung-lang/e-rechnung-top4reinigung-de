@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileSpreadsheet,
+  Camera,
   HeartPulse,
   Plus,
   Printer,
