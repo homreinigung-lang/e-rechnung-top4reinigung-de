@@ -2,9 +2,20 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -654,9 +665,30 @@ export function Personal() {
                       {trackedHours(e.id).toFixed(2)} Std.
                     </td>
                     <td className="px-5 py-2 text-right">
-                      <Button variant="ghost" size="icon" onClick={() => remove.mutate(e.id)}>
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Trash2 className="size-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Mitarbeiter wirklich löschen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {`Der Mitarbeiter „${e.name || "ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction
+                              className={buttonVariants({ variant: "destructive" })}
+                              onClick={() => remove.mutate(e.id)}
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </td>
                   </tr>
                 );

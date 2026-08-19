@@ -3,9 +3,20 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatDate, formatMoney, today } from "@/lib/format";
 import { FileUploadButton } from "@/components/FileUploadButton";
@@ -395,9 +406,32 @@ function ExpenseRow({
           </Button>
         </>
       )}
-      <Button variant="ghost" size="icon" onClick={onDelete}>
-        <Trash2 className="size-4 text-destructive" />
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ausgabe wirklich löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Die Ausgabe „${r.supplier || "ohne Lieferant"}" vom ${formatDate(
+                r.expense_date,
+              )} wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={onDelete}
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }
