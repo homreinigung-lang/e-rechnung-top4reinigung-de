@@ -1300,6 +1300,27 @@ export function EinsatzKalender({
                   </>
                 ) : null}
               </dl>
+
+              {/* Objektfotos: nur interne Verwaltungsansicht, nie im Steuerberater-Portal. */}
+              {!isAbsence(detail) && (
+                <div className="border-t pt-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Objektfotos (nur intern)
+                  </p>
+                  <ArbeitsnachweisFotos
+                    entryId={detail.id}
+                    paths={((detail as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
+                    canDelete
+                    invalidateKey="time_entries"
+                  />
+                  {(((detail as { photo_paths?: string[] }).photo_paths ?? []) as string[])
+                    .length === 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Keine Fotos vom Mitarbeiter hochgeladen.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {detail && !isAbsence(detail) && (
