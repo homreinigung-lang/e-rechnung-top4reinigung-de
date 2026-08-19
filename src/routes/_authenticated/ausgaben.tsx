@@ -24,7 +24,17 @@ import { receiptFileToPdf } from "@/lib/receipt-pdf";
 import { downloadStoredFile, uploadUserFile } from "@/lib/storage";
 import { DateiVorschau } from "@/components/DateiVorschau";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
-import { Download, Eye, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
+import { readIncomingEInvoice, type IncomingEInvoice } from "@/lib/e-invoice-import";
+import {
+  Download,
+  Eye,
+  FileCode2,
+  Loader2,
+  Paperclip,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ausgaben")({
   head: () => ({
