@@ -1248,6 +1248,60 @@ export type Database = {
           },
         ]
       }
+      recurring_expenses: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          gross_amount: number
+          id: string
+          interval_months: number
+          last_run_at: string | null
+          net_amount: number
+          next_run: string
+          notes: string
+          supplier: string
+          title: string
+          updated_at: string
+          user_id: string
+          vat_amount: number
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          interval_months?: number
+          last_run_at?: string | null
+          net_amount?: number
+          next_run?: string
+          notes?: string
+          supplier?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+          vat_amount?: number
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          interval_months?: number
+          last_run_at?: string | null
+          net_amount?: number
+          next_run?: string
+          notes?: string
+          supplier?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          vat_amount?: number
+        }
+        Relationships: []
+      }
       recurring_invoices: {
         Row: {
           active: boolean
