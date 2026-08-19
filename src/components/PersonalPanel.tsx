@@ -665,9 +665,30 @@ export function Personal() {
                       {trackedHours(e.id).toFixed(2)} Std.
                     </td>
                     <td className="px-5 py-2 text-right">
-                      <Button variant="ghost" size="icon" onClick={() => remove.mutate(e.id)}>
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Trash2 className="size-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Mitarbeiter wirklich löschen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {`Der Mitarbeiter „${e.name || "ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction
+                              className={buttonVariants({ variant: "destructive" })}
+                              onClick={() => remove.mutate(e.id)}
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </td>
                   </tr>
                 );
