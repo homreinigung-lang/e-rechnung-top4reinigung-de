@@ -28,7 +28,8 @@ import {
 } from "@/lib/format";
 import {
   completeQuote,
-  convertQuoteToInvoice,
+  convertQuoteToOrder,
+  convertOrderToInvoice,
   declineQuote,
   dueInfo,
   mahnLabel,
@@ -43,6 +44,7 @@ import {
   BadgeEuro,
   BellRing,
   Check,
+  ClipboardCheck,
   Copy,
   FileText,
   Gavel,
@@ -53,8 +55,17 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/")({
-  validateSearch: (search: Record<string, unknown>): { tab?: "invoice" | "quote" | undefined } => ({
-    tab: search["tab"] === "quote" ? "quote" : search["tab"] === "invoice" ? "invoice" : undefined,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: "invoice" | "quote" | "order" | undefined } => ({
+    tab:
+      search["tab"] === "quote"
+        ? "quote"
+        : search["tab"] === "order"
+          ? "order"
+          : search["tab"] === "invoice"
+            ? "invoice"
+            : undefined,
   }),
 
   head: () => ({
@@ -78,7 +89,7 @@ function DokumenteListe() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const search = Route.useSearch();
-  const [tab, setTab] = useState<"invoice" | "quote">(search.tab ?? "invoice");
+  const [tab, setTab] = useState<"invoice" | "quote" | "order">(search.tab ?? "invoice");
 
   const { data: documents = [] } = useQuery({
     queryKey: ["documents"],
@@ -292,9 +303,19 @@ function DokumenteListe() {
   });
 
   const convert = useMutation({
-    mutationFn: (docId: string) => convertQuoteToInvoice(docId),
+    mutationFn: (docId: string) => convertQuoteToOrder(docId),
     onSuccess: (newId) => {
-      toast.success("Rechnung aus Auftrag erstellt");
+      toast.success("Auftragsbestätigung aus Angebot erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toInvoice = useMutation({
+    mutationFn: (docId: string) => convertOrderToInvoice(docId),
+    onSuccess: (newId) => {
+      toast.success("Rechnung aus Auftragsbestätigung erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
@@ -323,7 +344,7 @@ function DokumenteListe() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "invoice" | "quote")}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "invoice" | "quote" | "order")}>
         <TabsList>
           <TabsTrigger value="invoice">
             <Receipt className="mr-2 size-4" /> Rechnungen
@@ -331,18 +352,22 @@ function DokumenteListe() {
           <TabsTrigger value="quote">
             <FileText className="mr-2 size-4" /> Angebote
           </TabsTrigger>
+          <TabsTrigger value="order">
+            <ClipboardCheck className="mr-2 size-4" /> Auftragsbestätigungen
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {tab === "quote" ? (
+      {tab === "quote" || tab === "order" ? (
         <AngebotsTabelle
+          kind={tab}
           list={list}
           decide={decide}
           decline={(id: string, label: string) => {
             setDeclineTarget({ id, label });
             setDeclineReason("");
           }}
-          convert={convert}
+          convert={tab === "order" ? toInvoice : convert}
           complete={complete}
           duplicate={duplicate}
           remove={remove}
