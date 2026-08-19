@@ -352,6 +352,7 @@ function DokumenteListe() {
           duplicate={duplicate}
           remove={remove}
           isLocked={(r: Record<string, unknown>) => isLockedDocument(r)}
+          onDelete={(id, label) => setDeleteTarget({ id, label })}
         />
       ) : (
         <div className="surface overflow-hidden">
