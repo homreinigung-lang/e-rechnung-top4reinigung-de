@@ -415,6 +415,38 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const remove = useMutation({
+    mutationFn: async () => {
+      if (isLockedDocument(docRecord)) throw new Error(deleteBlockedMessage(docRecord));
+      // Verweise anderer Belege lösen, damit der Entwurf gelöscht werden kann
+      await supabase
+        .from("documents")
+        .update({ converted_document_id: null })
+        .eq("converted_document_id", id);
+      await supabase
+        .from("documents")
+        .update({ cancels_document_id: null })
+        .eq("cancels_document_id", id);
+      await supabase
+        .from("documents")
+        .update({ cancelled_by_document_id: null })
+        .eq("cancelled_by_document_id", id);
+      await supabase
+        .from("recurring_invoices")
+        .update({ template_document_id: null })
+        .eq("template_document_id", id);
+      const { error } = await supabase.rpc("trash_entity", { _entity: "document", _id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("In den Papierkorb verschoben – 30 Tage wiederherstellbar");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["trash"] });
+      navigate({ to: "/dokumente" });
+    },
+    onError: (e: unknown) => toast.error(describeGobdError(e, docRecord), { duration: 9000 }),
+  });
+
   const markPaid = useMutation({
     mutationFn: (date: string) => markInvoicePaid(id, date),
     onSuccess: (paid) => {
