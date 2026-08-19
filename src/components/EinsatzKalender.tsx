@@ -844,8 +844,15 @@ export function EinsatzKalender({
                           }
                         >
                           {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
-                          {(((e as { photo_paths?: string[] }).photo_paths ?? []) as string[])
-                            .length > 0 && <Camera className="size-3 shrink-0" />}
+                          {((e as { photo_paths?: string[] }).photo_paths ?? []).length > 0 && (
+                            <span
+                              title={`${((e as { photo_paths?: string[] }).photo_paths ?? []).length} Foto(s) vorhanden`}
+                              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
+                            >
+                              <Camera className="size-2.5" />
+                              {((e as { photo_paths?: string[] }).photo_paths ?? []).length}
+                            </span>
+                          )}
                           <span className="truncate">
                             {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
                             {e.employee_name}
