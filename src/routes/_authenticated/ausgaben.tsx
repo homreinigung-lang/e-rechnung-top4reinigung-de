@@ -327,6 +327,23 @@ function Ausgaben() {
             label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
             onUploaded={(path, file) => void handleReceipt(path, file)}
           />
+          <FileUploadButton
+            folder="e-rechnungen"
+            accept=".xml,application/xml,text/xml,application/pdf"
+            label="E-Rechnung empfangen (XRechnung/ZUGFeRD)"
+            onUploaded={(path, file) => void handleEInvoice(path, file)}
+          />
+          {importing && (
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> E-Rechnung wird gelesen…
+            </span>
+          )}
+          {!importing && eInvoice && (
+            <span className="inline-flex items-center gap-1 text-sm text-primary">
+              <FileCode2 className="size-4" /> {eInvoice.format} · Nr. {eInvoice.document_number} ·{" "}
+              {formatMoney(eInvoice.gross_amount)}
+            </span>
+          )}
           {scanning && (
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> Beleg wird ausgelesen…
