@@ -148,7 +148,10 @@ function Steuerberater() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
-        .select("*, employees(name, personnel_number)")
+        // Ohne photo_paths: Fotos bleiben ausschließlich intern (Verwaltung).
+        .select(
+          "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at, employees(name, personnel_number)",
+        )
         .gte("work_date", from)
         .lte("work_date", to)
         .neq("approval_status", "rejected")

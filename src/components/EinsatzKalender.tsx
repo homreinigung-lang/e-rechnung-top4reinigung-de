@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileSpreadsheet,
+  Camera,
   HeartPulse,
   Plus,
   Printer,
@@ -56,6 +57,7 @@ import { buildXlsx } from "@/lib/xlsx";
 import { saveFile } from "@/lib/download";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { GermanTimeInput } from "@/components/GermanDateTimeInput";
+import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 
 import { effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
 
@@ -842,6 +844,8 @@ export function EinsatzKalender({
                           }
                         >
                           {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
+                          {(((e as { photo_paths?: string[] }).photo_paths ?? []) as string[])
+                            .length > 0 && <Camera className="size-3 shrink-0" />}
                           <span className="truncate">
                             {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
                             {e.employee_name}
@@ -1300,6 +1304,27 @@ export function EinsatzKalender({
                   </>
                 ) : null}
               </dl>
+
+              {/* Objektfotos: nur interne Verwaltungsansicht, nie im Steuerberater-Portal. */}
+              {!isAbsence(detail) && (
+                <div className="border-t pt-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Objektfotos (nur intern)
+                  </p>
+                  <ArbeitsnachweisFotos
+                    entryId={detail.id}
+                    paths={((detail as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
+                    canDelete
+                    invalidateKey="time_entries"
+                  />
+                  {(((detail as { photo_paths?: string[] }).photo_paths ?? []) as string[])
+                    .length === 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Keine Fotos vom Mitarbeiter hochgeladen.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {detail && !isAbsence(detail) && (
