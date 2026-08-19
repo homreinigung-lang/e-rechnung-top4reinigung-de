@@ -186,23 +186,34 @@ function formatToday(): string {
   return new Date().toLocaleDateString("de-DE-u-ca-gregory-nu-latn");
 }
 
-/** Angenommenes Angebot mit einem Klick in eine Rechnung (Entwurf) umwandeln. */
-export async function convertQuoteToInvoice(quoteId: string): Promise<string> {
+/**
+ * Beleg umwandeln: Angebot → Auftragsbestätigung → Rechnung.
+ * Positionen, Kunde und Konditionen werden vollständig übernommen.
+ */
+async function convertDocument(sourceId: string, target: "order" | "invoice"): Promise<string> {
   const userId = await currentUserId();
   const { data: src, error } = await supabase
     .from("documents")
     .select("*")
-    .eq("id", quoteId)
+    .eq("id", sourceId)
     .single();
   if (error) throw error;
-  if (src.type !== "quote") throw new Error("Nur Angebote können umgewandelt werden.");
+
+  const expected = target === "order" ? "quote" : "order";
+  if (src.type !== expected) {
+    throw new Error(
+      target === "order"
+        ? "Nur Angebote können in eine Auftragsbestätigung umgewandelt werden."
+        : "Nur Auftragsbestätigungen können in eine Rechnung umgewandelt werden.",
+    );
+  }
   const converted = (src as unknown as Record<string, unknown>)["converted_document_id"];
-  if (converted) throw new Error("Dieses Angebot wurde bereits in eine Rechnung umgewandelt.");
+  if (converted) throw new Error("Dieser Beleg wurde bereits umgewandelt.");
 
   const { data: items } = await supabase
     .from("document_items")
     .select("*")
-    .eq("document_id", quoteId)
+    .eq("document_id", sourceId)
     .order("position");
 
   const { data: settings } = await supabase
@@ -211,8 +222,8 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<string> {
     .maybeSingle();
   const { data: existing } = await supabase.from("documents").select("number, type");
   const number = nextNumber(
-    "invoice",
-    (existing ?? []).filter((d) => d.type === "invoice").map((d) => d.number),
+    target,
+    (existing ?? []).filter((d) => d.type === target).map((d) => d.number),
   );
 
   const issue = today();
@@ -231,6 +242,7 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<string> {
     converted_document_id: _cv,
     reminder_level: _rl,
     last_reminder_at: _lr,
+    paid_at: _pa,
     ...rest
   } = src as unknown as Record<string, unknown>;
 
@@ -239,11 +251,12 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<string> {
     .insert({
       ...rest,
       user_id: userId,
-      type: "invoice",
+      type: target,
       number,
       status: "draft",
       issue_date: issue,
-      due_date: addDays(issue, Number(settings?.payment_terms_days ?? 14)),
+      due_date:
+        target === "invoice" ? addDays(issue, Number(settings?.payment_terms_days ?? 14)) : null,
     } as never)
     .select("id")
     .single();
@@ -259,15 +272,33 @@ export async function convertQuoteToInvoice(quoteId: string): Promise<string> {
         quantity: i.quantity,
         unit: i.unit,
         unit_price: i.unit_price,
+        is_optional: i.is_optional,
       })),
     );
   }
 
   await supabase
     .from("documents")
-    .update({ converted_document_id: created.id, status: "accepted" } as never)
-    .eq("id", quoteId);
+    .update({
+      converted_document_id: created.id,
+      ...(target === "order" ? { status: "accepted" } : {}),
+    } as never)
+    .eq("id", sourceId);
 
-  await logAudit("quote_converted", { id: quoteId, number: src.number }, { invoice: number });
+  await logAudit(
+    target === "order" ? "quote_converted_order" : "order_converted_invoice",
+    { id: sourceId, number: src.number },
+    { target, number },
+  );
   return created.id as string;
+}
+
+/** Angenommenes Angebot in eine Auftragsbestätigung (Entwurf) umwandeln. */
+export async function convertQuoteToOrder(quoteId: string): Promise<string> {
+  return convertDocument(quoteId, "order");
+}
+
+/** Auftragsbestätigung in eine Rechnung (Entwurf) umwandeln. */
+export async function convertOrderToInvoice(orderId: string): Promise<string> {
+  return convertDocument(orderId, "invoice");
 }

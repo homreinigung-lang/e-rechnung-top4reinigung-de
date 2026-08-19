@@ -64,6 +64,7 @@ export function parseGermanDate(value: string): string | null {
 export const DOC_TYPE_LABEL: Record<string, string> = {
   invoice: "Rechnung",
   quote: "Angebot",
+  order: "Auftragsbestätigung",
 };
 
 export const STATUS_LABEL: Record<string, string> = {
@@ -75,9 +76,12 @@ export const STATUS_LABEL: Record<string, string> = {
   cancelled: "Storniert",
 };
 
-export function nextNumber(type: "invoice" | "quote", existing: string[]): string {
+export type DocKind = "invoice" | "quote" | "order";
+
+export function nextNumber(type: DocKind, existing: string[]): string {
   const year = new Date().getFullYear();
-  const prefix = type === "invoice" ? `RE-${year}-` : `AN-${year}-`;
+  const code = type === "invoice" ? "RE" : type === "order" ? "AB" : "AN";
+  const prefix = `${code}-${year}-`;
   const max = existing
     .filter((n) => n.startsWith(prefix))
     .map((n) => parseInt(n.slice(prefix.length), 10))

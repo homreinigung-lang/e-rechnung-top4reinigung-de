@@ -36,6 +36,9 @@ import {
 import { buildEpcPayload } from "@/lib/epc";
 import {
   QUOTE_DISCLAIMER,
+  CANCELLATION_TERMS,
+  ORDER_INTRO,
+  orderHeadline,
   QUOTE_INTRO,
   deriveServiceName,
   quoteHeadline,
@@ -48,7 +51,8 @@ import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
 import { describeGobdError, editBlockedMessage, isLockedDocument } from "@/lib/gobd-guard";
 import {
-  convertQuoteToInvoice,
+  convertQuoteToOrder,
+  convertOrderToInvoice,
   dueInfo,
   mahnLabel,
   mahnungAllowed,
@@ -483,9 +487,14 @@ function DokumentDetail() {
   });
 
   const convert = useMutation({
-    mutationFn: () => convertQuoteToInvoice(id),
-    onSuccess: (newId) => {
-      toast.success("Rechnung aus Angebot erstellt");
+    mutationFn: (): Promise<string> =>
+      data?.doc.type === "order" ? convertOrderToInvoice(id) : convertQuoteToOrder(id),
+    onSuccess: (newId: string) => {
+      toast.success(
+        data?.doc.type === "order"
+          ? "Rechnung aus Auftragsbestätigung erstellt"
+          : "Auftragsbestätigung aus Angebot erstellt",
+      );
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
@@ -504,6 +513,8 @@ function DokumentDetail() {
   const cancelledBy = (docRecord["cancelled_by_document_id"] as string | null) ?? null;
   const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
+  const isOrder = doc.type === "order";
+  const isQuote = doc.type === "quote";
   const reminderLevel = Number(docRecord["reminder_level"] ?? 0);
   const canMahnen = mahnungAllowed(docRecord["due_date"] as string | null);
 
@@ -570,9 +581,9 @@ function DokumentDetail() {
     const baseLines = [
       `Sehr geehrte Damen und Herren,`,
       ``,
-      isInvoice
-        ? `im Anhang finden Sie unsere Rechnung ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`
-        : `im Anhang finden Sie unser Angebot ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`,
+      `im Anhang finden Sie ${
+        isInvoice ? "unsere Rechnung" : isOrder ? "unsere Auftragsbestätigung" : "unser Angebot"
+      } ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`,
       isInvoice && form["due_date"]
         ? `Wir bitten um Begleichung des Rechnungsbetrags bis zum ${formatDate(String(form["due_date"]))} ohne Abzug.`
         : "",
@@ -682,7 +693,10 @@ function DokumentDetail() {
     const meta: Array<{ label: string; value: string }> = [];
     if (form["customer_number"])
       meta.push({ label: "Kundennummer", value: String(form["customer_number"]) });
-    meta.push({ label: isInvoice ? "Rechnungsnummer" : "Angebotsnummer", value: number });
+    meta.push({
+      label: isInvoice ? "Rechnungsnummer" : isOrder ? "Auftragsnummer" : "Angebotsnummer",
+      value: number,
+    });
     meta.push({
       label: isInvoice ? "Rechnungsdatum" : "Datum",
       value: formatDate(String(form["issue_date"] ?? "")),
@@ -723,7 +737,7 @@ function DokumentDetail() {
       ...(isInvoice
         ? {}
         : {
-            headline: quoteHeadline(
+            headline: (isOrder ? orderHeadline : quoteHeadline)(
               deriveServiceName(
                 form["service_description"] ? String(form["service_description"]) : "",
                 items[0]?.description ?? "",
@@ -752,7 +766,9 @@ function DokumentDetail() {
       meta,
       introText: isInvoice
         ? undefined
-        : `${QUOTE_INTRO}${form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""}`,
+        : `${isOrder ? ORDER_INTRO : QUOTE_INTRO}${
+            form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""
+          }`,
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
         : items
@@ -774,7 +790,11 @@ function DokumentDetail() {
         ? form["notes"]
           ? String(form["notes"])
           : undefined
-        : [form["notes"] ? String(form["notes"]) : "", QUOTE_DISCLAIMER]
+        : [
+            form["notes"] ? String(form["notes"]) : "",
+            isOrder ? "" : QUOTE_DISCLAIMER,
+            CANCELLATION_TERMS,
+          ]
             .filter(Boolean)
             .join("\n\n"),
       paymentLines: isInvoice
@@ -1004,7 +1024,7 @@ function DokumentDetail() {
             </>
           )}
 
-        {!isInvoice && (
+        {isQuote && (
           <>
             {doc.status !== "accepted" && doc.status !== "declined" && (
               <>
@@ -1018,10 +1038,16 @@ function DokumentDetail() {
             )}
             {!convertedId && (
               <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
-                <ArrowRightLeft className="size-4" /> In Auftrag umwandeln
+                <ArrowRightLeft className="size-4" /> In Auftragsbestätigung umwandeln
               </Button>
             )}
           </>
+        )}
+
+        {isOrder && !convertedId && (
+          <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
+            <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
+          </Button>
         )}
 
         {!locked && editMode && (
@@ -1144,7 +1170,8 @@ function DokumentDetail() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="number">
-              {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"} (automatisch)
+              {isInvoice ? "Rechnungsnummer" : isOrder ? "Auftragsnummer" : "Angebotsnummer"}{" "}
+              (automatisch)
             </Label>
             <Input id="number" value={docNumber} readOnly disabled className="bg-muted" />
             <p className="text-xs text-muted-foreground">
@@ -1551,7 +1578,8 @@ function DokumentDetail() {
               )}
               <div>
                 <dt className="inline text-muted-foreground">
-                  {isInvoice ? "Rechnungsnummer" : "Angebotsnummer"}:{" "}
+                  {isInvoice ? "Rechnungsnummer" : isOrder ? "Auftragsnummer" : "Angebotsnummer"}
+                  :{" "}
                 </dt>
                 <dd className="inline font-medium">{docNumber}</dd>
               </div>
@@ -1592,7 +1620,7 @@ function DokumentDetail() {
           ) : (
             <>
               <h2 className="mt-7 text-center font-display text-lg font-bold text-balance">
-                {quoteHeadline(
+                {(isOrder ? orderHeadline : quoteHeadline)(
                   deriveServiceName(
                     form["service_description"] ? String(form["service_description"]) : "",
                     items[0]?.description ?? "",
@@ -1770,7 +1798,10 @@ function DokumentDetail() {
             ) : (
               <div className="mt-4 space-y-2 text-sm">
                 <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
-                <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>
+                {!isOrder && <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>}
+                <p className="text-justify text-xs leading-relaxed text-muted-foreground">
+                  {CANCELLATION_TERMS}
+                </p>
               </div>
             )}
           </div>

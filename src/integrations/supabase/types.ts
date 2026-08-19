@@ -1556,7 +1556,7 @@ export type Database = {
         | "accepted"
         | "declined"
         | "cancelled"
-      doc_type: "invoice" | "quote"
+      doc_type: "invoice" | "quote" | "order"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1692,7 +1692,7 @@ export const Constants = {
         "declined",
         "cancelled",
       ],
-      doc_type: ["invoice", "quote"],
+      doc_type: ["invoice", "quote", "order"],
     },
   },
 } as const
