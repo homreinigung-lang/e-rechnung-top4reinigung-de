@@ -138,11 +138,11 @@ function Kunden() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("customers").delete().eq("id", id);
+      const { error } = await supabase.rpc("trash_entity", { _entity: "customer", _id: id });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Kunde gelöscht");
+      toast.success("Kunde in den Papierkorb verschoben");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
     },
     onError: (e: Error) => toast.error(e.message),

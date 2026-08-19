@@ -187,7 +187,7 @@ function Ausgaben() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      const { error } = await supabase.rpc("trash_entity", { _entity: "expense", _id: id });
       if (error) throw error;
     },
     onSuccess: () => {

@@ -232,16 +232,11 @@ function DokumenteListe() {
         .update({ template_document_id: null })
         .eq("template_document_id", docId);
 
-      const { error: itemsError } = await supabase
-        .from("document_items")
-        .delete()
-        .eq("document_id", docId);
-      if (itemsError) throw itemsError;
-      const { error } = await supabase.from("documents").delete().eq("id", docId);
+      const { error } = await supabase.rpc("trash_entity", { _entity: "document", _id: docId });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Entwurf gelöscht");
+      toast.success("In den Papierkorb verschoben – 30 Tage wiederherstellbar");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
     onError: (e: unknown) => toast.error(describeGobdError(e), { duration: 9000 }),

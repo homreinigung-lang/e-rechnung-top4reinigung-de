@@ -357,6 +357,7 @@ export type Database = {
           country: string
           created_at: string
           customer_number: string
+          deleted_at: string | null
           email: string
           id: string
           is_eu_customer: boolean
@@ -376,6 +377,7 @@ export type Database = {
           country?: string
           created_at?: string
           customer_number?: string
+          deleted_at?: string | null
           email?: string
           id?: string
           is_eu_customer?: boolean
@@ -395,6 +397,7 @@ export type Database = {
           country?: string
           created_at?: string
           customer_number?: string
+          deleted_at?: string | null
           email?: string
           id?: string
           is_eu_customer?: boolean
@@ -505,6 +508,7 @@ export type Database = {
           customer_number: string
           customer_postal_code: string
           customer_vat_id: string
+          deleted_at: string | null
           discount_amount: number
           discount_percent: number
           discount_reason: string
@@ -555,6 +559,7 @@ export type Database = {
           customer_number?: string
           customer_postal_code?: string
           customer_vat_id?: string
+          deleted_at?: string | null
           discount_amount?: number
           discount_percent?: number
           discount_reason?: string
@@ -605,6 +610,7 @@ export type Database = {
           customer_number?: string
           customer_postal_code?: string
           customer_vat_id?: string
+          deleted_at?: string | null
           discount_amount?: number
           discount_percent?: number
           discount_reason?: string
@@ -729,6 +735,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          deleted_at: string | null
           document_number: string
           expense_date: string
           gross_amount: number
@@ -744,6 +751,7 @@ export type Database = {
         Insert: {
           category?: string
           created_at?: string
+          deleted_at?: string | null
           document_number?: string
           expense_date?: string
           gross_amount?: number
@@ -759,6 +767,7 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          deleted_at?: string | null
           document_number?: string
           expense_date?: string
           gross_amount?: number
@@ -1466,6 +1475,7 @@ export type Database = {
           customer_number: string
           customer_postal_code: string
           customer_vat_id: string
+          deleted_at: string | null
           discount_amount: number
           discount_percent: number
           discount_reason: string
@@ -1506,6 +1516,16 @@ export type Database = {
         }
       }
       link_employee_account: { Args: never; Returns: string }
+      list_trash: {
+        Args: never
+        Returns: {
+          deleted_at: string
+          entity: string
+          id: string
+          info: string
+          label: string
+        }[]
+      }
       my_employee_id: { Args: never; Returns: string }
       my_employee_owner: { Args: never; Returns: string }
       next_customer_number: { Args: never; Returns: string }
@@ -1513,6 +1533,18 @@ export type Database = {
       owns_employee_auth_user: {
         Args: { _auth_user_id: string }
         Returns: boolean
+      }
+      purge_entity: {
+        Args: { _entity: string; _id: string }
+        Returns: undefined
+      }
+      restore_entity: {
+        Args: { _entity: string; _id: string }
+        Returns: undefined
+      }
+      trash_entity: {
+        Args: { _entity: string; _id: string }
+        Returns: undefined
       }
     }
     Enums: {
