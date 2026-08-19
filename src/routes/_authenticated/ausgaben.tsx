@@ -406,9 +406,32 @@ function ExpenseRow({
           </Button>
         </>
       )}
-      <Button variant="ghost" size="icon" onClick={onDelete}>
-        <Trash2 className="size-4 text-destructive" />
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ausgabe wirklich löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Die Ausgabe „${r.supplier || "ohne Lieferant"}" vom ${formatDate(
+                r.expense_date,
+              )} wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={onDelete}
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }
