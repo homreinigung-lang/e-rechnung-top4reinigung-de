@@ -23,6 +23,7 @@ import { FileUploadButton } from "@/components/FileUploadButton";
 import { receiptFileToPdf } from "@/lib/receipt-pdf";
 import { downloadStoredFile, uploadUserFile } from "@/lib/storage";
 import { DateiVorschau } from "@/components/DateiVorschau";
+import { WiederkehrendeAusgaben } from "@/components/WiederkehrendeAusgaben";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
 import { readIncomingEInvoice, type IncomingEInvoice } from "@/lib/e-invoice-import";
 import {
