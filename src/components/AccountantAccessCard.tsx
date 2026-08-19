@@ -180,7 +180,7 @@ export function AccountantAccessCard() {
                     iconClassName="size-4"
                     ariaLabel="Zugang löschen"
                     title="Zugang wirklich löschen?"
-                    description={`Der Steuerberater-Zugang „${a.label || a.email || "ohne Bezeichnung"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                    description={`Der Steuerberater-Zugang „${a.email || "ohne E-Mail"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
                     onConfirm={() => revoke.mutate(a.id)}
                   />
                 </div>

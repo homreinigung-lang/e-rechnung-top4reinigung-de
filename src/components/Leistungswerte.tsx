@@ -182,7 +182,7 @@ export function Leistungswerte() {
                 ariaLabel="Leistungswert löschen"
                 iconClassName="size-4"
                 title="Leistungswert wirklich löschen?"
-                description={`Der Leistungswert „${r.room_type || "ohne Bezeichnung"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                description={`Der Leistungswert „${r.label || "ohne Bezeichnung"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
                 onConfirm={() => remove.mutate(r.id)}
               />
             </div>
