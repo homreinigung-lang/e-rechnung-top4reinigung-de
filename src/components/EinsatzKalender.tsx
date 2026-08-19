@@ -33,6 +33,7 @@ import {
   Printer,
   Trash2,
 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
 import {
   ABSENCE_REASONS,
@@ -1081,9 +1082,11 @@ export function EinsatzKalender({
                     ) : (
                       <span className="shrink-0">{Number(e.hours ?? 0).toFixed(2)} Std.</span>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => removePlan.mutate(e.id)}>
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
+                    <ConfirmDeleteButton
+                      title="Eintrag wirklich löschen?"
+                      description={`Der Eintrag für „${e.employee_name || "Mitarbeiter"}"${e.location ? ` (${e.location})` : ""} wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                      onConfirm={() => removePlan.mutate(e.id)}
+                    />
                   </li>
                 );
               })}

@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { formatDate, today } from "@/lib/format";
 import { isDue, runRecurring } from "@/lib/recurring";
 import { Play, Plus, Repeat, Trash2 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 
 export const Route = createFileRoute("/_authenticated/wiederkehrend")({
   component: RecurringPage,
@@ -247,16 +248,12 @@ function RecurringPage() {
                   >
                     <Play className="size-4" /> Jetzt erzeugen
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Serie löschen"
-                    onClick={() => {
-                      if (confirm(`Serie „${r.title}" wirklich löschen?`)) remove.mutate(r.id);
-                    }}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                  <ConfirmDeleteButton
+                    ariaLabel="Serie löschen"
+                    title="Serie wirklich löschen?"
+                    description={`Die Serie „${r.title || "ohne Titel"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                    onConfirm={() => remove.mutate(r.id)}
+                  />
                 </li>
               );
             })}

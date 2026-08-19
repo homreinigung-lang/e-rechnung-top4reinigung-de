@@ -25,7 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, FolderKanban, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { FileText, FolderKanban, Loader2, Plus, Upload, X } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/projekte/")({
@@ -409,9 +410,11 @@ function ProjekteIndex() {
                 <span className="text-xs text-muted-foreground">
                   {formatDate(p.created_at.slice(0, 10))}
                 </span>
-                <Button variant="ghost" size="icon" onClick={() => remove.mutate(p.id)}>
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
+                <ConfirmDeleteButton
+                  title="Projekt wirklich löschen?"
+                  description={`Das Projekt „${p.name || "Ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                  onConfirm={() => remove.mutate(p.id)}
+                />
               </li>
             ))}
           </ul>

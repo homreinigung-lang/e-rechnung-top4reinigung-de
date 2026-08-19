@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { toast } from "sonner";
 import { Clock, MapPin, Navigation, Trash2 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { mapsUrl, projectAddress } from "@/lib/maps";
@@ -535,9 +536,12 @@ function MeineZeiten() {
                   {isAbsence(e) ? approvalLabel(approvalStatus(e)) : "Von der Verwaltung erfasst"}
                 </span>
                 {isAbsence(e) && approvalStatus(e) === "pending" && (
-                  <Button variant="ghost" size="icon" onClick={() => remove.mutate(e.id as string)}>
-                    <Trash2 className="size-4" />
-                  </Button>
+                  <ConfirmDeleteButton
+                    iconClassName="size-4"
+                    title="Antrag wirklich löschen?"
+                    description="Der Abwesenheitsantrag wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+                    onConfirm={() => remove.mutate(e.id as string)}
+                  />
                 )}
               </li>
             ))}

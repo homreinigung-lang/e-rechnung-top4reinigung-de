@@ -38,6 +38,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { modeLabel } from "./projekte.index";
 
@@ -643,9 +644,11 @@ function ProjektDetail() {
                         />
                       </td>
                       <td className="py-2 text-right">
-                        <Button variant="ghost" size="icon" onClick={() => removeRoom.mutate(r.id)}>
-                          <Trash2 className="size-4 text-destructive" />
-                        </Button>
+                        <ConfirmDeleteButton
+                          title="Raum wirklich löschen?"
+                          description={`Der Raum „${r.name || "ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                          onConfirm={() => removeRoom.mutate(r.id)}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -771,9 +774,11 @@ function ProjektDetail() {
                       {it.deadline && <span> – fällig am {formatDate(it.deadline)}</span>}
                     </label>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => removeItem.mutate(it.id)}>
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                  <ConfirmDeleteButton
+                    title="Position wirklich löschen?"
+                    description={`Die Position „${it.title || "ohne Titel"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                    onConfirm={() => removeItem.mutate(it.id)}
+                  />
                 </li>
               ))}
             </ul>
@@ -905,9 +910,12 @@ function ProjektDetail() {
                       {a.assignment_role || emp?.role || "—"}
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => unassign.mutate(a.id)}>
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                  <ConfirmDeleteButton
+                    title="Zuweisung wirklich entfernen?"
+                    description={`Die Zuweisung von „${emp?.name ?? "Unbekannt"}" zu diesem Projekt wird entfernt. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                    confirmLabel="Entfernen"
+                    onConfirm={() => unassign.mutate(a.id)}
+                  />
                 </li>
               );
             })}

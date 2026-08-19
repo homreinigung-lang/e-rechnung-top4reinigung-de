@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, FolderOpen, ImageIcon, Trash2 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -139,15 +140,13 @@ export function ProjektUnterlagen({ projectId }: { projectId: string | null }) {
                       : ""}
                   </span>
                 </button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Unterlage entfernen"
-                  onClick={() => removeDoc.mutate(d.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                <ConfirmDeleteButton
+                  iconClassName="size-4"
+                  ariaLabel="Unterlage entfernen"
+                  title="Unterlage wirklich löschen?"
+                  description={`Die Unterlage „${d.file_name || "ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                  onConfirm={() => removeDoc.mutate(d.id)}
+                />
               </li>
             );
           })}

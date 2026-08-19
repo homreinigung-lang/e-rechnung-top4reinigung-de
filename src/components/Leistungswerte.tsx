@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -177,14 +178,13 @@ export function Leistungswerte() {
                   }}
                 />
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Leistungswert löschen"
-                onClick={() => remove.mutate(r.id)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+              <ConfirmDeleteButton
+                ariaLabel="Leistungswert löschen"
+                iconClassName="size-4"
+                title="Leistungswert wirklich löschen?"
+                description={`Der Leistungswert „${r.label || "ohne Bezeichnung"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                onConfirm={() => remove.mutate(r.id)}
+              />
             </div>
           ))}
         </div>
