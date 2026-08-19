@@ -785,7 +785,7 @@ function AngebotsTabelle({
                           toast.error(deleteBlockedMessage(r), { duration: 9000 });
                           return;
                         }
-                        remove.mutate(d.id);
+                        onDelete(d.id, `Angebot ${d.number}`);
                       }}
                     >
                       <Trash2
