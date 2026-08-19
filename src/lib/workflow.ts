@@ -243,6 +243,8 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     reminder_level: _rl,
     last_reminder_at: _lr,
     paid_at: _pa,
+    retention_until: _ru,
+    deleted_at: _dl,
     ...rest
   } = src as unknown as Record<string, unknown>;
 
