@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { formatDate, today } from "@/lib/format";
 import { isDue, runRecurring } from "@/lib/recurring";
 import { Play, Plus, Repeat, Trash2 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 
 export const Route = createFileRoute("/_authenticated/wiederkehrend")({
   component: RecurringPage,

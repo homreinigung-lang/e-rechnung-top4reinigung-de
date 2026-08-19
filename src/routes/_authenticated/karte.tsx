@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { MapPin, Users, FolderKanban, HardHat, Navigation, Plus, Trash2 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 
 const EinsatzKarte = lazy(() => import("@/components/EinsatzKarte"));
 
@@ -356,9 +357,14 @@ function KartePage() {
                     {[l.address_line, l.postal_code, l.city, l.country].filter(Boolean).join(", ")}
                   </span>
                 </span>
-                <Button size="sm" variant="ghost" onClick={() => removeLocation(l.id)}>
-                  <Trash2 className="size-4" />
-                </Button>
+                <ConfirmDeleteButton
+                  size="sm"
+                  iconClassName="size-4"
+                  ariaLabel="Einsatzort löschen"
+                  title="Einsatzort wirklich löschen?"
+                  description={`Der Einsatzort „${l.label || "Einsatzort"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                  onConfirm={() => removeLocation(l.id)}
+                />
               </li>
             ))}
           </ul>

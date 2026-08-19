@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { MessageSquare, Search, Send, Trash2, Users } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 
 export const Route = createFileRoute("/_authenticated/nachrichten")({
   head: () => ({
@@ -318,14 +319,15 @@ function NachrichtenPage() {
                         </span>
                         <span>{timeLabel(m.created_at)}</span>
                         {isOwner && (
-                          <button
-                            type="button"
-                            aria-label="Nachricht löschen"
-                            className="ml-auto text-destructive"
-                            onClick={() => remove.mutate(m.id)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
+                          <ConfirmDeleteButton
+                            size="sm"
+                            className="ml-auto size-6 p-0 text-destructive"
+                            iconClassName="size-3.5"
+                            ariaLabel="Nachricht löschen"
+                            title="Nachricht wirklich löschen?"
+                            description={`Die Nachricht von „${m.sender_name || (m.sender_role === "owner" ? "Verwaltung" : "Team")}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                            onConfirm={() => remove.mutate(m.id)}
+                          />
                         )}
                       </div>
                       <p className="mt-1 whitespace-pre-wrap">{m.body}</p>

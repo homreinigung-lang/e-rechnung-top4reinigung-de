@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Trash2, Scale } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
 import {
   formatStunden,
@@ -262,9 +263,11 @@ export function ZeitkontoCard({
                 {formatStunden(Number(a.hours))}
               </span>
               {!readOnly && (
-                <Button variant="ghost" size="icon" onClick={() => remove.mutate(a.id)}>
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
+                <ConfirmDeleteButton
+                  title="Buchung wirklich löschen?"
+                  description={`Die Zeitkonto-Buchung für „${employees.find((e) => e.id === a.employee_id)?.name ?? "Mitarbeiter"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                  onConfirm={() => remove.mutate(a.id)}
+                />
               )}
             </li>
           ))}

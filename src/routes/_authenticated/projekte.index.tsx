@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, FolderKanban, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { FileText, FolderKanban, Loader2, Plus, Upload, X } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
 

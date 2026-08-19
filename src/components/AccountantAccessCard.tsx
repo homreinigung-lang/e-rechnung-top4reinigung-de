@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { Copy, KeyRound, Mail, Save, Trash2 } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 
 type Access = {
   id: string;
@@ -174,9 +175,14 @@ export function AccountantAccessCard() {
                   <Button size="sm" variant="outline" onClick={() => invite(a)}>
                     <Mail className="size-4" /> Einladung
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => revoke.mutate(a.id)}>
-                    <Trash2 className="size-4" />
-                  </Button>
+                  <ConfirmDeleteButton
+                    size="sm"
+                    iconClassName="size-4"
+                    ariaLabel="Zugang löschen"
+                    title="Zugang wirklich löschen?"
+                    description={`Der Steuerberater-Zugang „${a.label || a.email || "ohne Bezeichnung"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                    onConfirm={() => revoke.mutate(a.id)}
+                  />
                 </div>
               </div>
 

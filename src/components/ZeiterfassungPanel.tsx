@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Check, Download, FileText, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatMoney, formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
@@ -693,9 +694,12 @@ export function Zeiterfassung() {
                     >
                       <Pencil className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => removeEmployee.mutate(e.id)}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <ConfirmDeleteButton
+                      iconClassName="size-4"
+                      title="Mitarbeiter wirklich löschen?"
+                      description={`Der Mitarbeiter „${e.name || "ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                      onConfirm={() => removeEmployee.mutate(e.id)}
+                    />
                   </li>
                 ))}
                 {employees.length === 0 && (
@@ -977,13 +981,12 @@ export function Zeiterfassung() {
                 >
                   <Pencil className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeEntry.mutate(e.id as string)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                <ConfirmDeleteButton
+                  iconClassName="size-4"
+                  title="Zeiteintrag wirklich löschen?"
+                  description="Der Zeiteintrag wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+                  onConfirm={() => removeEntry.mutate(e.id as string)}
+                />
               </li>
             ))}
           </ul>
