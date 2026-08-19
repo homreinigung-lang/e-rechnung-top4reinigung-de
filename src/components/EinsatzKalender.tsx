@@ -56,6 +56,7 @@ import { buildXlsx } from "@/lib/xlsx";
 import { saveFile } from "@/lib/download";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { GermanTimeInput } from "@/components/GermanDateTimeInput";
+import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 
 import { effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
 
