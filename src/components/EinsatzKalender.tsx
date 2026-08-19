@@ -990,9 +990,21 @@ export function EinsatzKalender({
                                 </span>
                               ) : (
                                 <>
-                                  <div className="font-medium">
-                                    {(e.start_time ?? "").slice(0, 5)}–
-                                    {(e.end_time ?? "").slice(0, 5)}
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-medium">
+                                      {(e.start_time ?? "").slice(0, 5)}–
+                                      {(e.end_time ?? "").slice(0, 5)}
+                                    </span>
+                                    {((e as { photo_paths?: string[] }).photo_paths ?? []).length >
+                                      0 && (
+                                      <span
+                                        title={`${((e as { photo_paths?: string[] }).photo_paths ?? []).length} Foto(s) vorhanden`}
+                                        className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
+                                      >
+                                        <Camera className="size-2.5" />
+                                        {((e as { photo_paths?: string[] }).photo_paths ?? []).length}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="truncate">
                                     {donePlan?.projectName || e.location || "ohne Objekt"}
