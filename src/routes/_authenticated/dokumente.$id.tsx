@@ -49,7 +49,12 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
-import { describeGobdError, editBlockedMessage, isLockedDocument } from "@/lib/gobd-guard";
+import {
+  deleteBlockedMessage,
+  describeGobdError,
+  editBlockedMessage,
+  isLockedDocument,
+} from "@/lib/gobd-guard";
 import {
   convertQuoteToOrder,
   convertOrderToInvoice,
@@ -408,6 +413,38 @@ function DokumentDetail() {
       navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      if (isLockedDocument(docRecord)) throw new Error(deleteBlockedMessage(docRecord));
+      // Verweise anderer Belege lösen, damit der Entwurf gelöscht werden kann
+      await supabase
+        .from("documents")
+        .update({ converted_document_id: null })
+        .eq("converted_document_id", id);
+      await supabase
+        .from("documents")
+        .update({ cancels_document_id: null })
+        .eq("cancels_document_id", id);
+      await supabase
+        .from("documents")
+        .update({ cancelled_by_document_id: null })
+        .eq("cancelled_by_document_id", id);
+      await supabase
+        .from("recurring_invoices")
+        .update({ template_document_id: null })
+        .eq("template_document_id", id);
+      const { error } = await supabase.rpc("trash_entity", { _entity: "document", _id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("In den Papierkorb verschoben – 30 Tage wiederherstellbar");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["trash"] });
+      navigate({ to: "/dokumente" });
+    },
+    onError: (e: unknown) => toast.error(describeGobdError(e, docRecord), { duration: 9000 }),
   });
 
   const markPaid = useMutation({
@@ -1049,6 +1086,24 @@ function DokumentDetail() {
         {isOrder && !convertedId && (
           <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
             <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
+          </Button>
+        )}
+
+        {isOrder && !locked && (
+          <Button
+            variant="destructive"
+            onClick={() =>
+              setConfirmDialog({
+                title: "Auftragsbestätigung löschen?",
+                description: `„${doc.number ?? ""}" wird in den Papierkorb verschoben und kann dort 30 Tage lang wiederhergestellt werden.`,
+                confirmLabel: "In Papierkorb verschieben",
+                destructive: true,
+                action: () => remove.mutate(),
+              })
+            }
+            disabled={remove.isPending}
+          >
+            <Trash2 className="size-4" /> Löschen
           </Button>
         )}
 
