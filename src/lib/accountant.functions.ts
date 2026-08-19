@@ -115,7 +115,10 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .order("expense_date"),
       supabaseAdmin
         .from("time_entries")
-        .select("*")
+        // Fotos (photo_paths) sind rein interne Nachweise – nie an den Steuerberater.
+        .select(
+          "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at",
+        )
         .eq("user_id", access.user_id)
         .gte("work_date", data.from)
         .lte("work_date", data.to)
