@@ -409,9 +409,11 @@ function ProjekteIndex() {
                 <span className="text-xs text-muted-foreground">
                   {formatDate(p.created_at.slice(0, 10))}
                 </span>
-                <Button variant="ghost" size="icon" onClick={() => remove.mutate(p.id)}>
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
+                <ConfirmDeleteButton
+                  title="Projekt wirklich löschen?"
+                  description={`Das Projekt „${p.name || "Ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
+                  onConfirm={() => remove.mutate(p.id)}
+                />
               </li>
             ))}
           </ul>
