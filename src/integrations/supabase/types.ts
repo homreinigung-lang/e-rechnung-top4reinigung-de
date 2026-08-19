@@ -1530,6 +1530,7 @@ export type Database = {
       my_employee_owner: { Args: never; Returns: string }
       next_customer_number: { Args: never; Returns: string }
       next_document_number: { Args: { _kind: string }; Returns: string }
+      owns_document: { Args: { _document_id: string }; Returns: boolean }
       owns_employee_auth_user: {
         Args: { _auth_user_id: string }
         Returns: boolean
