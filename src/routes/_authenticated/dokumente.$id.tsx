@@ -581,9 +581,9 @@ function DokumentDetail() {
     const baseLines = [
       `Sehr geehrte Damen und Herren,`,
       ``,
-      isInvoice
-        ? `im Anhang finden Sie unsere Rechnung ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`
-        : `im Anhang finden Sie unser Angebot ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`,
+      `im Anhang finden Sie ${
+        isInvoice ? "unsere Rechnung" : isOrder ? "unsere Auftragsbestätigung" : "unser Angebot"
+      } ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`,
       isInvoice && form["due_date"]
         ? `Wir bitten um Begleichung des Rechnungsbetrags bis zum ${formatDate(String(form["due_date"]))} ohne Abzug.`
         : "",
@@ -1170,7 +1170,8 @@ function DokumentDetail() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="number">
-              {isInvoice ? "Rechnungsnummer" : isOrder ? "Auftragsnummer" : "Angebotsnummer"} (automatisch)
+              {isInvoice ? "Rechnungsnummer" : isOrder ? "Auftragsnummer" : "Angebotsnummer"}{" "}
+              (automatisch)
             </Label>
             <Input id="number" value={docNumber} readOnly disabled className="bg-muted" />
             <p className="text-xs text-muted-foreground">
@@ -1577,7 +1578,8 @@ function DokumentDetail() {
               )}
               <div>
                 <dt className="inline text-muted-foreground">
-                  {isInvoice ? "Rechnungsnummer" : isOrder ? "Auftragsnummer" : "Angebotsnummer"}:{" "}
+                  {isInvoice ? "Rechnungsnummer" : isOrder ? "Auftragsnummer" : "Angebotsnummer"}
+                  :{" "}
                 </dt>
                 <dd className="inline font-medium">{docNumber}</dd>
               </div>
@@ -1796,9 +1798,7 @@ function DokumentDetail() {
             ) : (
               <div className="mt-4 space-y-2 text-sm">
                 <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
-                {!isOrder && (
-                  <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>
-                )}
+                {!isOrder && <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>}
                 <p className="text-justify text-xs leading-relaxed text-muted-foreground">
                   {CANCELLATION_TERMS}
                 </p>

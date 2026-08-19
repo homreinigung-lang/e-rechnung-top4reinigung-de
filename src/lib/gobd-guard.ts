@@ -12,13 +12,18 @@ type DocLike = Record<string, unknown> | null | undefined;
  */
 export function isLockedDocument(doc: DocLike): boolean {
   if (!doc) return false;
-  if (doc["type"] === "quote") return false;
+  if (doc["type"] === "quote" || doc["type"] === "order") return false;
   return Boolean(doc["locked_at"]);
 }
 
 export function documentLabel(doc: DocLike): string {
   const number = String(doc?.["number"] ?? "").trim();
-  const type = doc?.["type"] === "quote" ? "Angebot" : "Rechnung";
+  const type =
+    doc?.["type"] === "quote"
+      ? "Angebot"
+      : doc?.["type"] === "order"
+        ? "Auftragsbestätigung"
+        : "Rechnung";
   return number ? `${type} ${number}` : type;
 }
 
