@@ -24,6 +24,7 @@ import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedNachrichtenRouteImport } from './routes/_authenticated/nachrichten'
+import { Route as AuthenticatedPapierkorbRouteImport } from './routes/_authenticated/papierkorb'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
 import { Route as AuthenticatedSicherheitRouteImport } from './routes/_authenticated/sicherheit'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
@@ -121,6 +122,11 @@ const AuthenticatedNachrichtenRoute =
     path: '/nachrichten',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPapierkorbRoute = AuthenticatedPapierkorbRouteImport.update({
+  id: '/papierkorb',
+  path: '/papierkorb',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
+  '/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
@@ -259,6 +266,7 @@ export interface FileRoutesByTo {
   '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
+  '/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRoute
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/nachrichten': typeof AuthenticatedNachrichtenRoute
+  '/_authenticated/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/sicherheit': typeof AuthenticatedSicherheitRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/meine-zeiten'
     | '/nachrichten'
+    | '/papierkorb'
     | '/profil'
     | '/sicherheit'
     | '/steuerberater'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/meine-zeiten'
     | '/nachrichten'
+    | '/papierkorb'
     | '/profil'
     | '/sicherheit'
     | '/steuerberater'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kunden'
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/nachrichten'
+    | '/_authenticated/papierkorb'
     | '/_authenticated/profil'
     | '/_authenticated/sicherheit'
     | '/_authenticated/steuerberater'
@@ -533,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNachrichtenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/papierkorb': {
+      id: '/_authenticated/papierkorb'
+      path: '/papierkorb'
+      fullPath: '/papierkorb'
+      preLoaderRoute: typeof AuthenticatedPapierkorbRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profil': {
       id: '/_authenticated/profil'
       path: '/profil'
@@ -665,6 +684,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedNachrichtenRoute: typeof AuthenticatedNachrichtenRoute
+  AuthenticatedPapierkorbRoute: typeof AuthenticatedPapierkorbRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSicherheitRoute: typeof AuthenticatedSicherheitRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
@@ -686,6 +706,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedNachrichtenRoute: AuthenticatedNachrichtenRoute,
+  AuthenticatedPapierkorbRoute: AuthenticatedPapierkorbRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSicherheitRoute: AuthenticatedSicherheitRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
