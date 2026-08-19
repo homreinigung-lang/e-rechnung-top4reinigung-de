@@ -649,6 +649,8 @@ interface AngebotsTabelleProps {
   duplicate: { mutate: (id: string) => void };
   remove: { mutate: (id: string) => void };
   isLocked: (r: Record<string, unknown>) => boolean;
+  /** Öffnet den gemeinsamen Lösch-Bestätigungsdialog (deleteTarget) aus DokumenteListe. */
+  onDelete: (id: string, label: string) => void;
 }
 
 function AngebotsTabelle({
@@ -660,6 +662,7 @@ function AngebotsTabelle({
   duplicate,
   remove,
   isLocked,
+  onDelete,
 }: AngebotsTabelleProps) {
   const navigate = useNavigate();
 
