@@ -5,7 +5,7 @@ import { CalendarDays, MapPin, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { today } from "@/lib/format";
 import { mapsUrl, serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
-import { einsatzStatus, statusClasses, statusLabel } from "@/lib/einsatz-status";
+import { STATUS_CLASSES, STATUS_LABELS, einsatzStatus } from "@/lib/einsatz-status";
 
 type CustomerLite = {
   id: string;
@@ -101,9 +101,9 @@ export function EinsaetzeHeute() {
                       {c?.company || c?.name || "Ohne Kunde"}
                     </span>
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-xs ${statusClasses(status)}`}
+                      className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_CLASSES[status]}`}
                     >
-                      {statusLabel(status)}
+                      {STATUS_LABELS[status]}
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
