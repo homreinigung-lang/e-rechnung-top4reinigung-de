@@ -79,7 +79,7 @@ export function FinanzDashboard({
     .reduce((s, e) => s + num(e.net_amount), 0);
   const cashflow = revenue - spend;
 
-  const cashData = [{ label: monthLabel, Einnahmen: revenue, Ausgaben: spend }];
+  
 
   // Kategorieverteilung der Ausgaben im laufenden Jahr
   const yearPrefix = String(new Date().getFullYear());
