@@ -243,11 +243,22 @@ function AdminDashboard() {
   );
 
   const stats = [
-    { label: "Offene Rechnungen", value: formatMoney(openTotal), icon: Receipt },
-    { label: "Bezahlt", value: formatMoney(paidTotal), icon: Receipt },
-    { label: "Ausgaben", value: formatMoney(expenseTotal), icon: TrendingDown },
-    { label: "Kunden", value: String(data?.customerCount ?? 0), icon: Users },
+    {
+      label: `Umsatz ${year} (netto)`,
+      value: formatMoney(euer.incomeNet),
+      icon: Receipt,
+      accent: "",
+    },
+    { label: "Bezahlt", value: formatMoney(paidTotal), icon: CheckCircle2, accent: "" },
+    { label: "Ausgaben (brutto)", value: formatMoney(expenseTotal), icon: TrendingDown, accent: "" },
+    {
+      label: euer.profit >= 0 ? "Saldo (Gewinn netto)" : "Saldo (Verlust netto)",
+      value: formatMoney(euer.profit),
+      icon: LayoutDashboard,
+      accent: euer.profit >= 0 ? "text-primary" : "text-destructive",
+    },
   ];
+
 
   const acceptedQuotes = quotes.filter((d) => d.status === "accepted").length;
   const declinedQuotes = quotes.filter((d) => d.status === "declined").length;
