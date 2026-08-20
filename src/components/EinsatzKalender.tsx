@@ -145,6 +145,7 @@ type PlanForm = {
   entryType: EntryType;
   absenceReason: AbsenceReason;
   projectId: string;
+  customerId: string;
   location: string;
   start: string;
   end: string;
@@ -157,7 +158,9 @@ const emptyForm: PlanForm = {
   entryType: "work",
   absenceReason: "vacation",
   projectId: NO_PROJECT,
+  customerId: NO_PROJECT,
   location: "",
+
   start: "08:00",
   end: "16:00",
   breakMinutes: "30",
