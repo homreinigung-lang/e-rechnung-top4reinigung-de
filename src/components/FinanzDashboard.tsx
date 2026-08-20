@@ -322,53 +322,8 @@ export function FinanzDashboard({
             </Link>
           </div>
         </div>
-
-        {/* 4. Offene Rechnungen */}
-        <div className="surface p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="font-semibold">Offene Rechnungen</h3>
-            <span className="text-sm text-muted-foreground">{formatMoney(openTotal)} offen</span>
-          </div>
-          {openItems.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              Keine offenen Rechnungen – alles bezahlt.
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y">
-              {openItems.map((d) => {
-                const overdue = !!d.due_date && String(d.due_date) < todayStr;
-                return (
-                  <li key={d.id}>
-                    <Link
-                      to="/dokumente/$id"
-                      params={{ id: d.id }}
-                      className="-mx-2 flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">Rechnung {d.number}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {d.customer_company || d.customer_name || "Ohne Kunde"} · fällig{" "}
-                          {formatDate(d.due_date)}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{formatMoney(num(d.total))}</div>
-                        <div
-                          className={`text-xs ${
-                            overdue ? "font-medium text-destructive" : "text-muted-foreground"
-                          }`}
-                        >
-                          {overdue ? "überfällig" : "offen"}
-                        </div>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
       </div>
+
     </section>
   );
 }
