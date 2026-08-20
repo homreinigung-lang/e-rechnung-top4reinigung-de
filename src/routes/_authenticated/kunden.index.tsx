@@ -88,7 +88,12 @@ const empty: CustomerForm = {
   postal_code: "",
   city: "",
   country: "Deutschland",
+  service_address_line: "",
+  service_postal_code: "",
+  service_city: "",
+  service_note: "",
   vat_id: "",
+
   is_eu_customer: false,
   notes: "",
   status: "active",
