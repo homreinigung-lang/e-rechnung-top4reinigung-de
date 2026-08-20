@@ -1247,7 +1247,16 @@ export function EinsatzKalender({
                   <Label>Kunde (Einsatzort)</Label>
                   <Select
                     value={form.customerId}
-                    onValueChange={(v) => setForm({ ...form, customerId: v })}
+                    onValueChange={(v) => {
+                      // Einsatzort des Kunden als Ortsangabe vorbelegen, wenn noch leer.
+                      const site = customerSite(v === NO_PROJECT ? null : v).address;
+                      setForm((f) => ({
+                        ...f,
+                        customerId: v,
+                        location: f.location.trim() ? f.location : site,
+                      }));
+                    }}
+
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Kunde wählen" />
