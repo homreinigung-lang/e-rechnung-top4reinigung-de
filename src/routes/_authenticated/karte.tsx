@@ -9,6 +9,7 @@ import type { MapPoint } from "@/components/EinsatzKarte";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
+import { serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
 import { toast } from "sonner";
 import { MapPin, Users, FolderKanban, HardHat, Navigation, Plus, Trash2 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
@@ -86,14 +87,16 @@ function KartePage() {
       const [customers, projects, entries, locations] = await Promise.all([
         supabase
           .from("customers")
-          .select("id, name, company, address_line, postal_code, city, country")
+          .select(
+            "id, name, company, address_line, postal_code, city, country, service_address_line, service_postal_code, service_city, service_note",
+          )
           .order("name"),
         supabase
           .from("projects")
           .select("id, name, customer_name, status, address_line, postal_code, city"),
         supabase
           .from("time_entries")
-          .select("id, employee_name, work_date, location, project_id, entry_type")
+          .select("id, employee_name, work_date, location, project_id, entry_type, customer_id")
           .eq("work_date", day),
         supabase
           .from("map_locations")
@@ -154,16 +157,24 @@ function KartePage() {
   const raw = useMemo(() => {
     if (!data) return [] as Omit<MapPoint, "lat" | "lon">[];
     const projectById = new Map(data.projects.map((p) => [p.id, p]));
+    const customerById = new Map(data.customers.map((c) => [c.id, c]));
     const list: Omit<MapPoint, "lat" | "lon">[] = [];
 
     for (const c of data.customers) {
-      const address = buildAddress([c.address_line, c.postal_code, c.city, c.country]);
+      const site = serviceAddress(c);
+      const isSite = Boolean(site);
+      const address = isSite
+        ? site
+        : buildAddress([c.address_line, c.postal_code, c.city, c.country]);
       if (!address) continue;
+      const customerName = c.company || c.name || "Kunde";
       list.push({
         id: `c-${c.id}`,
         kind: "customer",
-        title: c.company || c.name || "Kunde",
-        subtitle: `Verwaltungssitz${c.company && c.name ? ` · ${c.name}` : ""}`,
+        title: isSite ? c.service_note?.trim() || `Einsatzort ${customerName}` : customerName,
+        subtitle: isSite
+          ? `Einsatzort · ${customerName}`
+          : `Verwaltungssitz${c.company && c.name ? ` · ${c.name}` : ""}`,
         address,
       });
     }
@@ -195,15 +206,25 @@ function KartePage() {
     for (const e of data.entries) {
       if (e.entry_type && e.entry_type !== "work") continue;
       const project = e.project_id ? projectById.get(e.project_id) : undefined;
-      const address = project
-        ? buildAddress([project.address_line, project.postal_code, project.city])
-        : buildAddress([e.location]);
+      const customer = e.customer_id ? customerById.get(e.customer_id) : undefined;
+      // Priorität: Einsatzort des Kunden (wie im Einsatz-Kalender) → Projektadresse → Freitext
+      const customerSite = customer ? serviceAddressOrBilling(customer) : "";
+      const address =
+        customerSite ||
+        (project
+          ? buildAddress([project.address_line, project.postal_code, project.city])
+          : buildAddress([e.location]));
       if (!address) continue;
+      const siteLabel =
+        (customer && serviceAddress(customer) && customer.service_note?.trim()) ||
+        project?.name ||
+        e.location ||
+        (customer?.company || customer?.name || "");
       list.push({
         id: `e-${e.id}`,
         kind: "assignment",
-        title: e.employee_name || "Mitarbeiter",
-        subtitle: `${formatDate(String(e.work_date))} · ${project?.name || e.location}`,
+        title: siteLabel || e.employee_name || "Einsatz",
+        subtitle: `${formatDate(String(e.work_date))} · ${e.employee_name || "Mitarbeiter"}`,
         address,
       });
     }
