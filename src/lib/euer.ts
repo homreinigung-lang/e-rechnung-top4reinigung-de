@@ -93,7 +93,7 @@ export function computeEuer(
     expenseGross,
     profit: incomeNet - expenseNet,
     incomeCount: income.length,
-    expenseCount: expenses.length,
+    expenseCount: costs.length,
     expensesByCategory: byCategory,
   };
 }
