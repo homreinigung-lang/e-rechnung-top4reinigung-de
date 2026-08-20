@@ -301,7 +301,6 @@ export function EinsatzKalender({
     };
   };
 
-
   const projectName = useCallback(
     (id: string | null) => {
       if (!id) return "";
@@ -405,7 +404,6 @@ export function EinsatzKalender({
             ? values.customerId
             : null,
         location: absence ? absenceLabel(values.absenceReason) : locText || project?.name || "",
-
 
         note: values.note.trim(),
         entry_type: values.entryType,
@@ -1256,7 +1254,6 @@ export function EinsatzKalender({
                         location: f.location.trim() ? f.location : site,
                       }));
                     }}
-
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Kunde wählen" />
@@ -1294,7 +1291,6 @@ export function EinsatzKalender({
                     </div>
                   )}
                 </div>
-
 
                 <div className="space-y-2">
                   <Label htmlFor="k-start">Von (HH:MM)</Label>

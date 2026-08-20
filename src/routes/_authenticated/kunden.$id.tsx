@@ -339,7 +339,6 @@ function Kundenakte() {
             {customer.service_note && <Row label="Hinweis" value={customer.service_note} />}
           </div>
 
-
           {projects.length > 0 && (
             <div className="surface px-5 py-4">
               <h2 className="mb-2 font-semibold">Projekte</h2>
