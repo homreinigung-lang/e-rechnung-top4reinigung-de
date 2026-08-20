@@ -95,7 +95,7 @@ function KartePage() {
           .select("id, name, customer_name, status, address_line, postal_code, city"),
         supabase
           .from("time_entries")
-          .select("id, employee_name, work_date, location, project_id, entry_type")
+          .select("id, employee_name, work_date, location, project_id, entry_type, customer_id")
           .eq("work_date", day),
         supabase
           .from("map_locations")
@@ -204,15 +204,25 @@ function KartePage() {
     for (const e of data.entries) {
       if (e.entry_type && e.entry_type !== "work") continue;
       const project = e.project_id ? projectById.get(e.project_id) : undefined;
-      const address = project
-        ? buildAddress([project.address_line, project.postal_code, project.city])
-        : buildAddress([e.location]);
+      const customer = e.customer_id ? customerById.get(e.customer_id) : undefined;
+      // Priorität: Einsatzort des Kunden (wie im Einsatz-Kalender) → Projektadresse → Freitext
+      const customerSite = customer ? serviceAddressOrBilling(customer) : "";
+      const address =
+        customerSite ||
+        (project
+          ? buildAddress([project.address_line, project.postal_code, project.city])
+          : buildAddress([e.location]));
       if (!address) continue;
+      const siteLabel =
+        (customer && serviceAddress(customer) && customer.service_note?.trim()) ||
+        project?.name ||
+        e.location ||
+        (customer?.company || customer?.name || "");
       list.push({
         id: `e-${e.id}`,
         kind: "assignment",
-        title: e.employee_name || "Mitarbeiter",
-        subtitle: `${formatDate(String(e.work_date))} · ${project?.name || e.location}`,
+        title: siteLabel || e.employee_name || "Einsatz",
+        subtitle: `${formatDate(String(e.work_date))} · ${e.employee_name || "Mitarbeiter"}`,
         address,
       });
     }
