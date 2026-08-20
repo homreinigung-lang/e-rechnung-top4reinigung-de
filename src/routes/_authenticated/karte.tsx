@@ -86,7 +86,9 @@ function KartePage() {
       const [customers, projects, entries, locations] = await Promise.all([
         supabase
           .from("customers")
-          .select("id, name, company, address_line, postal_code, city, country")
+          .select(
+            "id, name, company, address_line, postal_code, city, country, service_address_line, service_postal_code, service_city, service_note",
+          )
           .order("name"),
         supabase
           .from("projects")
@@ -157,13 +159,20 @@ function KartePage() {
     const list: Omit<MapPoint, "lat" | "lon">[] = [];
 
     for (const c of data.customers) {
-      const address = buildAddress([c.address_line, c.postal_code, c.city, c.country]);
+      const site = serviceAddress(c);
+      const isSite = Boolean(site);
+      const address = isSite
+        ? site
+        : buildAddress([c.address_line, c.postal_code, c.city, c.country]);
       if (!address) continue;
+      const customerName = c.company || c.name || "Kunde";
       list.push({
         id: `c-${c.id}`,
         kind: "customer",
-        title: c.company || c.name || "Kunde",
-        subtitle: `Verwaltungssitz${c.company && c.name ? ` · ${c.name}` : ""}`,
+        title: isSite ? c.service_note?.trim() || `Einsatzort ${customerName}` : customerName,
+        subtitle: isSite
+          ? `Einsatzort · ${customerName}`
+          : `Verwaltungssitz${c.company && c.name ? ` · ${c.name}` : ""}`,
         address,
       });
     }
