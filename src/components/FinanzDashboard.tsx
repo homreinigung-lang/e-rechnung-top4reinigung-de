@@ -204,31 +204,11 @@ export function FinanzDashboard({
               </div>
             </div>
           </div>
-          <div className="mt-4 h-48 w-full">
-            {revenue === 0 && spend === 0 ? (
-              <p className="py-14 text-center text-sm text-muted-foreground">
-                Für diesen Monat sind noch keine Buchungen erfasst.
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cashData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    fontSize={12}
-                    width={64}
-                    tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")}
-                  />
-                  <Tooltip formatter={(v: number) => formatMoney(v)} />
-                  <Bar dataKey="Einnahmen" fill="#0f766e" radius={[6, 6, 0, 0]} maxBarSize={64} />
-                  <Bar dataKey="Ausgaben" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={64} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Monatsverlauf und Jahreswerte finden Sie weiter unten in der EÜR-Auswertung.
+          </p>
         </div>
+
 
         {/* 3. Kategorien */}
         <div className="surface p-5">
