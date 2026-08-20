@@ -67,7 +67,6 @@ type CustomerForm = {
   status: string;
 };
 
-
 /** Vertragsstatus für die langfristige Verwaltung von Unterhaltsreinigungsverträgen. */
 const STATUS: { value: string; label: string; className: string }[] = [
   { value: "active", label: "Aktiv", className: "bg-emerald-100 text-emerald-800" },
@@ -223,7 +222,9 @@ function Kunden() {
               {field("city", "Ort")}
               {field("country", "Land")}
               <div className="sm:col-span-2">
-                <p className="mt-2 text-sm font-semibold">Einsatzort (abweichend von Rechnungsadresse)</p>
+                <p className="mt-2 text-sm font-semibold">
+                  Einsatzort (abweichend von Rechnungsadresse)
+                </p>
                 <p className="text-xs text-muted-foreground">
                   Wird nur für Einsatzplanung und Kalender genutzt – die Rechnungsstellung bleibt
                   unverändert bei der Adresse oben.
