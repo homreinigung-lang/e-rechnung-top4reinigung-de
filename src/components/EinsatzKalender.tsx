@@ -1096,7 +1096,13 @@ export function EinsatzKalender({
                     <span className="min-w-0 flex-1 truncate">
                       <span className="font-medium">{e.employee_name}</span>
                       {e.location ? ` · ${e.location}` : ""}
+                      {customerSite(e.customer_id).address ? (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          Einsatzort: {customerSite(e.customer_id).address}
+                        </span>
+                      ) : null}
                     </span>
+
                     {reason ? (
                       <span
                         className={`flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium ${absenceClasses(reason)}`}
