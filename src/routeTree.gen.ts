@@ -38,6 +38,7 @@ import { Route as StbTokenRouteImport } from './routes/stb.$token'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
 import { Route as AuthenticatedKundenIndexRouteImport } from './routes/_authenticated/kunden.index'
+import { Route as AuthenticatedKundenIdRouteImport } from './routes/_authenticated/kunden.$id'
 import { Route as AuthenticatedProjekteIndexRouteImport } from './routes/_authenticated/projekte.index'
 import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authenticated/projekte.$id'
 import { Route as ApiPublicFotoRetentionRouteImport } from './routes/api/public/foto-retention'
@@ -197,6 +198,11 @@ const AuthenticatedKundenIndexRoute =
     path: '/kunden/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedKundenIdRoute = AuthenticatedKundenIdRouteImport.update({
+  id: '/kunden/$id',
+  path: '/kunden/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProjekteIndexRoute =
   AuthenticatedProjekteIndexRouteImport.update({
     id: '/projekte/',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
@@ -279,6 +286,7 @@ export interface FileRoutesByTo {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches': typeof RechtlichesIndexRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
@@ -315,6 +323,7 @@ export interface FileRoutesById {
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
+  '/_authenticated/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
@@ -351,6 +360,7 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches/'
     | '/dokumente/$id'
+    | '/kunden/$id'
     | '/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
@@ -384,6 +394,7 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches'
     | '/dokumente/$id'
+    | '/kunden/$id'
     | '/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
@@ -419,6 +430,7 @@ export interface FileRouteTypes {
     | '/stb/$token'
     | '/rechtliches/'
     | '/_authenticated/dokumente/$id'
+    | '/_authenticated/kunden/$id'
     | '/_authenticated/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
@@ -644,6 +656,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKundenIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kunden/$id': {
+      id: '/_authenticated/kunden/$id'
+      path: '/kunden/$id'
+      fullPath: '/kunden/$id'
+      preLoaderRoute: typeof AuthenticatedKundenIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/projekte/': {
       id: '/_authenticated/projekte/'
       path: '/projekte'
@@ -691,6 +710,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
+  AuthenticatedKundenIdRoute: typeof AuthenticatedKundenIdRoute
   AuthenticatedProjekteIdRoute: typeof AuthenticatedProjekteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
   AuthenticatedKundenIndexRoute: typeof AuthenticatedKundenIndexRoute
@@ -713,6 +733,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
+  AuthenticatedKundenIdRoute: AuthenticatedKundenIdRoute,
   AuthenticatedProjekteIdRoute: AuthenticatedProjekteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,
   AuthenticatedKundenIndexRoute: AuthenticatedKundenIndexRoute,

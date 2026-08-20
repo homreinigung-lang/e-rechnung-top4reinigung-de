@@ -285,7 +285,7 @@ function Kundenakte() {
             />
             <Kpi
               label="Geleistete Stunden"
-              value={`${formatMoney(0).slice(0, 0)}${totalHours.toLocaleString("de-DE", { maximumFractionDigits: 2 })} h`}
+              value={`${totalHours.toLocaleString("de-DE", { maximumFractionDigits: 2 })} h`}
             />
           </div>
 
@@ -319,11 +319,7 @@ function Kundenakte() {
               <ul className="divide-y text-sm">
                 {projects.map((p) => (
                   <li key={p.id} className="py-2">
-                    <Link
-                      to="/projekte/$id"
-                      params={{ id: p.id }}
-                      className="hover:underline"
-                    >
+                    <Link to="/projekte/$id" params={{ id: p.id }} className="hover:underline">
                       {p.name}
                     </Link>
                   </li>
