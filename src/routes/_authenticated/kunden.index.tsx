@@ -274,7 +274,14 @@ function Kunden() {
               <li key={c.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">
-                    {c.company || c.name}
+                    <Link
+                      to="/kunden/$id"
+                      params={{ id: c.id }}
+                      className="hover:underline"
+                      title="Kundenakte öffnen"
+                    >
+                      {c.company || c.name}
+                    </Link>
                     {c.customer_number && (
                       <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
                         {c.customer_number}
