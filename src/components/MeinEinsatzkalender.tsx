@@ -257,12 +257,20 @@ export function MeinEinsatzkalender({
                       </span>
                       {t.address && (
                         <span
-                          className={`flex items-center gap-1 truncate text-[10px] ${t.done ? "text-white/80" : "text-muted-foreground"}`}
+                          className={`flex items-start gap-1 text-[10px] font-medium ${t.done ? "text-white/90" : "text-foreground"}`}
                         >
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{t.address}</span>
+                          <MapPin className="mt-px h-3 w-3 shrink-0" />
+                          <span className="min-w-0">
+                            <span
+                              className={`block text-[9px] font-semibold uppercase tracking-wide ${t.done ? "text-white/70" : "text-muted-foreground"}`}
+                            >
+                              Einsatzort
+                            </span>
+                            <span className="block break-words">{t.address}</span>
+                          </span>
                         </span>
                       )}
+
                       <span
                         className={`block text-[10px] font-semibold ${
                           t.done
