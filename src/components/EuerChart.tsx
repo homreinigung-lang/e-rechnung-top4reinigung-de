@@ -67,10 +67,6 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
     return { einnahmen, ausgaben, gewinn: einnahmen - ausgaben };
   }, [monthly]);
 
-  const pieData = [
-    { name: "Einnahmen", value: totals.einnahmen, color: "hsl(var(--primary))" },
-    { name: "Ausgaben", value: totals.ausgaben, color: "#f97316" },
-  ].filter((d) => d.value > 0);
 
   const hasData = totals.einnahmen > 0 || totals.ausgaben > 0;
 
