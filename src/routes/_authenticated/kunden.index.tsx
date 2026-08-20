@@ -57,11 +57,16 @@ type CustomerForm = {
   postal_code: string;
   city: string;
   country: string;
+  service_address_line: string;
+  service_postal_code: string;
+  service_city: string;
+  service_note: string;
   vat_id: string;
   is_eu_customer: boolean;
   notes: string;
   status: string;
 };
+
 
 /** Vertragsstatus für die langfristige Verwaltung von Unterhaltsreinigungsverträgen. */
 const STATUS: { value: string; label: string; className: string }[] = [
@@ -83,7 +88,12 @@ const empty: CustomerForm = {
   postal_code: "",
   city: "",
   country: "Deutschland",
+  service_address_line: "",
+  service_postal_code: "",
+  service_city: "",
+  service_note: "",
   vat_id: "",
+
   is_eu_customer: false,
   notes: "",
   status: "active",
@@ -212,6 +222,18 @@ function Kunden() {
               {field("postal_code", "PLZ")}
               {field("city", "Ort")}
               {field("country", "Land")}
+              <div className="sm:col-span-2">
+                <p className="mt-2 text-sm font-semibold">Einsatzort (abweichend von Rechnungsadresse)</p>
+                <p className="text-xs text-muted-foreground">
+                  Wird nur für Einsatzplanung und Kalender genutzt – die Rechnungsstellung bleibt
+                  unverändert bei der Adresse oben.
+                </p>
+              </div>
+              {field("service_address_line", "Einsatzort – Straße und Hausnummer")}
+              {field("service_note", "Einsatzort – Hinweis (z. B. Objekt, Etage, Schlüssel)")}
+              {field("service_postal_code", "Einsatzort – PLZ")}
+              {field("service_city", "Einsatzort – Ort")}
+
               <div className="space-y-2">
                 <Label htmlFor="is_eu_customer">Kunde im EU-Ausland</Label>
                 <div className="flex h-9 items-center gap-2">
@@ -315,6 +337,13 @@ function Kunden() {
                       postal_code: c.postal_code,
                       city: c.city,
                       country: c.country,
+                      service_address_line:
+                        (c as { service_address_line?: string }).service_address_line ?? "",
+                      service_postal_code:
+                        (c as { service_postal_code?: string }).service_postal_code ?? "",
+                      service_city: (c as { service_city?: string }).service_city ?? "",
+                      service_note: (c as { service_note?: string }).service_note ?? "",
+
                       vat_id: c.vat_id,
                       is_eu_customer: Boolean((c as { is_eu_customer?: boolean }).is_eu_customer),
                       notes: c.notes,

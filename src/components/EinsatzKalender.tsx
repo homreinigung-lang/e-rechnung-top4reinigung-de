@@ -61,6 +61,7 @@ import { GermanTimeInput } from "@/components/GermanDateTimeInput";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 
 import { effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
+import { mapsUrl, serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
 
 type PlanShift = {
   key: string;
@@ -144,6 +145,7 @@ type PlanForm = {
   entryType: EntryType;
   absenceReason: AbsenceReason;
   projectId: string;
+  customerId: string;
   location: string;
   start: string;
   end: string;
@@ -156,7 +158,9 @@ const emptyForm: PlanForm = {
   entryType: "work",
   absenceReason: "vacation",
   projectId: NO_PROJECT,
+  customerId: NO_PROJECT,
   location: "",
+
   start: "08:00",
   end: "16:00",
   breakMinutes: "30",
@@ -268,7 +272,11 @@ export function EinsatzKalender({
     queryKey: ["customers", "calendar-names"],
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("id,name,company");
+      const { data, error } = await supabase
+        .from("customers")
+        .select(
+          "id,name,company,address_line,postal_code,city,service_address_line,service_postal_code,service_city,service_note",
+        );
       if (error) throw error;
       return data;
     },
@@ -279,6 +287,20 @@ export function EinsatzKalender({
     const c = customers.find((x) => x.id === id);
     return c ? c.company || c.name : "";
   };
+
+  /** Einsatzort des Kunden (falls gepflegt), sonst Rechnungsadresse. */
+  const customerSite = (id: string | null) => {
+    if (!id) return { address: "", note: "", own: false };
+    const c = customers.find((x) => x.id === id);
+    if (!c) return { address: "", note: "", own: false };
+    const own = Boolean(serviceAddress(c));
+    return {
+      address: serviceAddressOrBilling(c),
+      note: c.service_note ?? "",
+      own,
+    };
+  };
+
 
   const projectName = useCallback(
     (id: string | null) => {
@@ -378,7 +400,12 @@ export function EinsatzKalender({
 
         hourly_rate: Number(employee.hourly_rate ?? 0),
         project_id: project?.id ?? null,
+        customer_id:
+          !absence && values.customerId && values.customerId !== NO_PROJECT
+            ? values.customerId
+            : null,
         location: absence ? absenceLabel(values.absenceReason) : locText || project?.name || "",
+
 
         note: values.note.trim(),
         entry_type: values.entryType,
@@ -1210,6 +1237,50 @@ export function EinsatzKalender({
                   </datalist>
                 </div>
 
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Kunde (Einsatzort)</Label>
+                  <Select
+                    value={form.customerId}
+                    onValueChange={(v) => setForm({ ...form, customerId: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Kunde wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_PROJECT}>Ohne Kunde</SelectItem>
+                      {customers.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.company || c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {customerSite(form.customerId === NO_PROJECT ? null : form.customerId)
+                    .address && (
+                    <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                      <span className="font-medium">
+                        {customerSite(form.customerId).own
+                          ? "Einsatzort: "
+                          : "Adresse (Rechnungsadresse): "}
+                      </span>
+                      <a
+                        href={mapsUrl(customerSite(form.customerId).address)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {customerSite(form.customerId).address}
+                      </a>
+                      {customerSite(form.customerId).note && (
+                        <span className="block text-muted-foreground">
+                          {customerSite(form.customerId).note}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+
                 <div className="space-y-2">
                   <Label htmlFor="k-start">Von (HH:MM)</Label>
                   <GermanTimeInput
@@ -1317,6 +1388,31 @@ export function EinsatzKalender({
                 <dd>{detail.location || projectName(detail.project_id) || "—"}</dd>
                 <dt className="text-muted-foreground">Kunde</dt>
                 <dd>{customerName(detail.customer_id) || "—"}</dd>
+                {customerSite(detail.customer_id).address ? (
+                  <>
+                    <dt className="text-muted-foreground">
+                      {customerSite(detail.customer_id).own
+                        ? "Einsatzort (Kunde)"
+                        : "Adresse (Rechnungsadresse)"}
+                    </dt>
+                    <dd>
+                      <a
+                        href={mapsUrl(customerSite(detail.customer_id).address)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {customerSite(detail.customer_id).address}
+                      </a>
+                      {customerSite(detail.customer_id).note && (
+                        <span className="block text-xs text-muted-foreground">
+                          {customerSite(detail.customer_id).note}
+                        </span>
+                      )}
+                    </dd>
+                  </>
+                ) : null}
+
                 {detail.note ? (
                   <>
                     <dt className="text-muted-foreground">Notiz</dt>

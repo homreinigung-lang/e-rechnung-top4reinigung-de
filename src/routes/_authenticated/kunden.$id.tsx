@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { DOC_TYPE_LABEL, STATUS_LABEL, formatDate, formatMoney, today } from "@/lib/format";
+import { mapsUrl, projectAddress, serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
 
 export const Route = createFileRoute("/_authenticated/kunden/$id")({
   head: () => ({
@@ -312,6 +313,32 @@ function Kundenakte() {
             />
             <Row label="Kunde seit" value={formatDate(customer.created_at)} />
           </div>
+
+          <div className="surface px-5 py-4">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">Einsatzort</h2>
+              {serviceAddressOrBilling(customer) && (
+                <a
+                  href={mapsUrl(serviceAddressOrBilling(customer))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline"
+                >
+                  Route öffnen
+                </a>
+              )}
+            </div>
+            {serviceAddress(customer) ? (
+              <Row label="Adresse" value={serviceAddress(customer)} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Kein abweichender Einsatzort hinterlegt – es gilt die Rechnungsadresse
+                {projectAddress(customer) ? ` (${projectAddress(customer)})` : ""}.
+              </p>
+            )}
+            {customer.service_note && <Row label="Hinweis" value={customer.service_note} />}
+          </div>
+
 
           {projects.length > 0 && (
             <div className="surface px-5 py-4">
