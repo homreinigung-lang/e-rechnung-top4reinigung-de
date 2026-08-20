@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
-import { addDays, nextNumber, today } from "@/lib/format";
+import { addDays, today } from "@/lib/format";
+import { reserveDocumentNumber } from "@/lib/doc-number";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -220,11 +221,7 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .from("company_settings")
     .select("payment_terms_days")
     .maybeSingle();
-  const { data: existing } = await supabase.from("documents").select("number, type");
-  const number = nextNumber(
-    target,
-    (existing ?? []).filter((d) => d.type === target).map((d) => d.number),
-  );
+  const number = await reserveDocumentNumber(target);
 
   const issue = today();
   const {

@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
-import { addDays, nextNumber, today } from "@/lib/format";
+import { addDays, today } from "@/lib/format";
+import { reserveDocumentNumber } from "@/lib/doc-number";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -52,11 +53,7 @@ export async function runRecurring(recurringId: string): Promise<string> {
     .from("company_settings")
     .select("payment_terms_days")
     .maybeSingle();
-  const { data: existing } = await supabase.from("documents").select("number, type");
-  const number = nextNumber(
-    "invoice",
-    (existing ?? []).filter((d) => d.type === "invoice").map((d) => d.number),
-  );
+  const number = await reserveDocumentNumber("invoice");
 
   const issue = today();
   const {

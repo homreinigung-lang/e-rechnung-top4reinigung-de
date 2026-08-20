@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { addDays, nextNumber, today } from "@/lib/format";
+import { addDays, today } from "@/lib/format";
+import { reserveDocumentNumber } from "@/lib/doc-number";
 
 /**
  * Legt einen neuen Beleg (Rechnung oder Angebot) als Entwurf an und liefert
@@ -10,15 +11,12 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
   const userId = auth.user?.id;
   if (!userId) throw new Error("Nicht angemeldet");
 
-  const [{ data: settings }, { data: existing }] = await Promise.all([
-    supabase.from("company_settings").select("payment_terms_days").maybeSingle(),
-    supabase.from("documents").select("number").eq("type", type),
-  ]);
+  const { data: settings } = await supabase
+    .from("company_settings")
+    .select("payment_terms_days")
+    .maybeSingle();
 
-  const number = nextNumber(
-    type,
-    (existing ?? []).map((d) => d.number),
-  );
+  const number = await reserveDocumentNumber(type);
   const issue = today();
 
   const { data, error } = await supabase
