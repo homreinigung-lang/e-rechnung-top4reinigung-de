@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatMoney } from "@/lib/format";
+import { aggregateExpensesByCategory, isEuerIncome } from "@/lib/euer";
 import { ArrowDownRight, ArrowUpRight, CalendarClock, PieChart as PieIcon } from "lucide-react";
 
 type DocLite = {
@@ -74,11 +75,9 @@ export function FinanzDashboard({
     year: "numeric",
   });
 
+  // Gleiche Einnahmen-Definition wie in der EÜR (Entwürfe zählen nicht, Storno mindert).
   const invoices = useMemo(
-    () =>
-      docs.filter(
-        (d) => d.type === "invoice" && d.status !== "cancelled" && d.status !== "draft",
-      ),
+    () => docs.filter((d) => isEuerIncome(d as unknown as Record<string, unknown>)),
     [docs],
   );
 
@@ -94,22 +93,21 @@ export function FinanzDashboard({
 
   // Kategorieverteilung der Ausgaben im laufenden Jahr
   const yearPrefix = String(new Date().getFullYear());
-  const categories = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const e of expenses) {
-      if (!String(e.expense_date).startsWith(yearPrefix)) continue;
-      const key = (e.category || "Sonstiges").trim() || "Sonstiges";
-      map.set(key, (map.get(key) ?? 0) + num(e.net_amount));
-    }
-    return [...map.entries()]
-      .map(([name, value], i) => ({
-        name,
-        value,
-        color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]!,
-      }))
-      .filter((c) => c.value > 0)
-      .sort((a, b) => b.value - a.value);
-  }, [expenses, yearPrefix]);
+  const categories = useMemo(
+    () =>
+      aggregateExpensesByCategory(
+        expenses.filter((e) =>
+          String(e.expense_date).startsWith(yearPrefix),
+        ) as unknown as Record<string, unknown>[],
+      )
+        .map((c, i) => ({
+          name: c.category,
+          value: c.net,
+          color: CATEGORY_COLORS[i % CATEGORY_COLORS.length]!,
+        }))
+        .filter((c) => c.value > 0),
+    [expenses, yearPrefix],
+  );
   const categoryTotal = categories.reduce((s, c) => s + c.value, 0);
 
   // Anstehende Serien der nächsten 30 Tage

@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatMoney } from "@/lib/format";
+import { isEuerIncome } from "@/lib/euer";
 
 const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -42,9 +43,8 @@ const num = (v: unknown) => Number(v ?? 0) || 0;
 /** Monatlicher Vergleich Einnahmen vs. Ausgaben + Gewinn im laufenden Jahr. */
 export function EuerChart({ year, docs, expenses }: EuerChartProps) {
   const monthly = useMemo(() => {
-    const income = docs.filter(
-      (d) => d.type === "invoice" && d.status !== "draft" && d.status !== "cancelled",
-    );
+    // Identische Einnahmen-Definition wie computeEuer / Finanz-Dashboard.
+    const income = docs.filter((d) => isEuerIncome(d as unknown as Record<string, unknown>));
     const exp = expenses.filter((e) => String(e.expense_date).slice(0, 4) === String(year));
     const incInYear = income.filter((d) => String(d.issue_date).slice(0, 4) === String(year));
 
