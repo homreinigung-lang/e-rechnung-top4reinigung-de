@@ -3,17 +3,15 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+
 import { formatMoney } from "@/lib/format";
 import { isEuerIncome } from "@/lib/euer";
 
@@ -67,10 +65,6 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
     return { einnahmen, ausgaben, gewinn: einnahmen - ausgaben };
   }, [monthly]);
 
-  const pieData = [
-    { name: "Einnahmen", value: totals.einnahmen, color: "hsl(var(--primary))" },
-    { name: "Ausgaben", value: totals.ausgaben, color: "#f97316" },
-  ].filter((d) => d.value > 0);
 
   const hasData = totals.einnahmen > 0 || totals.ausgaben > 0;
 
@@ -79,32 +73,7 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="surface p-4">
-          <div className="text-xs text-muted-foreground">Einnahmen {year} (netto)</div>
-          <div className="mt-1 font-display text-xl font-semibold text-primary">
-            {formatMoney(totals.einnahmen)}
-          </div>
-        </div>
-        <div className="surface p-4">
-          <div className="text-xs text-muted-foreground">Ausgaben {year} (netto)</div>
-          <div className="mt-1 font-display text-xl font-semibold text-orange-500 dark:text-orange-400">
-            {formatMoney(totals.ausgaben)}
-          </div>
-        </div>
-        <div className="surface p-4">
-          <div className="text-xs text-muted-foreground">
-            {isLoss ? "Verlust (netto)" : "Gewinn (netto)"}
-          </div>
-          <div
-            className={`mt-1 font-display text-xl font-semibold ${
-              isLoss ? "text-destructive" : "text-green-600 dark:text-green-400"
-            }`}
-          >
-            {formatMoney(totals.gewinn)}
-          </div>
-        </div>
-      </div>
+
 
       {!hasData ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
@@ -192,47 +161,9 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
                 </ResponsiveContainer>
               </div>
             </div>
-
-            {pieData.length > 0 && (
-              <div className="surface p-4">
-                <h3 className="mb-1 text-sm font-semibold">Verteilung Einnahmen/Ausgaben</h3>
-                <p className="mb-2 text-xs text-muted-foreground">
-                  Anteile am gesamten Netto-Umsatz.
-                </p>
-                <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={38}
-                        outerRadius={64}
-                        paddingAngle={2}
-                      >
-                        {pieData.map((d) => (
-                          <Cell key={d.name} fill={d.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(v: number) => tooltipValue(v)}
-                        contentStyle={{
-                          borderRadius: 8,
-                          border: "1px solid hsl(var(--border))",
-                          background: "hsl(var(--popover))",
-                          color: "hsl(var(--popover-foreground))",
-                        }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
           </div>
         </div>
+
       )}
     </div>
   );

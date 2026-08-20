@@ -1,18 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  CartesianGrid,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatMoney } from "@/lib/format";
 import { aggregateExpensesByCategory, isEuerIncome } from "@/lib/euer";
@@ -89,7 +79,7 @@ export function FinanzDashboard({
     .reduce((s, e) => s + num(e.net_amount), 0);
   const cashflow = revenue - spend;
 
-  const cashData = [{ label: monthLabel, Einnahmen: revenue, Ausgaben: spend }];
+  
 
   // Kategorieverteilung der Ausgaben im laufenden Jahr
   const yearPrefix = String(new Date().getFullYear());
@@ -151,18 +141,8 @@ export function FinanzDashboard({
   const income = upcoming?.income ?? [];
   const outgo = upcoming?.outgo ?? [];
 
-  const openItems = useMemo(
-    () =>
-      docs
-        .filter((d) => d.type === "invoice" && d.status === "sent")
-        .sort((a, b) => String(a.due_date ?? "").localeCompare(String(b.due_date ?? "")))
-        .slice(0, 6),
-    [docs],
-  );
-  const openTotal = docs
-    .filter((d) => d.type === "invoice" && d.status === "sent")
-    .reduce((s, d) => s + num(d.total), 0);
-  const todayStr = isoDay();
+
+
 
   return (
     <section aria-label="Finanz-Dashboard" className="space-y-4">
@@ -204,31 +184,11 @@ export function FinanzDashboard({
               </div>
             </div>
           </div>
-          <div className="mt-4 h-48 w-full">
-            {revenue === 0 && spend === 0 ? (
-              <p className="py-14 text-center text-sm text-muted-foreground">
-                Für diesen Monat sind noch keine Buchungen erfasst.
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cashData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    fontSize={12}
-                    width={64}
-                    tickFormatter={(v: number) => Math.round(v).toLocaleString("de-DE")}
-                  />
-                  <Tooltip formatter={(v: number) => formatMoney(v)} />
-                  <Bar dataKey="Einnahmen" fill="#0f766e" radius={[6, 6, 0, 0]} maxBarSize={64} />
-                  <Bar dataKey="Ausgaben" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={64} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Monatsverlauf und Jahreswerte finden Sie weiter unten in der EÜR-Auswertung.
+          </p>
         </div>
+
 
         {/* 3. Kategorien */}
         <div className="surface p-5">
@@ -282,7 +242,7 @@ export function FinanzDashboard({
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         {/* 2. Anstehende Serien */}
         <div className="surface p-5">
           <div className="flex items-center gap-2">
@@ -342,53 +302,8 @@ export function FinanzDashboard({
             </Link>
           </div>
         </div>
-
-        {/* 4. Offene Rechnungen */}
-        <div className="surface p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="font-semibold">Offene Rechnungen</h3>
-            <span className="text-sm text-muted-foreground">{formatMoney(openTotal)} offen</span>
-          </div>
-          {openItems.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              Keine offenen Rechnungen – alles bezahlt.
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y">
-              {openItems.map((d) => {
-                const overdue = !!d.due_date && String(d.due_date) < todayStr;
-                return (
-                  <li key={d.id}>
-                    <Link
-                      to="/dokumente/$id"
-                      params={{ id: d.id }}
-                      className="-mx-2 flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">Rechnung {d.number}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {d.customer_company || d.customer_name || "Ohne Kunde"} · fällig{" "}
-                          {formatDate(d.due_date)}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">{formatMoney(num(d.total))}</div>
-                        <div
-                          className={`text-xs ${
-                            overdue ? "font-medium text-destructive" : "text-muted-foreground"
-                          }`}
-                        >
-                          {overdue ? "überfällig" : "offen"}
-                        </div>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
       </div>
+
     </section>
   );
 }
