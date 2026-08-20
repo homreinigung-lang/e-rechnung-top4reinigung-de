@@ -57,11 +57,16 @@ type CustomerForm = {
   postal_code: string;
   city: string;
   country: string;
+  service_address_line: string;
+  service_postal_code: string;
+  service_city: string;
+  service_note: string;
   vat_id: string;
   is_eu_customer: boolean;
   notes: string;
   status: string;
 };
+
 
 /** Vertragsstatus für die langfristige Verwaltung von Unterhaltsreinigungsverträgen. */
 const STATUS: { value: string; label: string; className: string }[] = [
