@@ -18,7 +18,8 @@ export const Route = createFileRoute("/_authenticated/team")({
       { property: "og:title", content: "Control Center – Team, Planung & Zeiten" },
       {
         property: "og:description",
-        content: "Mitarbeiter anlegen, Schichten planen und Arbeitszeiten bestätigen – alles in einer Ansicht.",
+        content:
+          "Mitarbeiter anlegen, Schichten planen und Arbeitszeiten bestätigen – alles in einer Ansicht.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

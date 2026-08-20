@@ -186,7 +186,10 @@ function AdminDashboard() {
     queryFn: async () => {
       const [docs, customers, expenses] = await Promise.all([
         fetchEuerDocuments(),
-        supabase.from("customers").select("id", { count: "exact", head: true }).is("deleted_at", null),
+        supabase
+          .from("customers")
+          .select("id", { count: "exact", head: true })
+          .is("deleted_at", null),
         fetchEuerExpenses(),
       ]);
       return {

@@ -12,7 +12,6 @@ export type AccountantReport = {
   adjustments: Row[];
 };
 
-
 /** Kein Ablaufdatum: Zugang gilt dauerhaft. */
 const NO_EXPIRY = "2999-12-31T00:00:00.000Z";
 
@@ -166,7 +165,8 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         const entryType = String(t.entry_type ?? "work");
         const code = absenceCode(entryType, String(t.absence_reason ?? ""));
         // Nur bestätigte (erledigte) Schichten zählen als Ist-Arbeitszeit.
-        const confirmed = entryType !== "work" || Boolean(t.completed_at) || Number(t.hours ?? 0) > 0;
+        const confirmed =
+          entryType !== "work" || Boolean(t.completed_at) || Number(t.hours ?? 0) > 0;
         return {
           ...t,
           employee_name: String(t.employee_name || emp?.["name"] || ""),
@@ -188,7 +188,6 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       adjustments: (adjustments.data ?? []) as unknown as Row[],
     };
   });
-
 
 /** Liefert eine zeitlich begrenzte Download-Adresse für den Beleg einer Ausgabe. */
 export const getAccountantReceiptUrl = createServerFn({ method: "POST" })

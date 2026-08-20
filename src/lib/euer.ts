@@ -68,18 +68,19 @@ export function computeEuer(
   from: string,
   to: string,
 ): EuerResult {
-  const income = documents.filter(isEuerIncome);
+  // Defensiv erneut auf den Zeitraum filtern, falls Aufrufer ungefilterte Daten übergeben.
+  const income = documents.filter(isEuerIncome).filter((d) => inPeriod(d["issue_date"], from, to));
+  const costs = expenses.filter((e) => inPeriod(e["expense_date"], from, to));
 
   const incomeNet = income.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const incomeVat = income.reduce((s, d) => s + num(d["vat_amount"]), 0);
   const incomeGross = income.reduce((s, d) => s + num(d["total"]), 0);
 
-  const expenseNet = expenses.reduce((s, e) => s + num(e["net_amount"]), 0);
-  const expenseVat = expenses.reduce((s, e) => s + num(e["vat_amount"]), 0);
-  const expenseGross = expenses.reduce((s, e) => s + num(e["gross_amount"]), 0);
+  const expenseNet = costs.reduce((s, e) => s + num(e["net_amount"]), 0);
+  const expenseVat = costs.reduce((s, e) => s + num(e["vat_amount"]), 0);
+  const expenseGross = costs.reduce((s, e) => s + num(e["gross_amount"]), 0);
 
-  const byCategory = aggregateExpensesByCategory(expenses);
-
+  const byCategory = aggregateExpensesByCategory(costs);
 
   return {
     from,
@@ -92,7 +93,7 @@ export function computeEuer(
     expenseGross,
     profit: incomeNet - expenseNet,
     incomeCount: income.length,
-    expenseCount: expenses.length,
+    expenseCount: costs.length,
     expensesByCategory: byCategory,
   };
 }

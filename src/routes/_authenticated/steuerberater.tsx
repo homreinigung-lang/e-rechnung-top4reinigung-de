@@ -163,7 +163,6 @@ function Steuerberater() {
     },
   });
 
-
   const gobdExport = useMutation({
     mutationFn: async () => {
       const blob = await buildGobdExport(from, to);
@@ -379,7 +378,6 @@ function Steuerberater() {
 
   const period = `${from}_${to}`;
 
-
   return (
     <div className="space-y-6">
       <div className="no-print">
@@ -482,7 +480,6 @@ function Steuerberater() {
         </p>
         <Table rows={payrollRows} empty="Keine Arbeitszeiten im Zeitraum." />
       </section>
-
 
       <section className="no-print rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">

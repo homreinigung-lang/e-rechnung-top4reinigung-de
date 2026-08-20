@@ -301,7 +301,7 @@ async function readStatedTotalArea(
           {
             role: "system",
             content:
-              "Du prüfst Grundrisse und Raumbücher. Antworte ausschließlich mit reinem JSON. Nur wörtlich im Dokument stehende Werte; sonst 0 und source = \"\".",
+              'Du prüfst Grundrisse und Raumbücher. Antworte ausschließlich mit reinem JSON. Nur wörtlich im Dokument stehende Werte; sonst 0 und source = "".',
           },
           { role: "user", content },
         ],
@@ -334,7 +334,6 @@ function buildAreaWarning(roomSum: number, statedTotal: number): string | null {
   if (deviation <= 0.1) return null;
   return `Achtung: Summe der Räume (${fmtArea(roomSum)} m²) weicht von genannter Gesamtfläche (${fmtArea(statedTotal)} m²) ab – bitte prüfen.`;
 }
-
 
 /** Analysiert einen Grundriss oder eine Ausschreibung mit dem KI-Gateway. */
 export async function analyzeProjectFile(

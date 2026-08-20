@@ -65,7 +65,6 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
     return { einnahmen, ausgaben, gewinn: einnahmen - ausgaben };
   }, [monthly]);
 
-
   const hasData = totals.einnahmen > 0 || totals.ausgaben > 0;
 
   const tooltipValue = (v: number) => formatMoney(v);
@@ -73,8 +72,6 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
 
   return (
     <div className="space-y-6">
-
-
       {!hasData ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
           Noch keine Buchungen im Jahr {year} vorhanden.
@@ -163,7 +160,6 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
             </div>
           </div>
         </div>
-
       )}
     </div>
   );

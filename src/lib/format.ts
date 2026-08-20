@@ -37,14 +37,23 @@ export function formatDate(value?: string | null): string {
   return DE_DATE.format(date);
 }
 
+/** Lokales Datum als ISO-Tag (JJJJ-MM-TT) – ohne UTC-Verschiebung. */
+function isoLocalDay(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function addDays(dateStr: string, days: number): string {
-  const date = new Date(dateStr);
+  const date = new Date(`${String(dateStr).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr;
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return isoLocalDay(date);
 }
 
 export function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return isoLocalDay(new Date());
 }
 
 /** Wandelt eine deutsche Datumseingabe (TT.MM.JJJJ) in ISO (JJJJ-MM-TT) um. */

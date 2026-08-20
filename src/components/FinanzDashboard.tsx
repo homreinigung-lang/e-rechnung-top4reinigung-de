@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { supabase } from "@/integrations/supabase/client";
-import { formatDate, formatMoney } from "@/lib/format";
+import { addDays, formatDate, formatMoney, today } from "@/lib/format";
 import { aggregateExpensesByCategory, isEuerIncome } from "@/lib/euer";
 import { ArrowDownRight, ArrowUpRight, CalendarClock, PieChart as PieIcon } from "lucide-react";
 
@@ -43,22 +43,14 @@ const CATEGORY_COLORS = [
 ];
 
 function isoDay(offsetDays = 0): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return addDays(today(), offsetDays);
 }
 
 /**
  * Finanz-Dashboard: Cashflow des laufenden Monats, anstehende Serien,
  * Kostenverteilung nach Kategorie und offene Rechnungen.
  */
-export function FinanzDashboard({
-  docs,
-  expenses,
-}: {
-  docs: DocLite[];
-  expenses: ExpenseLite[];
-}) {
+export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses: ExpenseLite[] }) {
   const monthPrefix = new Date().toISOString().slice(0, 7);
   const monthLabel = new Date().toLocaleDateString("de-DE-u-ca-gregory-nu-latn", {
     month: "long",
@@ -79,16 +71,15 @@ export function FinanzDashboard({
     .reduce((s, e) => s + num(e.net_amount), 0);
   const cashflow = revenue - spend;
 
-  
-
   // Kategorieverteilung der Ausgaben im laufenden Jahr
   const yearPrefix = String(new Date().getFullYear());
   const categories = useMemo(
     () =>
       aggregateExpensesByCategory(
-        expenses.filter((e) =>
-          String(e.expense_date).startsWith(yearPrefix),
-        ) as unknown as Record<string, unknown>[],
+        expenses.filter((e) => String(e.expense_date).startsWith(yearPrefix)) as unknown as Record<
+          string,
+          unknown
+        >[],
       )
         .map((c, i) => ({
           name: c.category,
@@ -141,9 +132,6 @@ export function FinanzDashboard({
   const income = upcoming?.income ?? [];
   const outgo = upcoming?.outgo ?? [];
 
-
-
-
   return (
     <section aria-label="Finanz-Dashboard" className="space-y-4">
       <div>
@@ -188,7 +176,6 @@ export function FinanzDashboard({
             Monatsverlauf und Jahreswerte finden Sie weiter unten in der EÜR-Auswertung.
           </p>
         </div>
-
 
         {/* 3. Kategorien */}
         <div className="surface p-5">
@@ -303,7 +290,6 @@ export function FinanzDashboard({
           </div>
         </div>
       </div>
-
     </section>
   );
 }

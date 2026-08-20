@@ -44,7 +44,6 @@ import {
   isEffective,
 } from "@/lib/absence";
 
-
 const ROLES = ["Reinigungskraft", "Vorarbeiter", "Objektleiter", "Springer", "Verwaltung"];
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const NO_PROJECT = "__none__";
