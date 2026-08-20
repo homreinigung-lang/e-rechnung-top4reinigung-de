@@ -79,32 +79,7 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="surface p-4">
-          <div className="text-xs text-muted-foreground">Einnahmen {year} (netto)</div>
-          <div className="mt-1 font-display text-xl font-semibold text-primary">
-            {formatMoney(totals.einnahmen)}
-          </div>
-        </div>
-        <div className="surface p-4">
-          <div className="text-xs text-muted-foreground">Ausgaben {year} (netto)</div>
-          <div className="mt-1 font-display text-xl font-semibold text-orange-500 dark:text-orange-400">
-            {formatMoney(totals.ausgaben)}
-          </div>
-        </div>
-        <div className="surface p-4">
-          <div className="text-xs text-muted-foreground">
-            {isLoss ? "Verlust (netto)" : "Gewinn (netto)"}
-          </div>
-          <div
-            className={`mt-1 font-display text-xl font-semibold ${
-              isLoss ? "text-destructive" : "text-green-600 dark:text-green-400"
-            }`}
-          >
-            {formatMoney(totals.gewinn)}
-          </div>
-        </div>
-      </div>
+
 
       {!hasData ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
