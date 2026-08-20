@@ -400,7 +400,12 @@ export function EinsatzKalender({
 
         hourly_rate: Number(employee.hourly_rate ?? 0),
         project_id: project?.id ?? null,
+        customer_id:
+          !absence && values.customerId && values.customerId !== NO_PROJECT
+            ? values.customerId
+            : null,
         location: absence ? absenceLabel(values.absenceReason) : locText || project?.name || "",
+
 
         note: values.note.trim(),
         entry_type: values.entryType,
