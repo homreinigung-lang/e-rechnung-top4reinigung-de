@@ -3,17 +3,15 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+
 import { formatMoney } from "@/lib/format";
 import { isEuerIncome } from "@/lib/euer";
 
