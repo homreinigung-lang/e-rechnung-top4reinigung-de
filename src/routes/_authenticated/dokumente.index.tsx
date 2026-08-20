@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { reserveDocumentNumber } from "@/lib/doc-number";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +22,6 @@ import {
   STATUS_LABEL,
   formatDate,
   formatMoney,
-  nextNumber,
   parseGermanDate,
   today,
   addDays,
@@ -121,10 +121,7 @@ function DokumenteListe() {
         .select("payment_terms_days")
         .maybeSingle();
 
-      const number = nextNumber(
-        type,
-        documents.filter((d) => d.type === type).map((d) => d.number),
-      );
+      const number = await reserveDocumentNumber(type);
       const issue = today();
       const { data, error } = await supabase
         .from("documents")
@@ -171,10 +168,7 @@ function DokumenteListe() {
         .eq("document_id", docId)
         .order("position");
 
-      const number = nextNumber(
-        src.type as "invoice" | "quote",
-        documents.filter((d) => d.type === src.type).map((d) => d.number),
-      );
+      const number = await reserveDocumentNumber(src.type as "invoice" | "quote" | "order");
       const {
         id: _i,
         created_at: _c,
