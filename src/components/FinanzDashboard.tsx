@@ -262,7 +262,7 @@ export function FinanzDashboard({
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         {/* 2. Anstehende Serien */}
         <div className="surface p-5">
           <div className="flex items-center gap-2">
