@@ -43,9 +43,7 @@ const CATEGORY_COLORS = [
 ];
 
 function isoDay(offsetDays = 0): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return addDays(today(), offsetDays);
 }
 
 /**
