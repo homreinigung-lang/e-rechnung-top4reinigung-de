@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { DOC_TYPE_LABEL, STATUS_LABEL, formatDate, formatMoney, today } from "@/lib/format";
+import { mapsUrl, projectAddress, serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
 
 export const Route = createFileRoute("/_authenticated/kunden/$id")({
   head: () => ({
