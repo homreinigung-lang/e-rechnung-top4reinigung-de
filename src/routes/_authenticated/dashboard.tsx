@@ -14,6 +14,7 @@ import { computeEuer } from "@/lib/euer";
 import { fetchEuerDocuments, fetchEuerExpenses } from "@/lib/euer-data";
 import { EuerChart } from "@/components/EuerChart";
 import { FinanzDashboard } from "@/components/FinanzDashboard";
+import { EinsaetzeHeute } from "@/components/EinsaetzeHeute";
 import { createDocument } from "@/lib/create-document";
 import { useMyEmployee, type MyEmployee } from "@/lib/employee";
 import { dueInfo, mahnLabel } from "@/lib/workflow";
@@ -431,7 +432,8 @@ function AdminDashboard() {
         <div className="flex items-center justify-between border-b px-5 py-4">
           <h2 className="font-semibold">Offene Posten</h2>
           <span className="text-sm text-muted-foreground">
-            {openItems.length} offen · {openItems.filter((o) => o.due?.overdue).length} überfällig
+            {formatMoney(openTotal)} · {openItems.length} offen ·{" "}
+            {openItems.filter((o) => o.due?.overdue).length} überfällig
           </span>
         </div>
         {openItems.length === 0 ? (
