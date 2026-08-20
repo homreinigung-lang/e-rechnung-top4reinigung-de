@@ -1336,6 +1336,31 @@ export function EinsatzKalender({
                 <dd>{detail.location || projectName(detail.project_id) || "—"}</dd>
                 <dt className="text-muted-foreground">Kunde</dt>
                 <dd>{customerName(detail.customer_id) || "—"}</dd>
+                {customerSite(detail.customer_id).address ? (
+                  <>
+                    <dt className="text-muted-foreground">
+                      {customerSite(detail.customer_id).own
+                        ? "Einsatzort (Kunde)"
+                        : "Adresse (Rechnungsadresse)"}
+                    </dt>
+                    <dd>
+                      <a
+                        href={mapsUrl(customerSite(detail.customer_id).address)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {customerSite(detail.customer_id).address}
+                      </a>
+                      {customerSite(detail.customer_id).note && (
+                        <span className="block text-xs text-muted-foreground">
+                          {customerSite(detail.customer_id).note}
+                        </span>
+                      )}
+                    </dd>
+                  </>
+                ) : null}
+
                 {detail.note ? (
                   <>
                     <dt className="text-muted-foreground">Notiz</dt>
