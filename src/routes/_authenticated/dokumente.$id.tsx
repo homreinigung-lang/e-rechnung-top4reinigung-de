@@ -832,7 +832,7 @@ function DokumentDetail() {
         : [
             form["notes"] ? String(form["notes"]) : "",
             isOrder ? "" : QUOTE_DISCLAIMER,
-            CANCELLATION_TERMS,
+            isOrder ? CANCELLATION_TERMS : "",
           ]
             .filter(Boolean)
             .join("\n\n"),
@@ -1856,9 +1856,11 @@ function DokumentDetail() {
               <div className="mt-4 space-y-2 text-sm">
                 <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
                 {!isOrder && <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>}
-                <p className="text-justify text-xs leading-relaxed text-muted-foreground">
-                  {CANCELLATION_TERMS}
-                </p>
+                {isOrder && (
+                  <p className="text-justify text-xs leading-relaxed text-muted-foreground">
+                    {CANCELLATION_TERMS}
+                  </p>
+                )}
               </div>
             )}
           </div>
