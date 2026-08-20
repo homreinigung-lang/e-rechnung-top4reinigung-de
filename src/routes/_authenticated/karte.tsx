@@ -157,6 +157,7 @@ function KartePage() {
   const raw = useMemo(() => {
     if (!data) return [] as Omit<MapPoint, "lat" | "lon">[];
     const projectById = new Map(data.projects.map((p) => [p.id, p]));
+    const customerById = new Map(data.customers.map((c) => [c.id, c]));
     const list: Omit<MapPoint, "lat" | "lon">[] = [];
 
     for (const c of data.customers) {
