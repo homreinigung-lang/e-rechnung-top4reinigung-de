@@ -30,14 +30,21 @@ export function serviceAddress(c: ServiceLocationSource | null | undefined) {
   if (!c) return "";
   if (!c.service_address_line && !c.service_city && !c.service_postal_code) return "";
   return projectAddress({
-    address_line: c.service_address_line,
-    postal_code: c.service_postal_code,
-    city: c.service_city,
+    address_line: c.service_address_line ?? "",
+    postal_code: c.service_postal_code ?? "",
+    city: c.service_city ?? "",
   });
 }
 
 /** Einsatzort mit Fallback auf die Rechnungsadresse. */
 export function serviceAddressOrBilling(c: ServiceLocationSource | null | undefined) {
   if (!c) return "";
-  return serviceAddress(c) || projectAddress(c);
+  return (
+    serviceAddress(c) ||
+    projectAddress({
+      address_line: c.address_line ?? "",
+      postal_code: c.postal_code ?? "",
+      city: c.city ?? "",
+    })
+  );
 }
