@@ -93,7 +93,7 @@ export function computeEuer(
     profit: incomeNet - expenseNet,
     incomeCount: income.length,
     expenseCount: expenses.length,
-    expensesByCategory: [...map.values()].sort((a, b) => b.net - a.net),
+    expensesByCategory: byCategory,
   };
 }
 
