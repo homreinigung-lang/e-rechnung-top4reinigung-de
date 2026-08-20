@@ -26,10 +26,40 @@ function num(v: unknown) {
   return Number(v ?? 0) || 0;
 }
 
+/**
+ * Einheitliche Kategorie-Normalisierung – identisch in Dashboard-Charts und EÜR-Tabelle.
+ * Leere oder fehlende Kategorien werden immer als „Sonstiges“ geführt.
+ */
+export function normalizeExpenseCategory(value: unknown): string {
+  return String(value ?? "").trim() || "Sonstiges";
+}
+
+export type ExpenseCategorySum = { category: string; net: number; vat: number; gross: number };
+
+/** Aggregiert Ausgaben je Kategorie – gemeinsame Basis für EÜR und Dashboard. */
+export function aggregateExpensesByCategory(expenses: EuerExpense[]): ExpenseCategorySum[] {
+  const map = new Map<string, ExpenseCategorySum>();
+  for (const e of expenses) {
+    const category = normalizeExpenseCategory(e["category"]);
+    const entry = map.get(category) ?? { category, net: 0, vat: 0, gross: 0 };
+    entry.net += num(e["net_amount"]);
+    entry.vat += num(e["vat_amount"]);
+    entry.gross += num(e["gross_amount"]);
+    map.set(category, entry);
+  }
+  return [...map.values()].sort((a, b) => b.net - a.net);
+}
+
 /** Entwürfe zählen nicht als Betriebseinnahme; Stornorechnungen mindern den Umsatz. */
 export function isEuerIncome(doc: EuerDoc): boolean {
   const status = String(doc["status"] ?? "");
   return doc["type"] === "invoice" && status !== "draft";
+}
+
+/** Zeitraum-Filter auf Basis eines ISO-Datums (YYYY-MM-DD), inklusive Grenzen. */
+export function inPeriod(dateValue: unknown, from: string, to: string): boolean {
+  const d = String(dateValue ?? "").slice(0, 10);
+  return d >= from && d <= to;
 }
 
 export function computeEuer(
@@ -48,15 +78,8 @@ export function computeEuer(
   const expenseVat = expenses.reduce((s, e) => s + num(e["vat_amount"]), 0);
   const expenseGross = expenses.reduce((s, e) => s + num(e["gross_amount"]), 0);
 
-  const map = new Map<string, { category: string; net: number; vat: number; gross: number }>();
-  for (const e of expenses) {
-    const category = String(e["category"] ?? "").trim() || "Sonstiges";
-    const entry = map.get(category) ?? { category, net: 0, vat: 0, gross: 0 };
-    entry.net += num(e["net_amount"]);
-    entry.vat += num(e["vat_amount"]);
-    entry.gross += num(e["gross_amount"]);
-    map.set(category, entry);
-  }
+  const byCategory = aggregateExpensesByCategory(expenses);
+
 
   return {
     from,
@@ -70,7 +93,7 @@ export function computeEuer(
     profit: incomeNet - expenseNet,
     incomeCount: income.length,
     expenseCount: expenses.length,
-    expensesByCategory: [...map.values()].sort((a, b) => b.net - a.net),
+    expensesByCategory: byCategory,
   };
 }
 
