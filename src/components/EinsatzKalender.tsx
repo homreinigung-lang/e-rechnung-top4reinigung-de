@@ -268,7 +268,11 @@ export function EinsatzKalender({
     queryKey: ["customers", "calendar-names"],
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("id,name,company");
+      const { data, error } = await supabase
+        .from("customers")
+        .select(
+          "id,name,company,address_line,postal_code,city,service_address_line,service_postal_code,service_city,service_note",
+        );
       if (error) throw error;
       return data;
     },
@@ -279,6 +283,20 @@ export function EinsatzKalender({
     const c = customers.find((x) => x.id === id);
     return c ? c.company || c.name : "";
   };
+
+  /** Einsatzort des Kunden (falls gepflegt), sonst Rechnungsadresse. */
+  const customerSite = (id: string | null) => {
+    if (!id) return { address: "", note: "", own: false };
+    const c = customers.find((x) => x.id === id);
+    if (!c) return { address: "", note: "", own: false };
+    const own = Boolean(serviceAddress(c));
+    return {
+      address: serviceAddressOrBilling(c),
+      note: c.service_note ?? "",
+      own,
+    };
+  };
+
 
   const projectName = useCallback(
     (id: string | null) => {
