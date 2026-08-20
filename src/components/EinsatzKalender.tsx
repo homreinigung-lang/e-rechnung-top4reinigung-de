@@ -1237,6 +1237,50 @@ export function EinsatzKalender({
                   </datalist>
                 </div>
 
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Kunde (Einsatzort)</Label>
+                  <Select
+                    value={form.customerId}
+                    onValueChange={(v) => setForm({ ...form, customerId: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Kunde wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_PROJECT}>Ohne Kunde</SelectItem>
+                      {customers.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.company || c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {customerSite(form.customerId === NO_PROJECT ? null : form.customerId)
+                    .address && (
+                    <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                      <span className="font-medium">
+                        {customerSite(form.customerId).own
+                          ? "Einsatzort: "
+                          : "Adresse (Rechnungsadresse): "}
+                      </span>
+                      <a
+                        href={mapsUrl(customerSite(form.customerId).address)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {customerSite(form.customerId).address}
+                      </a>
+                      {customerSite(form.customerId).note && (
+                        <span className="block text-muted-foreground">
+                          {customerSite(form.customerId).note}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+
                 <div className="space-y-2">
                   <Label htmlFor="k-start">Von (HH:MM)</Label>
                   <GermanTimeInput
