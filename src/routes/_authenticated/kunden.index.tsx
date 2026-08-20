@@ -222,6 +222,18 @@ function Kunden() {
               {field("postal_code", "PLZ")}
               {field("city", "Ort")}
               {field("country", "Land")}
+              <div className="sm:col-span-2">
+                <p className="mt-2 text-sm font-semibold">Einsatzort (abweichend von Rechnungsadresse)</p>
+                <p className="text-xs text-muted-foreground">
+                  Wird nur für Einsatzplanung und Kalender genutzt – die Rechnungsstellung bleibt
+                  unverändert bei der Adresse oben.
+                </p>
+              </div>
+              {field("service_address_line", "Einsatzort – Straße und Hausnummer")}
+              {field("service_note", "Einsatzort – Hinweis (z. B. Objekt, Etage, Schlüssel)")}
+              {field("service_postal_code", "Einsatzort – PLZ")}
+              {field("service_city", "Einsatzort – Ort")}
+
               <div className="space-y-2">
                 <Label htmlFor="is_eu_customer">Kunde im EU-Ausland</Label>
                 <div className="flex h-9 items-center gap-2">
