@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { supabase } from "@/integrations/supabase/client";
-import { formatDate, formatMoney } from "@/lib/format";
+import { addDays, formatDate, formatMoney, today } from "@/lib/format";
 import { aggregateExpensesByCategory, isEuerIncome } from "@/lib/euer";
 import { ArrowDownRight, ArrowUpRight, CalendarClock, PieChart as PieIcon } from "lucide-react";
 
