@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,7 +35,7 @@ import {
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/kunden")({
+export const Route = createFileRoute("/_authenticated/kunden/")({
   head: () => ({
     meta: [
       { title: "Kunden – Rechnungen & Angebote" },
@@ -274,7 +274,14 @@ function Kunden() {
               <li key={c.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">
-                    {c.company || c.name}
+                    <Link
+                      to="/kunden/$id"
+                      params={{ id: c.id }}
+                      className="hover:underline"
+                      title="Kundenakte öffnen"
+                    >
+                      {c.company || c.name}
+                    </Link>
                     {c.customer_number && (
                       <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
                         {c.customer_number}
