@@ -70,11 +70,11 @@ export function WiederkehrendeAusgaben({ categories }: { categories: string[] })
     },
   });
 
-  function refresh() {
+  const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["recurring-expenses"] });
     queryClient.invalidateQueries({ queryKey: ["expenses"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-  }
+  }, [queryClient]);
 
   // Fällige Serien beim Öffnen der Seite automatisch buchen.
   useEffect(() => {
@@ -90,7 +90,7 @@ export function WiederkehrendeAusgaben({ categories }: { categories: string[] })
         }
       })
       .catch((e: Error) => toast.error(e.message));
-  }, [isLoading, rows]);
+  }, [isLoading, rows, refresh]);
 
   const create = useMutation({
     mutationFn: async () => {
