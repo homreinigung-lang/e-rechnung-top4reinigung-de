@@ -151,18 +151,8 @@ export function FinanzDashboard({
   const income = upcoming?.income ?? [];
   const outgo = upcoming?.outgo ?? [];
 
-  const openItems = useMemo(
-    () =>
-      docs
-        .filter((d) => d.type === "invoice" && d.status === "sent")
-        .sort((a, b) => String(a.due_date ?? "").localeCompare(String(b.due_date ?? "")))
-        .slice(0, 6),
-    [docs],
-  );
-  const openTotal = docs
-    .filter((d) => d.type === "invoice" && d.status === "sent")
-    .reduce((s, d) => s + num(d.total), 0);
-  const todayStr = isoDay();
+
+
 
   return (
     <section aria-label="Finanz-Dashboard" className="space-y-4">
