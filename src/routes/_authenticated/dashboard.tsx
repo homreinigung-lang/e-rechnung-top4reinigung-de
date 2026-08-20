@@ -332,28 +332,7 @@ function AdminDashboard() {
         </DropdownMenu>
       </div>
 
-      {/* Schnellzugriff: direkter Einstieg ohne Umweg über das Menü */}
-      <nav aria-label="Schnellzugriff" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {QUICK_LINKS.map((q) => (
-          <Link
-            key={q.label}
-            to={q.to}
-            search={q.search}
-            className="surface group flex items-center gap-3 p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <q.icon className="size-5" />
-            </span>
-            <span className="min-w-0">
-              <span className="block font-semibold">{q.label}</span>
-              <span className="block truncate text-xs text-muted-foreground">{q.hint}</span>
-            </span>
-          </Link>
-        ))}
-      </nav>
-
-      <FinanzDashboard docs={docs} expenses={expenses} />
-
+      {/* 1. Finanzkennzahlen */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="surface p-5">
@@ -361,10 +340,72 @@ function AdminDashboard() {
               <span className="text-sm text-muted-foreground">{s.label}</span>
               <s.icon className="size-4 text-primary" />
             </div>
-            <div className="mt-3 font-display text-2xl font-semibold">{s.value}</div>
+            <div className={`mt-3 font-display text-2xl font-semibold ${s.accent}`}>{s.value}</div>
           </div>
         ))}
       </div>
+
+      {/* 2. Operativer Bereich: heutige Einsätze */}
+      <EinsaetzeHeute />
+
+      {/* 3. Schnellaktionen */}
+      <section aria-label="Schnellaktionen" className="surface p-5">
+        <h2 className="font-semibold">Schnellaktionen</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Die häufigsten Vorgänge – direkt aus der Übersicht.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Button
+            className="h-auto justify-start py-3"
+            onClick={() => {
+              void createDocument("invoice")
+                .then((docId) =>
+                  navigate({
+                    to: "/dokumente/$id",
+                    params: { id: docId },
+                    search: { bearbeiten: true },
+                  }),
+                )
+                .catch((e: Error) => toast.error(e.message));
+            }}
+          >
+            <Receipt className="size-4" /> Neue Rechnung
+          </Button>
+          <Button asChild variant="secondary" className="h-auto justify-start py-3">
+            <Link to="/ausgaben">
+              <TrendingDown className="size-4" /> Beleg hinzufügen
+            </Link>
+          </Button>
+          <Button asChild variant="secondary" className="h-auto justify-start py-3">
+            <Link to="/kunden" search={{}}>
+              <Users className="size-4" /> Kunde anlegen
+            </Link>
+          </Button>
+          <Button asChild variant="secondary" className="h-auto justify-start py-3">
+            <Link to="/team">
+              <CalendarClock className="size-4" /> Einsatz planen
+            </Link>
+          </Button>
+        </div>
+        <nav
+          aria-label="Schnellzugriff"
+          className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t pt-4 text-sm"
+        >
+          {QUICK_LINKS.map((q) => (
+            <Link
+              key={q.label}
+              to={q.to}
+              search={q.search}
+              className="inline-flex items-center gap-1.5 text-primary hover:underline"
+            >
+              <q.icon className="size-4" /> {q.label}
+            </Link>
+          ))}
+        </nav>
+      </section>
+
+      <FinanzDashboard docs={docs} expenses={expenses} />
+
 
       <div className="surface overflow-hidden">
         <div className="border-b px-5 py-4">
