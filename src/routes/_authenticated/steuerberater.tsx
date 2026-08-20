@@ -104,6 +104,7 @@ function Steuerberater() {
       const { data, error } = await supabase
         .from("documents")
         .select("*")
+        .is("deleted_at", null)
         .eq("type", "invoice")
         .gte("issue_date", from)
         .lte("issue_date", to)
@@ -119,6 +120,7 @@ function Steuerberater() {
       const { data, error } = await supabase
         .from("expenses")
         .select("*")
+        .is("deleted_at", null)
         .gte("expense_date", from)
         .lte("expense_date", to)
         .order("expense_date");

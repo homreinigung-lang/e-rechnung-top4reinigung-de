@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
 import { computeEuer } from "@/lib/euer";
+import { fetchEuerDocuments, fetchEuerExpenses } from "@/lib/euer-data";
 import { EuerChart } from "@/components/EuerChart";
 import { FinanzDashboard } from "@/components/FinanzDashboard";
 import { createDocument } from "@/lib/create-document";
@@ -184,20 +185,14 @@ function AdminDashboard() {
     queryKey: ["dashboard"],
     queryFn: async () => {
       const [docs, customers, expenses] = await Promise.all([
-        supabase
-          .from("documents")
-          .select(
-            "id, type, number, status, issue_date, due_date, reminder_level, total, net_total, vat_amount, customer_name, customer_company",
-          )
-          .order("issue_date", { ascending: false }),
-        supabase.from("customers").select("id", { count: "exact", head: true }),
-        supabase.from("expenses").select("expense_date, category, net_amount, gross_amount, vat_amount"),
+        fetchEuerDocuments(),
+        supabase.from("customers").select("id", { count: "exact", head: true }).is("deleted_at", null),
+        fetchEuerExpenses(),
       ]);
-      if (docs.error) throw docs.error;
       return {
-        docs: docs.data ?? [],
+        docs,
         customerCount: customers.count ?? 0,
-        expenses: expenses.data ?? [],
+        expenses,
       };
     },
   });
