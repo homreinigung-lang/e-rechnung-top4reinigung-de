@@ -365,6 +365,10 @@ export type Database = {
           notes: string
           phone: string
           postal_code: string
+          service_address_line: string
+          service_city: string
+          service_note: string
+          service_postal_code: string
           status: string
           updated_at: string
           user_id: string
@@ -385,6 +389,10 @@ export type Database = {
           notes?: string
           phone?: string
           postal_code?: string
+          service_address_line?: string
+          service_city?: string
+          service_note?: string
+          service_postal_code?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -405,6 +413,10 @@ export type Database = {
           notes?: string
           phone?: string
           postal_code?: string
+          service_address_line?: string
+          service_city?: string
+          service_note?: string
+          service_postal_code?: string
           status?: string
           updated_at?: string
           user_id?: string
