@@ -168,9 +168,8 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
               </div>
             </div>
           </div>
-
-          </div>
         </div>
+
       )}
     </div>
   );
