@@ -68,7 +68,12 @@ export function computeEuer(
   from: string,
   to: string,
 ): EuerResult {
-  const income = documents.filter(isEuerIncome);
+  // Defensiv erneut auf den Zeitraum filtern, falls Aufrufer ungefilterte Daten übergeben.
+  const income = documents
+    .filter(isEuerIncome)
+    .filter((d) => inPeriod(d["issue_date"], from, to));
+  expenses = expenses.filter((e) => inPeriod(e["expense_date"], from, to));
+
 
   const incomeNet = income.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const incomeVat = income.reduce((s, d) => s + num(d["vat_amount"]), 0);
