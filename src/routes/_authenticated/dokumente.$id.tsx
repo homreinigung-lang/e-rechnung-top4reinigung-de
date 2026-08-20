@@ -832,7 +832,7 @@ function DokumentDetail() {
         : [
             form["notes"] ? String(form["notes"]) : "",
             isOrder ? "" : QUOTE_DISCLAIMER,
-            CANCELLATION_TERMS,
+            isOrder ? CANCELLATION_TERMS : "",
           ]
             .filter(Boolean)
             .join("\n\n"),
