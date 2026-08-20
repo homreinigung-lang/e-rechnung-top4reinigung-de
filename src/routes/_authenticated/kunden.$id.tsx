@@ -66,7 +66,7 @@ function Row({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Kpi({ label, value, hint }: { label: string; value: string; hint?: string | undefined }) {
   return (
     <div className="surface px-5 py-4">
       <div className="text-xs text-muted-foreground">{label}</div>
