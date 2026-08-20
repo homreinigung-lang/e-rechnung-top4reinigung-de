@@ -167,45 +167,8 @@ export function EuerChart({ year, docs, expenses }: EuerChartProps) {
                 </ResponsiveContainer>
               </div>
             </div>
+          </div>
 
-            {pieData.length > 0 && (
-              <div className="surface p-4">
-                <h3 className="mb-1 text-sm font-semibold">Verteilung Einnahmen/Ausgaben</h3>
-                <p className="mb-2 text-xs text-muted-foreground">
-                  Anteile am gesamten Netto-Umsatz.
-                </p>
-                <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={38}
-                        outerRadius={64}
-                        paddingAngle={2}
-                      >
-                        {pieData.map((d) => (
-                          <Cell key={d.name} fill={d.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(v: number) => tooltipValue(v)}
-                        contentStyle={{
-                          borderRadius: 8,
-                          border: "1px solid hsl(var(--border))",
-                          background: "hsl(var(--popover))",
-                          color: "hsl(var(--popover-foreground))",
-                        }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
