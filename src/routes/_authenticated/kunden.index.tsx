@@ -337,6 +337,13 @@ function Kunden() {
                       postal_code: c.postal_code,
                       city: c.city,
                       country: c.country,
+                      service_address_line:
+                        (c as { service_address_line?: string }).service_address_line ?? "",
+                      service_postal_code:
+                        (c as { service_postal_code?: string }).service_postal_code ?? "",
+                      service_city: (c as { service_city?: string }).service_city ?? "",
+                      service_note: (c as { service_note?: string }).service_note ?? "",
+
                       vat_id: c.vat_id,
                       is_eu_customer: Boolean((c as { is_eu_customer?: boolean }).is_eu_customer),
                       notes: c.notes,
