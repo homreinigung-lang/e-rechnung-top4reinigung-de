@@ -1,18 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  CartesianGrid,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatMoney } from "@/lib/format";
 import { aggregateExpensesByCategory, isEuerIncome } from "@/lib/euer";
