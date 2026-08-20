@@ -21,7 +21,6 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenticated/kalkulation'
 import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/karte'
-import { Route as AuthenticatedKundenRouteImport } from './routes/_authenticated/kunden'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedNachrichtenRouteImport } from './routes/_authenticated/nachrichten'
 import { Route as AuthenticatedPapierkorbRouteImport } from './routes/_authenticated/papierkorb'
@@ -38,6 +37,7 @@ import { Route as RechtlichesImpressumRouteImport } from './routes/rechtliches.i
 import { Route as StbTokenRouteImport } from './routes/stb.$token'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
+import { Route as AuthenticatedKundenIndexRouteImport } from './routes/_authenticated/kunden.index'
 import { Route as AuthenticatedProjekteIndexRouteImport } from './routes/_authenticated/projekte.index'
 import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authenticated/projekte.$id'
 import { Route as ApiPublicFotoRetentionRouteImport } from './routes/api/public/foto-retention'
@@ -103,11 +103,6 @@ const AuthenticatedKalkulationRoute =
 const AuthenticatedKarteRoute = AuthenticatedKarteRouteImport.update({
   id: '/karte',
   path: '/karte',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedKundenRoute = AuthenticatedKundenRouteImport.update({
-  id: '/kunden',
-  path: '/kunden',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMeineZeitenRoute =
@@ -196,6 +191,12 @@ const AuthenticatedDokumenteIdRoute =
     path: '/dokumente/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedKundenIndexRoute =
+  AuthenticatedKundenIndexRouteImport.update({
+    id: '/kunden/',
+    path: '/kunden/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjekteIndexRoute =
   AuthenticatedProjekteIndexRouteImport.update({
     id: '/projekte/',
@@ -230,7 +231,6 @@ export interface FileRoutesByFullPath {
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/karte': typeof AuthenticatedKarteRoute
-  '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/papierkorb': typeof AuthenticatedPapierkorbRoute
@@ -250,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
+  '/kunden/': typeof AuthenticatedKundenIndexRoute
   '/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
 export interface FileRoutesByTo {
@@ -263,7 +264,6 @@ export interface FileRoutesByTo {
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/karte': typeof AuthenticatedKarteRoute
-  '/kunden': typeof AuthenticatedKundenRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/papierkorb': typeof AuthenticatedPapierkorbRoute
@@ -283,6 +283,7 @@ export interface FileRoutesByTo {
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
+  '/kunden': typeof AuthenticatedKundenIndexRoute
   '/projekte': typeof AuthenticatedProjekteIndexRoute
 }
 export interface FileRoutesById {
@@ -299,7 +300,6 @@ export interface FileRoutesById {
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kalkulation': typeof AuthenticatedKalkulationRoute
   '/_authenticated/karte': typeof AuthenticatedKarteRoute
-  '/_authenticated/kunden': typeof AuthenticatedKundenRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/_authenticated/papierkorb': typeof AuthenticatedPapierkorbRoute
@@ -319,6 +319,7 @@ export interface FileRoutesById {
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
+  '/_authenticated/kunden/': typeof AuthenticatedKundenIndexRoute
   '/_authenticated/projekte/': typeof AuthenticatedProjekteIndexRoute
 }
 export interface FileRouteTypes {
@@ -335,7 +336,6 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/kalkulation'
     | '/karte'
-    | '/kunden'
     | '/meine-zeiten'
     | '/nachrichten'
     | '/papierkorb'
@@ -355,6 +355,7 @@ export interface FileRouteTypes {
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
     | '/dokumente/'
+    | '/kunden/'
     | '/projekte/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -368,7 +369,6 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/kalkulation'
     | '/karte'
-    | '/kunden'
     | '/meine-zeiten'
     | '/nachrichten'
     | '/papierkorb'
@@ -388,6 +388,7 @@ export interface FileRouteTypes {
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
     | '/dokumente'
+    | '/kunden'
     | '/projekte'
   id:
     | '__root__'
@@ -403,7 +404,6 @@ export interface FileRouteTypes {
     | '/_authenticated/einstellungen'
     | '/_authenticated/kalkulation'
     | '/_authenticated/karte'
-    | '/_authenticated/kunden'
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/nachrichten'
     | '/_authenticated/papierkorb'
@@ -423,6 +423,7 @@ export interface FileRouteTypes {
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
     | '/_authenticated/dokumente/'
+    | '/_authenticated/kunden/'
     | '/_authenticated/projekte/'
   fileRoutesById: FileRoutesById
 }
@@ -522,13 +523,6 @@ declare module '@tanstack/react-router' {
       path: '/karte'
       fullPath: '/karte'
       preLoaderRoute: typeof AuthenticatedKarteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/kunden': {
-      id: '/_authenticated/kunden'
-      path: '/kunden'
-      fullPath: '/kunden'
-      preLoaderRoute: typeof AuthenticatedKundenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/meine-zeiten': {
@@ -643,6 +637,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDokumenteIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kunden/': {
+      id: '/_authenticated/kunden/'
+      path: '/kunden'
+      fullPath: '/kunden/'
+      preLoaderRoute: typeof AuthenticatedKundenIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/projekte/': {
       id: '/_authenticated/projekte/'
       path: '/projekte'
@@ -681,7 +682,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
   AuthenticatedKalkulationRoute: typeof AuthenticatedKalkulationRoute
   AuthenticatedKarteRoute: typeof AuthenticatedKarteRoute
-  AuthenticatedKundenRoute: typeof AuthenticatedKundenRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedNachrichtenRoute: typeof AuthenticatedNachrichtenRoute
   AuthenticatedPapierkorbRoute: typeof AuthenticatedPapierkorbRoute
@@ -693,6 +693,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
   AuthenticatedProjekteIdRoute: typeof AuthenticatedProjekteIdRoute
   AuthenticatedDokumenteIndexRoute: typeof AuthenticatedDokumenteIndexRoute
+  AuthenticatedKundenIndexRoute: typeof AuthenticatedKundenIndexRoute
   AuthenticatedProjekteIndexRoute: typeof AuthenticatedProjekteIndexRoute
 }
 
@@ -703,7 +704,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
   AuthenticatedKalkulationRoute: AuthenticatedKalkulationRoute,
   AuthenticatedKarteRoute: AuthenticatedKarteRoute,
-  AuthenticatedKundenRoute: AuthenticatedKundenRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedNachrichtenRoute: AuthenticatedNachrichtenRoute,
   AuthenticatedPapierkorbRoute: AuthenticatedPapierkorbRoute,
@@ -715,6 +715,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,
   AuthenticatedProjekteIdRoute: AuthenticatedProjekteIdRoute,
   AuthenticatedDokumenteIndexRoute: AuthenticatedDokumenteIndexRoute,
+  AuthenticatedKundenIndexRoute: AuthenticatedKundenIndexRoute,
   AuthenticatedProjekteIndexRoute: AuthenticatedProjekteIndexRoute,
 }
 

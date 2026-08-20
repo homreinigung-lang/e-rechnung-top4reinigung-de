@@ -35,7 +35,7 @@ import {
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/kunden")({
+export const Route = createFileRoute("/_authenticated/kunden/")({
   head: () => ({
     meta: [
       { title: "Kunden – Rechnungen & Angebote" },
