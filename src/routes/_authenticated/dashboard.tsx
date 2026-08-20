@@ -191,7 +191,7 @@ function AdminDashboard() {
           )
           .order("issue_date", { ascending: false }),
         supabase.from("customers").select("id", { count: "exact", head: true }),
-        supabase.from("expenses").select("expense_date, net_amount, gross_amount, vat_amount"),
+        supabase.from("expenses").select("expense_date, category, net_amount, gross_amount, vat_amount"),
       ]);
       if (docs.error) throw docs.error;
       return {
