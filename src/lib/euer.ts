@@ -80,7 +80,6 @@ export function computeEuer(
 
   const byCategory = aggregateExpensesByCategory(expenses);
 
-
   return {
     from,
     to,

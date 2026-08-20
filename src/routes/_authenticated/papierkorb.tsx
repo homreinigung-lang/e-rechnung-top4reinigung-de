@@ -125,8 +125,7 @@ function PapierkorbPage() {
                     <p className="text-sm font-medium">{row.label || "(ohne Bezeichnung)"}</p>
                     <p className="text-xs text-muted-foreground">
                       {meta.name}
-                      {row.info ? ` · ${row.info}` : ""} · gelöscht am{" "}
-                      {formatDate(row.deleted_at)}
+                      {row.info ? ` · ${row.info}` : ""} · gelöscht am {formatDate(row.deleted_at)}
                     </p>
                   </div>
                   <span

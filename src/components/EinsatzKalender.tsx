@@ -202,7 +202,6 @@ export function EinsatzKalender({
   const [detail, setDetail] = useState<TimeEntry | null>(null);
   const [planDetail, setPlanDetail] = useState<PlanShift | null>(null);
 
-
   const [form, setForm] = useState<PlanForm>(emptyForm);
 
   const first = monthStart(anchor);
@@ -475,7 +474,6 @@ export function EinsatzKalender({
           end: times[i]?.end ?? "",
           breakMin: times[i]?.breakMin ?? 0,
           date: key,
-
         });
         map.set(key, list);
       });
@@ -627,8 +625,6 @@ export function EinsatzKalender({
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-
 
   const openDay = (key: string, employeeId?: string) => {
     const preset = employeeId ?? (filterEmployee !== ALL ? filterEmployee : "");
@@ -1003,7 +999,10 @@ export function EinsatzKalender({
                                         className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
                                       >
                                         <Camera className="size-2.5" />
-                                        {((e as { photo_paths?: string[] }).photo_paths ?? []).length}
+                                        {
+                                          ((e as { photo_paths?: string[] }).photo_paths ?? [])
+                                            .length
+                                        }
                                       </span>
                                     )}
                                   </div>
@@ -1038,7 +1037,6 @@ export function EinsatzKalender({
                             </div>
                           </button>
                         ))}
-
                       </div>
                     );
                   })}
@@ -1328,36 +1326,38 @@ export function EinsatzKalender({
               </dl>
 
               {/* Objektfotos: nur interne Verwaltungsansicht, nie im Steuerberater-Portal. */}
-              {!isAbsence(detail) && (() => {
-                const fotos = ((detail as { photo_paths?: string[] }).photo_paths ?? []) as string[];
-                return (
-                  <div className="rounded-md border border-amber-300/70 bg-amber-50 p-3 dark:border-amber-800/60 dark:bg-amber-950/30">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300">
-                        <Camera className="size-4" />
-                        Objektfotos
-                        <span className="rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">
-                          {fotos.length}
+              {!isAbsence(detail) &&
+                (() => {
+                  const fotos = ((detail as { photo_paths?: string[] }).photo_paths ??
+                    []) as string[];
+                  return (
+                    <div className="rounded-md border border-amber-300/70 bg-amber-50 p-3 dark:border-amber-800/60 dark:bg-amber-950/30">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                          <Camera className="size-4" />
+                          Objektfotos
+                          <span className="rounded-full bg-amber-500 px-1.5 text-xs font-bold text-white">
+                            {fotos.length}
+                          </span>
                         </span>
-                      </span>
-                      <span className="text-[10px] uppercase tracking-wide text-amber-700/70 dark:text-amber-400/70">
-                        nur intern
-                      </span>
+                        <span className="text-[10px] uppercase tracking-wide text-amber-700/70 dark:text-amber-400/70">
+                          nur intern
+                        </span>
+                      </div>
+                      <ArbeitsnachweisFotos
+                        entryId={detail.id}
+                        paths={fotos}
+                        canDelete
+                        invalidateKey="time_entries"
+                      />
+                      {fotos.length === 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Keine Fotos vom Mitarbeiter hochgeladen.
+                        </p>
+                      )}
                     </div>
-                    <ArbeitsnachweisFotos
-                      entryId={detail.id}
-                      paths={fotos}
-                      canDelete
-                      invalidateKey="time_entries"
-                    />
-                    {fotos.length === 0 && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Keine Fotos vom Mitarbeiter hochgeladen.
-                      </p>
-                    )}
-                  </div>
-                );
-              })()}
+                  );
+                })()}
             </div>
           )}
           {detail && !isAbsence(detail) && (

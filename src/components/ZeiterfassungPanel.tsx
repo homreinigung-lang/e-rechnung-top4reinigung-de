@@ -47,7 +47,6 @@ function de(n: number) {
   return n.toFixed(2).replace(".", ",");
 }
 
-
 type Employee = {
   id: string;
   name: string;

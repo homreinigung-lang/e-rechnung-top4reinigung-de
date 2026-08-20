@@ -95,10 +95,7 @@ function parseCii(doc: Document, xml: string): IncomingEInvoice {
     "ApplicableHeaderTradeAgreement",
     "SellerTradeParty",
   ]);
-  const settlement = pick(root, [
-    "SupplyChainTradeTransaction",
-    "ApplicableHeaderTradeSettlement",
-  ]);
+  const settlement = pick(root, ["SupplyChainTradeTransaction", "ApplicableHeaderTradeSettlement"]);
   const sums = pick(settlement ?? root, ["SpecifiedTradeSettlementHeaderMonetarySummation"]);
   const net = num(text(sums, ["TaxBasisTotalAmount"]));
   const gross = num(text(sums, ["GrandTotalAmount"]));
@@ -134,7 +131,10 @@ export function parseEInvoiceXml(xml: string): IncomingEInvoice {
 export async function extractXmlFromPdf(bytes: Uint8Array): Promise<string | null> {
   const { PDFDocument, PDFDict, PDFArray, PDFName, PDFRawStream, decodePDFRawStream } =
     await import("pdf-lib");
-  const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true, throwOnInvalidObject: false });
+  const pdf = await PDFDocument.load(bytes, {
+    ignoreEncryption: true,
+    throwOnInvalidObject: false,
+  });
   const names = pdf.catalog.lookupMaybe(PDFName.of("Names"), PDFDict);
   const embedded = names?.lookupMaybe(PDFName.of("EmbeddedFiles"), PDFDict);
   const list = embedded?.lookupMaybe(PDFName.of("Names"), PDFArray);

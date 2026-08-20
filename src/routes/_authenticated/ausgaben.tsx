@@ -26,16 +26,7 @@ import { DateiVorschau } from "@/components/DateiVorschau";
 import { WiederkehrendeAusgaben } from "@/components/WiederkehrendeAusgaben";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
 import { readIncomingEInvoice, type IncomingEInvoice } from "@/lib/e-invoice-import";
-import {
-  Download,
-  Eye,
-  FileCode2,
-  Loader2,
-  Paperclip,
-  Plus,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { Download, Eye, FileCode2, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ausgaben")({
   head: () => ({

@@ -262,7 +262,6 @@ function MeineZeiten() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Wird geladen …</p>;
   }

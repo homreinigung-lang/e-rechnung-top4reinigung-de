@@ -293,7 +293,6 @@ export function MeinEinsatzkalender({
                   </div>
                 ))}
               </div>
-
             </div>
           );
         })}

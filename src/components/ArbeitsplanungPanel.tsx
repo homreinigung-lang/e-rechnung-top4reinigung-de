@@ -28,7 +28,6 @@ import {
 } from "@/lib/planung";
 import { formatDate } from "@/lib/format";
 
-
 type Employee = {
   id: string;
   name: string;
