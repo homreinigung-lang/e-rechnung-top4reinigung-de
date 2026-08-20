@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
 import { computeEuer } from "@/lib/euer";
 import { EuerChart } from "@/components/EuerChart";
+import { FinanzDashboard } from "@/components/FinanzDashboard";
 import { createDocument } from "@/lib/create-document";
 import { useMyEmployee, type MyEmployee } from "@/lib/employee";
 import { dueInfo, mahnLabel } from "@/lib/workflow";
@@ -341,6 +342,8 @@ function AdminDashboard() {
           </Link>
         ))}
       </nav>
+
+      <FinanzDashboard docs={docs} expenses={expenses} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
