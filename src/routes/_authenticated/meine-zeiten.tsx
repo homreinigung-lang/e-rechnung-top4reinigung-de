@@ -249,6 +249,8 @@ function MeineZeiten() {
         location: project?.name ?? "",
         note: "Einsatz aus der Planung bestätigt",
         billed: false,
+        // Aufgabe gilt damit als erledigt – fließt in die Objekt-Historie ein
+        completed_at: new Date().toISOString(),
       });
       if (error) throw error;
     },
