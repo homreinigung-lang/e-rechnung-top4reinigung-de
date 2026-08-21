@@ -490,7 +490,31 @@ function KalkulationPage() {
         </TabsContent>
 
         <TabsContent value="grundriss" className="space-y-6">
+          <SectionIntro
+            title="Grundriss (Planung)"
+            text="Grundlage der Kalkulation: Grundrisse und Objektfotos hochladen, Flächen, Räume und Etagen dokumentieren und den Reinigungsaufwand berechnen. Die hier ermittelten Werte fließen automatisch in die Ausschreibung und in die Kennzahlen."
+          />
+
           <Card>
+            <CardHeader>
+              <CardTitle>Objektbeschreibung</CardTitle>
+              <CardDescription>
+                Bauliche Besonderheiten und Reinigungsanforderungen zum Objekt – ergänzend zu den
+                Notizen an den einzelnen Grundrissen.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                rows={4}
+                value={floorplanSummary}
+                onChange={(e) => setFloorplanSummary(e.target.value)}
+                placeholder="z. B. 3 Etagen ohne Aufzug, Treppenhaus mit Naturstein, Großraumbüros mit Teppich, Serverraum von der Reinigung ausgenommen"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="size-5" /> KI-Assistent
