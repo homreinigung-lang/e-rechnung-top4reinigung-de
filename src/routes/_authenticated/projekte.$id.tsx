@@ -39,7 +39,7 @@ import {
   Users,
 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
-import { formatDate, formatMoney, formatNumber } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
 import { modeLabel } from "./projekte.index";
 
 export const Route = createFileRoute("/_authenticated/projekte/$id")({
