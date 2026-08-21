@@ -1205,7 +1205,9 @@ function KalkulationPage() {
             </Button>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }
