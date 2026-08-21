@@ -159,7 +159,12 @@ function KalkulationPage() {
     return parts.join(" · ");
   });
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [tenderDocs, setTenderDocs] = useState<Attachment[]>([]);
+  const [floorplanSummary, setFloorplanSummary] = useState("");
+  const [proposalTitle, setProposalTitle] = useState("");
+  const [proposalText, setProposalText] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
 
