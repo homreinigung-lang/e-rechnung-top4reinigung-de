@@ -476,18 +476,24 @@ function KalkulationPage() {
       <Tabs defaultValue="grundriss" className="space-y-6">
         <TabsList>
           <TabsTrigger value="analyse">Analyse & Kennzahlen</TabsTrigger>
-          <TabsTrigger value="grundriss">Grundriss</TabsTrigger>
-          <TabsTrigger value="ausschreibung">Ausschreibung</TabsTrigger>
+          <TabsTrigger value="grundriss">Grundriss (Planung)</TabsTrigger>
+          <TabsTrigger value="ausschreibung">Ausschreibung (Angebot & Vergabe)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="analyse" className="space-y-6">
+          <SectionIntro
+            title="Analyse & Kennzahlen"
+            text="Zentrale Auswertung aller Projekte: Wirtschaftlichkeit, Umsatzentwicklung, Personalkosten und Effizienz von Soll- zu Ist-Stunden. Die Werte entstehen live aus Grundriss-Kalkulation, Einsatzplanung und erfassten Arbeitszeiten."
+          />
           <ProjektAnalyse
             projectId={projectId}
             onProjectChange={setProjectId}
             snapshot={analyseSnapshot}
           />
           <ProjektKennzahlen projectId={projectId} />
+          <KalkulationAnalytics activeProjectId={projectId} />
         </TabsContent>
+
 
         <TabsContent value="grundriss" className="space-y-6">
           <SectionIntro
