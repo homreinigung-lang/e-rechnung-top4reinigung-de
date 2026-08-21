@@ -2,7 +2,15 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Calculator, FileSignature, FileText, Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  Calculator,
+  FileDown,
+  FileSignature,
+  FileText,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeCalculation } from "@/lib/item-ai.functions";
 import { analyzeProject } from "@/lib/project-scan.functions";
