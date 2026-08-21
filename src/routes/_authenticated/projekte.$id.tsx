@@ -786,104 +786,112 @@ function ProjektDetail() {
         </section>
       )}
 
-      {/* Integrierte Kalkulationsübersicht */}
+      {/* Objekt-Mappe: operative Vertrags- und Einsatzdaten */}
       <section className="surface space-y-4 p-5">
-        <h2 className="text-lg font-semibold">Kalkulationsübersicht</h2>
+        <div>
+          <h2 className="text-lg font-semibold">Objekt-Mappe</h2>
+          <p className="text-sm text-muted-foreground">
+            Vertragsdaten, Turnus und Vereinbarungen zu diesem Objekt. Preise und Auswertungen
+            werden ausschließlich im Bereich „Kalkulation" gepflegt.
+          </p>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
-            <Label htmlFor="rate">Stundensatz netto (€)</Label>
+            <Label htmlFor="contract-start">Vertragsbeginn</Label>
             <Input
-              id="rate"
-              type="number"
-              step="0.01"
-              defaultValue={rate}
-              onBlur={(e) => patchProject.mutate({ hourly_rate: Number(e.target.value) || 0 })}
+              id="contract-start"
+              type="date"
+              defaultValue={project.contract_start ?? ""}
+              onBlur={(e) => patchProject.mutate({ contract_start: e.target.value || null })}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="perf">Leistung (m² pro Stunde)</Label>
+            <Label htmlFor="contract-end">Vertragsende</Label>
             <Input
-              id="perf"
-              type="number"
-              step="1"
-              defaultValue={perf}
-              onBlur={(e) => patchProject.mutate({ sqm_per_hour: Number(e.target.value) || 0 })}
+              id="contract-end"
+              type="date"
+              defaultValue={project.contract_end ?? ""}
+              onBlur={(e) => patchProject.mutate({ contract_end: e.target.value || null })}
             />
           </div>
-          <div className="rounded-md bg-muted p-3">
-            <div className="text-xs text-muted-foreground">Gesamtfläche</div>
-            <div className="text-lg font-semibold">{formatNumber(totalSqm)} m²</div>
+          <div className="space-y-2">
+            <Label>Reinigungsturnus</Label>
+            <Select
+              value={project.cleaning_frequency || ""}
+              onValueChange={(v) => patchProject.mutate({ cleaning_frequency: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Turnus wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  "Täglich",
+                  "Mehrmals wöchentlich",
+                  "Wöchentlich",
+                  "14-tägig",
+                  "Monatlich",
+                  "Nach Bedarf",
+                ].map((f) => (
+                  <SelectItem key={f} value={f}>
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="rounded-md bg-muted p-3">
-            <div className="text-xs text-muted-foreground">Zeitbedarf</div>
-            <div className="text-lg font-semibold">{formatNumber(hours)} Std.</div>
-          </div>
-          <div className="rounded-md bg-muted p-3">
-            <div className="text-xs text-muted-foreground">Kosten aus Fläche</div>
-            <div className="text-lg font-semibold">{formatMoney(hours * rate)}</div>
-          </div>
-          <div className="rounded-md bg-muted p-3">
-            <div className="text-xs text-muted-foreground">Summe Leistungsverzeichnis</div>
-            <div className="text-lg font-semibold">{formatMoney(lvTotal)}</div>
-          </div>
-          <div className="rounded-md bg-secondary p-3 text-secondary-foreground">
-            <div className="text-xs opacity-80">Kalkulationsbasis netto</div>
-            <div className="text-lg font-semibold">{formatMoney(hours * rate + lvTotal)}</div>
-          </div>
-          <div className="flex items-end">
-            <Button variant="outline" asChild>
-              <Link to="/kalkulation">Zur Angebotskalkulation</Link>
-            </Button>
+            <div className="text-xs text-muted-foreground">Vertragslaufzeit</div>
+            <div className="text-lg font-semibold">
+              {project.contract_start ? formatDate(project.contract_start) : "offen"} –{" "}
+              {project.contract_end ? formatDate(project.contract_end) : "unbefristet"}
+            </div>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Hinweis: Diese Übersicht dient der Vorbereitung. Angebote und Rechnungen werden
-          unverändert im bestehenden Belegbereich erstellt.
-        </p>
+        <div className="space-y-2">
+          <Label htmlFor="agreement">Vereinbarung / Absprachen</Label>
+          <Textarea
+            id="agreement"
+            rows={4}
+            defaultValue={project.agreement_terms ?? ""}
+            placeholder="z. B. Zutritt über Hausmeister, Schlüsselübergabe, Sonderleistungen, Ansprechpartner …"
+            onBlur={(e) => patchProject.mutate({ agreement_terms: e.target.value })}
+          />
+        </div>
       </section>
 
-      {/* Projekt-Analytics */}
+      {/* Einsatzhistorie: von Mitarbeitenden abgeschlossene Einsätze */}
       <section className="surface space-y-4 p-5">
         <div>
-          <h2 className="text-lg font-semibold">Projekt-Analytics</h2>
+          <h2 className="text-lg font-semibold">Einsatzhistorie</h2>
           <p className="text-sm text-muted-foreground">
-            Soll/Ist-Vergleich des laufenden Monats aus der Zeiterfassung, Personalkosten und
-            Auslastung.
+            Chronologie der von Mitarbeitenden als erledigt bestätigten Einsätze in diesem Objekt.
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            ["Soll-Stunden / Monat", `${sollHoursMonth.toFixed(1)} Std.`],
-            ["Ist-Stunden / Monat", `${istHoursMonth.toFixed(1)} Std.`],
-            ["Auslastung", `${utilization.toFixed(0)} %`],
-            ["Ist-Stunden gesamt", `${istHoursTotal.toFixed(1)} Std.`],
-            ["Personalkosten / Monat", formatMoney(laborCostMonth)],
-            ["Personalkosten gesamt", formatMoney(laborCostTotal)],
-            ["Umsatz / Monat (kalk.)", formatMoney(revenueMonth)],
-            ["Deckungsbeitrag / Monat", formatMoney(marginMonth)],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-lg border bg-card p-4">
-              <div className="text-xs text-muted-foreground">{label}</div>
-              <div className="mt-1 text-lg font-semibold">{value}</div>
-            </div>
-          ))}
-        </div>
-        <div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className={`h-full ${utilization > 110 ? "bg-destructive" : "bg-primary"}`}
-              style={{ width: `${Math.min(utilization, 100)}%` }}
-            />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {sollHoursMonth === 0
-              ? "Für die Auslastung bitte den zugewiesenen Mitarbeitern Wochenstunden hinterlegen."
-              : utilization > 110
-                ? "Achtung: Der Ist-Aufwand liegt deutlich über der Planung."
-                : "Ist-Aufwand im Verhältnis zur geplanten Monatsleistung."}
+        {history.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Noch keine abgeschlossenen Einsätze erfasst.
           </p>
-        </div>
+        ) : (
+          <ul className="divide-y">
+            {history.map((h) => (
+              <li key={h.id} className="flex flex-wrap items-start gap-3 py-3 text-sm">
+                <span className="w-28 shrink-0 font-medium">{formatDate(h.work_date)}</span>
+                <span className="w-40 shrink-0">{h.employee_name || "Mitarbeitende/r"}</span>
+                <span className="w-32 shrink-0 text-muted-foreground">
+                  {h.start_time || h.end_time
+                    ? `${(h.start_time ?? "").slice(0, 5)}–${(h.end_time ?? "").slice(0, 5)}`
+                    : "—"}
+                </span>
+                <span className="w-24 shrink-0 text-muted-foreground">
+                  {formatNumber(Number(h.hours || 0))} Std.
+                </span>
+                <span className="min-w-0 flex-1 text-muted-foreground">{h.note}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
+
 
       {/* Team */}
       <section className="surface space-y-4 p-5">
