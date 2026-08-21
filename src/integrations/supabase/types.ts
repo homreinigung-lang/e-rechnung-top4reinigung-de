@@ -1177,11 +1177,15 @@ export type Database = {
       projects: {
         Row: {
           address_line: string
+          agreement_terms: string
           analysis_highlights: string[]
           analysis_requirements: string[]
           city: string
+          cleaning_frequency: string
           contact_email: string
           contact_phone: string
+          contract_end: string | null
+          contract_start: string | null
           created_at: string
           customer_id: string | null
           customer_name: string
@@ -1202,11 +1206,15 @@ export type Database = {
         }
         Insert: {
           address_line?: string
+          agreement_terms?: string
           analysis_highlights?: string[]
           analysis_requirements?: string[]
           city?: string
+          cleaning_frequency?: string
           contact_email?: string
           contact_phone?: string
+          contract_end?: string | null
+          contract_start?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name?: string
@@ -1227,11 +1235,15 @@ export type Database = {
         }
         Update: {
           address_line?: string
+          agreement_terms?: string
           analysis_highlights?: string[]
           analysis_requirements?: string[]
           city?: string
+          cleaning_frequency?: string
           contact_email?: string
           contact_phone?: string
+          contract_end?: string | null
+          contract_start?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name?: string
