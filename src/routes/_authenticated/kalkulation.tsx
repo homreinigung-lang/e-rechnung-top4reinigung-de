@@ -901,12 +901,18 @@ function KalkulationPage() {
                               />
                             </div>
                           </div>
-                          <Textarea
-                            rows={2}
-                            value={a.note}
-                            onChange={(e) => updateAttachment(a.path, { note: e.target.value })}
-                            placeholder="Notiz zum Grundriss (z. B. Bodenbelag, Sanitärräume)"
-                          />
+                          <div className="space-y-1">
+                            <Label className="text-xs">
+                              Beschreibung & Reinigungsanforderungen
+                            </Label>
+                            <Textarea
+                              rows={3}
+                              value={a.note}
+                              onChange={(e) => updateAttachment(a.path, { note: e.target.value })}
+                              placeholder="z. B. Bodenbelag Linoleum, 4 Sanitärräume, Glasfassade EG, Zutritt nur werktags 6–8 Uhr"
+                            />
+                          </div>
+
                           <div className="flex flex-wrap gap-2">
                             <Button
                               type="button"
