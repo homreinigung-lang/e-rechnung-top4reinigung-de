@@ -1236,7 +1236,48 @@ function KalkulationPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-end">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (endNet <= 0) {
+                        toast.error("Es liegt noch kein Endpreis aus der Kalkulation vor.");
+                        return;
+                      }
+                      const desc = [
+                        selected.label,
+                        mode === "area"
+                          ? `${formatNumber(num(area))} m² × ${formatMoney(num(pricePerSqm))}/m²`
+                          : `${formatNumber(num(hours))} Std. × ${formatMoney(num(hourlyRate))}/Std.`,
+                        `${formatNumber(visitsPerMonth)} Einsätze pro Monat`,
+                      ].join(" · ");
+                      setAiItems((prev) => [
+                        ...prev,
+                        {
+                          id: `${Date.now()}`,
+                          description: desc,
+                          quantity: "1",
+                          unit: "Pauschal",
+                          unit_price: String(Math.round(endNet * 100) / 100).replace(".", ","),
+                        },
+                      ]);
+                      toast.success("Kalkulationsergebnis als LV-Position übernommen");
+                    }}
+                  >
+                    <Calculator className="size-4" /> Kalkulation übernehmen
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={exportLv.isPending}
+                    onClick={() => exportLv.mutate()}
+                  >
+                    <FileDown className="size-4" />
+                    {exportLv.isPending ? "PDF wird erstellt …" : "LV als PDF exportieren"}
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -1257,6 +1298,7 @@ function KalkulationPage() {
                     <Plus className="size-4" /> Position
                   </Button>
                 </div>
+
 
                 {aiItems.length === 0 ? (
                   <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
