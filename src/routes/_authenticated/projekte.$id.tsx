@@ -876,7 +876,6 @@ function ProjektDetail() {
         )}
       </section>
 
-
       {/* Team */}
       <section className="surface space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
