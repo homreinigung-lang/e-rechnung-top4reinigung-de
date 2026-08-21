@@ -16,7 +16,18 @@ import { useRaumbuch } from "@/lib/raumbuch";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
 import { ProjektKennzahlen } from "@/components/ProjektKennzahlen";
+import { KalkulationAnalytics } from "@/components/KalkulationAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+/** Kurze, verständliche Einleitung am Kopf jedes Bereichs. */
+function SectionIntro({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-lg border bg-muted/40 p-4">
+      <h2 className="font-display text-lg font-semibold">{title}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{text}</p>
+    </div>
+  );
+}
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,6 +170,10 @@ function KalkulationPage() {
     return parts.join(" · ");
   });
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [tenderDocs, setTenderDocs] = useState<Attachment[]>([]);
+  const [floorplanSummary, setFloorplanSummary] = useState("");
+  const [proposalTitle, setProposalTitle] = useState("");
+  const [proposalText, setProposalText] = useState("");
   const [confirmed, setConfirmed] = useState(false);
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
@@ -436,10 +451,19 @@ function KalkulationPage() {
         if (aiError) throw aiError;
       }
 
+      const description = [
+        proposalTitle.trim() ? `Ausschreibung: ${proposalTitle.trim()}` : "",
+        floorplanSummary.trim(),
+        parts.join("\n"),
+      ]
+        .filter(Boolean)
+        .join("\n");
+
       const { error: docError } = await supabase
         .from("documents")
         .update({
-          service_description: parts.join("\n"),
+          service_description: description,
+          ...(proposalText.trim() ? { intro_text: proposalText.trim() } : {}),
           discount_percent: pct,
           discount_amount: Math.round((unitPrice - endNet) * 100) / 100,
           discount_reason: discountReason,
@@ -476,20 +500,48 @@ function KalkulationPage() {
       <Tabs defaultValue="grundriss" className="space-y-6">
         <TabsList>
           <TabsTrigger value="analyse">Analyse & Kennzahlen</TabsTrigger>
-          <TabsTrigger value="grundriss">Grundriss</TabsTrigger>
-          <TabsTrigger value="ausschreibung">Ausschreibung</TabsTrigger>
+          <TabsTrigger value="grundriss">Grundriss (Planung)</TabsTrigger>
+          <TabsTrigger value="ausschreibung">Ausschreibung (Angebot & Vergabe)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="analyse" className="space-y-6">
+          <SectionIntro
+            title="Analyse & Kennzahlen"
+            text="Zentrale Auswertung aller Projekte: Wirtschaftlichkeit, Umsatzentwicklung, Personalkosten und Effizienz von Soll- zu Ist-Stunden. Die Werte entstehen live aus Grundriss-Kalkulation, Einsatzplanung und erfassten Arbeitszeiten."
+          />
           <ProjektAnalyse
             projectId={projectId}
             onProjectChange={setProjectId}
             snapshot={analyseSnapshot}
           />
           <ProjektKennzahlen projectId={projectId} />
+          <KalkulationAnalytics activeProjectId={projectId} />
         </TabsContent>
 
         <TabsContent value="grundriss" className="space-y-6">
+          <SectionIntro
+            title="Grundriss (Planung)"
+            text="Grundlage der Kalkulation: Grundrisse und Objektfotos hochladen, Flächen, Räume und Etagen dokumentieren und den Reinigungsaufwand berechnen. Die hier ermittelten Werte fließen automatisch in die Ausschreibung und in die Kennzahlen."
+          />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Objektbeschreibung</CardTitle>
+              <CardDescription>
+                Bauliche Besonderheiten und Reinigungsanforderungen zum Objekt – ergänzend zu den
+                Notizen an den einzelnen Grundrissen.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                rows={4}
+                value={floorplanSummary}
+                onChange={(e) => setFloorplanSummary(e.target.value)}
+                placeholder="z. B. 3 Etagen ohne Aufzug, Treppenhaus mit Naturstein, Großraumbüros mit Teppich, Serverraum von der Reinigung ausgenommen"
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -901,12 +953,18 @@ function KalkulationPage() {
                               />
                             </div>
                           </div>
-                          <Textarea
-                            rows={2}
-                            value={a.note}
-                            onChange={(e) => updateAttachment(a.path, { note: e.target.value })}
-                            placeholder="Notiz zum Grundriss (z. B. Bodenbelag, Sanitärräume)"
-                          />
+                          <div className="space-y-1">
+                            <Label className="text-xs">
+                              Beschreibung & Reinigungsanforderungen
+                            </Label>
+                            <Textarea
+                              rows={3}
+                              value={a.note}
+                              onChange={(e) => updateAttachment(a.path, { note: e.target.value })}
+                              placeholder="z. B. Bodenbelag Linoleum, 4 Sanitärräume, Glasfassade EG, Zutritt nur werktags 6–8 Uhr"
+                            />
+                          </div>
+
                           <div className="flex flex-wrap gap-2">
                             <Button
                               type="button"
@@ -1000,6 +1058,172 @@ function KalkulationPage() {
         </TabsContent>
 
         <TabsContent value="ausschreibung" className="space-y-6">
+          <SectionIntro
+            title="Ausschreibung (Angebot & Vergabe)"
+            text="Hier entsteht das offizielle Angebot: Ausschreibungstext verfassen, Vergabeunterlagen (z. B. Vergabe Saarland) hinterlegen, Leistungspositionen kalkulieren und den geprüften Preis direkt als Angebot übernehmen. Flächen und Stunden stammen aus dem Grundriss-Tab."
+          />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileSignature className="size-5" /> Angebots- & Ausschreibungstext
+              </CardTitle>
+              <CardDescription>
+                Offizieller Text für die Vergabestelle. Er wird beim Übernehmen als Einleitungstext
+                in das Angebot geschrieben und bleibt dort änderbar.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Bezeichnung der Ausschreibung / Vergabe</Label>
+                <Input
+                  value={proposalTitle}
+                  onChange={(e) => setProposalTitle(e.target.value)}
+                  placeholder="z. B. Unterhaltsreinigung Verwaltungsgebäude – Vergabe Saarland, Los 2"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Angebotstext</Label>
+                <Textarea
+                  rows={7}
+                  value={proposalText}
+                  onChange={(e) => setProposalText(e.target.value)}
+                  placeholder="Leistungsumfang, Qualitätssicherung, Personaleinsatz, Nachweise, Referenzen …"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const line = [
+                        selected.label,
+                        mode === "area"
+                          ? `Fläche ${formatNumber(num(area))} m²`
+                          : `${formatNumber(num(hours))} Std. je Einsatz`,
+                        `${formatNumber(visitsPerMonth)} Einsätze pro Monat`,
+                        `kalkulierter Stundenbedarf ${formatNumber(monthlyHours)} Std./Monat`,
+                      ].join(" · ");
+                      setProposalText((prev) => (prev.trim() ? `${prev}\n${line}` : line));
+                      toast.success("Eckdaten in den Angebotstext übernommen");
+                    }}
+                  >
+                    Eckdaten aus Grundriss einfügen
+                  </Button>
+                  {floorplanSummary.trim() ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setProposalText((prev) =>
+                          prev.trim()
+                            ? `${prev}\n${floorplanSummary.trim()}`
+                            : floorplanSummary.trim(),
+                        );
+                        toast.success("Objektbeschreibung übernommen");
+                      }}
+                    >
+                      Objektbeschreibung einfügen
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border p-3">
+                <div>
+                  <Label>Vergabeunterlagen</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Ausschreibungsunterlagen (PDF, Leistungsverzeichnis, Formblätter) hochladen und
+                    mit dieser Kalkulation verknüpfen. Über „Datei analysieren“ werden Positionen
+                    automatisch vorgeschlagen.
+                  </p>
+                </div>
+                <FileUploadButton
+                  folder="ausschreibung"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  label="Vergabeunterlage hochladen"
+                  onUploaded={(path, file) => {
+                    void (async () => {
+                      const url = await fileUrl(path);
+                      setTenderDocs((prev) => [
+                        ...prev,
+                        {
+                          path,
+                          name: file.name,
+                          url,
+                          isImage: file.type.startsWith("image/"),
+                          sqm: "",
+                          rooms: "",
+                          floors: "",
+                          note: "",
+                        },
+                      ]);
+                    })();
+                  }}
+                />
+                {tenderDocs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Noch keine Vergabeunterlagen hinterlegt.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {tenderDocs.map((d) => (
+                      <li key={d.path} className="space-y-2 rounded-md border p-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="size-4 text-muted-foreground" />
+                          <button
+                            type="button"
+                            className="flex-1 truncate text-left text-sm underline-offset-2 hover:underline"
+                            onClick={() =>
+                              void openStoredFile(d.path, d.name).catch(() =>
+                                toast.error("Datei konnte nicht geöffnet werden."),
+                              )
+                            }
+                          >
+                            {d.name}
+                          </button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={scanningPath === d.path || scanFile.isPending}
+                            onClick={() => scanFile.mutate(d)}
+                          >
+                            <Sparkles className="size-4" />
+                            {scanningPath === d.path ? "Wird analysiert …" : "Datei analysieren"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Entfernen"
+                            onClick={() =>
+                              setTenderDocs((prev) => prev.filter((x) => x.path !== d.path))
+                            }
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                        <Textarea
+                          rows={2}
+                          value={d.note}
+                          onChange={(e) =>
+                            setTenderDocs((prev) =>
+                              prev.map((x) =>
+                                x.path === d.path ? { ...x, note: e.target.value } : x,
+                              ),
+                            )
+                          }
+                          placeholder="Notiz zur Unterlage (z. B. Los, Abgabefrist, Eignungsnachweise)"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <Card>
               <CardHeader>
