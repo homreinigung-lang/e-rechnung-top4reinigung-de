@@ -436,10 +436,19 @@ function KalkulationPage() {
         if (aiError) throw aiError;
       }
 
+      const description = [
+        proposalTitle.trim() ? `Ausschreibung: ${proposalTitle.trim()}` : "",
+        floorplanSummary.trim(),
+        parts.join("\n"),
+      ]
+        .filter(Boolean)
+        .join("\n");
+
       const { error: docError } = await supabase
         .from("documents")
         .update({
-          service_description: parts.join("\n"),
+          service_description: description,
+          ...(proposalText.trim() ? { intro_text: proposalText.trim() } : {}),
           discount_percent: pct,
           discount_amount: Math.round((unitPrice - endNet) * 100) / 100,
           discount_reason: discountReason,
@@ -449,6 +458,7 @@ function KalkulationPage() {
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
+
 
       return quoteId;
     },
