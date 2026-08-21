@@ -430,10 +430,6 @@ function ProjektDetail() {
   const hasAnalysis =
     aiHighlights.length > 0 || aiRequirements.length > 0 || derivedFacts.length > 0;
 
-  const lvTotal = items.reduce(
-    (sum, i) => sum + Number(i.quantity || 0) * Number(i.unit_price || 0),
-    0,
-  );
   const openCritical = items.filter((i) => i.critical && !i.done);
 
   return (
