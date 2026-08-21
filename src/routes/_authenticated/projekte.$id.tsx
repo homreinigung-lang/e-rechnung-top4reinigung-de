@@ -374,29 +374,15 @@ function ProjektDetail() {
   const totalSqm = rooms.reduce((sum, r) => sum + Number(r.area_sqm || 0), 0);
   const confirmedRooms = rooms.filter((r) => r.confirmed).length;
   const expected = Math.max(project.expected_room_count || 0, rooms.length);
-  const rate = Number(project.hourly_rate || 0);
-  const perf = Number(project.sqm_per_hour || 0);
-  const hours = perf > 0 ? totalSqm / perf : 0;
-  const monthKey = new Date().toISOString().slice(0, 7);
-  const effectiveEntries = timeEntries.filter(
-    (t) => (t.entry_type ?? "work") === "work" && (t.approval_status ?? "approved") !== "rejected",
-  );
-  const istHoursTotal = effectiveEntries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
-  const istHoursMonth = effectiveEntries
-    .filter((t) => String(t.work_date).startsWith(monthKey))
-    .reduce((sum, t) => sum + Number(t.hours || 0), 0);
-  const laborCostTotal = effectiveEntries.reduce(
-    (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
-    0,
-  );
-  const laborCostMonth = effectiveEntries
-    .filter((t) => String(t.work_date).startsWith(monthKey))
-    .reduce((sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0), 0);
-  const sollHoursMonth =
-    assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0) * 4.33;
-  const utilization = sollHoursMonth > 0 ? (istHoursMonth / sollHoursMonth) * 100 : 0;
-  const revenueMonth = istHoursMonth * rate;
-  const marginMonth = revenueMonth - laborCostMonth;
+  // Chronologie der abgeschlossenen Einsätze (Auswertungen liegen in der Kalkulation)
+  const history = timeEntries
+    .filter(
+      (t) =>
+        (t.entry_type ?? "work") === "work" &&
+        (t.approval_status ?? "approved") !== "rejected" &&
+        Boolean(t.completed_at),
+    )
+    .sort((a, b) => String(b.work_date).localeCompare(String(a.work_date)));
 
   // Automatisch abgeleitete Eckdaten aus dem Raumbuch (Ergänzung zur KI-Zusammenfassung)
   const coveringTotals = new Map<string, number>();
