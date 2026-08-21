@@ -980,15 +980,24 @@ function KalkulationPage() {
               )}
             </div>
 
-            <div className="space-y-3 rounded-md border p-3">
-              <div className="flex flex-wrap items-end justify-between gap-2">
-                <div>
-                  <Label>Positionen</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Vom Assistenten erzeugt oder manuell ergänzt – jede Zeile bleibt frei änderbar
-                    und geht direkt ins Angebot.
-                  </p>
-                </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="ausschreibung" className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="size-5" /> Leistungspositionen
+              </CardTitle>
+              <CardDescription>
+                Positionen der Ausschreibung bzw. des Angebots – vom Assistenten erzeugt oder
+                manuell ergänzt. Jede Zeile bleibt frei änderbar.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -1012,8 +1021,8 @@ function KalkulationPage() {
 
               {aiItems.length === 0 ? (
                 <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                  Noch keine Positionen. Beschreiben Sie die Arbeit oben im KI-Assistenten oder
-                  fügen Sie eine Position manuell hinzu.
+                  Noch keine Positionen. Beschreiben Sie die Arbeit im KI-Assistenten (Tab
+                  „Grundriss") oder fügen Sie eine Position manuell hinzu.
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -1064,20 +1073,19 @@ function KalkulationPage() {
                     </div>
                   ))}
                   <p className="text-right text-xs text-muted-foreground">
-                    {aiItems.length} Position(en) – fließen unten in die Gesamtsumme ein
+                    {aiItems.length} Position(en) – fließen in die Gesamtsumme ein
                   </p>
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Berechnung</CardTitle>
-            <CardDescription>Automatische Vorab-Berechnung und freier Endpreis</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Berechnung</CardTitle>
+              <CardDescription>Automatische Vorab-Berechnung und freier Endpreis</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Grundleistung</span>
