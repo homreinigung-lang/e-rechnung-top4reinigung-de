@@ -111,8 +111,8 @@ export function ProjektKennzahlen({ projectId }: { projectId: string | null }) {
           <BarChart3 className="size-5" /> Kennzahlen & Smart Analytics
         </CardTitle>
         <CardDescription>
-          Soll/Ist-Vergleich des laufenden Monats, Personalkosten und Deckungsbeitrag –{" "}
-          {completed} abgeschlossene Einsätze erfasst.
+          Soll/Ist-Vergleich des laufenden Monats, Personalkosten und Deckungsbeitrag – {completed}{" "}
+          abgeschlossene Einsätze erfasst.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -519,714 +519,717 @@ function KalkulationPage() {
           </Card>
 
           <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calculator className="size-5" /> Leistungsdaten
-            </CardTitle>
-            <CardDescription>Reinigungstyp, Umfang und Zusatzoptionen</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Reinigungstyp</Label>
-                <Select
-                  value={type}
-                  onValueChange={(v) => {
-                    setType(v);
-                    const t = CLEANING_TYPES.find((x) => x.value === v);
-                    if (t) {
-                      setPricePerSqm(String(t.area));
-                      setHourlyRate(String(t.hourly));
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CLEANING_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Berechnungsart</Label>
-                <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="area">Nach Fläche (m²)</SelectItem>
-                    <SelectItem value="hours">Nach Stunden</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {mode === "area" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Fläche (m²)</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={area}
-                    onChange={(e) => setArea(e.target.value)}
-                  />
-                  {raumbuchApplied && raumbuch ? (
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                      Aus Raumbuch übernommen – {raumbuch.roomCount} Räume aus dem Grundriss-Scan
-                      (manuell überschreibbar).
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Preis pro m² (netto)</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={pricePerSqm}
-                    onChange={(e) => setPricePerSqm(e.target.value)}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Stunden</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={hours}
-                    onChange={(e) => setHours(e.target.value)}
-                  />
-                  {raumbuchApplied && raumbuch ? (
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                      Aus Raumbuch berechnet – Leistungswerte für {raumbuch.matched} Räume
-                      {raumbuch.unmatched > 0 ? `, ${raumbuch.unmatched} pauschal` : ""} (manuell
-                      überschreibbar).
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Stundensatz (netto)</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={hourlyRate}
-                    onChange={(e) => setHourlyRate(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Empfehlung {selected.label}: {formatMoney(selected.range[0])} –{" "}
-                    {formatMoney(selected.range[1])} pro Stunde. Frei überschreibbar – die Summe
-                    aktualisiert sich sofort.
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {[
-                      selected.range[0],
-                      Math.round((selected.range[0] + selected.range[1]) / 2),
-                      selected.range[1],
-                    ].map((r) => (
-                      <Button
-                        key={r}
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setHourlyRate(String(r))}
-                      >
-                        {formatMoney(r)}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label>Durchgänge / Einsätze</Label>
-                <Input
-                  inputMode="decimal"
-                  value={frequency}
-                  onChange={(e) => setFrequency(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Zeitraum</Label>
-                <Select
-                  value={frequencyUnit}
-                  onValueChange={(v) => setFrequencyUnit(v as "week" | "month")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="week">Pro Woche</SelectItem>
-                    <SelectItem value="month">Pro Monat</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Anfahrtspauschale (netto)</Label>
-                <Input
-                  inputMode="decimal"
-                  value={travel}
-                  onChange={(e) => setTravel(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {frequencyUnit === "week" && (
-              <p className="text-xs text-muted-foreground">
-                Umrechnung auf den Monat mit 4,33 Wochen: {formatNumber(num(frequency))} × 4,33 ={" "}
-                {formatNumber(visitsPerMonth)} Einsätze pro Monat.
-              </p>
-            )}
-
-            {search.area ? (
-              <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
-                Vorschlagswerte aus der Projekt-Analyse übernommen: {formatNumber(search.area)} m²
-                {search.belag ? ` · Bodenbelag ${search.belag}` : ""}. Bitte prüfen und bei Bedarf
-                anpassen.
-              </p>
-            ) : null}
-
-            <div className="space-y-2">
-              <Label>Zusatzoptionen</Label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {EXTRAS.map((e) => (
-                  <label
-                    key={e.key}
-                    className="flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm"
-                  >
-                    <Checkbox
-                      checked={extras.includes(e.key)}
-                      onCheckedChange={(checked) =>
-                        setExtras((prev) =>
-                          checked ? [...prev, e.key] : prev.filter((k) => k !== e.key),
-                        )
-                      }
-                    />
-                    <span className="flex-1">{e.label}</span>
-                    <span className="text-muted-foreground">{formatMoney(e.price)}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-md border p-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                <Checkbox
-                  checked={stairs}
-                  onCheckedChange={(checked) => setStairs(Boolean(checked))}
-                />
-                <span>Treppenhausreinigung</span>
-              </label>
-              {stairs && (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Anzahl der Etagen</Label>
-                      <Input
-                        inputMode="decimal"
-                        value={floors}
-                        onChange={(e) => setFloors(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Preis pro Etage (netto)</Label>
-                      <Input
-                        inputMode="decimal"
-                        value={stairRate}
-                        onChange={(e) => setStairRate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Gibt es einen Aufzug?</Label>
-                      <Select
-                        value={hasLift ? "yes" : "no"}
-                        onValueChange={(v) => setHasLift(v === "yes")}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="no">Nein – kein Aufzug</SelectItem>
-                          <SelectItem value="yes">Ja – Aufzug vorhanden</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {hasLift && (
-                      <div className="space-y-2">
-                        <Label>Aufzugkabine pro Einsatz (netto)</Label>
-                        <Input
-                          inputMode="decimal"
-                          value={liftRate}
-                          onChange={(e) => setLiftRate(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    ({formatNumber(num(floors))} Etagen × {formatMoney(num(stairRate))}
-                    {hasLift ? ` + Aufzug ${formatMoney(num(liftRate))}` : ""}) ×{" "}
-                    {formatNumber(visitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
-                  </p>
-                </>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Bemerkung zur Leistung</Label>
-              <Textarea
-                rows={3}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="z. B. Reinigung wöchentlich, Zutritt nach Absprache"
-              />
-            </div>
-
-            <div className="space-y-3 rounded-md border p-3">
-              <div>
-                <Label>Grundrisse & Fotos</Label>
-                <p className="text-xs text-muted-foreground">
-                  PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – nur zur internen Ablage und für
-                  Notizen. m², Räume und Etagen tragen Sie bitte manuell ein.
-                </p>
-              </div>
-              <FileUploadButton
-                folder="kalkulation"
-                accept="application/pdf,image/jpeg,image/png,image/webp"
-                label="Datei oder Foto hochladen"
-                onUploaded={(path, file) => {
-                  void (async () => {
-                    const url = await fileUrl(path);
-                    setAttachments((prev) => [
-                      ...prev,
-                      {
-                        path,
-                        name: file.name,
-                        url,
-                        isImage: file.type.startsWith("image/"),
-                        sqm: "",
-                        rooms: "",
-                        floors: "",
-                        note: "",
-                      },
-                    ]);
-                  })();
-                }}
-              />
-
-              {attachments.length > 0 && (
-                <>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {attachments.map((a) => (
-                      <div key={a.path} className="space-y-2 rounded-md border p-2">
-                        {a.isImage && a.url ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void openStoredFile(a.path, a.name).catch(() =>
-                                toast.error("Datei konnte nicht geöffnet werden."),
-                              )
-                            }
-                          >
-                            <img
-                              src={a.url}
-                              alt={`Vorschau ${a.name}`}
-                              className="h-32 w-full rounded object-cover"
-                              loading="lazy"
-                            />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void openStoredFile(a.path, a.name).catch(() =>
-                                toast.error("Datei konnte nicht geöffnet werden."),
-                              )
-                            }
-                            className="flex h-32 w-full items-center justify-center rounded bg-muted"
-                          >
-                            <FileText className="size-8 text-muted-foreground" />
-                          </button>
-                        )}
-
-                        <div className="flex items-center gap-2">
-                          <span className="flex-1 truncate text-xs">{a.name}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              setAttachments((prev) => prev.filter((x) => x.path !== a.path))
-                            }
-                            aria-label="Entfernen"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">m²</Label>
-                            <Input
-                              inputMode="decimal"
-                              value={a.sqm}
-                              onChange={(e) => updateAttachment(a.path, { sqm: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Räume</Label>
-                            <Input
-                              inputMode="decimal"
-                              value={a.rooms}
-                              onChange={(e) => updateAttachment(a.path, { rooms: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Etagen</Label>
-                            <Input
-                              inputMode="decimal"
-                              value={a.floors}
-                              onChange={(e) => updateAttachment(a.path, { floors: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <Textarea
-                          rows={2}
-                          value={a.note}
-                          onChange={(e) => updateAttachment(a.path, { note: e.target.value })}
-                          placeholder="Notiz zum Grundriss (z. B. Bodenbelag, Sanitärräume)"
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={scanningPath === a.path || scanFile.isPending}
-                            onClick={() => scanFile.mutate(a)}
-                          >
-                            <Sparkles className="size-4" />
-                            {scanningPath === a.path ? "Wird analysiert …" : "Datei analysieren"}
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={num(a.sqm) <= 0}
-                            onClick={() => {
-                              setMode("area");
-                              setArea(a.sqm);
-                              toast.success("Fläche in die Kalkulation übernommen");
-                            }}
-                          >
-                            m² übernehmen
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={num(a.floors) <= 0}
-                            onClick={() => {
-                              setStairs(true);
-                              setFloors(a.floors);
-                              toast.success("Etagen in die Treppenhausreinigung übernommen");
-                            }}
-                          >
-                            Etagen übernehmen
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const line = [
-                                a.name,
-                                num(a.sqm) > 0 ? `${formatNumber(num(a.sqm))} m²` : "",
-                                num(a.rooms) > 0 ? `${formatNumber(num(a.rooms))} Räume` : "",
-                                num(a.floors) > 0 ? `${formatNumber(num(a.floors))} Etagen` : "",
-                                a.note.trim(),
-                              ]
-                                .filter(Boolean)
-                                .join(" · ");
-                              setNote((prev) => (prev.trim() ? `${prev}\n${line}` : line));
-                              toast.success("Als Notiz übernommen");
-                            }}
-                          >
-                            Als Notiz übernehmen
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="rounded-md border bg-muted/40 p-3 text-sm">
-                    <div className="mb-1 font-medium">Übersicht aus Unterlagen</div>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-muted-foreground">
-                      <span>Gesamtfläche: {formatNumber(analysisTotals.sqm)} m²</span>
-                      <span>Räume: {formatNumber(analysisTotals.rooms)}</span>
-                      <span>Etagen: {formatNumber(analysisTotals.floors)}</span>
-                    </div>
-                    {analysisTotals.sqm > 0 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => {
-                          setMode("area");
-                          setArea(String(analysisTotals.sqm));
-                          toast.success("Gesamtfläche übernommen");
-                        }}
-                      >
-                        Gesamtfläche in Kalkulation übernehmen
-                      </Button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="ausschreibung" className="space-y-6">
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="size-5" /> Leistungspositionen
+                <Calculator className="size-5" /> Leistungsdaten
               </CardTitle>
-              <CardDescription>
-                Positionen der Ausschreibung bzw. des Angebots – vom Assistenten erzeugt oder
-                manuell ergänzt. Jede Zeile bleibt frei änderbar.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setAiItems((prev) => [
-                      ...prev,
-                      {
-                        id: `${Date.now()}`,
-                        description: "",
-                        quantity: "1",
-                        unit: "Std.",
-                        unit_price: "35",
-                      },
-                    ])
-                  }
-                >
-                  <Plus className="size-4" /> Position
-                </Button>
-              </div>
-
-              {aiItems.length === 0 ? (
-                <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                  Noch keine Positionen. Beschreiben Sie die Arbeit im KI-Assistenten (Tab
-                  „Grundriss") oder fügen Sie eine Position manuell hinzu.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
-                    <span>Leistung</span>
-                    <span>Menge</span>
-                    <span>Einheit</span>
-                    <span>Einzelpreis</span>
-                    <span className="text-right">Gesamt</span>
-                    <span />
-                  </div>
-                  {aiItems.map((i) => (
-                    <div
-                      key={i.id}
-                      className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center"
-                    >
-                      <Input
-                        value={i.description}
-                        placeholder="Leistung"
-                        onChange={(e) => patchAiItem(i.id, { description: e.target.value })}
-                      />
-                      <Input
-                        inputMode="decimal"
-                        value={i.quantity}
-                        onChange={(e) => patchAiItem(i.id, { quantity: e.target.value })}
-                      />
-                      <Input
-                        value={i.unit}
-                        onChange={(e) => patchAiItem(i.id, { unit: e.target.value })}
-                      />
-                      <Input
-                        inputMode="decimal"
-                        value={i.unit_price}
-                        onChange={(e) => patchAiItem(i.id, { unit_price: e.target.value })}
-                      />
-                      <span className="text-sm sm:text-right">
-                        {formatMoney(num(i.quantity) * num(i.unit_price))}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Position entfernen"
-                        onClick={() => setAiItems((prev) => prev.filter((x) => x.id !== i.id))}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <p className="text-right text-xs text-muted-foreground">
-                    {aiItems.length} Position(en) – fließen in die Gesamtsumme ein
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Berechnung</CardTitle>
-              <CardDescription>Automatische Vorab-Berechnung und freier Endpreis</CardDescription>
+              <CardDescription>Reinigungstyp, Umfang und Zusatzoptionen</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Grundleistung</span>
-                <span>{formatMoney(base)}</span>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Reinigungstyp</Label>
+                  <Select
+                    value={type}
+                    onValueChange={(v) => {
+                      setType(v);
+                      const t = CLEANING_TYPES.find((x) => x.value === v);
+                      if (t) {
+                        setPricePerSqm(String(t.area));
+                        setHourlyRate(String(t.hourly));
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CLEANING_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Berechnungsart</Label>
+                  <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="area">Nach Fläche (m²)</SelectItem>
+                      <SelectItem value="hours">Nach Stunden</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Zusatzoptionen</span>
-                <span>{formatMoney(extrasTotal)}</span>
-              </div>
-              {stairs && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Treppenhausreinigung</span>
-                  <span>{formatMoney(stairsTotal)}</span>
+
+              {mode === "area" ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Fläche (m²)</Label>
+                    <Input
+                      inputMode="decimal"
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                    />
+                    {raumbuchApplied && raumbuch ? (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                        Aus Raumbuch übernommen – {raumbuch.roomCount} Räume aus dem Grundriss-Scan
+                        (manuell überschreibbar).
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Preis pro m² (netto)</Label>
+                    <Input
+                      inputMode="decimal"
+                      value={pricePerSqm}
+                      onChange={(e) => setPricePerSqm(e.target.value)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Stunden</Label>
+                    <Input
+                      inputMode="decimal"
+                      value={hours}
+                      onChange={(e) => setHours(e.target.value)}
+                    />
+                    {raumbuchApplied && raumbuch ? (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                        Aus Raumbuch berechnet – Leistungswerte für {raumbuch.matched} Räume
+                        {raumbuch.unmatched > 0 ? `, ${raumbuch.unmatched} pauschal` : ""} (manuell
+                        überschreibbar).
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Stundensatz (netto)</Label>
+                    <Input
+                      inputMode="decimal"
+                      value={hourlyRate}
+                      onChange={(e) => setHourlyRate(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Empfehlung {selected.label}: {formatMoney(selected.range[0])} –{" "}
+                      {formatMoney(selected.range[1])} pro Stunde. Frei überschreibbar – die Summe
+                      aktualisiert sich sofort.
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        selected.range[0],
+                        Math.round((selected.range[0] + selected.range[1]) / 2),
+                        selected.range[1],
+                      ].map((r) => (
+                        <Button
+                          key={r}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setHourlyRate(String(r))}
+                        >
+                          {formatMoney(r)}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Anfahrt</span>
-                <span>{formatMoney(num(travel))}</span>
-              </div>
-              <div className="flex justify-between border-t pt-1 font-medium">
-                <span>Zwischensumme (netto)</span>
-                <span>{formatMoney(subtotal)}</span>
-              </div>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Durchgänge / Einsätze</Label>
+                  <Input
+                    inputMode="decimal"
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Zeitraum</Label>
+                  <Select
+                    value={frequencyUnit}
+                    onValueChange={(v) => setFrequencyUnit(v as "week" | "month")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="week">Pro Woche</SelectItem>
+                      <SelectItem value="month">Pro Monat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Anfahrtspauschale (netto)</Label>
+                  <Input
+                    inputMode="decimal"
+                    value={travel}
+                    onChange={(e) => setTravel(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {frequencyUnit === "week" && (
+                <p className="text-xs text-muted-foreground">
+                  Umrechnung auf den Monat mit 4,33 Wochen: {formatNumber(num(frequency))} × 4,33 ={" "}
+                  {formatNumber(visitsPerMonth)} Einsätze pro Monat.
+                </p>
+              )}
+
+              {search.area ? (
+                <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                  Vorschlagswerte aus der Projekt-Analyse übernommen: {formatNumber(search.area)} m²
+                  {search.belag ? ` · Bodenbelag ${search.belag}` : ""}. Bitte prüfen und bei Bedarf
+                  anpassen.
+                </p>
+              ) : null}
+
               <div className="space-y-2">
-                <Label>Rabatt (%)</Label>
-                <Input
-                  inputMode="decimal"
-                  value={discountPercent}
-                  onChange={(e) => setDiscountPercent(e.target.value)}
+                <Label>Zusatzoptionen</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {EXTRAS.map((e) => (
+                    <label
+                      key={e.key}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={extras.includes(e.key)}
+                        onCheckedChange={(checked) =>
+                          setExtras((prev) =>
+                            checked ? [...prev, e.key] : prev.filter((k) => k !== e.key),
+                          )
+                        }
+                      />
+                      <span className="flex-1">{e.label}</span>
+                      <span className="text-muted-foreground">{formatMoney(e.price)}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border p-3">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                  <Checkbox
+                    checked={stairs}
+                    onCheckedChange={(checked) => setStairs(Boolean(checked))}
+                  />
+                  <span>Treppenhausreinigung</span>
+                </label>
+                {stairs && (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Anzahl der Etagen</Label>
+                        <Input
+                          inputMode="decimal"
+                          value={floors}
+                          onChange={(e) => setFloors(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Preis pro Etage (netto)</Label>
+                        <Input
+                          inputMode="decimal"
+                          value={stairRate}
+                          onChange={(e) => setStairRate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Gibt es einen Aufzug?</Label>
+                        <Select
+                          value={hasLift ? "yes" : "no"}
+                          onValueChange={(v) => setHasLift(v === "yes")}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="no">Nein – kein Aufzug</SelectItem>
+                            <SelectItem value="yes">Ja – Aufzug vorhanden</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {hasLift && (
+                        <div className="space-y-2">
+                          <Label>Aufzugkabine pro Einsatz (netto)</Label>
+                          <Input
+                            inputMode="decimal"
+                            value={liftRate}
+                            onChange={(e) => setLiftRate(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      ({formatNumber(num(floors))} Etagen × {formatMoney(num(stairRate))}
+                      {hasLift ? ` + Aufzug ${formatMoney(num(liftRate))}` : ""}) ×{" "}
+                      {formatNumber(visitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Bemerkung zur Leistung</Label>
+                <Textarea
+                  rows={3}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="z. B. Reinigung wöchentlich, Zutritt nach Absprache"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Rabattgrund</Label>
-                <Input
-                  value={discountReason}
-                  onChange={(e) => setDiscountReason(e.target.value)}
-                  placeholder="z. B. Treuerabatt"
+
+              <div className="space-y-3 rounded-md border p-3">
+                <div>
+                  <Label>Grundrisse & Fotos</Label>
+                  <p className="text-xs text-muted-foreground">
+                    PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – nur zur internen Ablage und für
+                    Notizen. m², Räume und Etagen tragen Sie bitte manuell ein.
+                  </p>
+                </div>
+                <FileUploadButton
+                  folder="kalkulation"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  label="Datei oder Foto hochladen"
+                  onUploaded={(path, file) => {
+                    void (async () => {
+                      const url = await fileUrl(path);
+                      setAttachments((prev) => [
+                        ...prev,
+                        {
+                          path,
+                          name: file.name,
+                          url,
+                          isImage: file.type.startsWith("image/"),
+                          sqm: "",
+                          rooms: "",
+                          floors: "",
+                          note: "",
+                        },
+                      ]);
+                    })();
+                  }}
                 />
-              </div>
-            </div>
 
-            {pct > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Rabatt {formatNumber(pct)} %{discountReason ? ` – ${discountReason}` : ""}
-                </span>
-                <span>−{formatMoney(discountAmount)}</span>
-              </div>
-            )}
+                {attachments.length > 0 && (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {attachments.map((a) => (
+                        <div key={a.path} className="space-y-2 rounded-md border p-2">
+                          {a.isImage && a.url ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void openStoredFile(a.path, a.name).catch(() =>
+                                  toast.error("Datei konnte nicht geöffnet werden."),
+                                )
+                              }
+                            >
+                              <img
+                                src={a.url}
+                                alt={`Vorschau ${a.name}`}
+                                className="h-32 w-full rounded object-cover"
+                                loading="lazy"
+                              />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void openStoredFile(a.path, a.name).catch(() =>
+                                  toast.error("Datei konnte nicht geöffnet werden."),
+                                )
+                              }
+                              className="flex h-32 w-full items-center justify-center rounded bg-muted"
+                            >
+                              <FileText className="size-8 text-muted-foreground" />
+                            </button>
+                          )}
 
-            <div className="space-y-2 rounded-md border p-3">
-              <Label>Endpreis Grundkalkulation netto (frei anpassbar)</Label>
-              <Input
-                inputMode="decimal"
-                value={finalPrice}
-                onChange={(e) => {
-                  setFinalTouched(true);
-                  setFinalPrice(e.target.value);
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Berechneter Vorschlag: {formatMoney(suggested)}
-              </p>
-              {finalTouched && (
+                          <div className="flex items-center gap-2">
+                            <span className="flex-1 truncate text-xs">{a.name}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                setAttachments((prev) => prev.filter((x) => x.path !== a.path))
+                              }
+                              aria-label="Entfernen"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">m²</Label>
+                              <Input
+                                inputMode="decimal"
+                                value={a.sqm}
+                                onChange={(e) => updateAttachment(a.path, { sqm: e.target.value })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Räume</Label>
+                              <Input
+                                inputMode="decimal"
+                                value={a.rooms}
+                                onChange={(e) =>
+                                  updateAttachment(a.path, { rooms: e.target.value })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Etagen</Label>
+                              <Input
+                                inputMode="decimal"
+                                value={a.floors}
+                                onChange={(e) =>
+                                  updateAttachment(a.path, { floors: e.target.value })
+                                }
+                              />
+                            </div>
+                          </div>
+                          <Textarea
+                            rows={2}
+                            value={a.note}
+                            onChange={(e) => updateAttachment(a.path, { note: e.target.value })}
+                            placeholder="Notiz zum Grundriss (z. B. Bodenbelag, Sanitärräume)"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={scanningPath === a.path || scanFile.isPending}
+                              onClick={() => scanFile.mutate(a)}
+                            >
+                              <Sparkles className="size-4" />
+                              {scanningPath === a.path ? "Wird analysiert …" : "Datei analysieren"}
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={num(a.sqm) <= 0}
+                              onClick={() => {
+                                setMode("area");
+                                setArea(a.sqm);
+                                toast.success("Fläche in die Kalkulation übernommen");
+                              }}
+                            >
+                              m² übernehmen
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={num(a.floors) <= 0}
+                              onClick={() => {
+                                setStairs(true);
+                                setFloors(a.floors);
+                                toast.success("Etagen in die Treppenhausreinigung übernommen");
+                              }}
+                            >
+                              Etagen übernehmen
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const line = [
+                                  a.name,
+                                  num(a.sqm) > 0 ? `${formatNumber(num(a.sqm))} m²` : "",
+                                  num(a.rooms) > 0 ? `${formatNumber(num(a.rooms))} Räume` : "",
+                                  num(a.floors) > 0 ? `${formatNumber(num(a.floors))} Etagen` : "",
+                                  a.note.trim(),
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ");
+                                setNote((prev) => (prev.trim() ? `${prev}\n${line}` : line));
+                                toast.success("Als Notiz übernommen");
+                              }}
+                            >
+                              Als Notiz übernehmen
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                      <div className="mb-1 font-medium">Übersicht aus Unterlagen</div>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1 text-muted-foreground">
+                        <span>Gesamtfläche: {formatNumber(analysisTotals.sqm)} m²</span>
+                        <span>Räume: {formatNumber(analysisTotals.rooms)}</span>
+                        <span>Etagen: {formatNumber(analysisTotals.floors)}</span>
+                      </div>
+                      {analysisTotals.sqm > 0 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => {
+                            setMode("area");
+                            setArea(String(analysisTotals.sqm));
+                            toast.success("Gesamtfläche übernommen");
+                          }}
+                        >
+                          Gesamtfläche in Kalkulation übernehmen
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ausschreibung" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="size-5" /> Leistungspositionen
+                </CardTitle>
+                <CardDescription>
+                  Positionen der Ausschreibung bzw. des Angebots – vom Assistenten erzeugt oder
+                  manuell ergänzt. Jede Zeile bleibt frei änderbar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setAiItems((prev) => [
+                        ...prev,
+                        {
+                          id: `${Date.now()}`,
+                          description: "",
+                          quantity: "1",
+                          unit: "Std.",
+                          unit_price: "35",
+                        },
+                      ])
+                    }
+                  >
+                    <Plus className="size-4" /> Position
+                  </Button>
+                </div>
+
+                {aiItems.length === 0 ? (
+                  <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                    Noch keine Positionen. Beschreiben Sie die Arbeit im KI-Assistenten (Tab
+                    „Grundriss") oder fügen Sie eine Position manuell hinzu.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
+                      <span>Leistung</span>
+                      <span>Menge</span>
+                      <span>Einheit</span>
+                      <span>Einzelpreis</span>
+                      <span className="text-right">Gesamt</span>
+                      <span />
+                    </div>
+                    {aiItems.map((i) => (
+                      <div
+                        key={i.id}
+                        className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center"
+                      >
+                        <Input
+                          value={i.description}
+                          placeholder="Leistung"
+                          onChange={(e) => patchAiItem(i.id, { description: e.target.value })}
+                        />
+                        <Input
+                          inputMode="decimal"
+                          value={i.quantity}
+                          onChange={(e) => patchAiItem(i.id, { quantity: e.target.value })}
+                        />
+                        <Input
+                          value={i.unit}
+                          onChange={(e) => patchAiItem(i.id, { unit: e.target.value })}
+                        />
+                        <Input
+                          inputMode="decimal"
+                          value={i.unit_price}
+                          onChange={(e) => patchAiItem(i.id, { unit_price: e.target.value })}
+                        />
+                        <span className="text-sm sm:text-right">
+                          {formatMoney(num(i.quantity) * num(i.unit_price))}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Position entfernen"
+                          onClick={() => setAiItems((prev) => prev.filter((x) => x.id !== i.id))}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <p className="text-right text-xs text-muted-foreground">
+                      {aiItems.length} Position(en) – fließen in die Gesamtsumme ein
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Berechnung</CardTitle>
+                <CardDescription>Automatische Vorab-Berechnung und freier Endpreis</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Grundleistung</span>
+                    <span>{formatMoney(base)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Zusatzoptionen</span>
+                    <span>{formatMoney(extrasTotal)}</span>
+                  </div>
+                  {stairs && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Treppenhausreinigung</span>
+                      <span>{formatMoney(stairsTotal)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Anfahrt</span>
+                    <span>{formatMoney(num(travel))}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1 font-medium">
+                    <span>Zwischensumme (netto)</span>
+                    <span>{formatMoney(subtotal)}</span>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Rabatt (%)</Label>
+                    <Input
+                      inputMode="decimal"
+                      value={discountPercent}
+                      onChange={(e) => setDiscountPercent(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rabattgrund</Label>
+                    <Input
+                      value={discountReason}
+                      onChange={(e) => setDiscountReason(e.target.value)}
+                      placeholder="z. B. Treuerabatt"
+                    />
+                  </div>
+                </div>
+
+                {pct > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Rabatt {formatNumber(pct)} %{discountReason ? ` – ${discountReason}` : ""}
+                    </span>
+                    <span>−{formatMoney(discountAmount)}</span>
+                  </div>
+                )}
+
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label>Endpreis Grundkalkulation netto (frei anpassbar)</Label>
+                  <Input
+                    inputMode="decimal"
+                    value={finalPrice}
+                    onChange={(e) => {
+                      setFinalTouched(true);
+                      setFinalPrice(e.target.value);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Berechneter Vorschlag: {formatMoney(suggested)}
+                  </p>
+                  {finalTouched && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFinalTouched(false)}
+                      className="px-0"
+                    >
+                      Berechneten Preis wiederherstellen
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Grundkalkulation (netto)</span>
+                    <span>{formatMoney(endNet)}</span>
+                  </div>
+                  {aiItems.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Positionen (netto)</span>
+                      <span>{formatMoney(aiTotal)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t pt-1 font-medium">
+                    <span>Gesamt netto</span>
+                    <span>{formatMoney(endNet + aiTotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>zzgl. 19 % MwSt.</span>
+                    <span>{formatMoney((endNet + aiTotal) * 0.19)}</span>
+                  </div>
+                  <div className="flex justify-between text-base font-semibold">
+                    <span>Gesamt brutto</span>
+                    <span>{formatMoney((endNet + aiTotal) * 1.19)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3 rounded-md border border-dashed p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Diese Kalkulation ist ein interner Entwurf. Bitte alle Angaben prüfen und final
+                    bestätigen – erst danach kann ein Angebot erstellt werden.
+                  </p>
+                  <label className="flex cursor-pointer items-start gap-2 text-sm font-medium">
+                    <Checkbox
+                      checked={confirmed}
+                      onCheckedChange={(checked) => setConfirmed(Boolean(checked))}
+                    />
+                    <span>Kalkulation geprüft und final bestätigt</span>
+                  </label>
+                </div>
+
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFinalTouched(false)}
-                  className="px-0"
+                  className="w-full"
+                  disabled={toQuote.isPending || endNet <= 0 || !confirmed}
+                  onClick={() => toQuote.mutate()}
                 >
-                  Berechneten Preis wiederherstellen
+                  <FileSignature className="size-4" />
+                  In Angebot übernehmen
                 </Button>
-              )}
-            </div>
-
-            <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Grundkalkulation (netto)</span>
-                <span>{formatMoney(endNet)}</span>
-              </div>
-              {aiItems.length > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Positionen (netto)</span>
-                  <span>{formatMoney(aiTotal)}</span>
-                </div>
-              )}
-              <div className="flex justify-between border-t pt-1 font-medium">
-                <span>Gesamt netto</span>
-                <span>{formatMoney(endNet + aiTotal)}</span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>zzgl. 19 % MwSt.</span>
-                <span>{formatMoney((endNet + aiTotal) * 0.19)}</span>
-              </div>
-              <div className="flex justify-between text-base font-semibold">
-                <span>Gesamt brutto</span>
-                <span>{formatMoney((endNet + aiTotal) * 1.19)}</span>
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-md border border-dashed p-3">
-              <p className="text-xs text-muted-foreground">
-                Diese Kalkulation ist ein interner Entwurf. Bitte alle Angaben prüfen und final
-                bestätigen – erst danach kann ein Angebot erstellt werden.
-              </p>
-              <label className="flex cursor-pointer items-start gap-2 text-sm font-medium">
-                <Checkbox
-                  checked={confirmed}
-                  onCheckedChange={(checked) => setConfirmed(Boolean(checked))}
-                />
-                <span>Kalkulation geprüft und final bestätigt</span>
-              </label>
-            </div>
-
-            <Button
-              className="w-full"
-              disabled={toQuote.isPending || endNet <= 0 || !confirmed}
-              onClick={() => toQuote.mutate()}
-            >
-              <FileSignature className="size-4" />
-              In Angebot übernehmen
-            </Button>
-          </CardContent>
-        </Card>
-        </div>
-      </TabsContent>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
