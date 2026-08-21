@@ -396,8 +396,6 @@ function KalkulationPage() {
     confirmed,
   };
 
-  const toQuote = useMutation({
-    mutationFn: async () => {
   /** Leistungsverzeichnis als abgabefertiges PDF exportieren. */
   const exportLv = useMutation({
     mutationFn: async () => {
