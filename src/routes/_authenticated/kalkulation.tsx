@@ -450,7 +450,10 @@ function KalkulationPage() {
         positions,
         vatRate: 19,
       });
-      await saveFile(new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }), "Leistungsverzeichnis.pdf");
+      await saveFile(
+        new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }),
+        "Leistungsverzeichnis.pdf",
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1368,7 +1371,6 @@ function KalkulationPage() {
                     <Plus className="size-4" /> Position
                   </Button>
                 </div>
-
 
                 {aiItems.length === 0 ? (
                   <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
