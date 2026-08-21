@@ -29,7 +29,6 @@ function SectionIntro({ title, text }: { title: string; text: string }) {
   );
 }
 
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -176,7 +175,6 @@ function KalkulationPage() {
   const [proposalTitle, setProposalTitle] = useState("");
   const [proposalText, setProposalText] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
 
@@ -476,7 +474,6 @@ function KalkulationPage() {
         .eq("id", quoteId);
       if (docError) throw docError;
 
-
       return quoteId;
     },
     onSuccess: (quoteId) => {
@@ -521,7 +518,6 @@ function KalkulationPage() {
           <KalkulationAnalytics activeProjectId={projectId} />
         </TabsContent>
 
-
         <TabsContent value="grundriss" className="space-y-6">
           <SectionIntro
             title="Grundriss (Planung)"
@@ -547,7 +543,6 @@ function KalkulationPage() {
           </Card>
 
           <Card>
-
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="size-5" /> KI-Assistent
@@ -1230,7 +1225,6 @@ function KalkulationPage() {
           </Card>
 
           <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
