@@ -173,7 +173,9 @@ function ProjektDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
-        .select("hours,hourly_rate,work_date,entry_type,approval_status")
+        .select(
+          "id,hours,work_date,entry_type,approval_status,completed_at,employee_name,start_time,end_time,note",
+        )
         .eq("project_id", id);
       if (error) throw error;
       return data;
