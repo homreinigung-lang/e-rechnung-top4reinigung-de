@@ -398,7 +398,69 @@ function KalkulationPage() {
 
   const toQuote = useMutation({
     mutationFn: async () => {
+  /** Leistungsverzeichnis als abgabefertiges PDF exportieren. */
+  const exportLv = useMutation({
+    mutationFn: async () => {
+      const positions = aiItems
+        .filter((i) => i.description.trim() || num(i.unit_price) > 0)
+        .map((i, n) => ({
+          oz: `${n + 1}.10`,
+          description: i.description.trim() || "Leistung",
+          quantity: num(i.quantity),
+          unit: i.unit.trim() || "Stk.",
+          unitPrice: num(i.unit_price),
+        }));
+      if (positions.length === 0) {
+        throw new Error("Bitte zuerst LV-Positionen erfassen oder die Kalkulation übernehmen.");
+      }
+
+      const { data: settings } = await supabase
+        .from("company_settings")
+        .select(
+          "company_name, owner_name, address_line, postal_code, city, email, phone, vat_id, tax_number, iban, bic, bank_name",
+        )
+        .maybeSingle();
+
+      const bytes = await buildLvPdf({
+        title: proposalTitle.trim() || `Leistungsverzeichnis ${selected.label}`,
+        reference: proposalTitle.trim(),
+        proposalText: proposalText.trim(),
+        objectDescription: floorplanSummary.trim(),
+        company: {
+          name: settings?.company_name || "Unternehmen",
+          ownerName: settings?.owner_name ?? "",
+          addressLine: settings?.address_line ?? "",
+          postalCode: settings?.postal_code ?? "",
+          city: settings?.city ?? "",
+          email: settings?.email ?? "",
+          phone: settings?.phone ?? "",
+          vatId: settings?.vat_id ?? "",
+          taxNumber: settings?.tax_number ?? "",
+          iban: settings?.iban ?? "",
+          bic: settings?.bic ?? "",
+          bankName: settings?.bank_name ?? "",
+        },
+        meta: [
+          { label: "Leistungsart", value: selected.label },
+          {
+            label: "Fläche",
+            value: `${formatNumber(mode === "area" ? num(area) : analysisTotals.sqm)} m²`,
+          },
+          { label: "Einsätze/Monat", value: formatNumber(visitsPerMonth) },
+          { label: "Stundenbedarf", value: `${formatNumber(monthlyHours)} Std./Monat` },
+        ],
+        positions,
+        vatRate: 19,
+      });
+      await saveFile(new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }), "Leistungsverzeichnis.pdf");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toQuote = useMutation({
+    mutationFn: async () => {
       const quoteId = await createDocument("quote");
+
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
