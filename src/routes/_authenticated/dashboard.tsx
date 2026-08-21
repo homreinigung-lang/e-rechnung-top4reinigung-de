@@ -251,7 +251,12 @@ function AdminDashboard() {
       accent: "",
     },
     { label: "Bezahlt", value: formatMoney(paidTotal), icon: CheckCircle2, accent: "" },
-    { label: "Ausgaben (brutto)", value: formatMoney(expenseTotal), icon: TrendingDown, accent: "" },
+    {
+      label: "Ausgaben (brutto)",
+      value: formatMoney(expenseTotal),
+      icon: TrendingDown,
+      accent: "",
+    },
     {
       label: euer.profit >= 0 ? "Saldo (Gewinn netto)" : "Saldo (Verlust netto)",
       value: formatMoney(euer.profit),
@@ -259,7 +264,6 @@ function AdminDashboard() {
       accent: euer.profit >= 0 ? "text-primary" : "text-destructive",
     },
   ];
-
 
   const acceptedQuotes = quotes.filter((d) => d.status === "accepted").length;
   const declinedQuotes = quotes.filter((d) => d.status === "declined").length;
@@ -406,7 +410,6 @@ function AdminDashboard() {
       </section>
 
       <FinanzDashboard docs={docs} expenses={expenses} />
-
 
       <div className="surface overflow-hidden">
         <div className="border-b px-5 py-4">

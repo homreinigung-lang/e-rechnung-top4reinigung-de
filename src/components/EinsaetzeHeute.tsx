@@ -97,9 +97,7 @@ export function EinsaetzeHeute() {
               <li key={e.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">
-                      {c?.company || c?.name || "Ohne Kunde"}
-                    </span>
+                    <span className="font-medium">{c?.company || c?.name || "Ohne Kunde"}</span>
                     <span
                       className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_CLASSES[status]}`}
                     >

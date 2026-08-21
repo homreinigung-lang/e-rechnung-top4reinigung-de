@@ -219,7 +219,9 @@ function KartePage() {
         (customer && serviceAddress(customer) && customer.service_note?.trim()) ||
         project?.name ||
         e.location ||
-        (customer?.company || customer?.name || "");
+        customer?.company ||
+        customer?.name ||
+        "";
       list.push({
         id: `e-${e.id}`,
         kind: "assignment",
