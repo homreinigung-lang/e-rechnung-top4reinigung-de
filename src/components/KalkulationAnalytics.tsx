@@ -59,7 +59,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
     refetchInterval: 60_000,
     queryFn: async () => {
       const [projectsRes, entriesRes, assignmentsRes, docsRes] = await Promise.all([
-        supabase.from("projects").select("id,name,hourly_rate,status").is("deleted_at", null),
+        supabase.from("projects").select("id,name,hourly_rate,status"),
         supabase
           .from("time_entries")
           .select("project_id,hours,hourly_rate,work_date,entry_type,approval_status"),
@@ -216,7 +216,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                       type="monotone"
                       dataKey="umsatz"
                       name="Umsatz"
-                      stroke="hsl(var(--primary))"
+                      stroke="var(--primary)"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -224,7 +224,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                       type="monotone"
                       dataKey="kosten"
                       name="Personalkosten"
-                      stroke="hsl(var(--muted-foreground))"
+                      stroke="var(--muted-foreground)"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -241,7 +241,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                     <XAxis dataKey="name" fontSize={10} interval={0} angle={-20} height={44} />
                     <YAxis fontSize={11} width={60} />
                     <Tooltip formatter={(v: number) => formatMoney(Number(v))} />
-                    <Bar dataKey="Deckungsbeitrag" fill="hsl(var(--primary))" radius={4} />
+                    <Bar dataKey="Deckungsbeitrag" fill="var(--primary)" radius={4} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
