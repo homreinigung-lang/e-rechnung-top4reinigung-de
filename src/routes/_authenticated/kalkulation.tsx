@@ -15,6 +15,8 @@ import { useRaumbuch } from "@/lib/raumbuch";
 
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
+import { ProjektKennzahlen } from "@/components/ProjektKennzahlen";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
