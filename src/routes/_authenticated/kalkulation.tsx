@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   Calculator,
   FileDown,
   FileSignature,
@@ -22,6 +23,15 @@ import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
 import { useRaumbuch } from "@/lib/raumbuch";
+import {
+  buildConsolidatedPositions,
+  checkPlausibility,
+  detectStairs,
+  normalizeItems,
+  positionsTotal,
+  round2,
+  MIN_STAIR_RATE,
+} from "@/lib/kalkulation-engine";
 
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
@@ -237,30 +247,57 @@ function KalkulationPage() {
       if (res.frequency > 0) setFrequency(dec(res.frequency));
       setFrequencyUnit(res.frequency_unit);
       if (res.travel > 0) setTravel(dec(res.travel));
-      if (res.stairs) {
+      // Treppen aus Antwort ODER Freitext erkennen – nie mit 0,00 € anlegen.
+      const fromText = detectStairs(aiPrompt);
+      const stairsDetected = res.stairs || fromText.stairs;
+      const detectedFloors = Math.max(res.floors, fromText.floors, stairsDetected ? 1 : 0);
+      if (stairsDetected) {
         setStairs(true);
-        if (res.floors > 0) setFloors(dec(res.floors));
+        if (detectedFloors > 0) setFloors(dec(detectedFloors));
       }
       if (res.note.trim()) setNote((prev) => (prev.trim() ? `${prev}\n${res.note}` : res.note));
       setFinalTouched(false);
 
-      const list = res.items.map((i, n) => ({
+      const rate = num(hourlyRate) || res.hourly_rate;
+      const cleaned = normalizeItems(res.items, {
+        hourlyRate: rate,
+        stairRate: num(stairRate),
+        floors: detectedFloors,
+      });
+
+      // Fehlt trotz erkannter Treppen eine Treppenhaus-Position, wird sie ergänzt.
+      if (stairsDetected && !cleaned.some((i) => /treppe/i.test(i.description))) {
+        const visits =
+          (res.frequency_unit === "week" ? res.frequency * WEEKS_PER_MONTH : res.frequency) || 1;
+        const stairPrice = num(stairRate) > 0 ? num(stairRate) : MIN_STAIR_RATE;
+        cleaned.push({
+          description: `Treppenhausreinigung – ${detectedFloors} Etagen`,
+          quantity: round2(detectedFloors * visits),
+          unit: "Etage",
+          unit_price: round2(stairPrice),
+        });
+      }
+
+      const list = cleaned.map((i, n) => ({
         id: `${Date.now()}-${n}`,
         description: i.description,
         quantity: String(i.quantity).replace(".", ","),
         unit: i.unit,
         unit_price: String(i.unit_price).replace(".", ","),
       }));
-      setAiItems((prev) => [...prev, ...list]);
+      setAiItems(list);
       toast.success(`Kalkulation übernommen – ${list.length} Positionen erstellt (frei anpassbar)`);
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
+  /** Einzige gültige Netto-Gesamtsumme: ausschließlich aus den Positionen. */
   const aiTotal = useMemo(
-    () => aiItems.reduce((s, i) => s + num(i.quantity) * num(i.unit_price), 0),
+    () => positionsTotal(aiItems.map((i) => ({ quantity: num(i.quantity), unit_price: num(i.unit_price) }))),
     [aiItems],
   );
+  const vatAmount = round2(aiTotal * 0.19);
+  const grossTotal = round2(aiTotal + vatAmount);
 
   const patchAiItem = (id: string, patch: Partial<AiItem>) =>
     setAiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -1314,30 +1351,7 @@ function KalkulationPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      if (endNet <= 0) {
-                        toast.error("Es liegt noch kein Endpreis aus der Kalkulation vor.");
-                        return;
-                      }
-                      const desc = [
-                        selected.label,
-                        mode === "area"
-                          ? `${formatNumber(num(area))} m² × ${formatMoney(num(pricePerSqm))}/m²`
-                          : `${formatNumber(num(hours))} Std. × ${formatMoney(num(hourlyRate))}/Std.`,
-                        `${formatNumber(visitsPerMonth)} Einsätze pro Monat`,
-                      ].join(" · ");
-                      setAiItems((prev) => [
-                        ...prev,
-                        {
-                          id: `${Date.now()}`,
-                          description: desc,
-                          quantity: "1",
-                          unit: "Pauschal",
-                          unit_price: String(Math.round(endNet * 100) / 100).replace(".", ","),
-                        },
-                      ]);
-                      toast.success("Kalkulationsergebnis als LV-Position übernommen");
-                    }}
+                    onClick={applyCalculation}
                   >
                     <Calculator className="size-4" /> Kalkulation übernehmen
                   </Button>
@@ -1503,7 +1517,9 @@ function KalkulationPage() {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Berechneter Vorschlag: {formatMoney(suggested)}
+                    Berechneter Vorschlag: {formatMoney(suggested)}. Dieser Betrag ist nur ein
+                    Zwischenschritt – erst über „Kalkulation übernehmen“ wird er zu Positionen und
+                    fließt in die Gesamtsumme ein.
                   </p>
                   {finalTouched && (
                     <Button
@@ -1518,29 +1534,39 @@ function KalkulationPage() {
                 </div>
 
                 <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Grundkalkulation (netto)</span>
-                    <span>{formatMoney(endNet)}</span>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Positionen im Leistungsverzeichnis</span>
+                    <span>{aiItems.length}</span>
                   </div>
-                  {aiItems.length > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Positionen (netto)</span>
-                      <span>{formatMoney(aiTotal)}</span>
-                    </div>
-                  )}
                   <div className="flex justify-between border-t pt-1 font-medium">
                     <span>Gesamt netto</span>
-                    <span>{formatMoney(endNet + aiTotal)}</span>
+                    <span>{formatMoney(aiTotal)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>zzgl. 19 % MwSt.</span>
-                    <span>{formatMoney((endNet + aiTotal) * 0.19)}</span>
+                    <span>{formatMoney(vatAmount)}</span>
                   </div>
                   <div className="flex justify-between text-base font-semibold">
                     <span>Gesamt brutto</span>
-                    <span>{formatMoney((endNet + aiTotal) * 1.19)}</span>
+                    <span>{formatMoney(grossTotal)}</span>
                   </div>
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    Die Gesamtsumme entsteht ausschließlich aus den Positionen – die
+                    Grundkalkulation wird nicht zusätzlich addiert.
+                  </p>
                 </div>
+
+                {warnings.length > 0 && (
+                  <div className="flex gap-2 rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    <div className="space-y-1">
+                      <p className="font-medium">Bitte Angaben prüfen</p>
+                      {warnings.map((w) => (
+                        <p key={w}>{w}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-3 rounded-md border border-dashed p-3">
                   <p className="text-xs text-muted-foreground">
@@ -1558,7 +1584,9 @@ function KalkulationPage() {
 
                 <Button
                   className="w-full"
-                  disabled={toQuote.isPending || endNet <= 0 || !confirmed}
+                  disabled={
+                    toQuote.isPending || aiTotal <= 0 || !confirmed || warnings.length > 0
+                  }
                   onClick={() => toQuote.mutate()}
                 >
                   <FileSignature className="size-4" />
