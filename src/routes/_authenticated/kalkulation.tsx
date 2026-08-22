@@ -23,6 +23,15 @@ import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
 import { useRaumbuch } from "@/lib/raumbuch";
+import {
+  buildConsolidatedPositions,
+  checkPlausibility,
+  detectStairs,
+  normalizeItems,
+  positionsTotal,
+  round2,
+  MIN_STAIR_RATE,
+} from "@/lib/kalkulation-engine";
 
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
