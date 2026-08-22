@@ -247,30 +247,57 @@ function KalkulationPage() {
       if (res.frequency > 0) setFrequency(dec(res.frequency));
       setFrequencyUnit(res.frequency_unit);
       if (res.travel > 0) setTravel(dec(res.travel));
-      if (res.stairs) {
+      // Treppen aus Antwort ODER Freitext erkennen – nie mit 0,00 € anlegen.
+      const fromText = detectStairs(aiPrompt);
+      const stairsDetected = res.stairs || fromText.stairs;
+      const detectedFloors = Math.max(res.floors, fromText.floors, stairsDetected ? 1 : 0);
+      if (stairsDetected) {
         setStairs(true);
-        if (res.floors > 0) setFloors(dec(res.floors));
+        if (detectedFloors > 0) setFloors(dec(detectedFloors));
       }
       if (res.note.trim()) setNote((prev) => (prev.trim() ? `${prev}\n${res.note}` : res.note));
       setFinalTouched(false);
 
-      const list = res.items.map((i, n) => ({
+      const rate = num(hourlyRate) || res.hourly_rate;
+      const cleaned = normalizeItems(res.items, {
+        hourlyRate: rate,
+        stairRate: num(stairRate),
+        floors: detectedFloors,
+      });
+
+      // Fehlt trotz erkannter Treppen eine Treppenhaus-Position, wird sie ergänzt.
+      if (stairsDetected && !cleaned.some((i) => /treppe/i.test(i.description))) {
+        const visits =
+          (res.frequency_unit === "week" ? res.frequency * WEEKS_PER_MONTH : res.frequency) || 1;
+        const stairPrice = num(stairRate) > 0 ? num(stairRate) : MIN_STAIR_RATE;
+        cleaned.push({
+          description: `Treppenhausreinigung – ${detectedFloors} Etagen`,
+          quantity: round2(detectedFloors * visits),
+          unit: "Etage",
+          unit_price: round2(stairPrice),
+        });
+      }
+
+      const list = cleaned.map((i, n) => ({
         id: `${Date.now()}-${n}`,
         description: i.description,
         quantity: String(i.quantity).replace(".", ","),
         unit: i.unit,
         unit_price: String(i.unit_price).replace(".", ","),
       }));
-      setAiItems((prev) => [...prev, ...list]);
+      setAiItems(list);
       toast.success(`Kalkulation übernommen – ${list.length} Positionen erstellt (frei anpassbar)`);
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
+  /** Einzige gültige Netto-Gesamtsumme: ausschließlich aus den Positionen. */
   const aiTotal = useMemo(
-    () => aiItems.reduce((s, i) => s + num(i.quantity) * num(i.unit_price), 0),
+    () => positionsTotal(aiItems.map((i) => ({ quantity: num(i.quantity), unit_price: num(i.unit_price) }))),
     [aiItems],
   );
+  const vatAmount = round2(aiTotal * 0.19);
+  const grossTotal = round2(aiTotal + vatAmount);
 
   const patchAiItem = (id: string, patch: Partial<AiItem>) =>
     setAiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
