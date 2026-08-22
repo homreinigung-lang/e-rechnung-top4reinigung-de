@@ -1314,30 +1314,7 @@ function KalkulationPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      if (endNet <= 0) {
-                        toast.error("Es liegt noch kein Endpreis aus der Kalkulation vor.");
-                        return;
-                      }
-                      const desc = [
-                        selected.label,
-                        mode === "area"
-                          ? `${formatNumber(num(area))} m² × ${formatMoney(num(pricePerSqm))}/m²`
-                          : `${formatNumber(num(hours))} Std. × ${formatMoney(num(hourlyRate))}/Std.`,
-                        `${formatNumber(visitsPerMonth)} Einsätze pro Monat`,
-                      ].join(" · ");
-                      setAiItems((prev) => [
-                        ...prev,
-                        {
-                          id: `${Date.now()}`,
-                          description: desc,
-                          quantity: "1",
-                          unit: "Pauschal",
-                          unit_price: String(Math.round(endNet * 100) / 100).replace(".", ","),
-                        },
-                      ]);
-                      toast.success("Kalkulationsergebnis als LV-Position übernommen");
-                    }}
+                    onClick={applyCalculation}
                   >
                     <Calculator className="size-4" /> Kalkulation übernehmen
                   </Button>
