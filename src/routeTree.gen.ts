@@ -24,6 +24,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
 import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenticated/kalkulation'
 import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/karte'
+import { Route as AuthenticatedMeinPaketRouteImport } from './routes/_authenticated/mein-paket'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedNachrichtenRouteImport } from './routes/_authenticated/nachrichten'
 import { Route as AuthenticatedPapierkorbRouteImport } from './routes/_authenticated/papierkorb'
@@ -126,6 +127,11 @@ const AuthenticatedKalkulationRoute =
 const AuthenticatedKarteRoute = AuthenticatedKarteRouteImport.update({
   id: '/karte',
   path: '/karte',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMeinPaketRoute = AuthenticatedMeinPaketRouteImport.update({
+  id: '/mein-paket',
+  path: '/mein-paket',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMeineZeitenRoute =
@@ -279,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/karte': typeof AuthenticatedKarteRoute
+  '/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/papierkorb': typeof AuthenticatedPapierkorbRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByTo {
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/karte': typeof AuthenticatedKarteRoute
+  '/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/papierkorb': typeof AuthenticatedPapierkorbRoute
@@ -361,6 +369,7 @@ export interface FileRoutesById {
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
   '/_authenticated/kalkulation': typeof AuthenticatedKalkulationRoute
   '/_authenticated/karte': typeof AuthenticatedKarteRoute
+  '/_authenticated/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/_authenticated/papierkorb': typeof AuthenticatedPapierkorbRoute
@@ -404,6 +413,7 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/kalkulation'
     | '/karte'
+    | '/mein-paket'
     | '/meine-zeiten'
     | '/nachrichten'
     | '/papierkorb'
@@ -443,6 +453,7 @@ export interface FileRouteTypes {
     | '/einstellungen'
     | '/kalkulation'
     | '/karte'
+    | '/mein-paket'
     | '/meine-zeiten'
     | '/nachrichten'
     | '/papierkorb'
@@ -485,6 +496,7 @@ export interface FileRouteTypes {
     | '/_authenticated/einstellungen'
     | '/_authenticated/kalkulation'
     | '/_authenticated/karte'
+    | '/_authenticated/mein-paket'
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/nachrichten'
     | '/_authenticated/papierkorb'
@@ -630,6 +642,13 @@ declare module '@tanstack/react-router' {
       path: '/karte'
       fullPath: '/karte'
       preLoaderRoute: typeof AuthenticatedKarteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mein-paket': {
+      id: '/_authenticated/mein-paket'
+      path: '/mein-paket'
+      fullPath: '/mein-paket'
+      preLoaderRoute: typeof AuthenticatedMeinPaketRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/meine-zeiten': {
@@ -834,6 +853,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
   AuthenticatedKalkulationRoute: typeof AuthenticatedKalkulationRoute
   AuthenticatedKarteRoute: typeof AuthenticatedKarteRoute
+  AuthenticatedMeinPaketRoute: typeof AuthenticatedMeinPaketRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedNachrichtenRoute: typeof AuthenticatedNachrichtenRoute
   AuthenticatedPapierkorbRoute: typeof AuthenticatedPapierkorbRoute
@@ -859,6 +879,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
   AuthenticatedKalkulationRoute: AuthenticatedKalkulationRoute,
   AuthenticatedKarteRoute: AuthenticatedKarteRoute,
+  AuthenticatedMeinPaketRoute: AuthenticatedMeinPaketRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedNachrichtenRoute: AuthenticatedNachrichtenRoute,
   AuthenticatedPapierkorbRoute: AuthenticatedPapierkorbRoute,

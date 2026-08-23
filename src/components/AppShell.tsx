@@ -94,6 +94,7 @@ const navGroups: readonly NavGroup[] = [
       { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
       { to: "/sicherheit", label: "Sicherheit & Backup", icon: ShieldCheck },
       { to: "/papierkorb", label: "Papierkorb", icon: Trash2 },
+      { to: "/mein-paket", label: "Mein Paket", icon: BadgeCheck },
       { to: "/profil", label: "Mein Profil", icon: UserCircle },
       { to: "/einstellungen", label: "Einstellungen", icon: Settings },
     ],

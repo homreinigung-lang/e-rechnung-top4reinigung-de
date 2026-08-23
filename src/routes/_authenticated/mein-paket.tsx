@@ -1,0 +1,168 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Sparkles } from "lucide-react";
+
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { usePlans, euro } from "@/lib/admin";
+import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
+import { formatDate } from "@/lib/format";
+
+export const Route = createFileRoute("/_authenticated/mein-paket")({
+  head: () => ({
+    meta: [
+      { title: "Mein Paket – GebCalc" },
+      {
+        name: "description",
+        content: "Aktuelles GebCalc-Paket ansehen, verlängern oder auf ein größeres Paket wechseln.",
+      },
+      { property: "og:title", content: "Mein Paket – GebCalc" },
+      {
+        property: "og:description",
+        content: "Aktuelles GebCalc-Paket ansehen, verlängern oder upgraden.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: MeinPaket,
+});
+
+/** Eigenes Abonnement der angemeldeten Firma (RLS: nur eigenes). */
+function useMySubscription() {
+  return useQuery({
+    queryKey: ["my_subscription"],
+    queryFn: async (): Promise<Subscription | null> => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) return null;
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", uid)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as Subscription | null;
+    },
+  });
+}
+
+const CONTACT = "info@top4reinigung.de";
+
+function requestMail(subject: string, body: string) {
+  return `mailto:${CONTACT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function MeinPaket() {
+  const { data: sub, isLoading } = useMySubscription();
+  const { data: plans } = usePlans();
+  const activePlans = (plans ?? []).filter((p) => p.active);
+  const currentCode = sub?.plan ?? "";
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-display text-2xl font-bold">Mein Paket</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Ihre aktuelle Paket-Auswahl, Laufzeit und mögliche Upgrades.
+        </p>
+      </div>
+
+      <section className="surface p-6">
+        <h2 className="text-lg font-semibold">Aktuelles Abonnement</h2>
+        {isLoading ? (
+          <p className="mt-2 text-sm text-muted-foreground">Wird geladen …</p>
+        ) : sub ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Paket</p>
+              <p className="text-base font-semibold">{planLabel[sub.plan] ?? sub.plan}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Status</p>
+              <Badge variant="secondary">{statusLabel[sub.status] ?? sub.status}</Badge>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Beginn</p>
+              <p className="text-base font-semibold">{formatDate(sub.started_on)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Verlängerung</p>
+              <p className="text-base font-semibold">
+                {sub.renews_on ? formatDate(sub.renews_on) : "—"}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Für Ihr Konto ist derzeit kein Paket hinterlegt. Wählen Sie unten ein Paket aus – wir
+            richten es für Sie ein.
+          </p>
+        )}
+        {sub ? (
+          <Button asChild variant="secondary" className="mt-6">
+            <a
+              href={requestMail(
+                "Verlängerung GebCalc-Paket",
+                `Guten Tag,\n\nbitte verlängern Sie unser Paket "${planLabel[sub.plan] ?? sub.plan}" für ${sub.company_name}.\n\nVielen Dank`,
+              )}
+            >
+              Verlängerung anfragen
+            </a>
+          </Button>
+        ) : null}
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold">Verfügbare Pakete</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {activePlans.map((plan) => {
+            const isCurrent = plan.code === currentCode;
+            return (
+              <div
+                key={plan.id}
+                className={`surface flex flex-col p-6 ${isCurrent ? "ring-2 ring-primary" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-base font-semibold">{plan.name}</h3>
+                  {isCurrent ? <Badge>Ihr Paket</Badge> : null}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
+                <p className="mt-4 text-2xl font-bold">
+                  {euro(plan.price_monthly_cents)}
+                  <span className="text-sm font-normal text-muted-foreground"> / Monat</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  oder {euro(plan.price_yearly_cents)} / Jahr
+                </p>
+                <ul className="mt-4 flex-1 space-y-2 text-sm">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button asChild className="mt-6" disabled={isCurrent} variant={isCurrent ? "secondary" : "default"}>
+                  <a
+                    href={requestMail(
+                      `Upgrade auf Paket ${plan.name}`,
+                      `Guten Tag,\n\nwir möchten auf das Paket "${plan.name}" wechseln.\n\nFirma: ${sub?.company_name ?? ""}\n\nVielen Dank`,
+                    )}
+                  >
+                    <Sparkles className="size-4" />
+                    {isCurrent ? "Aktuell gebucht" : "Upgrade anfragen"}
+                  </a>
+                </Button>
+              </div>
+            );
+          })}
+          {activePlans.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Derzeit sind keine Pakete hinterlegt.</p>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
+}
