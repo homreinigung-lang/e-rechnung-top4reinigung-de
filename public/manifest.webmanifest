@@ -1,11 +1,11 @@
 {
-  "name": "GebCalc – Rechnungen & Angebote",
+  "name": "GebCalc – Rechnungssystem",
   "short_name": "GebCalc",
   "lang": "de",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#0f766e",
+  "theme_color": "#1d6ef5",
   "icons": [
     {
       "src": "/app-icon-192.png",
