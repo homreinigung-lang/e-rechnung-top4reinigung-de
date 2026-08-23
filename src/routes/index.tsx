@@ -261,13 +261,19 @@ function Landing() {
             <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {partners.map((p) => (
                 <div
-                  key={p}
+                  key={p.key}
                   className="flex items-center gap-3 rounded-lg border bg-card px-4 py-4 text-sm font-semibold"
                 >
                   <Building2 className="size-5 shrink-0 text-primary" />
-                  <span>{p}</span>
+                  <span className="flex flex-col leading-tight">
+                    <span>{p.name}</span>
+                    {p.city ? (
+                      <span className="text-xs font-normal text-muted-foreground">{p.city}</span>
+                    ) : null}
+                  </span>
                 </div>
               ))}
+
             </div>
           </div>
         </section>
