@@ -623,7 +623,7 @@ function DokumenteListe() {
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-muted/70 text-muted-foreground border-transparent",
   sent: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
-  accepted: "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30",
+  accepted: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30",
   declined: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
   paid: "bg-zinc-500/15 text-zinc-500 dark:text-zinc-400 border-zinc-500/30",
   cancelled: "bg-zinc-500/15 text-zinc-500 dark:text-zinc-400 border-zinc-500/30",

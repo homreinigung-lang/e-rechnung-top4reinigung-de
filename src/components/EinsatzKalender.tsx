@@ -856,7 +856,7 @@ export function EinsatzKalender({
                           }}
                           className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${
                             donePlan
-                              ? "border-emerald-600 bg-emerald-600 text-white"
+                              ? "border-sky-600 bg-sky-600 text-white"
                               : statusClasses(e)
                           }`}
                           title={
@@ -1001,7 +1001,7 @@ export function EinsatzKalender({
                               }
                               className={`w-full rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${
                                 donePlan
-                                  ? "border-emerald-600 bg-emerald-600 text-white"
+                                  ? "border-sky-600 bg-sky-600 text-white"
                                   : statusClasses(e)
                               }`}
                             >

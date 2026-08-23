@@ -69,7 +69,7 @@ type CustomerForm = {
 
 /** Vertragsstatus für die langfristige Verwaltung von Unterhaltsreinigungsverträgen. */
 const STATUS: { value: string; label: string; className: string }[] = [
-  { value: "active", label: "Aktiv", className: "bg-emerald-100 text-emerald-800" },
+  { value: "active", label: "Aktiv", className: "bg-sky-100 text-sky-800" },
   { value: "paused", label: "Pausiert", className: "bg-amber-100 text-amber-900" },
   { value: "terminated", label: "Gekündigt", className: "bg-rose-100 text-rose-800" },
 ];

@@ -918,7 +918,7 @@ function KalkulationPage() {
                       onChange={(e) => setArea(e.target.value)}
                     />
                     {raumbuchApplied && raumbuch ? (
-                      <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      <p className="text-xs text-sky-700 dark:text-sky-400">
                         Aus Raumbuch übernommen – {raumbuch.roomCount} Räume aus dem Grundriss-Scan
                         (manuell überschreibbar).
                       </p>
@@ -944,7 +944,7 @@ function KalkulationPage() {
                       onChange={(e) => setHours(e.target.value)}
                     />
                     {raumbuchApplied && raumbuch ? (
-                      <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                      <p className="text-xs text-sky-700 dark:text-sky-400">
                         Aus Raumbuch berechnet – Leistungswerte für {raumbuch.matched} Räume
                         {raumbuch.unmatched > 0 ? `, ${raumbuch.unmatched} pauschal` : ""} (manuell
                         überschreibbar).

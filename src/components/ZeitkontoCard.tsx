@@ -224,12 +224,12 @@ export function ZeitkontoCard({
                 <td className="py-2 text-right">{r.month.ist.toFixed(2).replace(".", ",")} Std.</td>
                 <td className="py-2 text-right">{formatStunden(r.month.korrektur)}</td>
                 <td
-                  className={`py-2 text-right font-semibold ${r.month.saldo < 0 ? "text-destructive" : "text-emerald-600"}`}
+                  className={`py-2 text-right font-semibold ${r.month.saldo < 0 ? "text-destructive" : "text-sky-600"}`}
                 >
                   {formatStunden(r.month.saldo)}
                 </td>
                 <td
-                  className={`py-2 text-right font-semibold ${r.gesamt.saldo < 0 ? "text-destructive" : "text-emerald-600"}`}
+                  className={`py-2 text-right font-semibold ${r.gesamt.saldo < 0 ? "text-destructive" : "text-sky-600"}`}
                 >
                   {formatStunden(r.gesamt.saldo)}
                 </td>
@@ -258,7 +258,7 @@ export function ZeitkontoCard({
                 {a.reason ? ` · ${a.reason}` : ""}
               </span>
               <span
-                className={`shrink-0 font-medium ${Number(a.hours) < 0 ? "text-destructive" : "text-emerald-600"}`}
+                className={`shrink-0 font-medium ${Number(a.hours) < 0 ? "text-destructive" : "text-sky-600"}`}
               >
                 {formatStunden(Number(a.hours))}
               </span>
