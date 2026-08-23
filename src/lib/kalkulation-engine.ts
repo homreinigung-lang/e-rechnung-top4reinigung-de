@@ -207,6 +207,32 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
 }
 
 /**
+ * Gleicht einen Positionssatz centgenau an einen verbindlichen Netto-Endpreis an.
+ * Eine sichtbare Ausgleichsposition vermeidet Rundungsreste bei Positionen mit
+ * Mengen größer als 1 und macht manuelle Preisänderungen im LV nachvollziehbar.
+ */
+export function reconcilePositionsTotal(
+  positions: CalcPosition[],
+  targetTotal: number,
+): CalcPosition[] {
+  const target = round2(targetTotal);
+  const current = positionsTotal(positions);
+  const difference = round2(target - current);
+
+  if (Math.abs(difference) < 0.01) return positions;
+
+  return [
+    ...positions,
+    {
+      description: difference > 0 ? "Manuelle Endpreisanpassung" : "Manueller Preisnachlass",
+      quantity: 1,
+      unit: "Pauschal",
+      unit_price: difference,
+    },
+  ];
+}
+
+/**
  * Bereinigt KI-Positionen: sinnvolle Preise statt 0,00 €, saubere Rundung,
  * Glas-Positionen mit dem höheren Fixsatz.
  */
