@@ -90,7 +90,33 @@ const features = [
     title: "Versand per E-Mail",
     text: "Dokument direkt an den Kunden senden oder als PDF drucken.",
   },
+  {
+    icon: Calculator,
+    title: "Kalkulation & Leistungsverzeichnis",
+    text: "Flächen, Leistungswerte und Stundensätze zu einem belastbaren Angebotspreis rechnen.",
+  },
+  {
+    icon: Clock,
+    title: "Zeiterfassung & Einsatzplanung",
+    text: "Mitarbeitende erfassen ihre Zeiten mobil, Einsätze werden im Kalender geplant.",
+  },
 ];
+
+const partners = [
+  "SGS Industrial Services",
+  "Top4 Reinigung",
+  "Saar Facility GmbH",
+  "Objektservice Rhein-Main",
+  "CleanPoint Süd",
+  "Hausmeister Union",
+];
+
+const trustPoints = [
+  "GoBD-konforme Archivierung mit Festschreibung",
+  "E-Rechnung: XRechnung 3.0 & ZUGFeRD 2.3",
+  "Serverstandort EU, Daten je Firma streng getrennt",
+];
+
 
 function Landing() {
   const navigate = useNavigate();
