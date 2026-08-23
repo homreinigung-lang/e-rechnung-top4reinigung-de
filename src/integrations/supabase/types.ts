@@ -940,6 +940,48 @@ export type Database = {
         }
         Relationships: []
       }
+      plans: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          description: string
+          features: string[]
+          id: string
+          name: string
+          price_monthly_cents: number
+          price_yearly_cents: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          description?: string
+          features?: string[]
+          id?: string
+          name: string
+          price_monthly_cents?: number
+          price_yearly_cents?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          description?: string
+          features?: string[]
+          id?: string
+          name?: string
+          price_monthly_cents?: number
+          price_yearly_cents?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       project_assignments: {
         Row: {
           assignment_role: string
