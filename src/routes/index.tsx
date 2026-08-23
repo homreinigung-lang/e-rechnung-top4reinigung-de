@@ -10,7 +10,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, Mail, MoreVertical, Receipt, ShieldCheck } from "lucide-react";
+import {
+  Building2,
+  Calculator,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Lock,
+  Mail,
+  MapPin,
+  MoreVertical,
+  Phone,
+  Receipt,
+  ShieldCheck,
+} from "lucide-react";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
