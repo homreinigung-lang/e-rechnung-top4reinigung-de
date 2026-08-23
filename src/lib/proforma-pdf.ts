@@ -5,6 +5,7 @@ import {
 } from "@/lib/platform-payment";
 import { euro } from "@/lib/admin";
 import { formatDate } from "@/lib/format";
+import { cleanPdfText } from "@/lib/pdf-text";
 
 const MM = 72 / 25.4;
 const PAGE_W = 210 * MM;
