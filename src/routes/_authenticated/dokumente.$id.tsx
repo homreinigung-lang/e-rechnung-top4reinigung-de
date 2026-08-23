@@ -33,6 +33,8 @@ import {
   today,
   vatRateForTaxMode,
 } from "@/lib/format";
+import { Sparkles } from "lucide-react";
+import { useCanReverseCharge } from "@/lib/subscriptions";
 import { buildEpcPayload } from "@/lib/epc";
 import {
   QUOTE_DISCLAIMER,
@@ -222,7 +224,11 @@ function DokumentDetail() {
     );
   }, [data]);
 
-  const taxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
+  const { canReverseCharge } = useCanReverseCharge();
+  const rawTaxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
+  // Feature-Gate: Reverse-Charge nur ab Pro – Basis-Konten rechnen mit 19 % Inland ab.
+  const taxMode =
+    rawTaxMode === "eu_reverse_charge" && !canReverseCharge ? "domestic" : rawTaxMode;
   const vatRate = vatRateForTaxMode(taxMode);
   const taxNote = taxNoteForTaxMode(taxMode);
 
@@ -272,6 +278,7 @@ function DokumentDetail() {
         due_date: form["due_date"] ? form["due_date"] : null,
         paid_at: form["status"] === "paid" ? form["paid_at"] || today() : null,
         customer_id: form["customer_id"] || null,
+        tax_mode: taxMode,
         vat_rate: vatRate,
         reverse_charge: taxMode === "eu_reverse_charge",
         discount_percent: discountPercent,
@@ -603,7 +610,7 @@ function DokumentDetail() {
       tax_mode:
         String(f["tax_mode"] ?? "") === "kleinunternehmer"
           ? "kleinunternehmer"
-          : euReverseCharge
+          : euReverseCharge && canReverseCharge
             ? "eu_reverse_charge"
             : "domestic",
     }));
@@ -1209,14 +1216,25 @@ function DokumentDetail() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="domestic">Inland (Deutschland) – 19 % MwSt.</SelectItem>
-              <SelectItem value="eu_reverse_charge">
+              <SelectItem value="eu_reverse_charge" disabled={!canReverseCharge}>
                 EU-Ausland – Reverse-Charge (0 % MwSt.)
+                {canReverseCharge ? "" : " – ab Pro"}
               </SelectItem>
               <SelectItem value="kleinunternehmer">
                 Kleinunternehmer § 19 UStG (0 % MwSt.)
               </SelectItem>
             </SelectContent>
           </Select>
+          {!canReverseCharge && (
+            <p className="flex flex-wrap items-center gap-1 rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+              <Sparkles className="size-3.5 text-primary" />
+              Rechnungen ohne MwSt. (Reverse-Charge für EU-Ausland) sind ab dem{" "}
+              <strong className="font-semibold text-foreground">Pro-Paket</strong> verfügbar.
+              <Link to="/mein-paket" className="font-medium text-primary underline">
+                Paket ansehen
+              </Link>
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
             {taxMode === "domestic"
               ? "Es werden 19 % Umsatzsteuer ausgewiesen. Es wird kein Steuerhinweis gedruckt."
