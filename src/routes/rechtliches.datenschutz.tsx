@@ -16,7 +16,9 @@ export const Route = createFileRoute("/rechtliches/datenschutz")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { property: "og:url", content: "https://e-rechnung.top4reinigung.de/rechtliches/datenschutz" },
     ],
+    links: [{ rel: "canonical", href: "https://e-rechnung.top4reinigung.de/rechtliches/datenschutz" }],
   }),
   component: Datenschutz,
 });

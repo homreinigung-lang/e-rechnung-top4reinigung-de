@@ -17,7 +17,9 @@ export const Route = createFileRoute("/rechtliches/")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { property: "og:url", content: "https://e-rechnung.top4reinigung.de/rechtliches" },
     ],
+    links: [{ rel: "canonical", href: "https://e-rechnung.top4reinigung.de/rechtliches" }],
   }),
   component: LegalIndex,
 });

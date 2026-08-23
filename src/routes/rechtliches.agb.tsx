@@ -16,7 +16,9 @@ export const Route = createFileRoute("/rechtliches/agb")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { property: "og:url", content: "https://e-rechnung.top4reinigung.de/rechtliches/agb" },
     ],
+    links: [{ rel: "canonical", href: "https://e-rechnung.top4reinigung.de/rechtliches/agb" }],
   }),
   component: Agb,
 });

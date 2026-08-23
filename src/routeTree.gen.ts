@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as FreigabeAusstehendRouteImport } from './routes/freigabe-ausstehend'
 import { Route as RechtlichesRouteImport } from './routes/rechtliches'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
 import { Route as AuthenticatedBankverbindungRouteImport } from './routes/_authenticated/bankverbindung'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -71,6 +72,11 @@ const RechtlichesRoute = RechtlichesRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAusgabenRoute = AuthenticatedAusgabenRouteImport.update({
@@ -231,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -265,6 +272,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -302,6 +310,7 @@ export interface FileRoutesById {
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
   '/_authenticated/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -339,6 +348,7 @@ export interface FileRouteTypes {
     | '/freigabe-ausstehend'
     | '/rechtliches'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/ausgaben'
     | '/bankverbindung'
     | '/dashboard'
@@ -373,6 +383,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/freigabe-ausstehend'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/ausgaben'
     | '/bankverbindung'
     | '/dashboard'
@@ -409,6 +420,7 @@ export interface FileRouteTypes {
     | '/freigabe-ausstehend'
     | '/rechtliches'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/_authenticated/ausgaben'
     | '/_authenticated/bankverbindung'
     | '/_authenticated/dashboard'
@@ -446,6 +458,7 @@ export interface RootRouteChildren {
   FreigabeAusstehendRoute: typeof FreigabeAusstehendRoute
   RechtlichesRoute: typeof RechtlichesRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StbTokenRoute: typeof StbTokenRoute
   ApiPublicFotoRetentionRoute: typeof ApiPublicFotoRetentionRoute
   ApiPublicKontoFreigabeRoute: typeof ApiPublicKontoFreigabeRoute
@@ -493,6 +506,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/ausgaben': {
@@ -770,6 +790,7 @@ const rootRouteChildren: RootRouteChildren = {
   FreigabeAusstehendRoute: FreigabeAusstehendRoute,
   RechtlichesRoute: RechtlichesRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   StbTokenRoute: StbTokenRoute,
   ApiPublicFotoRetentionRoute: ApiPublicFotoRetentionRoute,
   ApiPublicKontoFreigabeRoute: ApiPublicKontoFreigabeRoute,
