@@ -21,6 +21,13 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirect({ to: "/freigabe-ausstehend" });
     }
 
+    // Neue Firmen erhalten automatisch eine kostenlose Testphase.
+    try {
+      await ensureTrialSubscription();
+    } catch (error) {
+      console.warn("Testphase konnte nicht angelegt werden:", error);
+    }
+
     return { user: data.user };
   },
 
