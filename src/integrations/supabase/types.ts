@@ -1533,6 +1533,22 @@ export type Database = {
     }
     Functions: {
       create_storno: { Args: { _id: string }; Returns: string }
+      employee_self_update_allowed: {
+        Args: {
+          _active: boolean
+          _auth_user_id: string
+          _contract_start: string
+          _contract_type: string
+          _email: string
+          _hourly_rate: number
+          _id: string
+          _personnel_number: string
+          _role: string
+          _user_id: string
+          _weekly_hours: number
+        }
+        Returns: boolean
+      }
       finalize_document: {
         Args: { _id: string }
         Returns: {
@@ -1620,6 +1636,33 @@ export type Database = {
       restore_entity: {
         Args: { _entity: string; _id: string }
         Returns: undefined
+      }
+      time_entry_photo_update_allowed: {
+        Args: {
+          _absence_reason: string
+          _approval_status: string
+          _billed: boolean
+          _break_minutes: number
+          _completed_at: string
+          _customer_id: string
+          _decided_at: string
+          _decided_by: string
+          _decision_note: string
+          _employee_id: string
+          _employee_name: string
+          _end_time: string
+          _entry_type: string
+          _hourly_rate: number
+          _hours: number
+          _id: string
+          _location: string
+          _note: string
+          _project_id: string
+          _start_time: string
+          _user_id: string
+          _work_date: string
+        }
+        Returns: boolean
       }
       trash_entity: {
         Args: { _entity: string; _id: string }
