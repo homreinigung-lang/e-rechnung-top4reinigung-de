@@ -306,9 +306,10 @@ function Landing() {
                     </li>
                   ))}
                 </ul>
-                <Button asChild className="mt-6">
-                  <Link to="/auth">Paket wählen</Link>
+                <Button className="mt-6" onClick={() => setOrderPlan(plan)}>
+                  Paket wählen
                 </Button>
+
               </div>
             ))}
             {activePlans.length === 0 ? (
