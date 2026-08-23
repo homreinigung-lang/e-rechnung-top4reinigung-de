@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Sparkles } from "lucide-react";
+import { CheckCircle2, Info, Sparkles } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePlans, euro } from "@/lib/admin";
 import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
+import { PAYMENT_DETAILS } from "@/lib/plan-orders";
 import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/mein-paket")({
@@ -59,6 +60,9 @@ function MeinPaket() {
   const { data: plans } = usePlans();
   const activePlans = (plans ?? []).filter((p) => p.active);
   const currentCode = sub?.plan ?? "";
+  const daysLeft = sub?.renews_on
+    ? Math.ceil((new Date(`${sub.renews_on}T00:00:00`).getTime() - Date.now()) / 86_400_000)
+    : null;
 
   return (
     <div className="space-y-8">
@@ -113,6 +117,63 @@ function MeinPaket() {
           </Button>
         ) : null}
       </section>
+
+      {sub ? (
+        <section className="surface p-6">
+          <div className="flex items-start gap-3">
+            <Info className="mt-0.5 size-5 shrink-0 text-primary" />
+            <div className="space-y-3">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {sub.status === "trial"
+                    ? daysLeft === null
+                      ? "Kostenlose Testphase aktiv"
+                      : daysLeft >= 0
+                        ? `Kostenlose Testphase – noch ${daysLeft} Tage`
+                        : "Testphase abgelaufen"
+                    : "Verlängerung per Rechnung"}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {sub.status === "trial"
+                    ? `Sie testen alle Funktionen Ihres Pakets kostenlos bis zum ${sub.renews_on ? formatDate(sub.renews_on) : "—"}. Es erfolgt keine automatische Abbuchung: Zur Weiternutzung senden wir Ihnen eine Rechnung, die Sie bequem per SEPA-Überweisung begleichen. Nach Zahlungseingang schalten wir Ihr Konto manuell frei.`
+                    : "Ihre Verlängerung wird per Rechnung abgerechnet. Bitte überweisen Sie den Betrag per SEPA-Überweisung – nach Zahlungseingang verlängern wir Ihr Abonnement manuell."}
+                </p>
+              </div>
+
+              <div className="grid gap-2 text-sm sm:grid-cols-2">
+                <p>
+                  <span className="text-muted-foreground">Empfänger: </span>
+                  {PAYMENT_DETAILS.recipient}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Bank: </span>
+                  {PAYMENT_DETAILS.bank}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">IBAN: </span>
+                  {PAYMENT_DETAILS.iban}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">BIC: </span>
+                  {PAYMENT_DETAILS.bic}
+                </p>
+                <p className="sm:col-span-2 text-muted-foreground">{PAYMENT_DETAILS.terms}</p>
+              </div>
+
+              <Button asChild>
+                <a
+                  href={requestMail(
+                    "Rechnung zur Verlängerung anfordern",
+                    `Guten Tag,\n\nbitte senden Sie uns die Rechnung zur Verlängerung des Pakets "${planLabel[sub.plan] ?? sub.plan}".\n\nFirma: ${sub.company_name}\n\nVielen Dank`,
+                  )}
+                >
+                  Rechnung zur Verlängerung anfordern
+                </a>
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section>
         <h2 className="text-lg font-semibold">Verfügbare Pakete</h2>
