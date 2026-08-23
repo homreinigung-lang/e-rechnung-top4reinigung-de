@@ -126,15 +126,17 @@ function MeinPaket() {
           </p>
         )}
         {sub ? (
-          <Button asChild variant="secondary" className="mt-6">
-            <a
-              href={requestMail(
-                "Verlängerung GebCalc-Paket",
-                `Guten Tag,\n\nbitte verlängern Sie unser Paket "${planLabel[sub.plan] ?? sub.plan}" für ${sub.company_name}.\n\nVielen Dank`,
-              )}
-            >
-              Verlängerung anfragen
-            </a>
+          <Button
+            variant="secondary"
+            className="mt-6"
+            onClick={() =>
+              openRenewal(
+                "Verlängerung – Zahlungsdaten",
+                "Bitte überweisen Sie den Betrag per SEPA-Überweisung. Nach Zahlungseingang verlängern wir Ihr Paket manuell.",
+              )
+            }
+          >
+            Verlängerung anfragen
           </Button>
         ) : null}
       </section>
