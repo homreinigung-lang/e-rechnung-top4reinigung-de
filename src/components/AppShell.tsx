@@ -126,8 +126,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           ...baseGroups,
           {
             title: "Administration",
-            items: [{ to: "/abonnements", label: "Abonnements", icon: BadgeCheck }],
+            items: [{ to: "/admin", label: "Plattform-Admin", icon: BadgeCheck }],
           },
+
         ]
       : baseGroups;
   const homeTo = groups[0]!.items[0]!.to;
