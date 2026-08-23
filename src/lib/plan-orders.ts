@@ -44,6 +44,14 @@ export type OrderTotals = {
   reverseCharge: boolean;
 };
 
+/** Pakete, die das Reverse-Charge-Verfahren nutzen dürfen (Basis ausgenommen). */
+const REVERSE_CHARGE_PLANS = new Set(["pro", "enterprise"]);
+
+/** Ist für dieses Paket Reverse-Charge grundsätzlich möglich? */
+export function planAllowsReverseCharge(plan: Plan): boolean {
+  return REVERSE_CHARGE_PLANS.has((plan.code || "").trim().toLowerCase());
+}
+
 /** Netto, Umsatzsteuer und Brutto für die gewählte Laufzeit berechnen. */
 export function calcTotals(
   plan: Plan,
@@ -54,10 +62,14 @@ export function calcTotals(
   const netCents =
     billingInterval === "yearly" ? plan.price_yearly_cents : plan.price_monthly_cents;
   const code = (country || "DE").trim().toUpperCase();
-  const reverseCharge = EU_COUNTRIES.has(code) && vatId.trim().length > 3;
-  const vatCents = reverseCharge || code !== "DE" ? 0 : Math.round(netCents * VAT_RATE);
+  const isEu = EU_COUNTRIES.has(code);
+  const reverseCharge = isEu && vatId.trim().length > 3 && planAllowsReverseCharge(plan);
+  // Basis-Paket: EU-Kunden werden weiterhin mit deutscher USt. abgerechnet.
+  const taxable = code === "DE" || (isEu && !reverseCharge);
+  const vatCents = taxable ? Math.round(netCents * VAT_RATE) : 0;
   return { netCents, vatCents, grossCents: netCents + vatCents, reverseCharge };
 }
+
 
 export type OrderResult = {
   orderNumber: string;
