@@ -568,9 +568,9 @@ function DokumentDetail() {
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
   const senderLine = [
-    settings?.["company_name"] ?? "Hom Reinigung Service",
-    settings?.["address_line"] ?? "Poststraße 8",
-    `${settings?.["postal_code"] ?? "66333"} ${settings?.["city"] ?? "Völklingen"}`.trim(),
+    settings?.["company_name"] ?? "",
+    settings?.["address_line"] ?? "",
+    `${settings?.["postal_code"] ?? ""} ${settings?.["city"] ?? ""}`.trim(),
   ]
     .filter(Boolean)
     .join(", ");
@@ -623,7 +623,7 @@ function DokumentDetail() {
   function buildMail() {
     const to = String(form["customer_email"] ?? "");
     const label = DOC_TYPE_LABEL[doc.type];
-    const subject = `${label} ${docNumber} – ${settings?.["company_name"] ?? "Hom Reinigung Service"}`;
+    const subject = `${label} ${docNumber} – ${settings?.["company_name"] ?? ""}`;
     const baseLines = [
       `Sehr geehrte Damen und Herren,`,
       ``,
@@ -641,7 +641,7 @@ function DokumentDetail() {
 
     const signatureText = [
       String(settings?.["email_signature"] ?? "") ||
-        [settings?.["company_name"] ?? "Hom Reinigung Service", settings?.["phone"] ?? ""]
+        [settings?.["company_name"] ?? "", settings?.["phone"] ?? ""]
           .filter(Boolean)
           .join("\n"),
       settings?.["website_url"] ? String(settings["website_url"]) : "",
@@ -665,13 +665,13 @@ function DokumentDetail() {
 
   const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
-  const bankName = String(settings?.["bank_name"] ?? "") || "Sparkasse Saarbrücken";
-  const iban = String(settings?.["iban"] ?? "") || "DE05 5905 0101 0067 2210 28";
-  const bic = String(settings?.["bic"] ?? "") || "SAKSDE55XXX";
+  const bankName = String(settings?.["bank_name"] ?? "") ;
+  const iban = String(settings?.["iban"] ?? "") ;
+  const bic = String(settings?.["bic"] ?? "") ;
 
   const epc = isInvoice
     ? buildEpcPayload({
-        name: String(settings?.["company_name"] ?? "Hom Reinigung Service"),
+        name: String(settings?.["company_name"] ?? ""),
         iban,
         bic,
         amount: grossTotal,
@@ -734,7 +734,7 @@ function DokumentDetail() {
   /** Alle Belegdaten für die bibliotheksbasierte PDF-Erzeugung (pdf-lib) sammeln. */
   async function buildPdfData(numberOverride?: string): Promise<PdfDocData> {
     const number = numberOverride ?? docNumber;
-    const companyName = String(settings?.["company_name"] ?? "Hom Reinigung Service");
+    const companyName = String(settings?.["company_name"] ?? "");
 
     const meta: Array<{ label: string; value: string }> = [];
     if (form["customer_number"])
@@ -864,8 +864,8 @@ function DokumentDetail() {
         {
           heading: "Steuerangaben",
           lines: [
-            `USt-IdNr.: ${String(settings?.["vat_id"] ?? "DE458492078")}`,
-            `Steuernummer: ${String(settings?.["tax_number"] ?? "040/200/01653")}`,
+            `USt-IdNr.: ${String(settings?.["vat_id"] ?? "")}`,
+            `Steuernummer: ${String(settings?.["tax_number"] ?? "")}`,
             settings?.["owner_name"] ? `Inhaber: ${String(settings["owner_name"])}` : "",
           ],
         },
@@ -1606,7 +1606,7 @@ function DokumentDetail() {
                 />
               ) : (
                 <div className="invoice-logo flex h-14 w-14 items-center justify-center rounded-md border border-border bg-muted font-display text-lg font-bold text-muted-foreground">
-                  {String(settings?.["company_name"] ?? "Hom Reinigung Service")
+                  {String(settings?.["company_name"] ?? "")
                     .split(/\s+/)
                     .slice(0, 2)
                     .map((w) => w.charAt(0).toUpperCase())
@@ -1615,7 +1615,7 @@ function DokumentDetail() {
               )}
               <div>
                 <h1 className="font-display text-2xl font-bold">
-                  {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
+                  {String(settings?.["company_name"] ?? "")}
                 </h1>
                 {settings?.["owner_name"] && (
                   <p className="text-xs text-muted-foreground">
@@ -1886,7 +1886,7 @@ function DokumentDetail() {
           <footer className="mt-8 grid gap-4 border-t pt-3 text-[11px] text-muted-foreground sm:grid-cols-3">
             <div>
               <div className="font-medium text-foreground">
-                {String(settings?.["company_name"] ?? "Hom Reinigung Service")}
+                {String(settings?.["company_name"] ?? "")}
               </div>
               <div>{String(settings?.["address_line"] ?? "")}</div>
               <div>
@@ -1897,8 +1897,8 @@ function DokumentDetail() {
             </div>
             <div>
               <div className="font-medium text-foreground">Steuerangaben</div>
-              <div>USt-IdNr.: {String(settings?.["vat_id"] ?? "DE458492078")}</div>
-              <div>Steuernummer: {String(settings?.["tax_number"] ?? "040/200/01653")}</div>
+              <div>USt-IdNr.: {String(settings?.["vat_id"] ?? "")}</div>
+              <div>Steuernummer: {String(settings?.["tax_number"] ?? "")}</div>
               {settings?.["owner_name"] && <div>Inhaber: {String(settings["owner_name"])}</div>}
             </div>
             <div>

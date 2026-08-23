@@ -126,7 +126,7 @@ function buildModel(input: ERechnungInput) {
     vatAmount: zeroVat ? 0 : vatAmount,
     grossTotal,
     seller: {
-      name: String(s["company_name"] ?? "Hom Reinigung Service"),
+      name: String(s["company_name"] ?? ""),
       street: String(s["address_line"] ?? ""),
       zip: String(s["postal_code"] ?? ""),
       city: String(s["city"] ?? ""),

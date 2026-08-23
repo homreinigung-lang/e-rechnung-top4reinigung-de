@@ -192,7 +192,7 @@ function Steuerberater() {
 
   const euerPdf = useMutation({
     mutationFn: async () => {
-      const blob = await buildEuerPdf(euer, settings?.company_name ?? "Hom Reinigung Service");
+      const blob = await buildEuerPdf(euer, settings?.company_name ?? "");
       await saveFile(blob, `EUER_${from}_${to}.pdf`);
     },
     onError: (e: Error) => toast.error(e.message),

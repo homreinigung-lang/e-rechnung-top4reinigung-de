@@ -43,7 +43,7 @@ export async function sendMail(opts: { to: string; subject: string; html: string
 
 const shell = (inner: string) =>
   `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.6;font-size:15px">${inner}
-  <p style="margin-top:28px;color:#64748b;font-size:12px">GebCalc – Hom Reinigung Service</p></div>`;
+  <p style="margin-top:28px;color:#64748b;font-size:12px">GebCalc</p></div>`;
 
 export function ownerRequestMail(p: {
   name: string;

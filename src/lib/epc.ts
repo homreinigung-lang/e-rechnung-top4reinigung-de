@@ -7,7 +7,7 @@ export function buildEpcPayload(params: {
   reference: string;
 }): string | null {
   const iban = params.iban.replace(/\s+/g, "").toUpperCase();
-  const name = (params.name || "").trim().slice(0, 70) || "Hom Reinigung Service";
+  const name = (params.name || "").trim().slice(0, 70) || "Rechnungssteller";
   if (!iban) return null;
   // Betrag ist optional: bei 0 EUR wird das Feld leer gelassen (Bank-App fragt nach).
   const amount = params.amount > 0 ? `EUR${params.amount.toFixed(2)}` : "";
