@@ -148,6 +148,7 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
 function CompanyProfil() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
+  const [smallBusiness, setSmallBusiness] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["company_settings"],
@@ -163,6 +164,7 @@ function CompanyProfil() {
     const next: Record<string, string> = {};
     for (const key of ALL_KEYS) next[key] = String((data as Record<string, unknown>)[key] ?? "");
     setForm(next);
+    setSmallBusiness(Boolean((data as Record<string, unknown>)["small_business"]));
   }, [data]);
 
   const logoSrc = useFileUrl(form["logo_url"]);
@@ -176,6 +178,7 @@ function CompanyProfil() {
         ...form,
         ...(override ?? {}),
         payment_terms_days: Number(form["payment_terms_days"] || 14),
+        small_business: smallBusiness,
         user_id: userId,
       };
       const { error } = await supabase
@@ -190,6 +193,7 @@ function CompanyProfil() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <div className="space-y-6">
