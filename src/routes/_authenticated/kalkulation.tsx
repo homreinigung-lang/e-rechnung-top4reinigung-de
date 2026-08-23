@@ -588,12 +588,12 @@ function KalkulationPage() {
   const exportLv = useMutation({
     mutationFn: async () => {
       const positions = synchronizedLvPositions.map((i, n) => ({
-          oz: `${n + 1}.10`,
-          description: i.description,
-          quantity: i.quantity,
-          unit: i.unit,
-          unitPrice: i.unit_price,
-        }));
+        oz: `${n + 1}.10`,
+        description: i.description,
+        quantity: i.quantity,
+        unit: i.unit,
+        unitPrice: i.unit_price,
+      }));
       if (positions.length === 0) {
         throw new Error("Bitte zuerst LV-Positionen erfassen oder die Kalkulation übernehmen.");
       }
@@ -1603,9 +1603,7 @@ function KalkulationPage() {
                         <span className="text-sm">{balancingPosition.unit}</span>
                         <span className="text-sm">{formatMoney(balancingPosition.unit_price)}</span>
                         <span className="text-sm font-medium sm:text-right">
-                          {formatMoney(
-                            balancingPosition.quantity * balancingPosition.unit_price,
-                          )}
+                          {formatMoney(balancingPosition.quantity * balancingPosition.unit_price)}
                         </span>
                         <span />
                       </div>
