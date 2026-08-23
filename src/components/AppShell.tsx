@@ -155,21 +155,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="no-print sticky top-0 z-30 border-b bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <Link to={homeTo} className="flex items-center gap-2">
-            {logoSrc ? (
-              <img
-                src={logoSrc}
-                alt={`Logo ${companyName}`}
-                className="h-8 w-auto max-w-28 object-contain"
-              />
-            ) : (
-              <img
-                src="/app-icon-192.png?v=3"
-                alt="GebCalc Logo"
-                width={32}
-                height={32}
-                className="size-8 rounded-lg"
-              />
-            )}
+            <img
+              src="/app-icon-192.png?v=4"
+              alt="GebCalc Logo"
+              width={32}
+              height={32}
+              className="size-8 rounded-lg"
+            />
             <span className="flex flex-col leading-tight">
               <span className="font-display text-sm font-semibold">{companyName}</span>
               <span className="text-[11px] text-muted-foreground">Rechnungssystem</span>
