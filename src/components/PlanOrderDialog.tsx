@@ -17,6 +17,7 @@ import {
   PAYMENT_DETAILS,
   TRIAL_DAYS,
   calcTotals,
+  planAllowsReverseCharge,
   useCreatePlanOrder,
   type OrderResult,
 } from "@/lib/plan-orders";
