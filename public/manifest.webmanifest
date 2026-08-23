@@ -1,11 +1,17 @@
 {
   "name": "GebCalc – Rechnungssystem",
   "short_name": "GebCalc",
+  "description": "Angebote, Rechnungen, Zeiterfassung und Kalkulation für Reinigungsunternehmen.",
   "lang": "de",
+  "dir": "ltr",
+  "id": "/dashboard",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#1d6ef5",
+  "categories": ["business", "productivity", "finance"],
   "icons": [
     {
       "src": "/app-icon-192.png?v=5",
@@ -25,5 +31,10 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    { "name": "Rechnungen", "url": "/dokumente" },
+    { "name": "Kunden", "url": "/kunden" },
+    { "name": "Meine Zeiten", "url": "/meine-zeiten" }
   ]
 }
