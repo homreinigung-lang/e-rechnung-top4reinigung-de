@@ -412,7 +412,6 @@ function KalkulationPage() {
   }, [suggested, finalPrice, note, discountReason, selected.value]);
 
   const endNet = num(finalPrice);
-  const vat = endNet * 0.19;
 
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
@@ -422,6 +421,64 @@ function KalkulationPage() {
     return (num(area) * num(pricePerSqm) * visitsPerMonth) / rate;
   }, [mode, hours, area, pricePerSqm, hourlyRate, visitsPerMonth]);
 
+  /** Plausibilitätsprüfung der Eingaben (Fläche vs. Räume/Etagen/Sanitär). */
+  const warnings = useMemo(
+    () =>
+      checkPlausibility({
+        areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
+        rooms: analysisTotals.rooms,
+        floors: Math.max(analysisTotals.floors, stairs ? num(floors) : 0),
+      }),
+    [mode, area, analysisTotals, stairs, floors],
+  );
+
+  /**
+   * Übernimmt die Grundkalkulation: bestehende Positionen werden zuerst
+   * vollständig geleert, danach wird der konsolidierte Satz eingefügt.
+   */
+  function applyCalculation() {
+    if (warnings.length > 0) {
+      toast.error("Bitte zuerst die markierten Plausibilitätshinweise prüfen.");
+      return;
+    }
+    const positions = buildConsolidatedPositions({
+      typeValue: selected.value,
+      typeLabel: selected.label,
+      mode,
+      areaSqm: num(area),
+      pricePerSqm: num(pricePerSqm),
+      hours: num(hours),
+      hourlyRate: num(hourlyRate),
+      visitsPerMonth,
+      stairs,
+      floors: num(floors),
+      stairRate: num(stairRate),
+      hasLift,
+      liftRate: num(liftRate),
+      extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
+        label: e.label,
+        price: e.price,
+      })),
+      travel: num(travel),
+      discountPercent: pct,
+      discountReason,
+    });
+    if (positions.length === 0) {
+      toast.error("Die Grundkalkulation ergibt noch keine gültigen Positionen.");
+      return;
+    }
+    setAiItems(
+      positions.map((p, n) => ({
+        id: `calc-${Date.now()}-${n}`,
+        description: p.description,
+        quantity: String(p.quantity).replace(".", ","),
+        unit: p.unit,
+        unit_price: String(p.unit_price).replace(".", ","),
+      })),
+    );
+    toast.success(`Kalkulation übernommen – ${positions.length} Positionen ersetzt`);
+  }
+
   const analyseSnapshot: KalkulationSnapshot = {
     typeLabel: selected.label,
     areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
@@ -429,7 +486,7 @@ function KalkulationPage() {
     visitsPerMonth,
     positions: aiItems.length,
     attachments: attachments.length,
-    netTotal: endNet + aiTotal,
+    netTotal: aiTotal,
     confirmed,
   };
 
