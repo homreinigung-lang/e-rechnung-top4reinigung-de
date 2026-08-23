@@ -175,6 +175,64 @@ function AbonnementsPage() {
                   />
                 </div>
               </div>
+
+              <div className="flex flex-wrap items-end gap-3 border-t border-border pt-4">
+                <div className="w-44 space-y-1.5">
+                  <Label htmlFor={`renew-${row.id}`}>Laufzeit bis</Label>
+                  <Input
+                    id={`renew-${row.id}`}
+                    type="date"
+                    defaultValue={row.renews_on ?? ""}
+                    onBlur={(e) => {
+                      const v = e.target.value || null;
+                      if (v !== row.renews_on)
+                        update.mutate({ id: row.id, patch: { renews_on: v } });
+                    }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    update.mutate({
+                      id: row.id,
+                      patch: { renews_on: extendDate(row.renews_on, 1), status: "active" },
+                    })
+                  }
+                >
+                  <CalendarPlus className="size-4" />
+                  +1 Monat (Zahlung erhalten)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    update.mutate({
+                      id: row.id,
+                      patch: { renews_on: extendDate(row.renews_on, 12), status: "active" },
+                    })
+                  }
+                >
+                  <CalendarPlus className="size-4" />
+                  +12 Monate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={row.status === "active"}
+                  onClick={() => update.mutate({ id: row.id, patch: { status: "active" } })}
+                >
+                  <CheckCircle2 className="size-4" />
+                  Freischalten
+                </Button>
+              </div>
+
+              {row.status === "trial" ? (
+                <p className="text-xs text-muted-foreground">
+                  Testphase{row.renews_on ? ` bis ${formatDate(row.renews_on)}` : ""} – nach
+                  Zahlungseingang per Überweisung hier verlängern.
+                </p>
+              ) : null}
             </div>
           ))}
         </div>
