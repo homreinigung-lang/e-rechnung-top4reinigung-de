@@ -60,6 +60,9 @@ function MeinPaket() {
   const { data: plans } = usePlans();
   const activePlans = (plans ?? []).filter((p) => p.active);
   const currentCode = sub?.plan ?? "";
+  const daysLeft = sub?.renews_on
+    ? Math.ceil((new Date(`${sub.renews_on}T00:00:00`).getTime() - Date.now()) / 86_400_000)
+    : null;
 
   return (
     <div className="space-y-8">
