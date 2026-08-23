@@ -148,6 +148,11 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
                     <p className="mt-2 text-xs text-muted-foreground">
                       Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge, § 13b UStG).
                     </p>
+                  ) : !planAllowsReverseCharge(plan) && form.vatId.trim().length > 3 ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Das Reverse-Charge-Verfahren ist erst ab den Paketen Pro und Enterprise
+                      verfügbar. Für das Basis-Paket wird die deutsche Umsatzsteuer ausgewiesen.
+                    </p>
                   ) : null}
                 </div>
               ) : null}
