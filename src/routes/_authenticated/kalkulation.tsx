@@ -411,7 +411,7 @@ function KalkulationPage() {
     setConfirmed(false);
   }, [suggested, finalPrice, note, discountReason, selected.value]);
 
-  const endNet = num(finalPrice);
+  
 
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
