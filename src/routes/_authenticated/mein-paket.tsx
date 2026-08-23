@@ -68,6 +68,22 @@ function MeinPaket() {
   const daysLeft = sub?.renews_on
     ? Math.ceil((new Date(`${sub.renews_on}T00:00:00`).getTime() - Date.now()) / 86_400_000)
     : null;
+  const [payment, setPayment] = useState<RenewalPaymentInfo | null>(null);
+
+  function openRenewal(title: string, description: string) {
+    if (!sub) return;
+    const plan = (plans ?? []).find((p) => p.code === sub.plan);
+    setPayment({
+      title,
+      description,
+      reference: `VERL-${new Date().getFullYear()}-${sub.id.slice(0, 8).toUpperCase()}`,
+      companyName: sub.company_name,
+      planName: plan?.name ?? planLabel[sub.plan] ?? sub.plan,
+      intervalLabel: "monatlich",
+      netCents: plan?.price_monthly_cents ?? 0,
+    });
+  }
+
 
   return (
     <div className="space-y-8">
