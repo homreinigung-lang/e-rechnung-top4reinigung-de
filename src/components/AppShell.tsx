@@ -98,8 +98,9 @@ const navGroups: readonly NavGroup[] = [
       { to: "/profil", label: "Mein Profil", icon: UserCircle },
       { to: "/einstellungen", label: "Einstellungen", icon: Settings },
       { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
-
+    ],
   },
+
 ] as const;
 
 // Menü für Mitarbeiterkonten (nur eigene Zeiten)
