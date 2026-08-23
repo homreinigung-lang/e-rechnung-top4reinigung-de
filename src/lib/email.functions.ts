@@ -8,10 +8,12 @@ const schema = z.object({
   html: z.string().max(100000).optional(),
   filename: z.string().min(1).max(200),
   pdfBase64: z.string().min(1),
+  /** Absendername und Kopie-Adresse der angemeldeten Firma (keine feste Adresse). */
+  companyName: z.string().max(120).optional(),
+  companyEmail: z.string().email().optional(),
 });
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
-const COMPANY_COPY = "info@top4reinigung.de";
 
 export const sendInvoiceEmail = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => schema.parse(input))
@@ -20,8 +22,12 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
     const resendKey = process.env["RESEND_API_KEY"];
     if (!lovableKey || !resendKey) throw new Error("E-Mail-Versand ist nicht konfiguriert.");
 
-    const fromAddress =
-      process.env["RESEND_FROM"] || "Hom Reinigung Service <info@top4reinigung.de>";
+    // Versanddomain der Plattform, Anzeigename immer die angemeldete Firma.
+    const baseFrom = process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
+    const baseAddress = baseFrom.match(/<([^>]+)>/)?.[1] ?? baseFrom;
+    const senderName = (data.companyName ?? "").replace(/[<>"]/g, "").trim();
+    const fromAddress = senderName ? `${senderName} <${baseAddress}>` : baseFrom;
+    const copyTo = data.companyEmail ?? null;
 
     const response = await fetch(`${GATEWAY_URL}/emails`, {
       method: "POST",
@@ -33,8 +39,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
       body: JSON.stringify({
         from: fromAddress,
         to: [data.to],
-        cc: [COMPANY_COPY],
-        reply_to: COMPANY_COPY,
+        ...(copyTo ? { cc: [copyTo], reply_to: copyTo } : {}),
         subject: data.subject,
         text: data.body,
         ...(data.html ? { html: data.html } : {}),
@@ -49,5 +54,5 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
     }
 
     const result = (await response.json()) as { id?: string };
-    return { id: result.id ?? null, cc: COMPANY_COPY };
+    return { id: result.id ?? null, cc: copyTo };
   });

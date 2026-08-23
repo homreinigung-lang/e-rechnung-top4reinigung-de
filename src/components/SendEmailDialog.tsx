@@ -26,9 +26,10 @@ export type SendEmailDefaults = {
   signatureText?: string;
   signatureHtml?: string;
   fileBaseName: string;
+  /** Firmenname und Firmen-E-Mail der angemeldeten Firma (dynamisch, nie fest). */
+  companyName?: string;
+  companyEmail?: string;
 };
-
-const COMPANY_COPY = "info@top4reinigung.de";
 
 export function SendEmailDialog({
   open,
@@ -95,6 +96,8 @@ export function SendEmailDialog({
           html: buildEmailHtml(body, defaults.signatureHtml ?? ""),
           filename: `${defaults.fileBaseName}.pdf`,
           pdfBase64: toBase64(bytes),
+          ...(defaults.companyName ? { companyName: defaults.companyName } : {}),
+          ...(defaults.companyEmail ? { companyEmail: defaults.companyEmail } : {}),
         },
       });
       try {
@@ -107,7 +110,7 @@ export function SendEmailDialog({
         );
       }
       toast.success(`Die E-Mail wurde erfolgreich an ${to.trim()} gesendet.`, {
-        description: `Kopie an ${COMPANY_COPY} · PDF${
+        description: `${defaults.companyEmail ? `Kopie an ${defaults.companyEmail} · ` : ""}PDF${
           attachment && merge ? " inkl. Anlage" : ""
         } angehängt · Status: Versendet`,
         duration: 8000,

@@ -15,7 +15,7 @@ export async function sendMail(opts: { to: string; subject: string; html: string
   const resendKey = process.env["RESEND_API_KEY"];
   if (!lovableKey || !resendKey) throw new Error("E-Mail-Versand ist nicht konfiguriert.");
 
-  const from = process.env["RESEND_FROM"] || "Hom Reinigung Service <info@top4reinigung.de>";
+  const from = process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
 
   const response = await fetch(`${GATEWAY_URL}/emails`, {
     method: "POST",
@@ -43,7 +43,7 @@ export async function sendMail(opts: { to: string; subject: string; html: string
 
 const shell = (inner: string) =>
   `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.6;font-size:15px">${inner}
-  <p style="margin-top:28px;color:#64748b;font-size:12px">GebCalc – Hom Reinigung Service</p></div>`;
+  <p style="margin-top:28px;color:#64748b;font-size:12px">GebCalc</p></div>`;
 
 export function ownerRequestMail(p: {
   name: string;

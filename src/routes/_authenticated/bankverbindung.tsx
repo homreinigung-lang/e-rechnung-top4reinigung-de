@@ -114,7 +114,7 @@ function BankverbindungPage() {
               id="owner_name"
               value={form.owner_name}
               onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
-              placeholder="Hom Reinigung Service"
+              placeholder="Ihr Firmenname"
             />
           </div>
           <div className="space-y-2">
