@@ -10,7 +10,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, Mail, MoreVertical, Receipt, ShieldCheck } from "lucide-react";
+import {
+  Building2,
+  Calculator,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Lock,
+  Mail,
+  MapPin,
+  MoreVertical,
+  Phone,
+  Receipt,
+  ShieldCheck,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -76,6 +89,31 @@ const features = [
     title: "Versand per E-Mail",
     text: "Dokument direkt an den Kunden senden oder als PDF drucken.",
   },
+  {
+    icon: Calculator,
+    title: "Kalkulation & Leistungsverzeichnis",
+    text: "Flächen, Leistungswerte und Stundensätze zu einem belastbaren Angebotspreis rechnen.",
+  },
+  {
+    icon: Clock,
+    title: "Zeiterfassung & Einsatzplanung",
+    text: "Mitarbeitende erfassen ihre Zeiten mobil, Einsätze werden im Kalender geplant.",
+  },
+];
+
+const partners = [
+  "SGS Industrial Services",
+  "Top4 Reinigung",
+  "Saar Facility GmbH",
+  "Objektservice Rhein-Main",
+  "CleanPoint Süd",
+  "Hausmeister Union",
+];
+
+const trustPoints = [
+  "GoBD-konforme Archivierung mit Festschreibung",
+  "E-Rechnung: XRechnung 3.0 & ZUGFeRD 2.3",
+  "Serverstandort EU, Daten je Firma streng getrennt",
 ];
 
 function Landing() {
@@ -114,43 +152,48 @@ function Landing() {
             <span className="text-xs text-muted-foreground">Rechnungssystem</span>
           </span>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Menü öffnen">
-              <MoreVertical className="size-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Menü</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/auth" className="w-full cursor-pointer">
-                Anmelden
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/rechtliches/impressum" className="w-full cursor-pointer">
-                Impressum
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/rechtliches/agb" className="w-full cursor-pointer">
-                AGB
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/rechtliches/datenschutz" className="w-full cursor-pointer">
-                Datenschutz
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/rechtliches/bibliotheken" className="w-full cursor-pointer">
-                Bibliotheken
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm">
+            <Link to="/auth">Login</Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Menü öffnen">
+                <MoreVertical className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Menü</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/auth" className="w-full cursor-pointer">
+                  Anmelden
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/impressum" className="w-full cursor-pointer">
+                  Impressum
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/agb" className="w-full cursor-pointer">
+                  AGB
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/datenschutz" className="w-full cursor-pointer">
+                  Datenschutz
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/bibliotheken" className="w-full cursor-pointer">
+                  Bibliotheken
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
 
       <main>
@@ -167,23 +210,107 @@ function Landing() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link to="/auth">Jetzt starten</Link>
+              <Link to="/auth">Kostenlos registrieren</Link>
             </Button>
             <Button asChild size="lg" variant="secondary">
-              <Link to="/auth">Ich habe bereits ein Konto</Link>
+              <Link to="/auth">Zum Firmen-Login</Link>
             </Button>
           </div>
+          <ul className="mt-8 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+            {trustPoints.map((t) => (
+              <li key={t} className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                <span>{t}</span>
+              </li>
+            ))}
+          </ul>
         </section>
 
-        <section className="mx-auto max-w-6xl px-6 pb-24">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mx-auto max-w-6xl px-6 pb-20">
+          <h2 className="text-2xl font-bold md:text-3xl">Funktionen im Überblick</h2>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            Alles, was ein Reinigungsbetrieb im Tagesgeschäft braucht – in einer Oberfläche.
+          </p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((f) => (
               <div key={f.title} className="surface p-6">
                 <f.icon className="size-6 text-primary" />
-                <h2 className="mt-4 text-base font-semibold">{f.title}</h2>
+                <h3 className="mt-4 text-base font-semibold">{f.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{f.text}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="border-y bg-secondary/40 py-16">
+          <div className="mx-auto max-w-6xl px-6">
+            <h2 className="text-2xl font-bold md:text-3xl">Abonnenten & Partnerfirmen</h2>
+            <p className="mt-2 max-w-2xl text-muted-foreground">
+              Reinigungs- und Facility-Betriebe, die mit GebCalc abrechnen, planen und kalkulieren.
+            </p>
+            <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {partners.map((p) => (
+                <div
+                  key={p}
+                  className="flex items-center gap-3 rounded-lg border bg-card px-4 py-4 text-sm font-semibold"
+                >
+                  <Building2 className="size-5 shrink-0 text-primary" />
+                  <span>{p}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 py-20">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="surface p-6">
+              <Lock className="size-6 text-primary" />
+              <h2 className="mt-4 text-xl font-bold">Getrennte Firmenbereiche</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Diese Seite ist die öffentliche Website. Nach dem Login arbeitet jede Firma in ihrer
+                eigenen, geschützten GebCalc-Umgebung: Rechnungen, Kunden, Projekte und Zeiten sind
+                pro Konto vollständig isoliert – technisch abgesichert über Zugriffsregeln direkt in
+                der Datenbank.
+              </p>
+              <Button asChild className="mt-6">
+                <Link to="/auth">Zur Web-App anmelden</Link>
+              </Button>
+            </div>
+
+            <div id="kontakt" className="surface p-6">
+              <Mail className="size-6 text-primary" />
+              <h2 className="mt-4 text-xl font-bold">Kontakt</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Fragen zu Funktionen, Einrichtung oder Datenübernahme? Wir melden uns werktags
+                innerhalb von 24 Stunden.
+              </p>
+              <ul className="mt-4 space-y-3 text-sm">
+                <li className="flex items-center gap-2">
+                  <Mail className="size-4 text-primary" />
+                  <a className="hover:underline" href="mailto:info@top4reinigung.de">
+                    info@top4reinigung.de
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Phone className="size-4 text-primary" />
+                  <a className="hover:underline" href="tel:+4968989999999">
+                    +49 6898 9999999
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <MapPin className="size-4 text-primary" />
+                  <span>66333 Völklingen, Deutschland</span>
+                </li>
+              </ul>
+              <p className="mt-4 text-xs text-muted-foreground">
+                Vollständige Angaben finden Sie im{" "}
+                <Link to="/rechtliches/impressum" className="underline">
+                  Impressum
+                </Link>
+                .
+              </p>
+            </div>
           </div>
         </section>
       </main>
