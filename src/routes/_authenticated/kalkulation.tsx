@@ -554,6 +554,24 @@ function KalkulationPage() {
 
   const toQuote = useMutation({
     mutationFn: async () => {
+      // Nur geprüfte, rechnerisch gültige Daten dürfen ins Angebot.
+      if (warnings.length > 0) {
+        throw new Error("Bitte zuerst die Plausibilitätshinweise klären.");
+      }
+      const positions = aiItems
+        .map((i) => ({
+          description: i.description.trim(),
+          quantity: round2(num(i.quantity)),
+          unit: i.unit.trim() || "Pauschal",
+          unit_price: round2(num(i.unit_price)),
+        }))
+        .filter((i) => i.description && Math.abs(i.quantity * i.unit_price) >= 0.01);
+      if (positions.length === 0) {
+        throw new Error(
+          "Es liegen keine gültigen Positionen vor. Bitte zuerst die Kalkulation übernehmen.",
+        );
+      }
+
       const quoteId = await createDocument("quote");
 
       const { data: auth } = await supabase.auth.getUser();
@@ -585,38 +603,23 @@ function KalkulationPage() {
       }
       const chosen = EXTRAS.filter((e) => extras.includes(e.key)).map((e) => e.label);
       if (chosen.length > 0) parts.push(`Zusatzleistungen: ${chosen.join(", ")}`);
-
+      if (discountReason.trim() && pct > 0) {
+        parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
+      }
       if (note.trim()) parts.push(note.trim());
 
-      // Der manuell angepasste Endpreis ist bereits der Netto-Endbetrag nach Rabatt.
-      const gross = pct < 100 ? endNet / (1 - pct / 100) : endNet;
-      const unitPrice = Math.round(gross * 100) / 100;
-
-      const { error: itemError } = await supabase.from("document_items").insert({
-        document_id: quoteId,
-        user_id: userId,
-        position: 1,
-        description: parts.join(" · "),
-        quantity: 1,
-        unit: "Pauschal",
-        unit_price: unitPrice,
-      });
+      const { error: itemError } = await supabase.from("document_items").insert(
+        positions.map((i, n) => ({
+          document_id: quoteId,
+          user_id: userId,
+          position: n + 1,
+          description: i.description,
+          quantity: i.quantity,
+          unit: i.unit,
+          unit_price: i.unit_price,
+        })),
+      );
       if (itemError) throw itemError;
-
-      if (aiItems.length > 0) {
-        const { error: aiError } = await supabase.from("document_items").insert(
-          aiItems.map((i, n) => ({
-            document_id: quoteId,
-            user_id: userId,
-            position: n + 2,
-            description: i.description,
-            quantity: num(i.quantity),
-            unit: i.unit,
-            unit_price: num(i.unit_price),
-          })),
-        );
-        if (aiError) throw aiError;
-      }
 
       const description = [
         proposalTitle.trim() ? `Ausschreibung: ${proposalTitle.trim()}` : "",
@@ -626,17 +629,19 @@ function KalkulationPage() {
         .filter(Boolean)
         .join("\n");
 
+      const net = positionsTotal(positions);
       const { error: docError } = await supabase
         .from("documents")
         .update({
           service_description: description,
           ...(proposalText.trim() ? { intro_text: proposalText.trim() } : {}),
-          discount_percent: pct,
-          discount_amount: Math.round((unitPrice - endNet) * 100) / 100,
+          // Rabatt steckt bereits als eigene Position im LV – kein zweiter Abzug.
+          discount_percent: 0,
+          discount_amount: 0,
           discount_reason: discountReason,
-          net_total: endNet + aiTotal,
-          vat_amount: (endNet + aiTotal) * 0.19,
-          total: (endNet + aiTotal) * 1.19,
+          net_total: net,
+          vat_amount: round2(net * 0.19),
+          total: round2(net * 1.19),
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
