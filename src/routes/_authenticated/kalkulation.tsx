@@ -160,6 +160,11 @@ type AiItem = {
   unit_price: string;
 };
 
+const AUTO_BALANCE_DESCRIPTIONS = new Set([
+  "Manuelle Endpreisanpassung",
+  "Manueller Preisnachlass",
+]);
+
 function KalkulationPage() {
   const navigate = useNavigate();
 
@@ -292,17 +297,6 @@ function KalkulationPage() {
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
-
-  /** Einzige gültige Netto-Gesamtsumme: ausschließlich aus den Positionen. */
-  const aiTotal = useMemo(
-    () =>
-      positionsTotal(
-        aiItems.map((i) => ({ quantity: num(i.quantity), unit_price: num(i.unit_price) })),
-      ),
-    [aiItems],
-  );
-  const vatAmount = round2(aiTotal * 0.19);
-  const grossTotal = round2(aiTotal + vatAmount);
 
   const patchAiItem = (id: string, patch: Partial<AiItem>) =>
     setAiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -476,10 +470,47 @@ function KalkulationPage() {
     if (!finalTouched) setFinalPrice(suggested ? suggested.toFixed(2).replace(".", ",") : "0,00");
   }, [suggested, finalTouched]);
 
-  // Jede Änderung hebt die finale Bestätigung wieder auf.
+  /**
+   * Verbindlicher SSOT: Der Endpreis der Grundkalkulation ist das Ziel für das
+   * Leistungsverzeichnis. Alle Ausgaben verwenden ausschließlich diesen
+   * centgenau abgeglichenen Positionssatz. Manuelle LV-Änderungen verändern
+   * daher automatisch nur die sichtbare Ausgleichsposition, nie den Endpreis.
+   */
+  const targetNetTotal = round2(num(finalPrice));
+  const lvBasePositions = useMemo(
+    () =>
+      aiItems
+        .map((item) => ({
+          description: item.description.trim(),
+          quantity: round2(num(item.quantity)),
+          unit: item.unit.trim() || "Pauschal",
+          unit_price: round2(num(item.unit_price)),
+        }))
+        .filter(
+          (item) =>
+            item.description.length > 0 &&
+            !AUTO_BALANCE_DESCRIPTIONS.has(item.description) &&
+            Math.abs(item.quantity * item.unit_price) >= 0.01,
+        ),
+    [aiItems],
+  );
+  const synchronizedLvPositions = useMemo(
+    () => reconcilePositionsTotal(lvBasePositions, targetNetTotal),
+    [lvBasePositions, targetNetTotal],
+  );
+  const balancingPosition =
+    synchronizedLvPositions.length > lvBasePositions.length
+      ? synchronizedLvPositions[synchronizedLvPositions.length - 1]
+      : undefined;
+  const aiTotal = targetNetTotal;
+  const vatAmount = round2(aiTotal * 0.19);
+  const grossTotal = round2(aiTotal + vatAmount);
+
+  // Jede preis- oder angebotsrelevante Änderung hebt die finale Bestätigung
+  // wieder auf – insbesondere direkte Änderungen am Leistungsverzeichnis.
   useEffect(() => {
     setConfirmed(false);
-  }, [suggested, finalPrice, note, discountReason, selected.value]);
+  }, [suggested, finalPrice, note, discountReason, selected.value, aiItems]);
 
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
@@ -527,8 +558,10 @@ function KalkulationPage() {
       );
       return;
     }
+    // Nur die fachlichen Grundpositionen speichern. Die ggf. erforderliche
+    // Ausgleichsposition wird zentral und reaktiv aus dem Endpreis abgeleitet.
     setAiItems(
-      positions.map((p, n) => ({
+      calculatedPositions.map((p, n) => ({
         id: `calc-${Date.now()}-${n}`,
         description: p.description,
         quantity: String(p.quantity).replace(".", ","),
@@ -546,7 +579,7 @@ function KalkulationPage() {
     areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
     monthlyHours,
     visitsPerMonth,
-    positions: aiItems.length,
+    positions: synchronizedLvPositions.length,
     attachments: attachments.length,
     netTotal: aiTotal,
     confirmed,
@@ -555,15 +588,13 @@ function KalkulationPage() {
   /** Leistungsverzeichnis als abgabefertiges PDF exportieren. */
   const exportLv = useMutation({
     mutationFn: async () => {
-      const positions = aiItems
-        .filter((i) => i.description.trim() || num(i.unit_price) > 0)
-        .map((i, n) => ({
-          oz: `${n + 1}.10`,
-          description: i.description.trim() || "Leistung",
-          quantity: num(i.quantity),
-          unit: i.unit.trim() || "Stk.",
-          unitPrice: num(i.unit_price),
-        }));
+      const positions = synchronizedLvPositions.map((i, n) => ({
+        oz: `${n + 1}.10`,
+        description: i.description,
+        quantity: i.quantity,
+        unit: i.unit,
+        unitPrice: i.unit_price,
+      }));
       if (positions.length === 0) {
         throw new Error("Bitte zuerst LV-Positionen erfassen oder die Kalkulation übernehmen.");
       }
@@ -620,14 +651,7 @@ function KalkulationPage() {
       if (warnings.length > 0) {
         throw new Error("Bitte zuerst die Plausibilitätshinweise klären.");
       }
-      const positions = aiItems
-        .map((i) => ({
-          description: i.description.trim(),
-          quantity: round2(num(i.quantity)),
-          unit: i.unit.trim() || "Pauschal",
-          unit_price: round2(num(i.unit_price)),
-        }))
-        .filter((i) => i.description && Math.abs(i.quantity * i.unit_price) >= 0.01);
+      const positions = synchronizedLvPositions;
       if (positions.length === 0) {
         throw new Error(
           "Es liegen keine gültigen Positionen vor. Bitte zuerst die Kalkulation übernehmen.",
@@ -1520,7 +1544,7 @@ function KalkulationPage() {
                   </Button>
                 </div>
 
-                {aiItems.length === 0 ? (
+                {synchronizedLvPositions.length === 0 ? (
                   <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
                     Noch keine Positionen. Beschreiben Sie die Arbeit im KI-Assistenten (Tab
                     „Grundriss") oder fügen Sie eine Position manuell hinzu.
@@ -1573,8 +1597,25 @@ function KalkulationPage() {
                         </Button>
                       </div>
                     ))}
+                    {balancingPosition && (
+                      <div className="grid gap-2 rounded-md border border-dashed bg-muted/40 px-2 py-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center">
+                        <span className="text-sm font-medium">{balancingPosition.description}</span>
+                        <span className="text-sm">{formatNumber(balancingPosition.quantity)}</span>
+                        <span className="text-sm">{balancingPosition.unit}</span>
+                        <span className="text-sm">{formatMoney(balancingPosition.unit_price)}</span>
+                        <span className="text-sm font-medium sm:text-right">
+                          {formatMoney(balancingPosition.quantity * balancingPosition.unit_price)}
+                        </span>
+                        <span />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between border-t pt-3 text-sm font-semibold">
+                      <span>Gesamt netto</span>
+                      <span>{formatMoney(aiTotal)}</span>
+                    </div>
                     <p className="text-right text-xs text-muted-foreground">
-                      {aiItems.length} Position(en) – fließen in die Gesamtsumme ein
+                      {synchronizedLvPositions.length} Position(en) – verbindlich an den Endpreis
+                      gekoppelt
                     </p>
                   </div>
                 )}
@@ -1670,7 +1711,7 @@ function KalkulationPage() {
                 <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Positionen im Leistungsverzeichnis</span>
-                    <span>{aiItems.length}</span>
+                    <span>{synchronizedLvPositions.length}</span>
                   </div>
                   <div className="flex justify-between border-t pt-1 font-medium">
                     <span>Gesamt netto</span>
@@ -1685,8 +1726,8 @@ function KalkulationPage() {
                     <span>{formatMoney(grossTotal)}</span>
                   </div>
                   <p className="pt-1 text-xs text-muted-foreground">
-                    Die Gesamtsumme entsteht ausschließlich aus den Positionen – die
-                    Grundkalkulation wird nicht zusätzlich addiert.
+                    Der Endpreis der Grundkalkulation ist verbindlich. Die Positionen werden bei
+                    jeder Änderung automatisch centgenau abgeglichen.
                   </p>
                 </div>
 
