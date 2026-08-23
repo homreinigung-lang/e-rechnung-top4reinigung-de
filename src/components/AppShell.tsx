@@ -3,7 +3,6 @@ import { useEffect } from "react";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useFileUrl } from "@/hooks/useFileUrl";
 import { useMyEmployee } from "@/lib/employee";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
@@ -139,7 +138,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       return data;
     },
   });
-  const logoSrc = useFileUrl((settings as { logo_url?: string } | null)?.logo_url);
   // Produktname im Header ist fest – unabhängig von den Firmenstammdaten (Rechnungen etc.)
   const companyName = "GebCalc";
 
