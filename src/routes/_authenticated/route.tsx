@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { getApprovalStatus } from "@/lib/approval.functions";
+import { ensureTrialSubscription } from "@/lib/trial.functions";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
