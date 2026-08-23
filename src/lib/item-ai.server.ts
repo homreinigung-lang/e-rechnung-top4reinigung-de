@@ -40,6 +40,7 @@ export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
       model: "google/gemini-2.5-flash",
       temperature: 0,
       top_p: 1,
+      seed: 0,
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user", content: canonicalPrompt(prompt) },
@@ -142,6 +143,7 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
       model: "google/gemini-2.5-flash",
       temperature: 0,
       top_p: 1,
+      seed: 0,
       messages: [
         { role: "system", content: CALC_SYSTEM },
         { role: "user", content: canonicalPrompt(prompt) },

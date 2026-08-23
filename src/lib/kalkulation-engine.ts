@@ -23,7 +23,7 @@ export const MIN_STAIR_RATE = 12.5;
 /** Geldbeträge werden für Vergleiche und Summen immer als ganze Cent verarbeitet. */
 export function toCents(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.round((value + Number.EPSILON) * 100);
+  return Math.sign(value) * Math.round((Math.abs(value) + Number.EPSILON) * 100);
 }
 
 export function fromCents(value: number): number {
