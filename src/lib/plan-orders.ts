@@ -69,9 +69,13 @@ export function useCreatePlanOrder() {
   return useMutation({
     mutationFn: async (input: OrderInput): Promise<OrderResult> => {
       const totals = calcTotals(input.plan, input.billingInterval, input.country, input.vatId);
-      const { data, error } = await supabase
+      const orderNumber = `BEST-${new Date().getFullYear()}-${String(
+        Math.floor(Math.random() * 100000),
+      ).padStart(5, "0")}`;
+      const { error } = await supabase
         .from("plan_orders")
         .insert({
+          order_number: orderNumber,
           plan_id: input.plan.id,
           plan_code: input.plan.code,
           plan_name: input.plan.name,
@@ -90,11 +94,9 @@ export function useCreatePlanOrder() {
           vat_cents: totals.vatCents,
           gross_cents: totals.grossCents,
           reverse_charge: totals.reverseCharge,
-        })
-        .select("order_number")
-        .single();
+        });
       if (error) throw error;
-      return { orderNumber: (data as { order_number: string }).order_number, totals };
+      return { orderNumber, totals };
     },
   });
 }
