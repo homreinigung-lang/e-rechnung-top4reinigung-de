@@ -225,12 +225,20 @@ function DokumentDetail() {
   }, [data]);
 
   const { canReverseCharge } = useCanReverseCharge();
+  const isSmallBusiness = Boolean(
+    (data?.settings as Record<string, unknown> | null | undefined)?.["small_business"],
+  );
   const rawTaxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
+  // Kleinunternehmer § 19 UStG: nie Umsatzsteuer ausweisen.
   // Feature-Gate: Reverse-Charge nur ab Pro – Basis-Konten rechnen mit 19 % Inland ab.
-  const taxMode =
-    rawTaxMode === "eu_reverse_charge" && !canReverseCharge ? "domestic" : rawTaxMode;
+  const taxMode = isSmallBusiness
+    ? "kleinunternehmer"
+    : rawTaxMode === "eu_reverse_charge" && !canReverseCharge
+      ? "domestic"
+      : rawTaxMode;
   const vatRate = vatRateForTaxMode(taxMode);
   const taxNote = taxNoteForTaxMode(taxMode);
+
 
   const logoSrc = useFileUrl(
     data?.settings && (data.settings as Record<string, unknown>)["logo_url"]
@@ -1210,7 +1218,18 @@ function DokumentDetail() {
 
         <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
           <Label>Steuer-Art</Label>
-          <Select value={taxMode} onValueChange={(v) => setField("tax_mode", v)}>
+          {isSmallBusiness && (
+            <p className="rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+              Kleinunternehmerregelung (§ 19 UStG) ist im Firmenprofil aktiv – es wird keine
+              Umsatzsteuer berechnet oder ausgewiesen.
+            </p>
+          )}
+          <Select
+            value={taxMode}
+            onValueChange={(v) => setField("tax_mode", v)}
+            disabled={isSmallBusiness}
+          >
+
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

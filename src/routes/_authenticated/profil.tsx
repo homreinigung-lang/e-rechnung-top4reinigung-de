@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+
 import { toast } from "sonner";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { FileUploadButton } from "@/components/FileUploadButton";
@@ -148,6 +150,7 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
 function CompanyProfil() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
+  const [smallBusiness, setSmallBusiness] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["company_settings"],
@@ -163,6 +166,7 @@ function CompanyProfil() {
     const next: Record<string, string> = {};
     for (const key of ALL_KEYS) next[key] = String((data as Record<string, unknown>)[key] ?? "");
     setForm(next);
+    setSmallBusiness(Boolean((data as Record<string, unknown>)["small_business"]));
   }, [data]);
 
   const logoSrc = useFileUrl(form["logo_url"]);
@@ -176,6 +180,7 @@ function CompanyProfil() {
         ...form,
         ...(override ?? {}),
         payment_terms_days: Number(form["payment_terms_days"] || 14),
+        small_business: smallBusiness,
         user_id: userId,
       };
       const { error } = await supabase
@@ -190,6 +195,7 @@ function CompanyProfil() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <div className="space-y-6">
@@ -215,8 +221,27 @@ function CompanyProfil() {
               </div>
             ))}
           </div>
+          {group.title === "Steuerliche Angaben" && (
+            <div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-4">
+              <Checkbox
+                id="small_business"
+                checked={smallBusiness}
+                onCheckedChange={(v) => setSmallBusiness(v === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="small_business">Kleinunternehmer nach § 19 UStG</Label>
+                <p className="text-sm text-muted-foreground">
+                  Wenn aktiv, wird auf Rechnungen und Angeboten keine Umsatzsteuer berechnet oder
+                  ausgewiesen. Der Pflichthinweis „Gemäß § 19 UStG wird keine Umsatzsteuer
+                  berechnet." erscheint automatisch am Ende des Belegs.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       ))}
+
 
       <div className="surface space-y-4 p-6">
         <div>

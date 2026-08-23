@@ -13,8 +13,12 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
 
   const { data: settings } = await supabase
     .from("company_settings")
-    .select("payment_terms_days")
+    .select("payment_terms_days, small_business")
     .maybeSingle();
+
+  const smallBusiness = Boolean(
+    (settings as Record<string, unknown> | null)?.["small_business"],
+  );
 
   const number = await reserveDocumentNumber(type);
   const issue = today();
@@ -28,9 +32,14 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
       issue_date: issue,
       // Bei Angeboten ist „gültig bis“ optional und wird nicht vorbelegt.
       due_date: type === "invoice" ? addDays(issue, settings?.payment_terms_days ?? 14) : null,
-      reverse_charge: type === "invoice",
-      tax_mode: type === "quote" ? "domestic" : "eu_reverse_charge",
-      vat_rate: type === "quote" ? 19 : 0,
+      reverse_charge: !smallBusiness && type === "invoice",
+      tax_mode: smallBusiness
+        ? "kleinunternehmer"
+        : type === "quote"
+          ? "domestic"
+          : "eu_reverse_charge",
+      vat_rate: !smallBusiness && type === "quote" ? 19 : 0,
+
     })
     .select("id")
     .single();
