@@ -1730,6 +1730,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_employee_account: { Args: { _auth_user_id: string }; Returns: boolean }
       link_employee_account: { Args: never; Returns: string }
       list_trash: {
         Args: never
