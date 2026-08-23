@@ -277,6 +277,45 @@ function Landing() {
           </div>
         </section>
 
+        <section id="preise" className="mx-auto max-w-6xl px-6 py-20">
+          <h2 className="text-2xl font-bold md:text-3xl">Pakete & Preise</h2>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            Transparente Preise – monatlich oder jährlich abrechenbar. Alle Preise zzgl. gesetzlicher
+            Umsatzsteuer.
+          </p>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {activePlans.map((plan) => (
+              <div key={plan.id} className="surface flex flex-col p-6">
+                <h3 className="text-lg font-semibold">{plan.name}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
+                <p className="mt-4 text-3xl font-bold">
+                  {euro(plan.price_monthly_cents)}
+                  <span className="text-sm font-normal text-muted-foreground"> / Monat</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  oder {euro(plan.price_yearly_cents)} / Jahr
+                </p>
+                <ul className="mt-5 flex-1 space-y-2 text-sm">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button asChild className="mt-6">
+                  <Link to="/auth">Paket wählen</Link>
+                </Button>
+              </div>
+            ))}
+            {activePlans.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Die Preisübersicht wird gerade aktualisiert.
+              </p>
+            ) : null}
+          </div>
+        </section>
+
         <section className="mx-auto max-w-6xl px-6 py-20">
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="surface p-6">
