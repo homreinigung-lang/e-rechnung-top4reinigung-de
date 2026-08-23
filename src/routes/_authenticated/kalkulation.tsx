@@ -39,6 +39,7 @@ import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
 import { ProjektKennzahlen } from "@/components/ProjektKennzahlen";
 import { KalkulationAnalytics } from "@/components/KalkulationAnalytics";
+import { SpeechToTextButton } from "@/components/SpeechToTextButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /** Kurze, verständliche Einleitung am Kopf jedes Bereichs. */
@@ -806,12 +807,20 @@ function KalkulationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Textarea
-                rows={4}
-                value={floorplanSummary}
-                onChange={(e) => setFloorplanSummary(e.target.value)}
-                placeholder="z. B. 3 Etagen ohne Aufzug, Treppenhaus mit Naturstein, Großraumbüros mit Teppich, Serverraum von der Reinigung ausgenommen"
-              />
+              <div className="flex items-start gap-2">
+                <Textarea
+                  rows={4}
+                  className="flex-1"
+                  value={floorplanSummary}
+                  onChange={(e) => setFloorplanSummary(e.target.value)}
+                  placeholder="z. B. 3 Etagen ohne Aufzug, Treppenhaus mit Naturstein, Großraumbüros mit Teppich, Serverraum von der Reinigung ausgenommen"
+                />
+                <SpeechToTextButton
+                  value={floorplanSummary}
+                  onChange={setFloorplanSummary}
+                  label="Objektbeschreibung diktieren"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -826,12 +835,20 @@ function KalkulationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Textarea
-                rows={3}
-                placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-              />
+              <div className="flex items-start gap-2">
+                <Textarea
+                  rows={3}
+                  className="flex-1"
+                  placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                />
+                <SpeechToTextButton
+                  value={aiPrompt}
+                  onChange={setAiPrompt}
+                  label="Auftragsbeschreibung diktieren"
+                />
+              </div>
               <Button
                 type="button"
                 disabled={aiSuggest.isPending || aiPrompt.trim().length < 5}
