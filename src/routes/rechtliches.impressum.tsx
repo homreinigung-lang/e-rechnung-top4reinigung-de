@@ -16,7 +16,9 @@ export const Route = createFileRoute("/rechtliches/impressum")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { property: "og:url", content: "https://e-rechnung.top4reinigung.de/rechtliches/impressum" },
     ],
+    links: [{ rel: "canonical", href: "https://e-rechnung.top4reinigung.de/rechtliches/impressum" }],
   }),
   component: Impressum,
 });

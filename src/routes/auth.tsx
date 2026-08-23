@@ -23,6 +23,7 @@ export const Route = createFileRoute("/auth")({
         property: "og:description",
         content: "Zugang zum Rechnungsprogramm für Reinigungsdienste.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: AuthPage,

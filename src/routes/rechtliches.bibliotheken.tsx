@@ -13,7 +13,9 @@ export const Route = createFileRoute("/rechtliches/bibliotheken")({
       { property: "og:description", content: "Verwendete Open-Source-Pakete und ihre Lizenzen." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { property: "og:url", content: "https://e-rechnung.top4reinigung.de/rechtliches/bibliotheken" },
     ],
+    links: [{ rel: "canonical", href: "https://e-rechnung.top4reinigung.de/rechtliches/bibliotheken" }],
   }),
   component: Bibliotheken,
 });
