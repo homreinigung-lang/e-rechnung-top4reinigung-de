@@ -1,5 +1,8 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { PAYMENT_DETAILS } from "@/lib/plan-orders";
+import {
+  PLATFORM_PAYMENT_FALLBACK,
+  type PlatformPayment,
+} from "@/lib/platform-payment";
 import { euro } from "@/lib/admin";
 import { formatDate } from "@/lib/format";
 
@@ -18,10 +21,13 @@ export type ProformaData = {
   netCents: number;
   vatCents: number;
   grossCents: number;
+  /** Bankdaten des Plattform-Betreibers (aus der Administration). */
+  payment?: PlatformPayment;
 };
 
 /** Einfache Proforma-Rechnung / Zahlungsaufforderung als PDF (pdf-lib). */
 export async function buildProformaPdfBytes(d: ProformaData): Promise<Uint8Array> {
+  const p = d.payment ?? PLATFORM_PAYMENT_FALLBACK;
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([PAGE_W, PAGE_H]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -49,7 +55,7 @@ export async function buildProformaPdfBytes(d: ProformaData): Promise<Uint8Array
     y -= size + 6;
   };
 
-  line(PAYMENT_DETAILS.recipient, { size: 14, bold: true, gap: 10 });
+  line(p.recipient, { size: 14, bold: true, gap: 10 });
   line("Zahlungsaufforderung / Proforma-Rechnung", { size: 16, bold: true, gap: 14 });
 
   line("Rechnungsempfänger", { size: 9, color: muted, gap: 2 });
@@ -69,12 +75,12 @@ export async function buildProformaPdfBytes(d: ProformaData): Promise<Uint8Array
   y -= 10;
 
   line("Zahlungsdetails (SEPA-Überweisung)", { bold: true, gap: 6 });
-  line(`Empfänger: ${PAYMENT_DETAILS.recipient}`);
-  line(`IBAN: ${PAYMENT_DETAILS.iban}`);
-  line(`BIC: ${PAYMENT_DETAILS.bic}`);
-  line(`Bank: ${PAYMENT_DETAILS.bank}`);
+  line(`Empfänger: ${p.recipient}`);
+  line(`IBAN: ${p.iban}`);
+  line(`BIC: ${p.bic}`);
+  line(`Bank: ${p.bank}`);
   line(`Verwendungszweck: ${d.reference}`, { gap: 10 });
-  line(PAYMENT_DETAILS.terms, { size: 9, color: muted, gap: 4 });
+  line(p.terms, { size: 9, color: muted, gap: 4 });
   line(
     "Dies ist eine Zahlungsaufforderung (Proforma) und keine umsatzsteuerliche Rechnung.",
     { size: 9, color: muted },
