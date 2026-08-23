@@ -146,7 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <Link to={homeTo} className="flex items-center gap-2">
             <img
-              src="/app-icon-192.png?v=4"
+              src="/app-icon-192.png?v=5"
               alt="GebCalc Logo"
               width={32}
               height={32}
