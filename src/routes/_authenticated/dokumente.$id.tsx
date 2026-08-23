@@ -1921,6 +1921,8 @@ function DokumentDetail() {
           signatureText: mail.signatureText,
           signatureHtml: mail.signatureHtml,
           fileBaseName: `${DOC_TYPE_LABEL[doc.type]}-${docNumber}`,
+          companyName: String(settings?.["company_name"] ?? ""),
+          companyEmail: String(settings?.["email"] ?? ""),
         }}
         onSent={async () => {
           // Versand-Status verbindlich in der Datenbank setzen (auch für Angebote),

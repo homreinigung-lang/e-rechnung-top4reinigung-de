@@ -391,7 +391,7 @@ function Einstellungen() {
             value={form["email_signature"] ?? ""}
             onChange={(e) => setForm({ ...form, email_signature: e.target.value })}
             placeholder={
-              "Mit freundlichen Grüßen\nHom Reinigung Service\nPoststraße 8, 66333 Völklingen"
+              "Mit freundlichen Grüßen\nIhr Firmenname\nStraße, PLZ Ort"
             }
           />
           <p className="text-xs text-muted-foreground">
@@ -459,7 +459,7 @@ function Einstellungen() {
             value={form["email_signature_html"] ?? ""}
             onChange={(e) => setForm({ ...form, email_signature_html: e.target.value })}
             placeholder={
-              '<p><strong>Hom Reinigung Service</strong><br />Poststraße 8, 66333 Völklingen</p>\n<img src="https://…/banner.png" alt="Logo" style="max-height:70px" />'
+              '<p><strong>Ihr Firmenname</strong><br />Straße, PLZ Ort</p>\n<img src="https://…/banner.png" alt="Logo" style="max-height:70px" />'
             }
           />
           <div className="flex flex-wrap gap-2">
@@ -539,7 +539,7 @@ function Einstellungen() {
             <Label htmlFor="facebook_url">Facebook / Social Media</Label>
             <Input
               id="facebook_url"
-              placeholder="https://www.facebook.com/homreinigung"
+              placeholder="https://www.facebook.com/ihre-firma"
               value={form["facebook_url"] ?? ""}
               onChange={(e) => setForm({ ...form, facebook_url: e.target.value })}
             />
