@@ -154,7 +154,11 @@ function Landing() {
             <span className="text-xs text-muted-foreground">Rechnungssystem</span>
           </span>
         </div>
-        <DropdownMenu>
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm">
+            <Link to="/auth">Login</Link>
+          </Button>
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Menü öffnen">
               <MoreVertical className="size-5" />
