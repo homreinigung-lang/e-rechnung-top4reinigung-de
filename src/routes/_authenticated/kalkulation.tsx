@@ -578,7 +578,7 @@ function KalkulationPage() {
     areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
     monthlyHours,
     visitsPerMonth,
-    positions: aiItems.length,
+    positions: synchronizedLvPositions.length,
     attachments: attachments.length,
     netTotal: aiTotal,
     confirmed,
@@ -1596,8 +1596,27 @@ function KalkulationPage() {
                         </Button>
                       </div>
                     ))}
+                    {balancingPosition && (
+                      <div className="grid gap-2 rounded-md border border-dashed bg-muted/40 px-2 py-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center">
+                        <span className="text-sm font-medium">{balancingPosition.description}</span>
+                        <span className="text-sm">{formatNumber(balancingPosition.quantity)}</span>
+                        <span className="text-sm">{balancingPosition.unit}</span>
+                        <span className="text-sm">{formatMoney(balancingPosition.unit_price)}</span>
+                        <span className="text-sm font-medium sm:text-right">
+                          {formatMoney(
+                            balancingPosition.quantity * balancingPosition.unit_price,
+                          )}
+                        </span>
+                        <span />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between border-t pt-3 text-sm font-semibold">
+                      <span>Gesamt netto</span>
+                      <span>{formatMoney(aiTotal)}</span>
+                    </div>
                     <p className="text-right text-xs text-muted-foreground">
-                      {aiItems.length} Position(en) – fließen in die Gesamtsumme ein
+                      {synchronizedLvPositions.length} Position(en) – verbindlich an den Endpreis
+                      gekoppelt
                     </p>
                   </div>
                 )}
@@ -1693,7 +1712,7 @@ function KalkulationPage() {
                 <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Positionen im Leistungsverzeichnis</span>
-                    <span>{aiItems.length}</span>
+                    <span>{synchronizedLvPositions.length}</span>
                   </div>
                   <div className="flex justify-between border-t pt-1 font-medium">
                     <span>Gesamt netto</span>
@@ -1708,8 +1727,8 @@ function KalkulationPage() {
                     <span>{formatMoney(grossTotal)}</span>
                   </div>
                   <p className="pt-1 text-xs text-muted-foreground">
-                    Die Gesamtsumme entsteht ausschließlich aus den Positionen – die
-                    Grundkalkulation wird nicht zusätzlich addiert.
+                    Der Endpreis der Grundkalkulation ist verbindlich. Die Positionen werden bei
+                    jeder Änderung automatisch centgenau abgeglichen.
                   </p>
                 </div>
 
