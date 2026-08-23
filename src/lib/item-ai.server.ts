@@ -10,8 +10,12 @@ Aus der Beschreibung des Auftrags erstellst du eine realistische Leistungsaufste
 Regeln:
 - Alle Texte auf Deutsch, fachlich und knapp (max. 140 Zeichen pro Position).
 - Marktübliche Nettopreise in EUR für das Saarland/Deutschland.
-- Stundensätze: Unterhalts-/Büro-/Glas-/Treppenhausreinigung 34–37 EUR/Std., Grund- und Bauendreinigung 42–45 EUR/Std.
-- Einheiten nur: Std., m², Stk., Pauschal, Monat.
+- Stundensätze: Unterhalts-/Büro-/Treppenhausreinigung 34–37 EUR/Std., Grund- und Bauendreinigung 42–45 EUR/Std.
+- Glas- und Fensterreinigung IMMER mit dem höheren Fixsatz von 38,00 EUR pro Stunde kalkulieren.
+- unit_price darf NIEMALS 0 sein. Jede Position braucht einen realistischen Preis.
+- Werden Treppen, Treppenhaus oder mehrere Etagen erwähnt, MUSS eine eigene Position "Treppenhausreinigung" mit der Etagenanzahl als Menge und mindestens 12,50 EUR je Etage enthalten sein.
+- Einheiten nur: Std., m², Stk., Etage, Pauschal, Monat.
+- Mengen und Preise auf 2 Nachkommastellen runden, keine Cent-Bruchteile.
 - 3 bis 10 Positionen, keine Umsatzsteuer, keine Summenzeile.
 Antworte ausschließlich mit reinem JSON.`;
 
