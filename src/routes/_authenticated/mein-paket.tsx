@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePlans, euro } from "@/lib/admin";
 import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
-import { PAYMENT_DETAILS } from "@/lib/plan-orders";
+import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
 import {
   RenewalPaymentDialog,
   type RenewalPaymentInfo,
@@ -166,21 +166,21 @@ function MeinPaket() {
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <p>
                   <span className="text-muted-foreground">Empfänger: </span>
-                  {PAYMENT_DETAILS.recipient}
+                  {pay.recipient}
                 </p>
                 <p>
                   <span className="text-muted-foreground">Bank: </span>
-                  {PAYMENT_DETAILS.bank}
+                  {pay.bank}
                 </p>
                 <p>
                   <span className="text-muted-foreground">IBAN: </span>
-                  {PAYMENT_DETAILS.iban}
+                  {formatIban(pay.iban)}
                 </p>
                 <p>
                   <span className="text-muted-foreground">BIC: </span>
-                  {PAYMENT_DETAILS.bic}
+                  {pay.bic}
                 </p>
-                <p className="sm:col-span-2 text-muted-foreground">{PAYMENT_DETAILS.terms}</p>
+                <p className="sm:col-span-2 text-muted-foreground">{pay.terms}</p>
               </div>
 
               <Button

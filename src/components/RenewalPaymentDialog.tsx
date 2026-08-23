@@ -13,7 +13,8 @@ import {
 import { GiroCode } from "@/components/GiroCode";
 import { buildEpcPayload } from "@/lib/epc";
 import { euro } from "@/lib/admin";
-import { PAYMENT_DETAILS, VAT_RATE } from "@/lib/plan-orders";
+import { VAT_RATE } from "@/lib/plan-orders";
+import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
 import { buildProformaPdfBytes } from "@/lib/proforma-pdf";
 import { downloadBytes } from "@/lib/pdf";
 
@@ -34,6 +35,7 @@ export function RenewalPaymentDialog({
   info: RenewalPaymentInfo | null;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
   const [copied, setCopied] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
@@ -64,6 +66,7 @@ export function RenewalPaymentDialog({
         netCents,
         vatCents,
         grossCents,
+        payment: pay,
       });
       const filename = `Zahlungsaufforderung-${info.reference}.pdf`;
       if (download) {
@@ -84,10 +87,10 @@ export function RenewalPaymentDialog({
 
   const rows: { key: string; label: string; value: string }[] = info
     ? [
-        { key: "recipient", label: "Empfänger", value: PAYMENT_DETAILS.recipient },
-        { key: "iban", label: "IBAN", value: PAYMENT_DETAILS.iban },
-        { key: "bic", label: "BIC", value: PAYMENT_DETAILS.bic },
-        { key: "bank", label: "Bank", value: PAYMENT_DETAILS.bank },
+        { key: "recipient", label: "Empfänger", value: pay.recipient },
+        { key: "iban", label: "IBAN", value: formatIban(pay.iban) },
+        { key: "bic", label: "BIC", value: pay.bic },
+        { key: "bank", label: "Bank", value: pay.bank },
         { key: "amount", label: "Betrag", value: euro(grossCents) },
         { key: "reference", label: "Verwendungszweck", value: info.reference },
       ]
@@ -95,9 +98,9 @@ export function RenewalPaymentDialog({
 
   const qr = info
     ? buildEpcPayload({
-        name: PAYMENT_DETAILS.recipient,
-        iban: PAYMENT_DETAILS.iban,
-        bic: PAYMENT_DETAILS.bic,
+        name: pay.recipient,
+        iban: pay.iban,
+        bic: pay.bic,
         amount: grossCents / 100,
         reference: info.reference,
       })
@@ -146,7 +149,7 @@ export function RenewalPaymentDialog({
                   {info.planName} · {info.intervalLabel} · Netto {euro(netCents)} zzgl.{" "}
                   {euro(vatCents)} MwSt.
                 </p>
-                <p className="mt-1">{PAYMENT_DETAILS.terms}</p>
+                <p className="mt-1">{pay.terms}</p>
               </div>
 
               {qr ? (
