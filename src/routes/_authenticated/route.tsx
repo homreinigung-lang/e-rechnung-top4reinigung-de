@@ -16,10 +16,11 @@ export const Route = createFileRoute("/_authenticated")({
     } catch (error) {
       console.warn("Freigabe-Status konnte nicht geprüft werden:", error);
     }
-    if (status === "pending") {
+    if (status === "pending" || status === "blocked" || status === "rejected") {
       await supabase.auth.signOut();
       throw redirect({ to: "/freigabe-ausstehend" });
     }
+
     return { user: data.user };
   },
 
