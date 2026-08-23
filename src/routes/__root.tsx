@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { registerServiceWorker } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -78,7 +79,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
+      { name: "theme-color", content: "#1d6ef5" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "GebCalc" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "format-detection", content: "telephone=no" },
       { title: "GebCalc – Rechnungssystem" },
       { property: "og:site_name", content: "GebCalc" },
       {
@@ -126,6 +136,11 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+
+  // PWA: Service Worker nur in der veröffentlichten App registrieren.
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
