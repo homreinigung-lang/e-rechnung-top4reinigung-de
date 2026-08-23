@@ -41,7 +41,7 @@ import {
   CANCELLATION_TERMS,
   ORDER_INTRO,
   orderHeadline,
-  QUOTE_INTRO,
+  quoteIntro,
   deriveServiceName,
   quoteHeadline,
 } from "@/lib/document-texts";
@@ -812,7 +812,7 @@ function DokumentDetail() {
       meta,
       introText: isInvoice
         ? undefined
-        : `${isOrder ? ORDER_INTRO : QUOTE_INTRO}${
+        : `${isOrder ? ORDER_INTRO : quoteIntro(companyName)}${
             form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""
           }`,
       items: (hasOptionalItems
@@ -1702,7 +1702,7 @@ function DokumentDetail() {
                   ),
                 )}
               </h2>
-              <p className="mt-3 text-justify text-sm leading-relaxed">{QUOTE_INTRO}</p>
+              <p className="mt-3 text-justify text-sm leading-relaxed">{quoteIntro(String(settings?.["company_name"] ?? ""))}</p>
             </>
           )}
           {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
