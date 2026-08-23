@@ -1218,7 +1218,18 @@ function DokumentDetail() {
 
         <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
           <Label>Steuer-Art</Label>
-          <Select value={taxMode} onValueChange={(v) => setField("tax_mode", v)}>
+          {isSmallBusiness && (
+            <p className="rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+              Kleinunternehmerregelung (§ 19 UStG) ist im Firmenprofil aktiv – es wird keine
+              Umsatzsteuer berechnet oder ausgewiesen.
+            </p>
+          )}
+          <Select
+            value={taxMode}
+            onValueChange={(v) => setField("tax_mode", v)}
+            disabled={isSmallBusiness}
+          >
+
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
