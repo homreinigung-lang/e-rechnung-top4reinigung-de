@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { CheckCircle2, Info, Sparkles } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { usePlans, euro } from "@/lib/admin";
 import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
 import { PAYMENT_DETAILS } from "@/lib/plan-orders";
+import {
+  RenewalPaymentDialog,
+  type RenewalPaymentInfo,
+} from "@/components/RenewalPaymentDialog";
 import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/mein-paket")({
