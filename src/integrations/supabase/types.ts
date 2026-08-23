@@ -1380,6 +1380,57 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          city: string
+          company_name: string
+          contact_email: string
+          created_at: string
+          id: string
+          note: string
+          plan: string
+          renews_on: string | null
+          sort_order: number
+          started_on: string
+          status: string
+          updated_at: string
+          user_id: string
+          visible_on_landing: boolean
+        }
+        Insert: {
+          city?: string
+          company_name?: string
+          contact_email?: string
+          created_at?: string
+          id?: string
+          note?: string
+          plan?: string
+          renews_on?: string | null
+          sort_order?: number
+          started_on?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          visible_on_landing?: boolean
+        }
+        Update: {
+          city?: string
+          company_name?: string
+          contact_email?: string
+          created_at?: string
+          id?: string
+          note?: string
+          plan?: string
+          renews_on?: string | null
+          sort_order?: number
+          started_on?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          visible_on_landing?: boolean
+        }
+        Relationships: []
+      }
       time_account_adjustments: {
         Row: {
           created_at: string
@@ -1527,6 +1578,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1609,6 +1681,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       link_employee_account: { Args: never; Returns: string }
       list_trash: {
         Args: never
@@ -1670,6 +1749,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       doc_status:
         | "draft"
         | "sent"
@@ -1805,6 +1885,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       doc_status: [
         "draft",
         "sent",

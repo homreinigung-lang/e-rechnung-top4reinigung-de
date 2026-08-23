@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { usePublicPartners } from "@/lib/subscriptions";
+
 
 import {
   DropdownMenu,
@@ -101,7 +103,7 @@ const features = [
   },
 ];
 
-const partners = [
+const fallbackPartners = [
   "SGS Industrial Services",
   "Top4 Reinigung",
   "Saar Facility GmbH",
@@ -109,6 +111,7 @@ const partners = [
   "CleanPoint Süd",
   "Hausmeister Union",
 ];
+
 
 const trustPoints = [
   "GoBD-konforme Archivierung mit Festschreibung",
@@ -118,7 +121,16 @@ const trustPoints = [
 
 function Landing() {
   const navigate = useNavigate();
-  // Eingeladene Mitarbeitende sehen ausschließlich die Anmeldung, keine Marketing-Seite.
+  const { data: dbPartners } = usePublicPartners();
+  const partners =
+    dbPartners && dbPartners.length > 0
+      ? dbPartners.map((p) => ({
+          key: p.id,
+          name: p.company_name,
+          city: p.city,
+        }))
+      : fallbackPartners.map((name) => ({ key: name, name, city: "" }));
+
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let role: string | null = null;
@@ -251,13 +263,19 @@ function Landing() {
             <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {partners.map((p) => (
                 <div
-                  key={p}
+                  key={p.key}
                   className="flex items-center gap-3 rounded-lg border bg-card px-4 py-4 text-sm font-semibold"
                 >
                   <Building2 className="size-5 shrink-0 text-primary" />
-                  <span>{p}</span>
+                  <span className="flex flex-col leading-tight">
+                    <span>{p.name}</span>
+                    {p.city ? (
+                      <span className="text-xs font-normal text-muted-foreground">{p.city}</span>
+                    ) : null}
+                  </span>
                 </div>
               ))}
+
             </div>
           </div>
         </section>

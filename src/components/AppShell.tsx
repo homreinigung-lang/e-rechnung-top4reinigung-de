@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
+import { useIsAdmin } from "@/lib/subscriptions";
+
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
 
@@ -18,7 +20,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
+  BadgeCheck,
   BarChart3,
+
   Calculator,
   Clock,
   FileSignature,
@@ -114,8 +118,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: myEmployee } = useMyEmployee();
-  const groups = myEmployee ? employeeGroups : navGroups;
+  const { data: isAdmin } = useIsAdmin();
+  const baseGroups = myEmployee ? employeeGroups : navGroups;
+  const groups: readonly NavGroup[] =
+    !myEmployee && isAdmin
+      ? [
+          ...baseGroups,
+          {
+            title: "Administration",
+            items: [{ to: "/abonnements", label: "Abonnements", icon: BadgeCheck }],
+          },
+        ]
+      : baseGroups;
   const homeTo = groups[0]!.items[0]!.to;
+
 
   // Rolle merken: eingeladene Mitarbeitende sehen die Startseite (Marketing) nicht mehr.
   useEffect(() => {
