@@ -130,14 +130,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Echtzeit-Abgleich mit der Datenbank (Kunden, Rechnungen, Angebote)
   useRealtimeSync();
 
-  const { data: settings } = useQuery({
-    queryKey: ["company_settings"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("company_settings").select("*").maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
   // Produktname im Header ist fest – unabhängig von den Firmenstammdaten (Rechnungen etc.)
   const companyName = "GebCalc";
 
