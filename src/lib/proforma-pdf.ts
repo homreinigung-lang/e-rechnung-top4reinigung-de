@@ -39,14 +39,21 @@ export async function buildProformaPdfBytes(d: ProformaData): Promise<Uint8Array
   let y = PAGE_H - M;
   const line = (s: string, opts?: { size?: number; bold?: boolean; color?: typeof text; gap?: number }) => {
     const size = opts?.size ?? 10;
-    page.drawText(s, { x: M, y, size, font: opts?.bold ? bold : font, color: opts?.color ?? text });
+    page.drawText(cleanPdfText(s), {
+      x: M,
+      y,
+      size,
+      font: opts?.bold ? bold : font,
+      color: opts?.color ?? text,
+    });
     y -= size + (opts?.gap ?? 4);
   };
   const right = (label: string, value: string, strong = false) => {
     const size = 10;
-    page.drawText(label, { x: M, y, size, font, color: muted });
-    const w = (strong ? bold : font).widthOfTextAtSize(value, size);
-    page.drawText(value, {
+    const v = cleanPdfText(value);
+    page.drawText(cleanPdfText(label), { x: M, y, size, font, color: muted });
+    const w = (strong ? bold : font).widthOfTextAtSize(v, size);
+    page.drawText(v, {
       x: PAGE_W - M - w,
       y,
       size,
