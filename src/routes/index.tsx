@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { usePublicPartners } from "@/lib/subscriptions";
+import { usePlans, euro } from "@/lib/admin";
 
 import {
   DropdownMenu,
@@ -120,6 +121,8 @@ const trustPoints = [
 function Landing() {
   const navigate = useNavigate();
   const { data: dbPartners } = usePublicPartners();
+  const { data: plans } = usePlans();
+  const activePlans = (plans ?? []).filter((p) => p.active);
   const partners =
     dbPartners && dbPartners.length > 0
       ? dbPartners.map((p) => ({
