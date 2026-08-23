@@ -54,5 +54,5 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
     }
 
     const result = (await response.json()) as { id?: string };
-    return { id: result.id ?? null, cc: COMPANY_COPY };
+    return { id: result.id ?? null, cc: copyTo };
   });
