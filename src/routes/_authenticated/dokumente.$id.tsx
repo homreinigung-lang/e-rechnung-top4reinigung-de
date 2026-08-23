@@ -33,6 +33,8 @@ import {
   today,
   vatRateForTaxMode,
 } from "@/lib/format";
+import { Sparkles } from "lucide-react";
+import { useCanReverseCharge } from "@/lib/subscriptions";
 import { buildEpcPayload } from "@/lib/epc";
 import {
   QUOTE_DISCLAIMER,
@@ -222,7 +224,11 @@ function DokumentDetail() {
     );
   }, [data]);
 
-  const taxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
+  const { canReverseCharge } = useCanReverseCharge();
+  const rawTaxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
+  // Feature-Gate: Reverse-Charge nur ab Pro – Basis-Konten rechnen mit 19 % Inland ab.
+  const taxMode =
+    rawTaxMode === "eu_reverse_charge" && !canReverseCharge ? "domestic" : rawTaxMode;
   const vatRate = vatRateForTaxMode(taxMode);
   const taxNote = taxNoteForTaxMode(taxMode);
 
@@ -272,6 +278,7 @@ function DokumentDetail() {
         due_date: form["due_date"] ? form["due_date"] : null,
         paid_at: form["status"] === "paid" ? form["paid_at"] || today() : null,
         customer_id: form["customer_id"] || null,
+        tax_mode: taxMode,
         vat_rate: vatRate,
         reverse_charge: taxMode === "eu_reverse_charge",
         discount_percent: discountPercent,
@@ -603,7 +610,7 @@ function DokumentDetail() {
       tax_mode:
         String(f["tax_mode"] ?? "") === "kleinunternehmer"
           ? "kleinunternehmer"
-          : euReverseCharge
+          : euReverseCharge && canReverseCharge
             ? "eu_reverse_charge"
             : "domestic",
     }));
