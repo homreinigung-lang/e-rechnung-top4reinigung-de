@@ -39,6 +39,7 @@ import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
 import { ProjektKennzahlen } from "@/components/ProjektKennzahlen";
 import { KalkulationAnalytics } from "@/components/KalkulationAnalytics";
+import { SpeechToTextButton } from "@/components/SpeechToTextButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /** Kurze, verständliche Einleitung am Kopf jedes Bereichs. */
