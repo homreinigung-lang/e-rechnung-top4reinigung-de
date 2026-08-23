@@ -293,7 +293,10 @@ function KalkulationPage() {
 
   /** Einzige gültige Netto-Gesamtsumme: ausschließlich aus den Positionen. */
   const aiTotal = useMemo(
-    () => positionsTotal(aiItems.map((i) => ({ quantity: num(i.quantity), unit_price: num(i.unit_price) }))),
+    () =>
+      positionsTotal(
+        aiItems.map((i) => ({ quantity: num(i.quantity), unit_price: num(i.unit_price) })),
+      ),
     [aiItems],
   );
   const vatAmount = round2(aiTotal * 0.19);
@@ -410,8 +413,6 @@ function KalkulationPage() {
   useEffect(() => {
     setConfirmed(false);
   }, [suggested, finalPrice, note, discountReason, selected.value]);
-
-  
 
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
@@ -710,7 +711,6 @@ function KalkulationPage() {
               </div>
             </div>
           )}
-
 
           <Card>
             <CardHeader>
@@ -1425,12 +1425,7 @@ function KalkulationPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={applyCalculation}
-                  >
+                  <Button type="button" variant="outline" size="sm" onClick={applyCalculation}>
                     <Calculator className="size-4" /> Kalkulation übernehmen
                   </Button>
                   <Button
@@ -1662,9 +1657,7 @@ function KalkulationPage() {
 
                 <Button
                   className="w-full"
-                  disabled={
-                    toQuote.isPending || aiTotal <= 0 || !confirmed || warnings.length > 0
-                  }
+                  disabled={toQuote.isPending || aiTotal <= 0 || !confirmed || warnings.length > 0}
                   onClick={() => toQuote.mutate()}
                 >
                   <FileSignature className="size-4" />
