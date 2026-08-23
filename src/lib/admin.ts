@@ -76,7 +76,9 @@ export function usePlans() {
     queryFn: async (): Promise<Plan[]> => {
       const { data, error } = await supabase
         .from("plans")
-        .select("id,code,name,description,price_monthly_cents,price_yearly_cents,features,sort_order,active")
+        .select(
+          "id,code,name,description,price_monthly_cents,price_yearly_cents,features,sort_order,active",
+        )
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Plan[];
