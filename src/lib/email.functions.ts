@@ -8,10 +8,12 @@ const schema = z.object({
   html: z.string().max(100000).optional(),
   filename: z.string().min(1).max(200),
   pdfBase64: z.string().min(1),
+  /** Absendername und Kopie-Adresse der angemeldeten Firma (keine feste Adresse). */
+  companyName: z.string().max(120).optional(),
+  companyEmail: z.string().email().optional(),
 });
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
-const COMPANY_COPY = "info@top4reinigung.de";
 
 export const sendInvoiceEmail = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => schema.parse(input))
