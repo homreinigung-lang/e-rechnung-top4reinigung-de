@@ -163,7 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
             ) : (
               <img
-                src="/app-icon-192.png"
+                src="/app-icon-192.png?v=3"
                 alt="GebCalc Logo"
                 width={32}
                 height={32}
