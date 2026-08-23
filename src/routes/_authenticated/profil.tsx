@@ -219,8 +219,27 @@ function CompanyProfil() {
               </div>
             ))}
           </div>
+          {group.title === "Steuerliche Angaben" && (
+            <div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-4">
+              <Checkbox
+                id="small_business"
+                checked={smallBusiness}
+                onCheckedChange={(v) => setSmallBusiness(v === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="small_business">Kleinunternehmer nach § 19 UStG</Label>
+                <p className="text-sm text-muted-foreground">
+                  Wenn aktiv, wird auf Rechnungen und Angeboten keine Umsatzsteuer berechnet oder
+                  ausgewiesen. Der Pflichthinweis „Gemäß § 19 UStG wird keine Umsatzsteuer
+                  berechnet." erscheint automatisch am Ende des Belegs.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       ))}
+
 
       <div className="surface space-y-4 p-6">
         <div>
