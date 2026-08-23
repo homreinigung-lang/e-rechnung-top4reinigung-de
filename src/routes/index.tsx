@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { usePublicPartners } from "@/lib/subscriptions";
-import { usePlans, euro } from "@/lib/admin";
+import { usePlans, euro, type Plan } from "@/lib/admin";
+import { PlanOrderDialog } from "@/components/PlanOrderDialog";
 
 import {
   DropdownMenu,
@@ -132,6 +133,7 @@ function Landing() {
         }))
       : fallbackPartners.map((name) => ({ key: name, name, city: "" }));
 
+  const [orderPlan, setOrderPlan] = useState<Plan | null>(null);
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let role: string | null = null;
@@ -372,6 +374,8 @@ function Landing() {
           </div>
         </section>
       </main>
+
+      <PlanOrderDialog plan={orderPlan} onOpenChange={(o) => !o && setOrderPlan(null)} />
 
       <footer className="border-t py-8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 text-sm text-muted-foreground">
