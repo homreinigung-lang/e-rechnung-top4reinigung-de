@@ -113,7 +113,9 @@ const employeeGroups: readonly NavGroup[] = [
       { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
       { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
       { to: "/profil", label: "Mein Profil", icon: UserCircle },
+      { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
     ],
+
   },
 ] as const;
 
