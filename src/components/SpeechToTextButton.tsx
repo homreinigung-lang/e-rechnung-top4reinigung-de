@@ -84,11 +84,7 @@ export function SpeechToTextButton({
         className,
       )}
     >
-      {isListening ? (
-        <AudioLines className="size-4" />
-      ) : (
-        <Mic className="size-4" />
-      )}
+      {isListening ? <AudioLines className="size-4" /> : <Mic className="size-4" />}
       {isListening && (
         <span className="ml-1.5 text-xs font-medium text-red-600">Aufnahme läuft…</span>
       )}

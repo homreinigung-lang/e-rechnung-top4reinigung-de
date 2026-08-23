@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 import {
   BadgeCheck,
   BarChart3,
-
   Calculator,
   Clock,
   FileSignature,
@@ -128,11 +127,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             title: "Administration",
             items: [{ to: "/admin", label: "Plattform-Admin", icon: BadgeCheck }],
           },
-
         ]
       : baseGroups;
   const homeTo = groups[0]!.items[0]!.to;
-
 
   // Rolle merken: eingeladene Mitarbeitende sehen die Startseite (Marketing) nicht mehr.
   useEffect(() => {

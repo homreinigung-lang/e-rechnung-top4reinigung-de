@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { usePublicPartners } from "@/lib/subscriptions";
 
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,7 +110,6 @@ const fallbackPartners = [
   "CleanPoint Süd",
   "Hausmeister Union",
 ];
-
 
 const trustPoints = [
   "GoBD-konforme Archivierung mit Festschreibung",
@@ -275,7 +273,6 @@ function Landing() {
                   </span>
                 </div>
               ))}
-
             </div>
           </div>
         </section>
