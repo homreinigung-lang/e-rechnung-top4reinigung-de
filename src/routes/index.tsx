@@ -194,8 +194,10 @@ function Landing() {
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </div>
       </header>
+
 
       <main>
         <section className="mx-auto max-w-6xl px-6 pt-10 pb-16 md:pt-20">
