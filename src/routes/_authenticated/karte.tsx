@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/karte")({
         content:
           "Interaktive Karte mit Kundenadressen, Projektstandorten und geplanten Mitarbeiter-Einsätzen für die Tourenplanung.",
       },
-      { property: "og:title", content: "Einsatzkarte – HomR Office" },
+      { property: "og:title", content: "Einsatzkarte – GebCalc" },
       {
         property: "og:description",
         content: "Kunden, Projekte und Einsätze geografisch planen.",

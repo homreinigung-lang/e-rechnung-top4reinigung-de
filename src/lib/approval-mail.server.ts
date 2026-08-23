@@ -43,7 +43,7 @@ export async function sendMail(opts: { to: string; subject: string; html: string
 
 const shell = (inner: string) =>
   `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.6;font-size:15px">${inner}
-  <p style="margin-top:28px;color:#64748b;font-size:12px">HomR Office – Hom Reinigung Service</p></div>`;
+  <p style="margin-top:28px;color:#64748b;font-size:12px">GebCalc – Hom Reinigung Service</p></div>`;
 
 export function ownerRequestMail(p: {
   name: string;
@@ -81,7 +81,7 @@ Ablehnen: ${p.rejectUrl}`;
 export function welcomeMail(loginUrl: string) {
   const text = `Ihr Zugang wurde freigeschaltet. Sie können sich jetzt anmelden: ${loginUrl}`;
   const html = shell(`
-    <h2 style="margin:0 0 12px">Willkommen bei HomR Office</h2>
+    <h2 style="margin:0 0 12px">Willkommen bei GebCalc</h2>
     <p>Ihr Zugang wurde freigeschaltet. Sie können sich ab sofort anmelden.</p>
     <p style="margin:24px 0"><a href="${loginUrl}" style="background:#0f766e;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">Jetzt anmelden</a></p>`);
   return { text, html };

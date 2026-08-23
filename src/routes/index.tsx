@@ -15,7 +15,7 @@ import { FileText, Mail, MoreVertical, Receipt, ShieldCheck } from "lucide-react
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "HomR Office – Software für Gebäudereinigung & E-Rechnung" },
+      { title: "GebCalc – Software für Gebäudereinigung & E-Rechnung" },
       {
         name: "description",
         content:
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content: "HomR Office – Software für Gebäudereinigung & E-Rechnung",
+        content: "GebCalc – Software für Gebäudereinigung & E-Rechnung",
       },
       {
         property: "og:description",
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
-          name: "HomR Office",
+          name: "GebCalc",
           applicationCategory: "BusinessApplication",
           operatingSystem: "Web",
           url: "https://e-rechnung.top4reinigung.de/",
@@ -104,12 +104,12 @@ function Landing() {
         <div className="flex items-center gap-2">
           <img
             src="/app-icon-192.png"
-            alt="HomR Logo"
+            alt="GebCalc Logo"
             width={36}
             height={36}
             className="size-9 rounded-lg"
           />
-          <span className="font-display text-lg font-semibold">HomR</span>
+          <span className="font-display text-lg font-semibold">GebCalc</span>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

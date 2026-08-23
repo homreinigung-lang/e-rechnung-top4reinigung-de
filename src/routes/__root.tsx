@@ -79,8 +79,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "HomR – Rechnungen & Angebote" },
-      { property: "og:site_name", content: "HomR" },
+      { title: "GebCalc – Rechnungen & Angebote" },
+      { property: "og:site_name", content: "GebCalc" },
       {
         name: "description",
         content:

@@ -1,6 +1,6 @@
 {
-  "name": "HomR – Rechnungen & Angebote",
-  "short_name": "HomR",
+  "name": "GebCalc – Rechnungen & Angebote",
+  "short_name": "GebCalc",
   "lang": "de",
   "start_url": "/dashboard",
   "display": "standalone",

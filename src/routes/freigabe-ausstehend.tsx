@@ -3,12 +3,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 export const Route = createFileRoute("/freigabe-ausstehend")({
   head: () => ({
     meta: [
-      { title: "Konto wartet auf Freigabe – HomR Office" },
+      { title: "Konto wartet auf Freigabe – GebCalc" },
       {
         name: "description",
         content: "Ihr neues Konto wurde registriert und wartet auf die Freigabe durch den Inhaber.",
       },
-      { property: "og:title", content: "Konto wartet auf Freigabe – HomR Office" },
+      { property: "og:title", content: "Konto wartet auf Freigabe – GebCalc" },
       {
         property: "og:description",
         content: "Neue Konten werden vor der ersten Anmeldung manuell freigegeben.",

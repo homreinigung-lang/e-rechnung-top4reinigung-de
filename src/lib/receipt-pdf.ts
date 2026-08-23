@@ -58,7 +58,7 @@ export async function receiptFileToPdf(
   page.drawImage(image, { x: (A4.w - w) / 2, y: A4.h - 100 - h, width: w, height: h });
 
   pdf.setTitle(heading);
-  pdf.setProducer("HomR Office");
+  pdf.setProducer("GebCalc");
 
   const out = await pdf.save();
   const name = `${slug(dateLabel)}_${slug(meta.category || "Sonstiges")}.pdf`;

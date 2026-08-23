@@ -10,13 +10,13 @@ import { Archive, DatabaseBackup, Lock, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/_authenticated/sicherheit")({
   head: () => ({
     meta: [
-      { title: "Sicherheit & Backup – HomR Office" },
+      { title: "Sicherheit & Backup – GebCalc" },
       {
         name: "description",
         content:
-          "Zwei-Faktor-Anmeldung, Aufbewahrungsfristen für Fotos, GoBD-Archivierung und das Backup-Handbuch für HomR Office.",
+          "Zwei-Faktor-Anmeldung, Aufbewahrungsfristen für Fotos, GoBD-Archivierung und das Backup-Handbuch für GebCalc.",
       },
-      { property: "og:title", content: "Sicherheit & Backup – HomR Office" },
+      { property: "og:title", content: "Sicherheit & Backup – GebCalc" },
       {
         property: "og:description",
         content: "2FA, Datensicherung, GoBD-Archivierung und Aufbewahrungsfristen verwalten.",

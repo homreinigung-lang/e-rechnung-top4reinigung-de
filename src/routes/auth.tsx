@@ -195,12 +195,12 @@ function AuthPage() {
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
           <img
             src="/app-icon-192.png"
-            alt="HomR Logo"
+            alt="GebCalc Logo"
             width={36}
             height={36}
             className="size-9 rounded-lg"
           />
-          <span className="font-display text-lg font-semibold">HomR</span>
+          <span className="font-display text-lg font-semibold">GebCalc</span>
         </Link>
 
         <div className="surface p-6">

@@ -158,8 +158,8 @@ async function qrImageBytes(payload: string, px: number): Promise<Uint8Array> {
 export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(d.title);
-  pdf.setProducer("HomR Office");
-  pdf.setCreator("HomR Office");
+  pdf.setProducer("GebCalc");
+  pdf.setCreator("GebCalc");
 
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);

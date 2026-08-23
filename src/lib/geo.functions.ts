@@ -19,7 +19,7 @@ export const geocodeAddresses = createServerFn({ method: "POST" })
       url.searchParams.set("countrycodes", "de,at,ch,fr,lu,be,nl");
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "HomR-Office/1.0 (Einsatzplanung)",
+          "User-Agent": "GebCalc/1.0 (Einsatzplanung)",
           "Accept-Language": "de",
         },
       });

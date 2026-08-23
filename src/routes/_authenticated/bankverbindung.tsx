@@ -13,13 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export const Route = createFileRoute("/_authenticated/bankverbindung")({
   head: () => ({
     meta: [
-      { title: "Bankverbindung – HomR" },
+      { title: "Bankverbindung – GebCalc" },
       {
         name: "description",
         content:
           "Bankdaten für Rechnungen hinterlegen: Kontoinhaber, IBAN und BIC für GiroCode und Zahlungen.",
       },
-      { property: "og:title", content: "Bankverbindung – HomR" },
+      { property: "og:title", content: "Bankverbindung – GebCalc" },
       {
         property: "og:description",
         content: "Bankdaten für Rechnungen und GiroCode verwalten.",

@@ -248,7 +248,7 @@ function Einstellungen() {
     try {
       const data = await loadBackupData();
       const payload = {
-        app: "HomR Office",
+        app: "GebCalc",
         exported_at: new Date().toISOString(),
         counts: {
           customers: data.customers.length,
@@ -259,7 +259,7 @@ function Einstellungen() {
       };
       await saveFile(
         new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
-        `HomR_Backup_${new Date().toISOString().slice(0, 10)}.json`,
+        `GebCalc_Backup_${new Date().toISOString().slice(0, 10)}.json`,
       );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Backup fehlgeschlagen");
@@ -278,7 +278,7 @@ function Einstellungen() {
         { name: "Belege", rows: data.documents as Record<string, unknown>[] },
         { name: "Positionen", rows: data.document_items as Record<string, unknown>[] },
       ]);
-      await saveFile(blob, `HomR_Backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      await saveFile(blob, `GebCalc_Backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Backup fehlgeschlagen");
     } finally {

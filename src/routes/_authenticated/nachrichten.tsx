@@ -13,7 +13,7 @@ import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 export const Route = createFileRoute("/_authenticated/nachrichten")({
   head: () => ({
     meta: [
-      { title: "Interner Chat – HomR" },
+      { title: "Interner Chat – GebCalc" },
       {
         name: "description",
         content:
