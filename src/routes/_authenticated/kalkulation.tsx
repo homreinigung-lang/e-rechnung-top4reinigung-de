@@ -160,6 +160,11 @@ type AiItem = {
   unit_price: string;
 };
 
+const AUTO_BALANCE_DESCRIPTIONS = new Set([
+  "Manuelle Endpreisanpassung",
+  "Manueller Preisnachlass",
+]);
+
 function KalkulationPage() {
   const navigate = useNavigate();
 
@@ -292,17 +297,6 @@ function KalkulationPage() {
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
-
-  /** Einzige gültige Netto-Gesamtsumme: ausschließlich aus den Positionen. */
-  const aiTotal = useMemo(
-    () =>
-      positionsTotal(
-        aiItems.map((i) => ({ quantity: num(i.quantity), unit_price: num(i.unit_price) })),
-      ),
-    [aiItems],
-  );
-  const vatAmount = round2(aiTotal * 0.19);
-  const grossTotal = round2(aiTotal + vatAmount);
 
   const patchAiItem = (id: string, patch: Partial<AiItem>) =>
     setAiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -476,6 +470,42 @@ function KalkulationPage() {
     if (!finalTouched) setFinalPrice(suggested ? suggested.toFixed(2).replace(".", ",") : "0,00");
   }, [suggested, finalTouched]);
 
+  /**
+   * Verbindlicher SSOT: Der Endpreis der Grundkalkulation ist das Ziel für das
+   * Leistungsverzeichnis. Alle Ausgaben verwenden ausschließlich diesen
+   * centgenau abgeglichenen Positionssatz. Manuelle LV-Änderungen verändern
+   * daher automatisch nur die sichtbare Ausgleichsposition, nie den Endpreis.
+   */
+  const targetNetTotal = round2(num(finalPrice));
+  const lvBasePositions = useMemo(
+    () =>
+      aiItems
+        .map((item) => ({
+          description: item.description.trim(),
+          quantity: round2(num(item.quantity)),
+          unit: item.unit.trim() || "Pauschal",
+          unit_price: round2(num(item.unit_price)),
+        }))
+        .filter(
+          (item) =>
+            item.description.length > 0 &&
+            !AUTO_BALANCE_DESCRIPTIONS.has(item.description) &&
+            Math.abs(item.quantity * item.unit_price) >= 0.01,
+        ),
+    [aiItems],
+  );
+  const synchronizedLvPositions = useMemo(
+    () => reconcilePositionsTotal(lvBasePositions, targetNetTotal),
+    [lvBasePositions, targetNetTotal],
+  );
+  const balancingPosition =
+    synchronizedLvPositions.length > lvBasePositions.length
+      ? synchronizedLvPositions[synchronizedLvPositions.length - 1]
+      : undefined;
+  const aiTotal = targetNetTotal;
+  const vatAmount = round2(aiTotal * 0.19);
+  const grossTotal = round2(aiTotal + vatAmount);
+
   // Jede Änderung hebt die finale Bestätigung wieder auf.
   useEffect(() => {
     setConfirmed(false);
@@ -527,8 +557,10 @@ function KalkulationPage() {
       );
       return;
     }
+    // Nur die fachlichen Grundpositionen speichern. Die ggf. erforderliche
+    // Ausgleichsposition wird zentral und reaktiv aus dem Endpreis abgeleitet.
     setAiItems(
-      positions.map((p, n) => ({
+      calculatedPositions.map((p, n) => ({
         id: `calc-${Date.now()}-${n}`,
         description: p.description,
         quantity: String(p.quantity).replace(".", ","),
@@ -555,14 +587,12 @@ function KalkulationPage() {
   /** Leistungsverzeichnis als abgabefertiges PDF exportieren. */
   const exportLv = useMutation({
     mutationFn: async () => {
-      const positions = aiItems
-        .filter((i) => i.description.trim() || num(i.unit_price) > 0)
-        .map((i, n) => ({
+      const positions = synchronizedLvPositions.map((i, n) => ({
           oz: `${n + 1}.10`,
-          description: i.description.trim() || "Leistung",
-          quantity: num(i.quantity),
-          unit: i.unit.trim() || "Stk.",
-          unitPrice: num(i.unit_price),
+          description: i.description,
+          quantity: i.quantity,
+          unit: i.unit,
+          unitPrice: i.unit_price,
         }));
       if (positions.length === 0) {
         throw new Error("Bitte zuerst LV-Positionen erfassen oder die Kalkulation übernehmen.");
@@ -620,14 +650,7 @@ function KalkulationPage() {
       if (warnings.length > 0) {
         throw new Error("Bitte zuerst die Plausibilitätshinweise klären.");
       }
-      const positions = aiItems
-        .map((i) => ({
-          description: i.description.trim(),
-          quantity: round2(num(i.quantity)),
-          unit: i.unit.trim() || "Pauschal",
-          unit_price: round2(num(i.unit_price)),
-        }))
-        .filter((i) => i.description && Math.abs(i.quantity * i.unit_price) >= 0.01);
+      const positions = synchronizedLvPositions;
       if (positions.length === 0) {
         throw new Error(
           "Es liegen keine gültigen Positionen vor. Bitte zuerst die Kalkulation übernehmen.",
