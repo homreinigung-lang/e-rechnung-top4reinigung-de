@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { usePublicPartners } from "@/lib/subscriptions";
+
 
 import {
   DropdownMenu,
