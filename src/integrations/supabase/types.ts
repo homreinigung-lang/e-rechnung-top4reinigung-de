@@ -1071,6 +1071,45 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_settings: {
+        Row: {
+          bank: string
+          bic: string
+          created_at: string
+          email: string
+          iban: string
+          id: string
+          recipient: string
+          terms: string
+          updated_at: string
+          vat_id: string
+        }
+        Insert: {
+          bank?: string
+          bic?: string
+          created_at?: string
+          email?: string
+          iban?: string
+          id?: string
+          recipient?: string
+          terms?: string
+          updated_at?: string
+          vat_id?: string
+        }
+        Update: {
+          bank?: string
+          bic?: string
+          created_at?: string
+          email?: string
+          iban?: string
+          id?: string
+          recipient?: string
+          terms?: string
+          updated_at?: string
+          vat_id?: string
+        }
+        Relationships: []
+      }
       project_assignments: {
         Row: {
           assignment_role: string
