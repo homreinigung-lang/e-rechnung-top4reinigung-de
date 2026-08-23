@@ -97,7 +97,8 @@ const navGroups: readonly NavGroup[] = [
       { to: "/mein-paket", label: "Mein Paket", icon: BadgeCheck },
       { to: "/profil", label: "Mein Profil", icon: UserCircle },
       { to: "/einstellungen", label: "Einstellungen", icon: Settings },
-    ],
+      { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
+
   },
 ] as const;
 
