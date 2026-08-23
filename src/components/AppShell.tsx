@@ -29,6 +29,8 @@ import {
   FolderKanban,
   HardHat,
   Landmark,
+  LifeBuoy,
+
   Map as MapIcon,
   LayoutDashboard,
   LogOut,
