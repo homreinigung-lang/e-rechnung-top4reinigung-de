@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { cleanPdfText } from "@/lib/pdf-text";
 
 const A4 = { w: 595.28, h: 841.89 };
 
@@ -39,9 +40,9 @@ export async function receiptFileToPdf(
   const dateLabel = y && m && d ? `${d}.${m}.${y}` : meta.date;
   const heading = `Beleg ${dateLabel} · ${meta.category || "Sonstiges"}`;
 
-  page.drawText(heading, { x: 40, y: A4.h - 50, size: 13, font: bold });
+  page.drawText(cleanPdfText(heading), { x: 40, y: A4.h - 50, size: 13, font: bold });
   if (meta.supplier) {
-    page.drawText(meta.supplier, {
+    page.drawText(cleanPdfText(meta.supplier), {
       x: 40,
       y: A4.h - 68,
       size: 10,

@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import {
   PLATFORM_PAYMENT_FALLBACK,
+  formatIban,
   type PlatformPayment,
 } from "@/lib/platform-payment";
 import { euro } from "@/lib/admin";
@@ -84,7 +85,7 @@ export async function buildProformaPdfBytes(d: ProformaData): Promise<Uint8Array
 
   line("Zahlungsdetails (SEPA-Überweisung)", { bold: true, gap: 6 });
   line(`Empfänger: ${p.recipient}`);
-  line(`IBAN: ${p.iban}`);
+  line(`IBAN: ${formatIban(p.iban)}`);
   line(`BIC: ${p.bic}`);
   line(`Bank: ${p.bank}`);
   line(`Verwendungszweck: ${d.reference}`, { gap: 10 });
