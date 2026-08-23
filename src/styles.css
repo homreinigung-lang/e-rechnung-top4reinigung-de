@@ -421,3 +421,41 @@ input[type="datetime-local"]::-webkit-inner-spin-button {
 }
 
 
+
+/* --- Mobile-Optimierung -------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+}
+
+/* iOS zoomt beim Fokus, wenn Eingabefelder kleiner als 16px sind. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  table {
+    font-size: 0.875rem;
+  }
+  /* Breite Tabellen auf dem Handy horizontal scrollbar machen. */
+  .surface > table,
+  .table-scroll {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Größere Touch-Ziele auf Zeigegeräten ohne Maus. */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a.btn {
+    min-height: 40px;
+  }
+}
