@@ -14,6 +14,9 @@ import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { Leistungswerte } from "@/components/Leistungswerte";
 import { FileUploadButton } from "@/components/FileUploadButton";
+import { PlatformBankdatenCard } from "@/components/PlatformBankdatenCard";
+import { useIsAdmin } from "@/lib/subscriptions";
+import { Landmark } from "lucide-react";
 import { permanentFileUrl, uploadUserFile } from "@/lib/storage";
 import {
   DropdownMenu,
