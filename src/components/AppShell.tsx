@@ -141,9 +141,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="no-print sticky top-0 z-30 border-b bg-card/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
+    <div className="min-h-screen overflow-x-hidden bg-background">
+      <header
+        className="no-print sticky top-0 z-30 border-b bg-card/80 backdrop-blur"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
+        <div className="mx-auto flex max-w-6xl flex-nowrap items-center gap-3 px-3 py-2 sm:px-4 sm:py-3">
           <Link to={homeTo} className="flex items-center gap-2">
             <img
               src="/app-icon-192.png?v=5"
