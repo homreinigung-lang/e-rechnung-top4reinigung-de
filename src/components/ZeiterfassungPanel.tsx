@@ -392,7 +392,17 @@ export function Zeiterfassung() {
     doc.text(`Stundenzettel ${m0}/${y0}`, 15, y);
     y += 7;
     doc.setFontSize(9);
-    doc.text("Hom Reinigung Service · Stundenübersicht je Mitarbeiter", 15, y);
+    // Firmenname immer aus den Einstellungen der angemeldeten Firma (RLS-geschützt).
+    const { data: companySettings } = await supabase
+      .from("company_settings")
+      .select("company_name")
+      .maybeSingle();
+    const companyName = String(companySettings?.company_name ?? "").trim();
+    doc.text(
+      [companyName, "Stundenübersicht je Mitarbeiter"].filter(Boolean).join(" · "),
+      15,
+      y,
+    );
     y += 10;
 
     doc.setFontSize(10);

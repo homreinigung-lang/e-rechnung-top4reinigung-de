@@ -1,7 +1,14 @@
 /** Zentrale Textbausteine für Angebote (Rechnungen bleiben bewusst nüchtern). */
 
-export const QUOTE_INTRO =
-  "Qualität, die man sieht – Zuverlässigkeit, die man spürt. Wir bei Hom Reinigung Service verstehen, dass eine gepflegte Umgebung die Visitenkarte Ihres Gebäudes ist. Unser Anspruch ist Ihre höchste Zufriedenheit durch gründliche, zuverlässige und professionelle Reinigungsleistungen. Wir setzen auf transparente Kommunikation und individuelle Lösungen, die genau auf Ihre Bedürfnisse abgestimmt sind. Vertrauen Sie auf unser Know-how und unsere zuverlässige Arbeitsweise – wir sind jederzeit gerne für Sie da.";
+/**
+ * Einleitungstext für Angebote. Der Firmenname wird immer dynamisch aus den
+ * Firmeneinstellungen der angemeldeten Firma übernommen – niemals fest hinterlegt.
+ */
+export function quoteIntro(companyName?: string | null): string {
+  const name = (companyName ?? "").trim();
+  const subject = name ? `Wir bei ${name} verstehen` : "Wir verstehen";
+  return `Qualität, die man sieht – Zuverlässigkeit, die man spürt. ${subject}, dass eine gepflegte Umgebung die Visitenkarte Ihres Gebäudes ist. Unser Anspruch ist Ihre höchste Zufriedenheit durch gründliche, zuverlässige und professionelle Reinigungsleistungen. Wir setzen auf transparente Kommunikation und individuelle Lösungen, die genau auf Ihre Bedürfnisse abgestimmt sind. Vertrauen Sie auf unser Know-how und unsere zuverlässige Arbeitsweise – wir sind jederzeit gerne für Sie da.`;
+}
 
 /** Überschrift mittig über dem Angebot. */
 export function quoteHeadline(serviceName?: string | null): string {
