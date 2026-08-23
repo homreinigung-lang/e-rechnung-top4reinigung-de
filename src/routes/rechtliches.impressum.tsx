@@ -3,13 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/rechtliches/impressum")({
   head: () => ({
     meta: [
-      { title: "Impressum – HomR" },
+      { title: "Impressum – GebCalc" },
       {
         name: "description",
         content:
           "Impressum und Anbieterkennzeichnung nach § 5 TMG: Firmenanschrift, Kontakt, USt-IdNr. und Verantwortliche.",
       },
-      { property: "og:title", content: "Impressum – HomR" },
+      { property: "og:title", content: "Impressum – GebCalc" },
       {
         property: "og:description",
         content: "Anbieterkennzeichnung nach § 5 TMG mit Kontakt- und Steuerdaten.",

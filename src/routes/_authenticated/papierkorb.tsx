@@ -10,13 +10,13 @@ import { FileText, RotateCcw, Trash2, Users, Receipt } from "lucide-react";
 export const Route = createFileRoute("/_authenticated/papierkorb")({
   head: () => ({
     meta: [
-      { title: "Papierkorb – HomR Office" },
+      { title: "Papierkorb – GebCalc" },
       {
         name: "description",
         content:
           "Gelöschte Rechnungen, Angebote, Kunden und Ausgaben 30 Tage lang wiederherstellen oder endgültig entfernen.",
       },
-      { property: "og:title", content: "Papierkorb – HomR Office" },
+      { property: "og:title", content: "Papierkorb – GebCalc" },
       {
         property: "og:description",
         content: "Versehentlich gelöschte Daten innerhalb von 30 Tagen wiederherstellen.",

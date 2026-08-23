@@ -456,8 +456,8 @@ export async function embedZugferdXml(
   pdfDoc.setTitle(`${meta.title} ${meta.number}`);
   pdfDoc.setSubject("ZUGFeRD 2.3 / Factur-X (EN 16931) – hybride E-Rechnung");
   pdfDoc.setKeywords(["ZUGFeRD", "Factur-X", "XRechnung", "EN16931", "E-Rechnung"]);
-  pdfDoc.setProducer("HomR");
-  pdfDoc.setCreator("HomR");
+  pdfDoc.setProducer("GebCalc");
+  pdfDoc.setCreator("GebCalc");
 
   await pdfDoc.attach(xmlBytes, "factur-x.xml", {
     mimeType: "text/xml",

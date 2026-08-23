@@ -3,13 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/rechtliches/bibliotheken")({
   head: () => ({
     meta: [
-      { title: "Bibliotheken & Open-Source-Lizenzen – HomR" },
+      { title: "Bibliotheken & Open-Source-Lizenzen – GebCalc" },
       {
         name: "description",
         content:
-          "Übersicht der in HomR verwendeten Open-Source-Bibliotheken, Frameworks und ihrer Lizenzen (MIT, Apache 2.0, ISC).",
+          "Übersicht der in GebCalc verwendeten Open-Source-Bibliotheken, Frameworks und ihrer Lizenzen (MIT, Apache 2.0, ISC).",
       },
-      { property: "og:title", content: "Bibliotheken & Lizenzen – HomR" },
+      { property: "og:title", content: "Bibliotheken & Lizenzen – GebCalc" },
       { property: "og:description", content: "Verwendete Open-Source-Pakete und ihre Lizenzen." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

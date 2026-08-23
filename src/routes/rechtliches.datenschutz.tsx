@@ -3,13 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/rechtliches/datenschutz")({
   head: () => ({
     meta: [
-      { title: "Datenschutzbestimmungen (DSGVO) – HomR" },
+      { title: "Datenschutzbestimmungen (DSGVO) – GebCalc" },
       {
         name: "description",
         content:
           "Datenschutzerklärung nach DSGVO: verarbeitete Daten, Rechtsgrundlagen, Speicherdauer, Auftragsverarbeiter und Ihre Betroffenenrechte.",
       },
-      { property: "og:title", content: "Datenschutzbestimmungen – HomR" },
+      { property: "og:title", content: "Datenschutzbestimmungen – GebCalc" },
       {
         property: "og:description",
         content: "Informationen zur Verarbeitung personenbezogener Daten nach Art. 13 DSGVO.",

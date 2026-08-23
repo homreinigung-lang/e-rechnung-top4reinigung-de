@@ -3,13 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/rechtliches/agb")({
   head: () => ({
     meta: [
-      { title: "AGB – Allgemeine Geschäftsbedingungen | HomR" },
+      { title: "AGB – Allgemeine Geschäftsbedingungen | GebCalc" },
       {
         name: "description",
         content:
-          "Allgemeine Geschäftsbedingungen für Reinigungsdienstleistungen und die Nutzung der HomR Rechnungssoftware.",
+          "Allgemeine Geschäftsbedingungen für Reinigungsdienstleistungen und die Nutzung der GebCalc Rechnungssoftware.",
       },
-      { property: "og:title", content: "AGB – HomR" },
+      { property: "og:title", content: "AGB – GebCalc" },
       {
         property: "og:description",
         content: "Allgemeine Geschäftsbedingungen: Leistungen, Preise, Zahlung, Haftung.",

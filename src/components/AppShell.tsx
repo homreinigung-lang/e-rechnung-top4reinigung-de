@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     },
   });
   const logoSrc = useFileUrl((settings as { logo_url?: string } | null)?.logo_url);
-  const companyName = (settings as { company_name?: string } | null)?.company_name || "HomR";
+  const companyName = (settings as { company_name?: string } | null)?.company_name || "GebCalc";
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -163,13 +163,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : (
               <img
                 src="/app-icon-192.png"
-                alt="HomR Logo"
+                alt="GebCalc Logo"
                 width={32}
                 height={32}
                 className="size-8 rounded-lg"
               />
             )}
-            <span className="font-display text-sm font-semibold">{companyName}</span>
+            <span className="flex flex-col leading-tight">
+              <span className="font-display text-sm font-semibold">{companyName}</span>
+              <span className="text-[11px] text-muted-foreground">Rechnungssystem</span>
+            </span>
           </Link>
 
           <div className="ml-auto flex items-center gap-1">

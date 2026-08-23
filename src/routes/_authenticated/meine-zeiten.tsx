@@ -48,7 +48,7 @@ import { MeinEinsatzkalender, type DayTask } from "@/components/MeinEinsatzkalen
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
     meta: [
-      { title: "Meine Arbeitszeiten – HomR" },
+      { title: "Meine Arbeitszeiten – GebCalc" },
       {
         name: "description",
         content:

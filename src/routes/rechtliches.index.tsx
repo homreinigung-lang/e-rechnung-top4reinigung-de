@@ -4,13 +4,13 @@ import { BookOpen, FileText, Scale, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/rechtliches/")({
   head: () => ({
     meta: [
-      { title: "Rechtliches – HomR" },
+      { title: "Rechtliches – GebCalc" },
       {
         name: "description",
         content:
-          "Impressum, AGB, Datenschutzbestimmungen (DSGVO) und Open-Source-Lizenzen der HomR Rechnungssoftware.",
+          "Impressum, AGB, Datenschutzbestimmungen (DSGVO) und Open-Source-Lizenzen der GebCalc Rechnungssoftware.",
       },
-      { property: "og:title", content: "Rechtliches – HomR" },
+      { property: "og:title", content: "Rechtliches – GebCalc" },
       {
         property: "og:description",
         content: "Impressum, AGB, Datenschutz und verwendete Open-Source-Bibliotheken.",

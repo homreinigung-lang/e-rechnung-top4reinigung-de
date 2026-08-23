@@ -39,7 +39,7 @@ export function TwoFactorCard() {
     }
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: "totp",
-      friendlyName: `HomR ${new Date().getTime()}`,
+      friendlyName: `GebCalc ${new Date().getTime()}`,
     });
     setLoading(false);
     if (error || !data) {
