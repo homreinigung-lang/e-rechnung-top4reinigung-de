@@ -101,7 +101,7 @@ const features = [
   },
 ];
 
-const partners = [
+const fallbackPartners = [
   "SGS Industrial Services",
   "Top4 Reinigung",
   "Saar Facility GmbH",
@@ -109,6 +109,7 @@ const partners = [
   "CleanPoint Süd",
   "Hausmeister Union",
 ];
+
 
 const trustPoints = [
   "GoBD-konforme Archivierung mit Festschreibung",
