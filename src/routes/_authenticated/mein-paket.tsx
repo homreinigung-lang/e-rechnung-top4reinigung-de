@@ -247,6 +247,13 @@ function MeinPaket() {
           ) : null}
         </div>
       </section>
+
+      <RenewalPaymentDialog
+        info={payment}
+        onOpenChange={(open) => {
+          if (!open) setPayment(null);
+        }}
+      />
     </div>
   );
 }
