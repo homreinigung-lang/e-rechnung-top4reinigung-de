@@ -109,7 +109,10 @@ function Landing() {
             height={36}
             className="size-9 rounded-lg"
           />
-          <span className="font-display text-lg font-semibold">GebCalc</span>
+          <span className="flex flex-col leading-tight">
+            <span className="font-display text-lg font-semibold">GebCalc</span>
+            <span className="text-xs text-muted-foreground">Rechnungssystem</span>
+          </span>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

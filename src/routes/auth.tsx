@@ -200,7 +200,10 @@ function AuthPage() {
             height={36}
             className="size-9 rounded-lg"
           />
-          <span className="font-display text-lg font-semibold">GebCalc</span>
+          <span className="flex flex-col leading-tight text-left">
+            <span className="font-display text-lg font-semibold">GebCalc</span>
+            <span className="text-xs text-muted-foreground">Rechnungssystem</span>
+          </span>
         </Link>
 
         <div className="surface p-6">

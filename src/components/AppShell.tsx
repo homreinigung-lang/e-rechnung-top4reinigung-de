@@ -169,7 +169,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className="size-8 rounded-lg"
               />
             )}
-            <span className="font-display text-sm font-semibold">{companyName}</span>
+            <span className="flex flex-col leading-tight">
+              <span className="font-display text-sm font-semibold">{companyName}</span>
+              <span className="text-[11px] text-muted-foreground">Rechnungssystem</span>
+            </span>
           </Link>
 
           <div className="ml-auto flex items-center gap-1">
