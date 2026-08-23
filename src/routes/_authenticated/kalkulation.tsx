@@ -31,6 +31,7 @@ import {
   positionsTotal,
   reconcilePositionsTotal,
   round2,
+  toCents,
   MIN_STAIR_RATE,
 } from "@/lib/kalkulation-engine";
 
@@ -384,26 +385,91 @@ function KalkulationPage() {
     return frequencyUnit === "week" ? times * WEEKS_PER_MONTH : times;
   }, [frequency, frequencyUnit]);
 
-  const base = useMemo(() => {
-    const core = mode === "area" ? num(area) * num(pricePerSqm) : num(hours) * num(hourlyRate);
-    return core * visitsPerMonth;
-  }, [mode, area, pricePerSqm, hours, hourlyRate, visitsPerMonth]);
-
   const extrasTotal = useMemo(
-    () => EXTRAS.filter((e) => extras.includes(e.key)).reduce((s, e) => s + e.price, 0),
+    () => round2(EXTRAS.filter((e) => extras.includes(e.key)).reduce((s, e) => s + e.price, 0)),
     [extras],
   );
 
   const stairsTotal = useMemo(
     () =>
-      stairs ? (num(floors) * num(stairRate) + (hasLift ? num(liftRate) : 0)) * visitsPerMonth : 0,
+      round2(
+        stairs
+          ? round2(num(floors) * visitsPerMonth) * round2(num(stairRate)) +
+              (hasLift ? round2(visitsPerMonth) * round2(num(liftRate)) : 0)
+          : 0,
+      ),
     [stairs, floors, stairRate, hasLift, liftRate, visitsPerMonth],
   );
 
-  const subtotal = base + extrasTotal + stairsTotal + num(travel);
   const pct = Math.min(100, Math.max(0, num(discountPercent)));
-  const discountAmount = (subtotal * pct) / 100;
-  const suggested = Math.round((subtotal - discountAmount) * 100) / 100;
+
+  /**
+   * Exakt derselbe deterministische Positionssatz speist Vorschau und Transfer.
+   * Dadurch kann die Grundkalkulation nicht von ihrem späteren LV abweichen.
+   */
+  const stagedPositionsBeforeDiscount = useMemo(
+    () =>
+      buildConsolidatedPositions({
+        typeValue: selected.value,
+        typeLabel: selected.label,
+        mode,
+        areaSqm: num(area),
+        pricePerSqm: num(pricePerSqm),
+        hours: num(hours),
+        hourlyRate: num(hourlyRate),
+        visitsPerMonth,
+        stairs,
+        floors: num(floors),
+        stairRate: num(stairRate),
+        hasLift,
+        liftRate: num(liftRate),
+        extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
+          label: e.label,
+          price: e.price,
+        })),
+        travel: num(travel),
+        discountPercent: 0,
+        discountReason: "",
+      }),
+    [
+      selected.value,
+      selected.label,
+      mode,
+      area,
+      pricePerSqm,
+      hours,
+      hourlyRate,
+      visitsPerMonth,
+      stairs,
+      floors,
+      stairRate,
+      hasLift,
+      liftRate,
+      extras,
+      travel,
+    ],
+  );
+  const subtotal = useMemo(
+    () => positionsTotal(stagedPositionsBeforeDiscount),
+    [stagedPositionsBeforeDiscount],
+  );
+  const discountAmount = round2((subtotal * pct) / 100);
+  const stagedPositions = useMemo(() => {
+    if (pct <= 0 || stagedPositionsBeforeDiscount.length === 0) {
+      return stagedPositionsBeforeDiscount;
+    }
+    return [
+      ...stagedPositionsBeforeDiscount,
+      {
+        description: `Rabatt ${round2(pct)} %${discountReason ? ` – ${discountReason}` : ""}`,
+        quantity: 1,
+        unit: "Pauschal",
+        unit_price: -discountAmount,
+      },
+    ];
+  }, [stagedPositionsBeforeDiscount, pct, discountReason, discountAmount]);
+  const base = round2(subtotal - extrasTotal - stairsTotal - round2(num(travel)));
+  const suggested = useMemo(() => positionsTotal(stagedPositions), [stagedPositions]);
 
   // Vorschlag automatisch übernehmen, solange der Endpreis nicht manuell geändert wurde.
   useEffect(() => {
@@ -448,36 +514,17 @@ function KalkulationPage() {
       toast.error("Bitte einen gültigen Netto-Endpreis größer als 0 eingeben.");
       return;
     }
-    const calculatedPositions = buildConsolidatedPositions({
-      typeValue: selected.value,
-      typeLabel: selected.label,
-      mode,
-      areaSqm: num(area),
-      pricePerSqm: num(pricePerSqm),
-      hours: num(hours),
-      hourlyRate: num(hourlyRate),
-      visitsPerMonth,
-      stairs,
-      floors: num(floors),
-      stairRate: num(stairRate),
-      hasLift,
-      liftRate: num(liftRate),
-      extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
-        label: e.label,
-        price: e.price,
-      })),
-      travel: num(travel),
-      discountPercent: pct,
-      discountReason,
-    });
+    const calculatedPositions = stagedPositions;
     if (calculatedPositions.length === 0) {
       toast.error("Die Grundkalkulation ergibt noch keine gültigen Positionen.");
       return;
     }
     const positions = reconcilePositionsTotal(calculatedPositions, targetTotal);
     const transferredTotal = positionsTotal(positions);
-    if (transferredTotal !== targetTotal) {
-      toast.error("Der Endpreis konnte nicht centgenau in das Leistungsverzeichnis übernommen werden.");
+    if (toCents(transferredTotal) !== toCents(targetTotal)) {
+      toast.error(
+        "Der Endpreis konnte nicht centgenau in das Leistungsverzeichnis übernommen werden.",
+      );
       return;
     }
     setAiItems(
