@@ -275,6 +275,7 @@ export type Database = {
           phone: string
           photo_retention_days: number
           postal_code: string
+          small_business: boolean
           smtp_from: string
           smtp_host: string
           smtp_port: number
@@ -306,6 +307,7 @@ export type Database = {
           phone?: string
           photo_retention_days?: number
           postal_code?: string
+          small_business?: boolean
           smtp_from?: string
           smtp_host?: string
           smtp_port?: number
@@ -337,6 +339,7 @@ export type Database = {
           phone?: string
           photo_retention_days?: number
           postal_code?: string
+          small_business?: boolean
           smtp_from?: string
           smtp_host?: string
           smtp_port?: number
