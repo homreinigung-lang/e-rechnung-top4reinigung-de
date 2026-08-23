@@ -206,9 +206,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8">{children}</main>
 
-      <footer className="no-print border-t py-6">
+      <footer
+        className="no-print border-t py-6"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)" }}
+      >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 text-sm text-muted-foreground">
           <Link to="/rechtliches/impressum" className="hover:text-foreground hover:underline">
             Impressum
