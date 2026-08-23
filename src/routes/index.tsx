@@ -26,7 +26,44 @@ import {
   Phone,
   Receipt,
   ShieldCheck,
+  Star,
 } from "lucide-react";
+
+const reviews = [
+  {
+    name: "Top4 Reinigung",
+    role: "Geschäftsführer",
+    rating: 5,
+    text: "Rechnungen und Angebote gehen jetzt in wenigen Minuten raus. Der Reverse-Charge-Hinweis für EU-Kunden ist endlich automatisch korrekt.",
+  },
+  {
+    name: "SGS Industrial Services",
+    role: "Facility Management",
+    rating: 5,
+    text: "Die E-Rechnung (XRechnung/ZUGFeRD) wird von unseren Kunden ohne Beanstandung akzeptiert. GoBD-Archivierung passt für das Finanzamt.",
+  },
+  {
+    name: "Saar Facility GmbH",
+    role: "Objektleitung",
+    rating: 5,
+    text: "Kalkulation, Leistungsverzeichnis und Einsatzplanung laufen in einer Oberfläche – das spart uns deutlich Zeit im Tagesgeschäft.",
+  },
+  {
+    name: "CleanPoint Süd",
+    role: "Buchhaltung",
+    rating: 5,
+    text: "DATEV-Export und das Steuerberater-Portal funktionieren reibungslos. Der Support reagiert schnell und kompetent.",
+  },
+  {
+    name: "Hausmeister Union",
+    role: "Betriebsleiter",
+    rating: 5,
+    text: "Mitarbeiter erfassen ihre Zeiten mobil, Urlaub und Abwesenheit sind sauber abgebildet. Sehr durchdachte Lösung.",
+  },
+];
+
+const avgRating =
+  reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
 export const Route = createFileRoute("/")({
   head: () => ({
