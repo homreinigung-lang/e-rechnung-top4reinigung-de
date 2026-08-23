@@ -1543,7 +1543,7 @@ function KalkulationPage() {
                   </Button>
                 </div>
 
-                {aiItems.length === 0 ? (
+                {synchronizedLvPositions.length === 0 ? (
                   <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
                     Noch keine Positionen. Beschreiben Sie die Arbeit im KI-Assistenten (Tab
                     „Grundriss") oder fügen Sie eine Position manuell hinzu.
