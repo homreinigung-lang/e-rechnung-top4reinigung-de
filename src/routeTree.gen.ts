@@ -17,6 +17,7 @@ import { Route as RechtlichesRouteImport } from './routes/rechtliches'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAbonnementsRouteImport } from './routes/_authenticated/abonnements'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticated/ausgaben'
 import { Route as AuthenticatedBankverbindungRouteImport } from './routes/_authenticated/bankverbindung'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -37,6 +38,9 @@ import { Route as RechtlichesBibliothekenRouteImport } from './routes/rechtliche
 import { Route as RechtlichesDatenschutzRouteImport } from './routes/rechtliches.datenschutz'
 import { Route as RechtlichesImpressumRouteImport } from './routes/rechtliches.impressum'
 import { Route as StbTokenRouteImport } from './routes/stb.$token'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminFirmenRouteImport } from './routes/_authenticated/admin.firmen'
+import { Route as AuthenticatedAdminPaketeRouteImport } from './routes/_authenticated/admin.pakete'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
 import { Route as AuthenticatedKundenIndexRouteImport } from './routes/_authenticated/kunden.index'
@@ -86,6 +90,11 @@ const AuthenticatedAbonnementsRoute =
     path: '/abonnements',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAusgabenRoute = AuthenticatedAusgabenRouteImport.update({
   id: '/ausgaben',
   path: '/ausgaben',
@@ -193,6 +202,23 @@ const StbTokenRoute = StbTokenRouteImport.update({
   path: '/stb/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminFirmenRoute =
+  AuthenticatedAdminFirmenRouteImport.update({
+    id: '/firmen',
+    path: '/firmen',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPaketeRoute =
+  AuthenticatedAdminPaketeRouteImport.update({
+    id: '/pakete',
+    path: '/pakete',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedDokumenteIndexRoute =
   AuthenticatedDokumenteIndexRouteImport.update({
     id: '/dokumente/',
@@ -246,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/abonnements': typeof AuthenticatedAbonnementsRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -266,11 +293,14 @@ export interface FileRoutesByFullPath {
   '/rechtliches/impressum': typeof RechtlichesImpressumRoute
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches/': typeof RechtlichesIndexRoute
+  '/admin/firmen': typeof AuthenticatedAdminFirmenRoute
+  '/admin/pakete': typeof AuthenticatedAdminPaketeRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/kunden/': typeof AuthenticatedKundenIndexRoute
   '/projekte/': typeof AuthenticatedProjekteIndexRoute
@@ -302,11 +332,14 @@ export interface FileRoutesByTo {
   '/rechtliches/impressum': typeof RechtlichesImpressumRoute
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches': typeof RechtlichesIndexRoute
+  '/admin/firmen': typeof AuthenticatedAdminFirmenRoute
+  '/admin/pakete': typeof AuthenticatedAdminPaketeRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
   '/kunden': typeof AuthenticatedKundenIndexRoute
   '/projekte': typeof AuthenticatedProjekteIndexRoute
@@ -321,6 +354,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/abonnements': typeof AuthenticatedAbonnementsRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
   '/_authenticated/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -341,11 +375,14 @@ export interface FileRoutesById {
   '/rechtliches/impressum': typeof RechtlichesImpressumRoute
   '/stb/$token': typeof StbTokenRoute
   '/rechtliches/': typeof RechtlichesIndexRoute
+  '/_authenticated/admin/firmen': typeof AuthenticatedAdminFirmenRoute
+  '/_authenticated/admin/pakete': typeof AuthenticatedAdminPaketeRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/_authenticated/kunden/': typeof AuthenticatedKundenIndexRoute
   '/_authenticated/projekte/': typeof AuthenticatedProjekteIndexRoute
@@ -360,6 +397,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/abonnements'
+    | '/admin'
     | '/ausgaben'
     | '/bankverbindung'
     | '/dashboard'
@@ -380,11 +418,14 @@ export interface FileRouteTypes {
     | '/rechtliches/impressum'
     | '/stb/$token'
     | '/rechtliches/'
+    | '/admin/firmen'
+    | '/admin/pakete'
     | '/dokumente/$id'
     | '/kunden/$id'
     | '/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/admin/'
     | '/dokumente/'
     | '/kunden/'
     | '/projekte/'
@@ -416,11 +457,14 @@ export interface FileRouteTypes {
     | '/rechtliches/impressum'
     | '/stb/$token'
     | '/rechtliches'
+    | '/admin/firmen'
+    | '/admin/pakete'
     | '/dokumente/$id'
     | '/kunden/$id'
     | '/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/admin'
     | '/dokumente'
     | '/kunden'
     | '/projekte'
@@ -434,6 +478,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/_authenticated/abonnements'
+    | '/_authenticated/admin'
     | '/_authenticated/ausgaben'
     | '/_authenticated/bankverbindung'
     | '/_authenticated/dashboard'
@@ -454,11 +499,14 @@ export interface FileRouteTypes {
     | '/rechtliches/impressum'
     | '/stb/$token'
     | '/rechtliches/'
+    | '/_authenticated/admin/firmen'
+    | '/_authenticated/admin/pakete'
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/kunden/$id'
     | '/_authenticated/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/_authenticated/admin/'
     | '/_authenticated/dokumente/'
     | '/_authenticated/kunden/'
     | '/_authenticated/projekte/'
@@ -533,6 +581,13 @@ declare module '@tanstack/react-router' {
       path: '/abonnements'
       fullPath: '/abonnements'
       preLoaderRoute: typeof AuthenticatedAbonnementsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ausgaben': {
@@ -675,6 +730,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StbTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/firmen': {
+      id: '/_authenticated/admin/firmen'
+      path: '/firmen'
+      fullPath: '/admin/firmen'
+      preLoaderRoute: typeof AuthenticatedAdminFirmenRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/pakete': {
+      id: '/_authenticated/admin/pakete'
+      path: '/pakete'
+      fullPath: '/admin/pakete'
+      preLoaderRoute: typeof AuthenticatedAdminPaketeRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/dokumente/': {
       id: '/_authenticated/dokumente/'
       path: '/dokumente'
@@ -734,8 +810,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminFirmenRoute: typeof AuthenticatedAdminFirmenRoute
+  AuthenticatedAdminPaketeRoute: typeof AuthenticatedAdminPaketeRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminFirmenRoute: AuthenticatedAdminFirmenRoute,
+  AuthenticatedAdminPaketeRoute: AuthenticatedAdminPaketeRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAbonnementsRoute: typeof AuthenticatedAbonnementsRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedAusgabenRoute: typeof AuthenticatedAusgabenRoute
   AuthenticatedBankverbindungRoute: typeof AuthenticatedBankverbindungRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -760,6 +852,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAbonnementsRoute: AuthenticatedAbonnementsRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedAusgabenRoute: AuthenticatedAusgabenRoute,
   AuthenticatedBankverbindungRoute: AuthenticatedBankverbindungRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
