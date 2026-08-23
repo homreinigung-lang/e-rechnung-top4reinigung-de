@@ -806,12 +806,20 @@ function KalkulationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Textarea
-                rows={4}
-                value={floorplanSummary}
-                onChange={(e) => setFloorplanSummary(e.target.value)}
-                placeholder="z. B. 3 Etagen ohne Aufzug, Treppenhaus mit Naturstein, Großraumbüros mit Teppich, Serverraum von der Reinigung ausgenommen"
-              />
+              <div className="flex items-start gap-2">
+                <Textarea
+                  rows={4}
+                  className="flex-1"
+                  value={floorplanSummary}
+                  onChange={(e) => setFloorplanSummary(e.target.value)}
+                  placeholder="z. B. 3 Etagen ohne Aufzug, Treppenhaus mit Naturstein, Großraumbüros mit Teppich, Serverraum von der Reinigung ausgenommen"
+                />
+                <SpeechToTextButton
+                  value={floorplanSummary}
+                  onChange={setFloorplanSummary}
+                  label="Objektbeschreibung diktieren"
+                />
+              </div>
             </CardContent>
           </Card>
 
