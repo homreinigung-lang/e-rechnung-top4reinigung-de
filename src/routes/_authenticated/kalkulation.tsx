@@ -293,7 +293,10 @@ function KalkulationPage() {
 
   /** Einzige gültige Netto-Gesamtsumme: ausschließlich aus den Positionen. */
   const aiTotal = useMemo(
-    () => positionsTotal(aiItems.map((i) => ({ quantity: num(i.quantity), unit_price: num(i.unit_price) }))),
+    () =>
+      positionsTotal(
+        aiItems.map((i) => ({ quantity: num(i.quantity), unit_price: num(i.unit_price) })),
+      ),
     [aiItems],
   );
   const vatAmount = round2(aiTotal * 0.19);
@@ -411,9 +414,6 @@ function KalkulationPage() {
     setConfirmed(false);
   }, [suggested, finalPrice, note, discountReason, selected.value]);
 
-  const endNet = num(finalPrice);
-  const vat = endNet * 0.19;
-
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
     if (mode === "hours") return num(hours) * visitsPerMonth;
@@ -422,6 +422,64 @@ function KalkulationPage() {
     return (num(area) * num(pricePerSqm) * visitsPerMonth) / rate;
   }, [mode, hours, area, pricePerSqm, hourlyRate, visitsPerMonth]);
 
+  /** Plausibilitätsprüfung der Eingaben (Fläche vs. Räume/Etagen/Sanitär). */
+  const warnings = useMemo(
+    () =>
+      checkPlausibility({
+        areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
+        rooms: analysisTotals.rooms,
+        floors: Math.max(analysisTotals.floors, stairs ? num(floors) : 0),
+      }),
+    [mode, area, analysisTotals, stairs, floors],
+  );
+
+  /**
+   * Übernimmt die Grundkalkulation: bestehende Positionen werden zuerst
+   * vollständig geleert, danach wird der konsolidierte Satz eingefügt.
+   */
+  function applyCalculation() {
+    if (warnings.length > 0) {
+      toast.error("Bitte zuerst die markierten Plausibilitätshinweise prüfen.");
+      return;
+    }
+    const positions = buildConsolidatedPositions({
+      typeValue: selected.value,
+      typeLabel: selected.label,
+      mode,
+      areaSqm: num(area),
+      pricePerSqm: num(pricePerSqm),
+      hours: num(hours),
+      hourlyRate: num(hourlyRate),
+      visitsPerMonth,
+      stairs,
+      floors: num(floors),
+      stairRate: num(stairRate),
+      hasLift,
+      liftRate: num(liftRate),
+      extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
+        label: e.label,
+        price: e.price,
+      })),
+      travel: num(travel),
+      discountPercent: pct,
+      discountReason,
+    });
+    if (positions.length === 0) {
+      toast.error("Die Grundkalkulation ergibt noch keine gültigen Positionen.");
+      return;
+    }
+    setAiItems(
+      positions.map((p, n) => ({
+        id: `calc-${Date.now()}-${n}`,
+        description: p.description,
+        quantity: String(p.quantity).replace(".", ","),
+        unit: p.unit,
+        unit_price: String(p.unit_price).replace(".", ","),
+      })),
+    );
+    toast.success(`Kalkulation übernommen – ${positions.length} Positionen ersetzt`);
+  }
+
   const analyseSnapshot: KalkulationSnapshot = {
     typeLabel: selected.label,
     areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
@@ -429,7 +487,7 @@ function KalkulationPage() {
     visitsPerMonth,
     positions: aiItems.length,
     attachments: attachments.length,
-    netTotal: endNet + aiTotal,
+    netTotal: aiTotal,
     confirmed,
   };
 
@@ -497,6 +555,24 @@ function KalkulationPage() {
 
   const toQuote = useMutation({
     mutationFn: async () => {
+      // Nur geprüfte, rechnerisch gültige Daten dürfen ins Angebot.
+      if (warnings.length > 0) {
+        throw new Error("Bitte zuerst die Plausibilitätshinweise klären.");
+      }
+      const positions = aiItems
+        .map((i) => ({
+          description: i.description.trim(),
+          quantity: round2(num(i.quantity)),
+          unit: i.unit.trim() || "Pauschal",
+          unit_price: round2(num(i.unit_price)),
+        }))
+        .filter((i) => i.description && Math.abs(i.quantity * i.unit_price) >= 0.01);
+      if (positions.length === 0) {
+        throw new Error(
+          "Es liegen keine gültigen Positionen vor. Bitte zuerst die Kalkulation übernehmen.",
+        );
+      }
+
       const quoteId = await createDocument("quote");
 
       const { data: auth } = await supabase.auth.getUser();
@@ -528,38 +604,23 @@ function KalkulationPage() {
       }
       const chosen = EXTRAS.filter((e) => extras.includes(e.key)).map((e) => e.label);
       if (chosen.length > 0) parts.push(`Zusatzleistungen: ${chosen.join(", ")}`);
-
+      if (discountReason.trim() && pct > 0) {
+        parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
+      }
       if (note.trim()) parts.push(note.trim());
 
-      // Der manuell angepasste Endpreis ist bereits der Netto-Endbetrag nach Rabatt.
-      const gross = pct < 100 ? endNet / (1 - pct / 100) : endNet;
-      const unitPrice = Math.round(gross * 100) / 100;
-
-      const { error: itemError } = await supabase.from("document_items").insert({
-        document_id: quoteId,
-        user_id: userId,
-        position: 1,
-        description: parts.join(" · "),
-        quantity: 1,
-        unit: "Pauschal",
-        unit_price: unitPrice,
-      });
+      const { error: itemError } = await supabase.from("document_items").insert(
+        positions.map((i, n) => ({
+          document_id: quoteId,
+          user_id: userId,
+          position: n + 1,
+          description: i.description,
+          quantity: i.quantity,
+          unit: i.unit,
+          unit_price: i.unit_price,
+        })),
+      );
       if (itemError) throw itemError;
-
-      if (aiItems.length > 0) {
-        const { error: aiError } = await supabase.from("document_items").insert(
-          aiItems.map((i, n) => ({
-            document_id: quoteId,
-            user_id: userId,
-            position: n + 2,
-            description: i.description,
-            quantity: num(i.quantity),
-            unit: i.unit,
-            unit_price: num(i.unit_price),
-          })),
-        );
-        if (aiError) throw aiError;
-      }
 
       const description = [
         proposalTitle.trim() ? `Ausschreibung: ${proposalTitle.trim()}` : "",
@@ -569,17 +630,19 @@ function KalkulationPage() {
         .filter(Boolean)
         .join("\n");
 
+      const net = positionsTotal(positions);
       const { error: docError } = await supabase
         .from("documents")
         .update({
           service_description: description,
           ...(proposalText.trim() ? { intro_text: proposalText.trim() } : {}),
-          discount_percent: pct,
-          discount_amount: Math.round((unitPrice - endNet) * 100) / 100,
+          // Rabatt steckt bereits als eigene Position im LV – kein zweiter Abzug.
+          discount_percent: 0,
+          discount_amount: 0,
           discount_reason: discountReason,
-          net_total: endNet + aiTotal,
-          vat_amount: (endNet + aiTotal) * 0.19,
-          total: (endNet + aiTotal) * 1.19,
+          net_total: net,
+          vat_amount: round2(net * 0.19),
+          total: round2(net * 1.19),
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
@@ -633,6 +696,21 @@ function KalkulationPage() {
             title="Grundriss (Planung)"
             text="Grundlage der Kalkulation: Grundrisse und Objektfotos hochladen, Flächen, Räume und Etagen dokumentieren und den Reinigungsaufwand berechnen. Die hier ermittelten Werte fließen automatisch in die Ausschreibung und in die Kennzahlen."
           />
+
+          {warnings.length > 0 && (
+            <div
+              role="alert"
+              className="flex gap-2 rounded-lg border border-amber-500/60 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Angaben bitte prüfen</p>
+                {warnings.map((w) => (
+                  <p key={w}>{w}</p>
+                ))}
+              </div>
+            </div>
+          )}
 
           <Card>
             <CardHeader>
@@ -1347,12 +1425,7 @@ function KalkulationPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={applyCalculation}
-                  >
+                  <Button type="button" variant="outline" size="sm" onClick={applyCalculation}>
                     <Calculator className="size-4" /> Kalkulation übernehmen
                   </Button>
                   <Button
@@ -1584,9 +1657,7 @@ function KalkulationPage() {
 
                 <Button
                   className="w-full"
-                  disabled={
-                    toQuote.isPending || aiTotal <= 0 || !confirmed || warnings.length > 0
-                  }
+                  disabled={toQuote.isPending || aiTotal <= 0 || !confirmed || warnings.length > 0}
                   onClick={() => toQuote.mutate()}
                 >
                   <FileSignature className="size-4" />
