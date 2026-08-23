@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2 } from "lucide-react";
 import { euro, type Plan } from "@/lib/admin";
 import {
-  PAYMENT_DETAILS,
   TRIAL_DAYS,
   calcTotals,
   planAllowsReverseCharge,
@@ -40,7 +39,14 @@ const emptyForm = {
   note: "",
 };
 
+import {
+  usePlatformPayment,
+  PLATFORM_PAYMENT_FALLBACK,
+  formatIban,
+} from "@/lib/platform-payment";
+
 export function PlanOrderDialog({ plan, onOpenChange }: Props) {
+  const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
   const [form, setForm] = useState(emptyForm);
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   const [result, setResult] = useState<OrderResult | null>(null);
@@ -192,10 +198,10 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
               <div className="rounded-lg border p-4">
                 <p className="font-semibold">Zahlungsdetails (Rechnung / SEPA-Überweisung)</p>
                 <dl className="mt-2 space-y-1">
-                  <Row label="Empfänger" value={PAYMENT_DETAILS.recipient} />
-                  <Row label="IBAN" value={PAYMENT_DETAILS.iban} />
-                  <Row label="BIC" value={PAYMENT_DETAILS.bic} />
-                  <Row label="Bank" value={PAYMENT_DETAILS.bank} />
+                  <Row label="Empfänger" value={pay.recipient} />
+                  <Row label="IBAN" value={formatIban(pay.iban)} />
+                  <Row label="BIC" value={pay.bic} />
+                  <Row label="Bank" value={pay.bank} />
                   <Row label="Verwendungszweck" value={result.orderNumber} />
                   <Row label="Netto" value={euro(result.totals.netCents)} />
                   <Row
@@ -207,7 +213,7 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
                 <p className="mt-2 text-xs text-muted-foreground">
                   {result.totals.reverseCharge
                     ? "Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge, § 13b UStG)."
-                    : PAYMENT_DETAILS.terms}
+                    : pay.terms}
                 </p>
               </div>
               <Button className="w-full" onClick={() => close(false)}>
