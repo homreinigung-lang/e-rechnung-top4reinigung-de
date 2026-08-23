@@ -39,7 +39,14 @@ const emptyForm = {
   note: "",
 };
 
+import {
+  usePlatformPayment,
+  PLATFORM_PAYMENT_FALLBACK,
+  formatIban,
+} from "@/lib/platform-payment";
+
 export function PlanOrderDialog({ plan, onOpenChange }: Props) {
+  const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
   const [form, setForm] = useState(emptyForm);
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   const [result, setResult] = useState<OrderResult | null>(null);

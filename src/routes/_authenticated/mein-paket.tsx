@@ -61,6 +61,7 @@ function requestMail(subject: string, body: string) {
 }
 
 function MeinPaket() {
+  const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
   const { data: sub, isLoading } = useMySubscription();
   const { data: plans } = usePlans();
   const activePlans = (plans ?? []).filter((p) => p.active);
