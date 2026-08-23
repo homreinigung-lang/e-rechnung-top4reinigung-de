@@ -31,6 +31,7 @@ import {
   positionsTotal,
   reconcilePositionsTotal,
   round2,
+  toCents,
   MIN_STAIR_RATE,
 } from "@/lib/kalkulation-engine";
 
@@ -523,7 +524,7 @@ function KalkulationPage() {
     }
     const positions = reconcilePositionsTotal(calculatedPositions, targetTotal);
     const transferredTotal = positionsTotal(positions);
-    if (transferredTotal !== targetTotal) {
+    if (toCents(transferredTotal) !== toCents(targetTotal)) {
       toast.error("Der Endpreis konnte nicht centgenau in das Leistungsverzeichnis übernommen werden.");
       return;
     }
