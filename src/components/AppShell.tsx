@@ -29,6 +29,8 @@ import {
   FolderKanban,
   HardHat,
   Landmark,
+  LifeBuoy,
+
   Map as MapIcon,
   LayoutDashboard,
   LogOut,
@@ -97,8 +99,10 @@ const navGroups: readonly NavGroup[] = [
       { to: "/mein-paket", label: "Mein Paket", icon: BadgeCheck },
       { to: "/profil", label: "Mein Profil", icon: UserCircle },
       { to: "/einstellungen", label: "Einstellungen", icon: Settings },
+      { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
     ],
   },
+
 ] as const;
 
 // Menü für Mitarbeiterkonten (nur eigene Zeiten)
@@ -109,7 +113,9 @@ const employeeGroups: readonly NavGroup[] = [
       { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
       { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
       { to: "/profil", label: "Mein Profil", icon: UserCircle },
+      { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
     ],
+
   },
 ] as const;
 
@@ -242,6 +248,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
       </footer>
+
+      {/* Dezenter Hilfe-Button unten rechts */}
+      <Link
+        to="/hilfe"
+        aria-label="Hilfe und Support öffnen"
+        className="no-print fixed right-4 z-40 inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm font-medium text-muted-foreground shadow-lg backdrop-blur transition-colors hover:text-foreground"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+      >
+        <LifeBuoy className="size-4" />
+        <span className="hidden sm:inline">Hilfe</span>
+      </Link>
     </div>
+
   );
 }
