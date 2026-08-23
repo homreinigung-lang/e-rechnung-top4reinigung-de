@@ -506,10 +506,11 @@ function KalkulationPage() {
   const vatAmount = round2(aiTotal * 0.19);
   const grossTotal = round2(aiTotal + vatAmount);
 
-  // Jede Änderung hebt die finale Bestätigung wieder auf.
+  // Jede preis- oder angebotsrelevante Änderung hebt die finale Bestätigung
+  // wieder auf – insbesondere direkte Änderungen am Leistungsverzeichnis.
   useEffect(() => {
     setConfirmed(false);
-  }, [suggested, finalPrice, note, discountReason, selected.value]);
+  }, [suggested, finalPrice, note, discountReason, selected.value, aiItems]);
 
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
