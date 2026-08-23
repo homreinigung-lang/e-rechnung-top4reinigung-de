@@ -386,7 +386,7 @@ function KalkulationPage() {
 
   const base = useMemo(() => {
     const core = mode === "area" ? num(area) * num(pricePerSqm) : num(hours) * num(hourlyRate);
-    return core * visitsPerMonth;
+    return round2(core * visitsPerMonth);
   }, [mode, area, pricePerSqm, hours, hourlyRate, visitsPerMonth]);
 
   const extrasTotal = useMemo(
@@ -400,10 +400,59 @@ function KalkulationPage() {
     [stairs, floors, stairRate, hasLift, liftRate, visitsPerMonth],
   );
 
-  const subtotal = base + extrasTotal + stairsTotal + num(travel);
+  const subtotal = round2(base + extrasTotal + stairsTotal + num(travel));
   const pct = Math.min(100, Math.max(0, num(discountPercent)));
-  const discountAmount = (subtotal * pct) / 100;
-  const suggested = Math.round((subtotal - discountAmount) * 100) / 100;
+  const discountAmount = round2((subtotal * pct) / 100);
+
+  /**
+   * Exakt derselbe deterministische Positionssatz speist Vorschau und Transfer.
+   * Dadurch kann die Grundkalkulation nicht von ihrem späteren LV abweichen.
+   */
+  const stagedPositions = useMemo(
+    () =>
+      buildConsolidatedPositions({
+        typeValue: selected.value,
+        typeLabel: selected.label,
+        mode,
+        areaSqm: num(area),
+        pricePerSqm: num(pricePerSqm),
+        hours: num(hours),
+        hourlyRate: num(hourlyRate),
+        visitsPerMonth,
+        stairs,
+        floors: num(floors),
+        stairRate: num(stairRate),
+        hasLift,
+        liftRate: num(liftRate),
+        extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
+          label: e.label,
+          price: e.price,
+        })),
+        travel: num(travel),
+        discountPercent: pct,
+        discountReason,
+      }),
+    [
+      selected.value,
+      selected.label,
+      mode,
+      area,
+      pricePerSqm,
+      hours,
+      hourlyRate,
+      visitsPerMonth,
+      stairs,
+      floors,
+      stairRate,
+      hasLift,
+      liftRate,
+      extras,
+      travel,
+      pct,
+      discountReason,
+    ],
+  );
+  const suggested = useMemo(() => positionsTotal(stagedPositions), [stagedPositions]);
 
   // Vorschlag automatisch übernehmen, solange der Endpreis nicht manuell geändert wurde.
   useEffect(() => {
@@ -448,28 +497,7 @@ function KalkulationPage() {
       toast.error("Bitte einen gültigen Netto-Endpreis größer als 0 eingeben.");
       return;
     }
-    const calculatedPositions = buildConsolidatedPositions({
-      typeValue: selected.value,
-      typeLabel: selected.label,
-      mode,
-      areaSqm: num(area),
-      pricePerSqm: num(pricePerSqm),
-      hours: num(hours),
-      hourlyRate: num(hourlyRate),
-      visitsPerMonth,
-      stairs,
-      floors: num(floors),
-      stairRate: num(stairRate),
-      hasLift,
-      liftRate: num(liftRate),
-      extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
-        label: e.label,
-        price: e.price,
-      })),
-      travel: num(travel),
-      discountPercent: pct,
-      discountReason,
-    });
+    const calculatedPositions = stagedPositions;
     if (calculatedPositions.length === 0) {
       toast.error("Die Grundkalkulation ergibt noch keine gültigen Positionen.");
       return;

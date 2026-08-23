@@ -20,8 +20,18 @@ export const GLASS_SQM_PER_HOUR = 40;
 /** Mindestpreis je Etage Treppenhausreinigung (netto) – verhindert 0,00 €. */
 export const MIN_STAIR_RATE = 12.5;
 
+/** Geldbeträge werden für Vergleiche und Summen immer als ganze Cent verarbeitet. */
+export function toCents(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round((value + Number.EPSILON) * 100);
+}
+
+export function fromCents(value: number): number {
+  return Math.trunc(Number.isFinite(value) ? value : 0) / 100;
+}
+
 export function round2(value: number): number {
-  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+  return fromCents(toCents(value));
 }
 
 /** Erkennt Glas-/Fensterleistungen anhand des Positionstextes. */
@@ -194,7 +204,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
 
   const pct = Math.min(100, Math.max(0, input.discountPercent || 0));
   if (pct > 0 && positions.length > 0) {
-    const sum = positions.reduce((s, p) => s + p.quantity * p.unit_price, 0);
+    const sum = positionsTotal(positions);
     positions.push({
       description: `Rabatt ${round2(pct)} %${input.discountReason ? ` – ${input.discountReason}` : ""}`,
       quantity: 1,
@@ -215,11 +225,13 @@ export function reconcilePositionsTotal(
   positions: CalcPosition[],
   targetTotal: number,
 ): CalcPosition[] {
-  const target = round2(targetTotal);
-  const current = positionsTotal(positions);
-  const difference = round2(target - current);
+  const targetCents = toCents(targetTotal);
+  const currentCents = toCents(positionsTotal(positions));
+  const differenceCents = targetCents - currentCents;
 
-  if (Math.abs(difference) < 0.01) return positions;
+  if (differenceCents === 0) return positions;
+
+  const difference = fromCents(differenceCents);
 
   return [
     ...positions,
@@ -265,5 +277,9 @@ export function normalizeItems(
 
 /** Netto-Summe der Positionen – die einzige gültige Gesamtsumme. */
 export function positionsTotal(items: { quantity: number; unit_price: number }[]): number {
-  return round2(items.reduce((s, i) => s + round2(i.quantity * i.unit_price), 0));
+  const totalCents = items.reduce(
+    (sum, item) => sum + toCents(round2(item.quantity) * round2(item.unit_price)),
+    0,
+  );
+  return fromCents(totalCents);
 }

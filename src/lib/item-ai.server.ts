@@ -17,7 +17,12 @@ Regeln:
 - Einheiten nur: Std., m², Stk., Etage, Pauschal, Monat.
 - Mengen und Preise auf 2 Nachkommastellen runden, keine Cent-Bruchteile.
 - 3 bis 10 Positionen, keine Umsatzsteuer, keine Summenzeile.
+- Arbeite deterministisch: identische Eingaben müssen identische Mengen, Einheiten und Preise ergeben. Nutze keine Preisspannen oder Zufallswerte.
 Antworte ausschließlich mit reinem JSON.`;
+
+function canonicalPrompt(prompt: string): string {
+  return prompt.trim().replace(/\s+/g, " ");
+}
 
 function num(v: unknown): number {
   const n = typeof v === "number" ? v : Number(String(v ?? "").replace(",", "."));
@@ -33,9 +38,11 @@ export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
+      temperature: 0,
+      top_p: 1,
       messages: [
         { role: "system", content: SYSTEM },
-        { role: "user", content: prompt },
+        { role: "user", content: canonicalPrompt(prompt) },
       ],
       response_format: {
         type: "json_schema",
@@ -133,9 +140,11 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
+      temperature: 0,
+      top_p: 1,
       messages: [
         { role: "system", content: CALC_SYSTEM },
-        { role: "user", content: prompt },
+        { role: "user", content: canonicalPrompt(prompt) },
       ],
       response_format: {
         type: "json_schema",
