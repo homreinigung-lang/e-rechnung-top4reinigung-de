@@ -454,23 +454,20 @@ function KalkulationPage() {
     [stagedPositionsBeforeDiscount],
   );
   const discountAmount = round2((subtotal * pct) / 100);
-  const stagedPositions = useMemo(
-    () => {
-      if (pct <= 0 || stagedPositionsBeforeDiscount.length === 0) {
-        return stagedPositionsBeforeDiscount;
-      }
-      return [
-        ...stagedPositionsBeforeDiscount,
-        {
-          description: `Rabatt ${round2(pct)} %${discountReason ? ` – ${discountReason}` : ""}`,
-          quantity: 1,
-          unit: "Pauschal",
-          unit_price: -discountAmount,
-        },
-      ];
-    },
-    [stagedPositionsBeforeDiscount, pct, discountReason, discountAmount],
-  );
+  const stagedPositions = useMemo(() => {
+    if (pct <= 0 || stagedPositionsBeforeDiscount.length === 0) {
+      return stagedPositionsBeforeDiscount;
+    }
+    return [
+      ...stagedPositionsBeforeDiscount,
+      {
+        description: `Rabatt ${round2(pct)} %${discountReason ? ` – ${discountReason}` : ""}`,
+        quantity: 1,
+        unit: "Pauschal",
+        unit_price: -discountAmount,
+      },
+    ];
+  }, [stagedPositionsBeforeDiscount, pct, discountReason, discountAmount]);
   const base = round2(subtotal - extrasTotal - stairsTotal - round2(num(travel)));
   const suggested = useMemo(() => positionsTotal(stagedPositions), [stagedPositions]);
 
@@ -525,7 +522,9 @@ function KalkulationPage() {
     const positions = reconcilePositionsTotal(calculatedPositions, targetTotal);
     const transferredTotal = positionsTotal(positions);
     if (toCents(transferredTotal) !== toCents(targetTotal)) {
-      toast.error("Der Endpreis konnte nicht centgenau in das Leistungsverzeichnis übernommen werden.");
+      toast.error(
+        "Der Endpreis konnte nicht centgenau in das Leistungsverzeichnis übernommen werden.",
+      );
       return;
     }
     setAiItems(
