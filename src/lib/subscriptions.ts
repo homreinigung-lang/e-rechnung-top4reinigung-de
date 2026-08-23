@@ -81,3 +81,38 @@ export function useAllSubscriptions(enabled: boolean) {
     },
   });
 }
+
+/** Pakete, in denen Reverse-Charge-Rechnungen erlaubt sind. */
+export const REVERSE_CHARGE_PLANS = ["pro", "enterprise"];
+
+/** Paket-Code des angemeldeten Kontos (leer, wenn kein Abo hinterlegt ist). */
+export function useMyPlanCode() {
+  return useQuery({
+    queryKey: ["my_plan_code"],
+    staleTime: 300_000,
+    queryFn: async (): Promise<string> => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) return "";
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("plan")
+        .eq("user_id", uid)
+        .maybeSingle();
+      return String((data as { plan?: string } | null)?.plan ?? "");
+    },
+  });
+}
+
+/**
+ * Feature-Gate: Reverse-Charge (Rechnung ohne MwSt. für EU-Ausland)
+ * ist nur in den Paketen Pro und Enterprise verfügbar.
+ */
+export function useCanReverseCharge() {
+  const { data: plan = "", isLoading } = useMyPlanCode();
+  return {
+    canReverseCharge: REVERSE_CHARGE_PLANS.includes(plan.toLowerCase()),
+    planCode: plan,
+    isLoading,
+  };
+}
