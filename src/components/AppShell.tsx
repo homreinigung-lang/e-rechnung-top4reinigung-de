@@ -1,9 +1,8 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useFileUrl } from "@/hooks/useFileUrl";
 import { useMyEmployee } from "@/lib/employee";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
@@ -131,15 +130,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Echtzeit-Abgleich mit der Datenbank (Kunden, Rechnungen, Angebote)
   useRealtimeSync();
 
-  const { data: settings } = useQuery({
-    queryKey: ["company_settings"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("company_settings").select("*").maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
-  const logoSrc = useFileUrl((settings as { logo_url?: string } | null)?.logo_url);
   // Produktname im Header ist fest – unabhängig von den Firmenstammdaten (Rechnungen etc.)
   const companyName = "GebCalc";
 
@@ -155,21 +145,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="no-print sticky top-0 z-30 border-b bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <Link to={homeTo} className="flex items-center gap-2">
-            {logoSrc ? (
-              <img
-                src={logoSrc}
-                alt={`Logo ${companyName}`}
-                className="h-8 w-auto max-w-28 object-contain"
-              />
-            ) : (
-              <img
-                src="/app-icon-192.png?v=3"
-                alt="GebCalc Logo"
-                width={32}
-                height={32}
-                className="size-8 rounded-lg"
-              />
-            )}
+            <img
+              src="/app-icon-192.png?v=4"
+              alt="GebCalc Logo"
+              width={32}
+              height={32}
+              className="size-8 rounded-lg"
+            />
             <span className="flex flex-col leading-tight">
               <span className="font-display text-sm font-semibold">{companyName}</span>
               <span className="text-[11px] text-muted-foreground">Rechnungssystem</span>

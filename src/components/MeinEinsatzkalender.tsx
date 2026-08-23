@@ -240,7 +240,7 @@ export function MeinEinsatzkalender({
                     key={t.key}
                     className={`rounded border transition ${
                       t.done
-                        ? "border-emerald-600 bg-emerald-600 text-white"
+                        ? "border-sky-600 bg-sky-600 text-white"
                         : t.released
                           ? "border-primary/30 bg-primary/10"
                           : "border-dashed border-muted-foreground/40 bg-muted"

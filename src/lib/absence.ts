@@ -85,5 +85,5 @@ export function approvalLabel(status: ApprovalStatus) {
 export function approvalClasses(status: ApprovalStatus) {
   if (status === "pending") return "bg-amber-500/10 text-amber-600 border-amber-500/30";
   if (status === "rejected") return "bg-destructive/10 text-destructive border-destructive/30";
-  return "bg-emerald-500/10 text-emerald-600 border-emerald-500/30";
+  return "bg-sky-500/10 text-sky-600 border-sky-500/30";
 }

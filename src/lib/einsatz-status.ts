@@ -59,8 +59,8 @@ export const STATUS_LABELS: Record<EinsatzStatus, string> = {
 
 /** Rahmen + Hintergrund + Textfarbe je Status (Chips im Kalender). */
 export const STATUS_CLASSES: Record<EinsatzStatus, string> = {
-  done: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  running: "border-sky-500/40 bg-sky-500/15 text-sky-700 dark:text-sky-400",
+  done: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-400",
+  running: "border-indigo-500/40 bg-indigo-500/15 text-indigo-700 dark:text-indigo-400",
   planned: "border-primary/30 bg-primary/10 text-primary",
   cancelled: "border-destructive/40 bg-destructive/10 text-destructive line-through",
   vacation: "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400",
@@ -71,8 +71,8 @@ export const STATUS_CLASSES: Record<EinsatzStatus, string> = {
 
 /** Kleiner Farbpunkt für die Legende. */
 export const STATUS_DOTS: Record<EinsatzStatus, string> = {
-  done: "bg-emerald-500",
-  running: "bg-sky-500",
+  done: "bg-sky-500",
+  running: "bg-indigo-500",
   planned: "bg-primary",
   cancelled: "bg-destructive",
   vacation: "bg-amber-500",
