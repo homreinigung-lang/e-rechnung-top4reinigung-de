@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Plan } from "@/lib/admin";
 
 export const VAT_RATE = 0.19;
-export const TRIAL_DAYS = 30;
+export const TRIAL_DAYS = 60;
 
 /** Zahlungsdaten für die Rechnung an Neukunden. */
 export const PAYMENT_DETAILS = {
