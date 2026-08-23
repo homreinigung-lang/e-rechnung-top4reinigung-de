@@ -696,6 +696,22 @@ function KalkulationPage() {
             text="Grundlage der Kalkulation: Grundrisse und Objektfotos hochladen, Flächen, Räume und Etagen dokumentieren und den Reinigungsaufwand berechnen. Die hier ermittelten Werte fließen automatisch in die Ausschreibung und in die Kennzahlen."
           />
 
+          {warnings.length > 0 && (
+            <div
+              role="alert"
+              className="flex gap-2 rounded-lg border border-amber-500/60 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Angaben bitte prüfen</p>
+                {warnings.map((w) => (
+                  <p key={w}>{w}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+
           <Card>
             <CardHeader>
               <CardTitle>Objektbeschreibung</CardTitle>
