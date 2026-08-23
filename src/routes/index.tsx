@@ -119,7 +119,16 @@ const trustPoints = [
 
 function Landing() {
   const navigate = useNavigate();
-  // Eingeladene Mitarbeitende sehen ausschließlich die Anmeldung, keine Marketing-Seite.
+  const { data: dbPartners } = usePublicPartners();
+  const partners =
+    dbPartners && dbPartners.length > 0
+      ? dbPartners.map((p) => ({
+          key: p.id,
+          name: p.company_name,
+          city: p.city,
+        }))
+      : fallbackPartners.map((name) => ({ key: name, name, city: "" }));
+
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     let role: string | null = null;
