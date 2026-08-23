@@ -907,6 +907,92 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_orders: {
+        Row: {
+          address_line: string
+          billing_interval: string
+          city: string
+          company_name: string
+          contact_name: string
+          country: string
+          created_at: string
+          email: string
+          gross_cents: number
+          id: string
+          net_cents: number
+          note: string
+          order_number: string
+          phone: string
+          plan_code: string
+          plan_id: string | null
+          plan_name: string
+          postal_code: string
+          reverse_charge: boolean
+          status: string
+          updated_at: string
+          vat_cents: number
+          vat_id: string
+        }
+        Insert: {
+          address_line?: string
+          billing_interval?: string
+          city?: string
+          company_name?: string
+          contact_name?: string
+          country?: string
+          created_at?: string
+          email?: string
+          gross_cents?: number
+          id?: string
+          net_cents?: number
+          note?: string
+          order_number?: string
+          phone?: string
+          plan_code?: string
+          plan_id?: string | null
+          plan_name?: string
+          postal_code?: string
+          reverse_charge?: boolean
+          status?: string
+          updated_at?: string
+          vat_cents?: number
+          vat_id?: string
+        }
+        Update: {
+          address_line?: string
+          billing_interval?: string
+          city?: string
+          company_name?: string
+          contact_name?: string
+          country?: string
+          created_at?: string
+          email?: string
+          gross_cents?: number
+          id?: string
+          net_cents?: number
+          note?: string
+          order_number?: string
+          phone?: string
+          plan_code?: string
+          plan_id?: string | null
+          plan_name?: string
+          postal_code?: string
+          reverse_charge?: boolean
+          status?: string
+          updated_at?: string
+          vat_cents?: number
+          vat_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_orders_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_releases: {
         Row: {
           created_at: string
