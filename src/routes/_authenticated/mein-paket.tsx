@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { CheckCircle2, Info, Sparkles } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { usePlans, euro } from "@/lib/admin";
 import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
 import { PAYMENT_DETAILS } from "@/lib/plan-orders";
+import {
+  RenewalPaymentDialog,
+  type RenewalPaymentInfo,
+} from "@/components/RenewalPaymentDialog";
 import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/mein-paket")({
@@ -63,6 +68,22 @@ function MeinPaket() {
   const daysLeft = sub?.renews_on
     ? Math.ceil((new Date(`${sub.renews_on}T00:00:00`).getTime() - Date.now()) / 86_400_000)
     : null;
+  const [payment, setPayment] = useState<RenewalPaymentInfo | null>(null);
+
+  function openRenewal(title: string, description: string) {
+    if (!sub) return;
+    const plan = (plans ?? []).find((p) => p.code === sub.plan);
+    setPayment({
+      title,
+      description,
+      reference: `VERL-${new Date().getFullYear()}-${sub.id.slice(0, 8).toUpperCase()}`,
+      companyName: sub.company_name,
+      planName: plan?.name ?? planLabel[sub.plan] ?? sub.plan,
+      intervalLabel: "monatlich",
+      netCents: plan?.price_monthly_cents ?? 0,
+    });
+  }
+
 
   return (
     <div className="space-y-8">
@@ -105,15 +126,17 @@ function MeinPaket() {
           </p>
         )}
         {sub ? (
-          <Button asChild variant="secondary" className="mt-6">
-            <a
-              href={requestMail(
-                "Verlängerung GebCalc-Paket",
-                `Guten Tag,\n\nbitte verlängern Sie unser Paket "${planLabel[sub.plan] ?? sub.plan}" für ${sub.company_name}.\n\nVielen Dank`,
-              )}
-            >
-              Verlängerung anfragen
-            </a>
+          <Button
+            variant="secondary"
+            className="mt-6"
+            onClick={() =>
+              openRenewal(
+                "Verlängerung – Zahlungsdaten",
+                "Bitte überweisen Sie den Betrag per SEPA-Überweisung. Nach Zahlungseingang verlängern wir Ihr Paket manuell.",
+              )
+            }
+          >
+            Verlängerung anfragen
           </Button>
         ) : null}
       </section>
@@ -160,15 +183,15 @@ function MeinPaket() {
                 <p className="sm:col-span-2 text-muted-foreground">{PAYMENT_DETAILS.terms}</p>
               </div>
 
-              <Button asChild>
-                <a
-                  href={requestMail(
-                    "Rechnung zur Verlängerung anfordern",
-                    `Guten Tag,\n\nbitte senden Sie uns die Rechnung zur Verlängerung des Pakets "${planLabel[sub.plan] ?? sub.plan}".\n\nFirma: ${sub.company_name}\n\nVielen Dank`,
-                  )}
-                >
-                  Rechnung zur Verlängerung anfordern
-                </a>
+              <Button
+                onClick={() =>
+                  openRenewal(
+                    "Zahlungsaufforderung zur Verlängerung",
+                    "Alle Zahlungsdaten auf einen Blick – inklusive Proforma-Rechnung als PDF.",
+                  )
+                }
+              >
+                Rechnung zur Verlängerung anfordern
               </Button>
             </div>
           </div>
@@ -224,6 +247,13 @@ function MeinPaket() {
           ) : null}
         </div>
       </section>
+
+      <RenewalPaymentDialog
+        info={payment}
+        onOpenChange={(open) => {
+          if (!open) setPayment(null);
+        }}
+      />
     </div>
   );
 }
