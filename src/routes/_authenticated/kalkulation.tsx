@@ -834,12 +834,20 @@ function KalkulationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Textarea
-                rows={3}
-                placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-              />
+              <div className="flex items-start gap-2">
+                <Textarea
+                  rows={3}
+                  className="flex-1"
+                  placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                />
+                <SpeechToTextButton
+                  value={aiPrompt}
+                  onChange={setAiPrompt}
+                  label="Auftragsbeschreibung diktieren"
+                />
+              </div>
               <Button
                 type="button"
                 disabled={aiSuggest.isPending || aiPrompt.trim().length < 5}
