@@ -26,8 +26,8 @@ export function GiroCode({ payload, size = 104 }: { payload: string | null; size
   }, [payload, size]);
 
   return (
-    <div className="inline-flex items-center gap-4 rounded-md border bg-white px-4 py-3">
-      <div className="text-xs">
+    <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-4 rounded-md border bg-white px-4 py-3">
+      <div className="min-w-0 text-xs">
         <div className="font-display text-sm font-semibold text-foreground">
           Überweisen per Code
         </div>
@@ -42,9 +42,10 @@ export function GiroCode({ payload, size = 104 }: { payload: string | null; size
           width={size}
           height={size}
           style={{ width: size, height: size }}
+          className="shrink-0"
         />
       ) : (
-        <div style={{ width: size, height: size }} className="rounded bg-muted" />
+        <div style={{ width: size, height: size }} className="shrink-0 rounded bg-muted" />
       )}
     </div>
   );
