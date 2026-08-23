@@ -183,15 +183,15 @@ function MeinPaket() {
                 <p className="sm:col-span-2 text-muted-foreground">{PAYMENT_DETAILS.terms}</p>
               </div>
 
-              <Button asChild>
-                <a
-                  href={requestMail(
-                    "Rechnung zur Verlängerung anfordern",
-                    `Guten Tag,\n\nbitte senden Sie uns die Rechnung zur Verlängerung des Pakets "${planLabel[sub.plan] ?? sub.plan}".\n\nFirma: ${sub.company_name}\n\nVielen Dank`,
-                  )}
-                >
-                  Rechnung zur Verlängerung anfordern
-                </a>
+              <Button
+                onClick={() =>
+                  openRenewal(
+                    "Zahlungsaufforderung zur Verlängerung",
+                    "Alle Zahlungsdaten auf einen Blick – inklusive Proforma-Rechnung als PDF.",
+                  )
+                }
+              >
+                Rechnung zur Verlängerung anfordern
               </Button>
             </div>
           </div>
