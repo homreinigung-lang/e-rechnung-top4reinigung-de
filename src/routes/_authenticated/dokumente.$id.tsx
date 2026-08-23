@@ -1209,14 +1209,25 @@ function DokumentDetail() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="domestic">Inland (Deutschland) – 19 % MwSt.</SelectItem>
-              <SelectItem value="eu_reverse_charge">
+              <SelectItem value="eu_reverse_charge" disabled={!canReverseCharge}>
                 EU-Ausland – Reverse-Charge (0 % MwSt.)
+                {canReverseCharge ? "" : " – ab Pro"}
               </SelectItem>
               <SelectItem value="kleinunternehmer">
                 Kleinunternehmer § 19 UStG (0 % MwSt.)
               </SelectItem>
             </SelectContent>
           </Select>
+          {!canReverseCharge && (
+            <p className="flex flex-wrap items-center gap-1 rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+              <Sparkles className="size-3.5 text-primary" />
+              Rechnungen ohne MwSt. (Reverse-Charge für EU-Ausland) sind ab dem{" "}
+              <strong className="font-semibold text-foreground">Pro-Paket</strong> verfügbar.
+              <Link to="/mein-paket" className="font-medium text-primary underline">
+                Paket ansehen
+              </Link>
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
             {taxMode === "domestic"
               ? "Es werden 19 % Umsatzsteuer ausgewiesen. Es wird kein Steuerhinweis gedruckt."
