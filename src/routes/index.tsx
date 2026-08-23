@@ -15,17 +15,40 @@ import { FileText, Mail, MoreVertical, Receipt, ShieldCheck } from "lucide-react
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "HomR – Rechnungen & Angebote für Reinigungsfirmen" },
+      { title: "HomR Office – Software für Gebäudereinigung & E-Rechnung" },
       {
         name: "description",
         content:
-          "Angebote und Rechnungen ohne Umsatzsteuer (Reverse-Charge, EU) erstellen, verwalten und direkt per E-Mail versenden.",
+          "Software für Reinigungsfirmen: Angebote, Kalkulation und E-Rechnungen für Büroreinigung, Unterhaltsreinigung und Treppenhausreinigung – GoBD-konform, EU-Reverse-Charge.",
       },
-      { property: "og:title", content: "HomR – Rechnungen & Angebote" },
+      {
+        property: "og:title",
+        content: "HomR Office – Software für Gebäudereinigung & E-Rechnung",
+      },
       {
         property: "og:description",
         content:
-          "Angebote und Rechnungen ohne Umsatzsteuer (Reverse-Charge, EU) erstellen, verwalten und versenden.",
+          "Angebote, Kalkulation, Zeiterfassung und rechtssichere E-Rechnungen für Büroreinigung, Unterhaltsreinigung und Treppenhausreinigung.",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://e-rechnung.top4reinigung.de/" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [{ rel: "canonical", href: "https://e-rechnung.top4reinigung.de/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "HomR Office",
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          url: "https://e-rechnung.top4reinigung.de/",
+          inLanguage: "de-DE",
+          description:
+            "Software für Reinigungsfirmen: Angebote, Kalkulation, Zeiterfassung und GoBD-konforme E-Rechnungen (XRechnung, ZUGFeRD).",
+        }),
       },
     ],
   }),
