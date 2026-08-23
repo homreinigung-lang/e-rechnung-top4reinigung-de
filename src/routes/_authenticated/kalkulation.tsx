@@ -29,6 +29,7 @@ import {
   detectStairs,
   normalizeItems,
   positionsTotal,
+  reconcilePositionsTotal,
   round2,
   MIN_STAIR_RATE,
 } from "@/lib/kalkulation-engine";
@@ -442,7 +443,12 @@ function KalkulationPage() {
       toast.error("Bitte zuerst die markierten Plausibilitätshinweise prüfen.");
       return;
     }
-    const positions = buildConsolidatedPositions({
+    const targetTotal = round2(num(finalPrice));
+    if (targetTotal <= 0) {
+      toast.error("Bitte einen gültigen Netto-Endpreis größer als 0 eingeben.");
+      return;
+    }
+    const calculatedPositions = buildConsolidatedPositions({
       typeValue: selected.value,
       typeLabel: selected.label,
       mode,
@@ -464,8 +470,14 @@ function KalkulationPage() {
       discountPercent: pct,
       discountReason,
     });
-    if (positions.length === 0) {
+    if (calculatedPositions.length === 0) {
       toast.error("Die Grundkalkulation ergibt noch keine gültigen Positionen.");
+      return;
+    }
+    const positions = reconcilePositionsTotal(calculatedPositions, targetTotal);
+    const transferredTotal = positionsTotal(positions);
+    if (transferredTotal !== targetTotal) {
+      toast.error("Der Endpreis konnte nicht centgenau in das Leistungsverzeichnis übernommen werden.");
       return;
     }
     setAiItems(
@@ -477,7 +489,9 @@ function KalkulationPage() {
         unit_price: String(p.unit_price).replace(".", ","),
       })),
     );
-    toast.success(`Kalkulation übernommen – ${positions.length} Positionen ersetzt`);
+    toast.success(
+      `Kalkulation übernommen – Gesamt netto ${formatMoney(transferredTotal)} exakt übertragen`,
+    );
   }
 
   const analyseSnapshot: KalkulationSnapshot = {
@@ -1590,9 +1604,9 @@ function KalkulationPage() {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Berechneter Vorschlag: {formatMoney(suggested)}. Dieser Betrag ist nur ein
-                    Zwischenschritt – erst über „Kalkulation übernehmen“ wird er zu Positionen und
-                    fließt in die Gesamtsumme ein.
+                    Berechneter Vorschlag: {formatMoney(suggested)}. „Kalkulation übernehmen“
+                    überträgt diesen Endpreis einschließlich manueller Anpassungen centgenau in die
+                    Positionen des Leistungsverzeichnisses.
                   </p>
                   {finalTouched && (
                     <Button
