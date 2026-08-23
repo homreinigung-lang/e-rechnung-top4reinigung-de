@@ -25,7 +25,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -117,7 +116,6 @@ const trustPoints = [
   "Serverstandort EU, Daten je Firma streng getrennt",
 ];
 
-
 function Landing() {
   const navigate = useNavigate();
   // Eingeladene Mitarbeitende sehen ausschließlich die Anmeldung, keine Marketing-Seite.
@@ -159,45 +157,44 @@ function Landing() {
             <Link to="/auth">Login</Link>
           </Button>
           <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Menü öffnen">
-              <MoreVertical className="size-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Menü</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/auth" className="w-full cursor-pointer">
-                Anmelden
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/rechtliches/impressum" className="w-full cursor-pointer">
-                Impressum
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/rechtliches/agb" className="w-full cursor-pointer">
-                AGB
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/rechtliches/datenschutz" className="w-full cursor-pointer">
-                Datenschutz
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/rechtliches/bibliotheken" className="w-full cursor-pointer">
-                Bibliotheken
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Menü öffnen">
+                <MoreVertical className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Menü</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/auth" className="w-full cursor-pointer">
+                  Anmelden
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/impressum" className="w-full cursor-pointer">
+                  Impressum
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/agb" className="w-full cursor-pointer">
+                  AGB
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/datenschutz" className="w-full cursor-pointer">
+                  Datenschutz
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/bibliotheken" className="w-full cursor-pointer">
+                  Bibliotheken
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
-
 
       <main>
         <section className="mx-auto max-w-6xl px-6 pt-10 pb-16 md:pt-20">
@@ -317,7 +314,6 @@ function Landing() {
           </div>
         </section>
       </main>
-
 
       <footer className="border-t py-8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 text-sm text-muted-foreground">
