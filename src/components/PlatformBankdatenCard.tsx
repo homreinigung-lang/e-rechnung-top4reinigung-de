@@ -43,7 +43,7 @@ export function PlatformBankdatenCard() {
         id: PLATFORM_SETTINGS_ID,
         recipient: form.recipient.trim(),
         iban: normalizeIban(form.iban),
-        bic: form.bic.trim().toUpperCase(),
+        bic: form.bic.replace(/\s+/g, "").toUpperCase(),
         bank: form.bank.trim(),
         terms: form.terms.trim(),
         vat_id: form.vat_id.trim(),
