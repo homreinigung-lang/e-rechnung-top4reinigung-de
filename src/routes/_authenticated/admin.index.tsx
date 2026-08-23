@@ -13,7 +13,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2 } from "lucide-react";
+import { Building2, CalendarPlus, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/format";
+
+/** Laufzeitende um n Monate verlängern (ab heute, falls bereits abgelaufen). */
+function extendDate(current: string | null, months: number): string {
+  const base = current ? new Date(`${current}T00:00:00`) : new Date();
+  const start = base.getTime() > Date.now() ? base : new Date();
+  start.setMonth(start.getMonth() + months);
+  return start.toISOString().slice(0, 10);
+}
 import {
   PLANS,
   STATUS,
