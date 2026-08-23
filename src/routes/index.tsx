@@ -103,7 +103,7 @@ function Landing() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-2">
           <img
-            src="/app-icon-192.png"
+            src="/app-icon-192.png?v=3"
             alt="GebCalc Logo"
             width={36}
             height={36}
@@ -190,7 +190,7 @@ function Landing() {
 
       <footer className="border-t py-8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 text-sm text-muted-foreground">
-          <span>Hom Reinigung Service · Völklingen · USt-IdNr. DE458492078</span>
+          <span>GebCalc – Rechnungssystem · Völklingen · USt-IdNr. DE458492078</span>
           <nav className="flex flex-wrap gap-x-4 gap-y-2">
             <Link to="/rechtliches/impressum" className="hover:text-foreground hover:underline">
               Impressum

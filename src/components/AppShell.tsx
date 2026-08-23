@@ -140,7 +140,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     },
   });
   const logoSrc = useFileUrl((settings as { logo_url?: string } | null)?.logo_url);
-  const companyName = (settings as { company_name?: string } | null)?.company_name || "GebCalc";
+  // Produktname im Header ist fest – unabhängig von den Firmenstammdaten (Rechnungen etc.)
+  const companyName = "GebCalc";
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -162,7 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
             ) : (
               <img
-                src="/app-icon-192.png"
+                src="/app-icon-192.png?v=3"
                 alt="GebCalc Logo"
                 width={32}
                 height={32}

@@ -194,7 +194,7 @@ function AuthPage() {
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
           <img
-            src="/app-icon-192.png"
+            src="/app-icon-192.png?v=3"
             alt="GebCalc Logo"
             width={36}
             height={36}
