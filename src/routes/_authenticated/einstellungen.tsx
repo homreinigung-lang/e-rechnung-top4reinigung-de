@@ -370,6 +370,8 @@ function Einstellungen() {
         </p>
       </div>
 
+      <BankdatenSection />
+
       <Leistungswerte />
 
       <div className="surface space-y-4 p-6">
