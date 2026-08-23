@@ -38,6 +38,7 @@ import { Route as RechtlichesBibliothekenRouteImport } from './routes/rechtliche
 import { Route as RechtlichesDatenschutzRouteImport } from './routes/rechtliches.datenschutz'
 import { Route as RechtlichesImpressumRouteImport } from './routes/rechtliches.impressum'
 import { Route as StbTokenRouteImport } from './routes/stb.$token'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
 import { Route as AuthenticatedKundenIndexRouteImport } from './routes/_authenticated/kunden.index'
@@ -199,6 +200,11 @@ const StbTokenRoute = StbTokenRouteImport.update({
   path: '/stb/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedDokumenteIndexRoute =
   AuthenticatedDokumenteIndexRouteImport.update({
     id: '/dokumente/',
@@ -252,7 +258,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/abonnements': typeof AuthenticatedAbonnementsRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/kunden/': typeof AuthenticatedKundenIndexRoute
   '/projekte/': typeof AuthenticatedProjekteIndexRoute
@@ -289,7 +296,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/abonnements': typeof AuthenticatedAbonnementsRoute
-  '/admin': typeof AuthenticatedAdminRoute
   '/ausgaben': typeof AuthenticatedAusgabenRoute
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -315,6 +321,7 @@ export interface FileRoutesByTo {
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
   '/kunden': typeof AuthenticatedKundenIndexRoute
   '/projekte': typeof AuthenticatedProjekteIndexRoute
@@ -329,7 +336,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/abonnements': typeof AuthenticatedAbonnementsRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/ausgaben': typeof AuthenticatedAusgabenRoute
   '/_authenticated/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -355,6 +362,7 @@ export interface FileRoutesById {
   '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/_authenticated/kunden/': typeof AuthenticatedKundenIndexRoute
   '/_authenticated/projekte/': typeof AuthenticatedProjekteIndexRoute
@@ -395,6 +403,7 @@ export interface FileRouteTypes {
     | '/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/admin/'
     | '/dokumente/'
     | '/kunden/'
     | '/projekte/'
@@ -406,7 +415,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/abonnements'
-    | '/admin'
     | '/ausgaben'
     | '/bankverbindung'
     | '/dashboard'
@@ -432,6 +440,7 @@ export interface FileRouteTypes {
     | '/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/admin'
     | '/dokumente'
     | '/kunden'
     | '/projekte'
@@ -471,6 +480,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projekte/$id'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/_authenticated/admin/'
     | '/_authenticated/dokumente/'
     | '/_authenticated/kunden/'
     | '/_authenticated/projekte/'
@@ -694,6 +704,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StbTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/dokumente/': {
       id: '/_authenticated/dokumente/'
       path: '/dokumente'
@@ -753,9 +770,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAbonnementsRoute: typeof AuthenticatedAbonnementsRoute
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedAusgabenRoute: typeof AuthenticatedAusgabenRoute
   AuthenticatedBankverbindungRoute: typeof AuthenticatedBankverbindungRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -780,7 +808,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAbonnementsRoute: AuthenticatedAbonnementsRoute,
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedAusgabenRoute: AuthenticatedAusgabenRoute,
   AuthenticatedBankverbindungRoute: AuthenticatedBankverbindungRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
