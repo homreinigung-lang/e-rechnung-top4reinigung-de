@@ -123,6 +123,7 @@ function BankdatenSection() {
 
 function Einstellungen() {
   const queryClient = useQueryClient();
+  const { data: isAdmin } = useIsAdmin();
   const [form, setForm] = useState<Record<string, string>>({});
   const signatureImageInput = useRef<HTMLInputElement>(null);
 
@@ -639,8 +640,9 @@ function Einstellungen() {
 
       <AccountantAccessCard />
 
-      <DomainDnsCheckCard />
+      {isAdmin && <DomainDnsCheckCard />}
 
+      {isAdmin && (
       <div className="surface space-y-4 p-6">
         <h2 className="font-display text-lg font-semibold">Import aus Lexoffice / Lexware</h2>
         <p className="text-sm text-muted-foreground">
@@ -679,6 +681,7 @@ function Einstellungen() {
           </div>
         )}
       </div>
+      )}
 
       <Dialog open={previewOpen} onOpenChange={(o) => setPreviewOpen(o)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">

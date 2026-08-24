@@ -43,6 +43,7 @@ import { Route as StbTokenRouteImport } from './routes/stb.$token'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminFirmenRouteImport } from './routes/_authenticated/admin.firmen'
 import { Route as AuthenticatedAdminPaketeRouteImport } from './routes/_authenticated/admin.pakete'
+import { Route as AuthenticatedAdminSystemRouteImport } from './routes/_authenticated/admin.system'
 import { Route as AuthenticatedAdminZahlungRouteImport } from './routes/_authenticated/admin.zahlung'
 import { Route as AuthenticatedDokumenteIndexRouteImport } from './routes/_authenticated/dokumente.index'
 import { Route as AuthenticatedDokumenteIdRouteImport } from './routes/_authenticated/dokumente.$id'
@@ -232,6 +233,12 @@ const AuthenticatedAdminPaketeRoute =
     path: '/pakete',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminSystemRoute =
+  AuthenticatedAdminSystemRouteImport.update({
+    id: '/system',
+    path: '/system',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminZahlungRoute =
   AuthenticatedAdminZahlungRouteImport.update({
     id: '/zahlung',
@@ -316,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/admin/firmen': typeof AuthenticatedAdminFirmenRoute
   '/admin/pakete': typeof AuthenticatedAdminPaketeRoute
+  '/admin/system': typeof AuthenticatedAdminSystemRoute
   '/admin/zahlung': typeof AuthenticatedAdminZahlungRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/kunden/$id': typeof AuthenticatedKundenIdRoute
@@ -358,6 +366,7 @@ export interface FileRoutesByTo {
   '/rechtliches': typeof RechtlichesIndexRoute
   '/admin/firmen': typeof AuthenticatedAdminFirmenRoute
   '/admin/pakete': typeof AuthenticatedAdminPaketeRoute
+  '/admin/system': typeof AuthenticatedAdminSystemRoute
   '/admin/zahlung': typeof AuthenticatedAdminZahlungRoute
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/kunden/$id': typeof AuthenticatedKundenIdRoute
@@ -404,6 +413,7 @@ export interface FileRoutesById {
   '/rechtliches/': typeof RechtlichesIndexRoute
   '/_authenticated/admin/firmen': typeof AuthenticatedAdminFirmenRoute
   '/_authenticated/admin/pakete': typeof AuthenticatedAdminPaketeRoute
+  '/_authenticated/admin/system': typeof AuthenticatedAdminSystemRoute
   '/_authenticated/admin/zahlung': typeof AuthenticatedAdminZahlungRoute
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/kunden/$id': typeof AuthenticatedKundenIdRoute
@@ -450,6 +460,7 @@ export interface FileRouteTypes {
     | '/rechtliches/'
     | '/admin/firmen'
     | '/admin/pakete'
+    | '/admin/system'
     | '/admin/zahlung'
     | '/dokumente/$id'
     | '/kunden/$id'
@@ -492,6 +503,7 @@ export interface FileRouteTypes {
     | '/rechtliches'
     | '/admin/firmen'
     | '/admin/pakete'
+    | '/admin/system'
     | '/admin/zahlung'
     | '/dokumente/$id'
     | '/kunden/$id'
@@ -537,6 +549,7 @@ export interface FileRouteTypes {
     | '/rechtliches/'
     | '/_authenticated/admin/firmen'
     | '/_authenticated/admin/pakete'
+    | '/_authenticated/admin/system'
     | '/_authenticated/admin/zahlung'
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/kunden/$id'
@@ -802,6 +815,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPaketeRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/system': {
+      id: '/_authenticated/admin/system'
+      path: '/system'
+      fullPath: '/admin/system'
+      preLoaderRoute: typeof AuthenticatedAdminSystemRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/zahlung': {
       id: '/_authenticated/admin/zahlung'
       path: '/zahlung'
@@ -871,6 +891,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminFirmenRoute: typeof AuthenticatedAdminFirmenRoute
   AuthenticatedAdminPaketeRoute: typeof AuthenticatedAdminPaketeRoute
+  AuthenticatedAdminSystemRoute: typeof AuthenticatedAdminSystemRoute
   AuthenticatedAdminZahlungRoute: typeof AuthenticatedAdminZahlungRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
@@ -878,6 +899,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminFirmenRoute: AuthenticatedAdminFirmenRoute,
   AuthenticatedAdminPaketeRoute: AuthenticatedAdminPaketeRoute,
+  AuthenticatedAdminSystemRoute: AuthenticatedAdminSystemRoute,
   AuthenticatedAdminZahlungRoute: AuthenticatedAdminZahlungRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }

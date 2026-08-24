@@ -38,6 +38,7 @@ const tabs = [
   { to: "/admin/firmen", label: "Firmen & Freigaben", exact: false },
   { to: "/admin/pakete", label: "Pakete & Preise", exact: false },
   { to: "/admin/zahlung", label: "Bankdaten", exact: false },
+  { to: "/admin/system", label: "System & Domain", exact: false },
 ] as const;
 
 function AdminLayout() {
