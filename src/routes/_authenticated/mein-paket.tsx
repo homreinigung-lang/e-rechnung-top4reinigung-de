@@ -85,6 +85,10 @@ function MeinPaket() {
     ? Math.ceil((new Date(`${sub.renews_on}T00:00:00`).getTime() - Date.now()) / 86_400_000)
     : null;
   const [payment, setPayment] = useState<RenewalPaymentInfo | null>(null);
+  const { data: employeeCount = 0 } = useMyEmployeeCount();
+  const currentPlan = (plans ?? []).find((p) => p.code === currentCode);
+  const extraCount = extraEmployees(currentCode, employeeCount);
+  const surchargeCents = extraEmployeeCents(currentCode, employeeCount);
 
   function openRenewal(title: string, description: string) {
     if (!sub) return;
@@ -96,7 +100,7 @@ function MeinPaket() {
       companyName: sub.company_name,
       planName: plan?.name ?? planLabel[sub.plan] ?? sub.plan,
       intervalLabel: "monatlich",
-      netCents: plan?.price_monthly_cents ?? 0,
+      netCents: plan ? monthlyPriceCents(plan, employeeCount) : 0,
     });
   }
 
