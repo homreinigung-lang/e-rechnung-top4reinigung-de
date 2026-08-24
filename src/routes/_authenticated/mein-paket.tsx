@@ -10,6 +10,13 @@ import { usePlans, euro } from "@/lib/admin";
 import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
 import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
 import {
+  extraEmployeeCents,
+  extraEmployees,
+  monthlyPriceCents,
+  EXTRA_EMPLOYEE_CENTS,
+  PRO_INCLUDED_EMPLOYEES,
+} from "@/lib/plan-orders";
+import {
   RenewalPaymentDialog,
   type RenewalPaymentInfo,
 } from "@/components/RenewalPaymentDialog";
