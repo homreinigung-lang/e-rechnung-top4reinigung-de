@@ -8,7 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/PasswordInput";
-import { requestAccountApproval, getApprovalStatus } from "@/lib/approval.functions";
+import {
+  requestAccountApproval,
+  getApprovalStatus,
+  recoverIncompleteAccount,
+} from "@/lib/approval.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
