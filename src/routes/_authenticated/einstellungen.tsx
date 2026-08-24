@@ -28,7 +28,7 @@ import {
 import { ImagePlus } from "lucide-react";
 
 import { buildSignatureHtml } from "@/lib/signature";
-import { DomainDnsCheckCard } from "@/components/DomainDnsCheckCard";
+
 import {
   Dialog,
   DialogContent,
@@ -640,7 +640,6 @@ function Einstellungen() {
 
       <AccountantAccessCard />
 
-      {isAdmin && <DomainDnsCheckCard />}
 
       {isAdmin && (
       <div className="surface space-y-4 p-6">
