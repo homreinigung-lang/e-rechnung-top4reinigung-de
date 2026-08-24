@@ -381,6 +381,7 @@ function Landing() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   oder {euro(plan.price_yearly_cents)} / Jahr
+                  {plan.code === "pro" ? " · ab dem 21. Mitarbeitenden +2,50 € / Monat" : ""}
                 </p>
                 <ul className="mt-5 flex-1 space-y-2 text-sm">
                   {plan.features.map((f) => (

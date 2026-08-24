@@ -112,3 +112,28 @@ export function useCreatePlanOrder() {
     },
   });
 }
+
+/* -------------------------------------------------------------------------
+ * Zusatz-Mitarbeitende im Pro-Paket
+ * ---------------------------------------------------------------------- */
+
+/** Im Pro-Paket enthaltene Mitarbeitende. */
+export const PRO_INCLUDED_EMPLOYEES = 20;
+/** Aufpreis je zusätzlichem Mitarbeitenden (monatlich, in Cent). */
+export const EXTRA_EMPLOYEE_CENTS = 250;
+
+/** Anzahl der Mitarbeitenden über dem Inklusiv-Kontingent. */
+export function extraEmployees(planCode: string, employeeCount: number): number {
+  if ((planCode || "").trim().toLowerCase() !== "pro") return 0;
+  return Math.max(0, employeeCount - PRO_INCLUDED_EMPLOYEES);
+}
+
+/** Monatlicher Aufpreis für zusätzliche Mitarbeitende (in Cent). */
+export function extraEmployeeCents(planCode: string, employeeCount: number): number {
+  return extraEmployees(planCode, employeeCount) * EXTRA_EMPLOYEE_CENTS;
+}
+
+/** Monatlicher Gesamtpreis inkl. Zusatz-Mitarbeitenden (in Cent). */
+export function monthlyPriceCents(plan: Plan, employeeCount: number): number {
+  return plan.price_monthly_cents + extraEmployeeCents(plan.code, employeeCount);
+}

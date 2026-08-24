@@ -10,6 +10,13 @@ import { usePlans, euro } from "@/lib/admin";
 import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
 import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
 import {
+  extraEmployeeCents,
+  extraEmployees,
+  monthlyPriceCents,
+  EXTRA_EMPLOYEE_CENTS,
+  PRO_INCLUDED_EMPLOYEES,
+} from "@/lib/plan-orders";
+import {
   RenewalPaymentDialog,
   type RenewalPaymentInfo,
 } from "@/components/RenewalPaymentDialog";
@@ -54,6 +61,21 @@ function useMySubscription() {
   });
 }
 
+/** Anzahl aktiver Mitarbeitender der eigenen Firma (für Pro-Aufpreis). */
+function useMyEmployeeCount() {
+  return useQuery({
+    queryKey: ["my_employee_count"],
+    queryFn: async (): Promise<number> => {
+      const { count, error } = await supabase
+        .from("employees")
+        .select("id", { count: "exact", head: true })
+        .eq("active", true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
 const CONTACT = "info@top4reinigung.de";
 
 function requestMail(subject: string, body: string) {
@@ -70,6 +92,10 @@ function MeinPaket() {
     ? Math.ceil((new Date(`${sub.renews_on}T00:00:00`).getTime() - Date.now()) / 86_400_000)
     : null;
   const [payment, setPayment] = useState<RenewalPaymentInfo | null>(null);
+  const { data: employeeCount = 0 } = useMyEmployeeCount();
+  const currentPlan = (plans ?? []).find((p) => p.code === currentCode);
+  const extraCount = extraEmployees(currentCode, employeeCount);
+  const surchargeCents = extraEmployeeCents(currentCode, employeeCount);
 
   function openRenewal(title: string, description: string) {
     if (!sub) return;
@@ -81,7 +107,7 @@ function MeinPaket() {
       companyName: sub.company_name,
       planName: plan?.name ?? planLabel[sub.plan] ?? sub.plan,
       intervalLabel: "monatlich",
-      netCents: plan?.price_monthly_cents ?? 0,
+      netCents: plan ? monthlyPriceCents(plan, employeeCount) : 0,
     });
   }
 
@@ -126,6 +152,26 @@ function MeinPaket() {
             richten es für Sie ein.
           </p>
         )}
+        {sub && currentPlan ? (
+          <div className="mt-6 rounded-md border border-border p-4 text-sm">
+            <p className="font-medium">Monatlicher Preis</p>
+            <p className="mt-1 text-muted-foreground">
+              Grundpreis {euro(currentPlan.price_monthly_cents)}
+              {currentCode === "pro" ? (
+                <>
+                  {" · "}
+                  {employeeCount} aktive Mitarbeitende (inklusive {PRO_INCLUDED_EMPLOYEES})
+                  {extraCount > 0
+                    ? ` · ${extraCount} × ${euro(EXTRA_EMPLOYEE_CENTS)} Aufpreis = ${euro(surchargeCents)}`
+                    : ""}
+                </>
+              ) : null}
+            </p>
+            <p className="mt-2 text-base font-semibold">
+              {euro(monthlyPriceCents(currentPlan, employeeCount))} / Monat
+            </p>
+          </div>
+        ) : null}
         {sub ? (
           <Button
             variant="secondary"
@@ -220,6 +266,7 @@ function MeinPaket() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   oder {euro(plan.price_yearly_cents)} / Jahr
+                  {plan.code === "pro" ? " · ab dem 21. Mitarbeitenden +2,50 € / Monat" : ""}
                 </p>
                 <ul className="mt-4 flex-1 space-y-2 text-sm">
                   {plan.features.map((f) => (
