@@ -123,6 +123,7 @@ function BankdatenSection() {
 
 function Einstellungen() {
   const queryClient = useQueryClient();
+  const { data: isAdmin } = useIsAdmin();
   const [form, setForm] = useState<Record<string, string>>({});
   const signatureImageInput = useRef<HTMLInputElement>(null);
 
