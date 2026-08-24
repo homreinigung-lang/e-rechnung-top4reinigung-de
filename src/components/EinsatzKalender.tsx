@@ -1136,8 +1136,13 @@ export function EinsatzKalender({
                         onKeyDown={(ev) => {
                           if (ev.key === "Enter" || ev.key === " ") openDay(key, emp.id);
                         }}
+                        {...dropProps(`w-${emp.id}-${key}`, key, emp.id)}
                         className={`min-h-[112px] cursor-pointer space-y-1 bg-background p-1.5 text-left align-top transition hover:bg-accent/60 ${
                           key === today ? "ring-1 ring-inset ring-primary" : ""
+                        } ${
+                          dropTarget === `w-${emp.id}-${key}`
+                            ? "bg-primary/10 ring-2 ring-inset ring-primary"
+                            : ""
                         }`}
                       >
                         {list.map((e) => {
@@ -1147,6 +1152,7 @@ export function EinsatzKalender({
                             <button
                               key={e.id}
                               type="button"
+                              {...entryDragProps(e)}
                               onClick={(ev) => {
                                 ev.stopPropagation();
                                 setDetail(e);
@@ -1156,10 +1162,11 @@ export function EinsatzKalender({
                                   ? `Erledigt · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`}`
                                   : statusLabel(e)
                               }
-                              className={`w-full rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${
+                              className={`w-full cursor-grab rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 active:cursor-grabbing ${
                                 donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
                               }`}
                             >
+
                               {reason ? (
                                 <span className="flex items-center gap-1">
                                   {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
