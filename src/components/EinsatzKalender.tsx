@@ -975,13 +975,15 @@ export function EinsatzKalender({
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter" || ev.key === " ") openDay(key);
                   }}
+                  {...dropProps(`m-${key}`, key)}
                   className={`min-h-[132px] cursor-pointer space-y-1 bg-background p-2 text-left transition hover:bg-accent/60 ${
                     inMonth ? "" : "opacity-45"
                   } ${key === today ? "ring-1 ring-inset ring-primary" : ""} ${
                     holiday ? "bg-amber-50 dark:bg-amber-950/30" : ""
-                  }`}
+                  } ${dropTarget === `m-${key}` ? "ring-2 ring-inset ring-primary bg-primary/10" : ""}`}
                   title={holiday ? `Feiertag (Saarland): ${holiday}` : undefined}
                 >
+
                   <div className="flex items-center justify-between">
                     <span className={`text-xs ${key === today ? "font-bold text-primary" : ""}`}>
                       {d.getDate()}
