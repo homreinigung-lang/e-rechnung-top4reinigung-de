@@ -21,6 +21,7 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
     z
       .object({
         authUserId: z.string().uuid(),
+        email: z.string().email().max(200).optional(),
         fullName: z.string().max(200).optional(),
         companyName: z.string().max(200).optional(),
         employeeCount: z.number().int().min(0).max(100000).optional(),
@@ -31,16 +32,19 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(
-      data.authUserId,
-    );
-    if (userError || !userData.user) throw new Error("Benutzer nicht gefunden.");
-    const user = userData.user;
-    const email = (user.email ?? "").toLowerCase();
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(data.authUserId);
+    const user = userData?.user ?? null;
+    if (!user) {
+      // Kommt vor, wenn die Registrierung eine E-Mail-Bestätigung erfordert oder
+      // die Adresse bereits existiert – dann gibt es (noch) kein echtes Konto.
+      return { status: "pending" as const };
+    }
+    const email = (user.email ?? data.email ?? "").toLowerCase();
     const fullName =
       (data.fullName ?? "").trim() ||
       ((user.user_metadata?.["full_name"] as string | undefined) ?? "");
     const companyName = (data.companyName ?? "").trim();
+
     const now = new Date().toISOString();
 
     const existing = await supabaseAdmin
