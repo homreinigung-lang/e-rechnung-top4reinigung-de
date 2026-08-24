@@ -1,5 +1,5 @@
 import { holidayName } from "@/lib/feiertage";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState, type DragEvent as ReactDragEvent } from "react";
 import { isoWeek } from "@/lib/kw";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -536,14 +536,14 @@ export function EinsatzKalender({
   };
 
   const dropProps = (dropKey: string, date: string, employeeId?: string) => ({
-    onDragOver: (ev: React.DragEvent) => {
+    onDragOver: (ev: ReactDragEvent) => {
       if (!drag) return;
       ev.preventDefault();
       ev.dataTransfer.dropEffect = drag.kind === "employee" ? "copy" : "move";
       if (dropTarget !== dropKey) setDropTarget(dropKey);
     },
     onDragLeave: () => setDropTarget((c) => (c === dropKey ? null : c)),
-    onDrop: (ev: React.DragEvent) => {
+    onDrop: (ev: ReactDragEvent) => {
       ev.preventDefault();
       handleDrop(date, employeeId);
     },
@@ -551,7 +551,7 @@ export function EinsatzKalender({
 
   const entryDragProps = (e: TimeEntry) => ({
     draggable: true,
-    onDragStart: (ev: React.DragEvent) => {
+    onDragStart: (ev: ReactDragEvent) => {
       ev.dataTransfer.effectAllowed = "move";
       ev.dataTransfer.setData("text/plain", e.id);
       setDrag({ kind: "entry", id: e.id, employeeId: e.employee_id, date: e.work_date });
