@@ -135,13 +135,9 @@ function DokumenteListe() {
           number,
           issue_date: issue,
           due_date: type === "invoice" ? addDays(issue, settings?.payment_terms_days ?? 14) : null,
-          reverse_charge: !smallBusiness && type === "invoice",
-          tax_mode: smallBusiness
-            ? "kleinunternehmer"
-            : type === "quote"
-              ? "domestic"
-              : "eu_reverse_charge",
-          vat_rate: !smallBusiness && type === "quote" ? 19 : 0,
+          reverse_charge: false,
+          tax_mode: smallBusiness ? "kleinunternehmer" : "domestic",
+          vat_rate: smallBusiness ? 0 : 19,
 
           notes:
             type === "quote"
