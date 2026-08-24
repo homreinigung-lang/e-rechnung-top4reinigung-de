@@ -54,6 +54,21 @@ function useMySubscription() {
   });
 }
 
+/** Anzahl aktiver Mitarbeitender der eigenen Firma (für Pro-Aufpreis). */
+function useMyEmployeeCount() {
+  return useQuery({
+    queryKey: ["my_employee_count"],
+    queryFn: async (): Promise<number> => {
+      const { count, error } = await supabase
+        .from("employees")
+        .select("id", { count: "exact", head: true })
+        .eq("active", true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
 const CONTACT = "info@top4reinigung.de";
 
 function requestMail(subject: string, body: string) {
