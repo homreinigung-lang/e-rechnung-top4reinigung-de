@@ -1242,16 +1242,16 @@ function DokumentDetail() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="domestic">Inland (Deutschland) – 19 % MwSt.</SelectItem>
-              <SelectItem value="eu_reverse_charge" disabled={!canReverseCharge}>
+              <SelectItem value="eu_reverse_charge" disabled={!reverseChargeAllowed}>
                 EU-Ausland – Reverse-Charge (0 % MwSt.)
-                {canReverseCharge ? "" : " – ab Pro"}
+                {reverseChargeAllowed ? "" : " – ab Pro"}
               </SelectItem>
               <SelectItem value="kleinunternehmer">
                 Kleinunternehmer § 19 UStG (0 % MwSt.)
               </SelectItem>
             </SelectContent>
           </Select>
-          {!canReverseCharge && (
+          {!reverseChargeAllowed && (
             <p className="flex flex-wrap items-center gap-1 rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
               <Sparkles className="size-3.5 text-primary" />
               Rechnungen ohne MwSt. (Reverse-Charge für EU-Ausland) sind ab dem{" "}
