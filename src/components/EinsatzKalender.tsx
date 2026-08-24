@@ -1349,18 +1349,36 @@ export function EinsatzKalender({
             )}
           </p>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+            {form.employeeIds.length === 0 && (
+              <span className="text-xs text-destructive">
+                Bitte zuerst mindestens einen Mitarbeiter auswählen.
+              </span>
+            )}
             <Button
-              onClick={() => day && createPlan.mutate({ ...form, workDate: day })}
-              disabled={
-                form.employeeIds.length === 0 ||
-                createPlan.isPending ||
-                (!isAbsent && (!timesValid || plannedHours <= 0))
-              }
+              onClick={() => {
+                if (!day) return;
+                if (form.employeeIds.length === 0) {
+                  toast.error("Bitte mindestens einen Mitarbeiter auswählen.");
+                  return;
+                }
+                if (!isAbsent && (!timesValid || plannedHours <= 0)) {
+                  toast.error("Bitte gültige Start-/Endzeit eintragen (Dauer über 0 Stunden).");
+                  return;
+                }
+                createPlan.mutate({ ...form, workDate: day });
+              }}
+              disabled={createPlan.isPending}
             >
-              <Plus className="size-4" /> {isAbsent ? "Abwesenheit eintragen" : "Einsatz eintragen"}
+              <Plus className="size-4" />{" "}
+              {createPlan.isPending
+                ? "Wird gespeichert…"
+                : isAbsent
+                  ? "Abwesenheit eintragen"
+                  : "Einsatz eintragen"}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
