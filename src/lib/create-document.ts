@@ -32,13 +32,11 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
       issue_date: issue,
       // Bei Angeboten ist „gültig bis“ optional und wird nicht vorbelegt.
       due_date: type === "invoice" ? addDays(issue, settings?.payment_terms_days ?? 14) : null,
-      reverse_charge: !smallBusiness && type === "invoice",
-      tax_mode: smallBusiness
-        ? "kleinunternehmer"
-        : type === "quote"
-          ? "domestic"
-          : "eu_reverse_charge",
-      vat_rate: !smallBusiness && type === "quote" ? 19 : 0,
+      // Standard ist Inland mit 19 % – Reverse-Charge wird erst gesetzt,
+      // wenn ein EU-Kunde mit USt-IdNr. gewählt wird (und das Paket es erlaubt).
+      reverse_charge: false,
+      tax_mode: smallBusiness ? "kleinunternehmer" : "domestic",
+      vat_rate: smallBusiness ? 0 : 19,
 
     })
     .select("id")
