@@ -224,16 +224,23 @@ function DokumentDetail() {
     );
   }, [data]);
 
-  const { canReverseCharge } = useCanReverseCharge();
+  const { canReverseCharge, isLoading: planLoading } = useCanReverseCharge();
   const isSmallBusiness = Boolean(
     (data?.settings as Record<string, unknown> | null | undefined)?.["small_business"],
   );
-  const rawTaxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
+  // Bestandsschutz: Belege, die bereits als Reverse-Charge gespeichert wurden,
+  // dürfen nie automatisch auf 19 % Inland umgestellt werden.
+  const storedTaxMode = String(
+    (data?.doc as Record<string, unknown> | undefined)?.["tax_mode"] ?? "",
+  );
+  const reverseChargeAllowed =
+    canReverseCharge || planLoading || storedTaxMode === "eu_reverse_charge";
+  const rawTaxMode = String(form["tax_mode"] ?? "domestic");
   // Kleinunternehmer § 19 UStG: nie Umsatzsteuer ausweisen.
-  // Feature-Gate: Reverse-Charge nur ab Pro – Basis-Konten rechnen mit 19 % Inland ab.
+  // Feature-Gate: Reverse-Charge nur ab Pro – neue Belege von Basis-Konten rechnen mit 19 % ab.
   const taxMode = isSmallBusiness
     ? "kleinunternehmer"
-    : rawTaxMode === "eu_reverse_charge" && !canReverseCharge
+    : rawTaxMode === "eu_reverse_charge" && !reverseChargeAllowed
       ? "domestic"
       : rawTaxMode;
   const vatRate = vatRateForTaxMode(taxMode);
