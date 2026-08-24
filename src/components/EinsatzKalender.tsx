@@ -442,6 +442,127 @@ export function EinsatzKalender({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  /* ---------------------------------------------------------------
+   * Drag & Drop: Einsätze verschieben bzw. Mitarbeiter auf einen Tag ziehen
+   * ------------------------------------------------------------- */
+  type DragPayload =
+    | { kind: "entry"; id: string; employeeId: string | null; date: string }
+    | { kind: "employee"; employeeId: string };
+
+  const [drag, setDrag] = useState<DragPayload | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  /** Einsatz auf einen anderen Tag (und optional Mitarbeiter) verschieben. */
+  const moveEntry = useMutation({
+    mutationFn: async ({
+      id,
+      workDate,
+      employeeId,
+    }: {
+      id: string;
+      workDate: string;
+      employeeId?: string;
+    }) => {
+      const patch: { work_date: string; employee_id?: string; employee_name?: string } = {
+        work_date: workDate,
+      };
+      if (employeeId) {
+        const emp = employees.find((e) => e.id === employeeId);
+        patch.employee_id = employeeId;
+        if (emp) patch.employee_name = emp.name;
+      }
+      const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Einsatz verschoben");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Schnellzuweisung: Mitarbeiter per Drag & Drop auf einen Tag legen. */
+  const quickAssign = useMutation({
+    mutationFn: async ({ employeeId, workDate }: { employeeId: string; workDate: string }) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const emp = employees.find((e) => e.id === employeeId);
+      if (!emp) throw new Error("Mitarbeiter nicht gefunden");
+      const project =
+        filterProject !== ALL ? (projects.find((p) => p.id === filterProject) ?? null) : null;
+      const start = emptyForm.start;
+      const end = emptyForm.end;
+      const breakMinutes = Number(emptyForm.breakMinutes);
+      const { error } = await supabase.from("time_entries").insert({
+        user_id: userId,
+        employee_id: emp.id,
+        employee_name: emp.name,
+        work_date: workDate,
+        start_time: start,
+        end_time: end,
+        break_minutes: breakMinutes,
+        hours: Number(hoursFromTimes(start, end, breakMinutes).toFixed(2)),
+        hourly_rate: Number(emp.hourly_rate ?? 0),
+        project_id: project?.id ?? null,
+        location: project?.name ?? "",
+        note: "",
+        entry_type: "work",
+        absence_reason: "",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Einsatz zugewiesen (08:00–16:00, Pause 30 Min.) – bei Bedarf anpassen");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Gemeinsame Drop-Logik für Monats- und Wochenansicht. */
+  const handleDrop = (date: string, employeeId?: string) => {
+    setDropTarget(null);
+    const payload = drag;
+    setDrag(null);
+    if (!payload) return;
+    if (payload.kind === "employee") {
+      quickAssign.mutate({ employeeId: payload.employeeId, workDate: date });
+      return;
+    }
+    const sameDay = payload.date === date;
+    const sameEmployee = !employeeId || payload.employeeId === employeeId;
+    if (sameDay && sameEmployee) return;
+    moveEntry.mutate({ id: payload.id, workDate: date, ...(employeeId ? { employeeId } : {}) });
+  };
+
+  const dropProps = (dropKey: string, date: string, employeeId?: string) => ({
+    onDragOver: (ev: React.DragEvent) => {
+      if (!drag) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = drag.kind === "employee" ? "copy" : "move";
+      if (dropTarget !== dropKey) setDropTarget(dropKey);
+    },
+    onDragLeave: () => setDropTarget((c) => (c === dropKey ? null : c)),
+    onDrop: (ev: React.DragEvent) => {
+      ev.preventDefault();
+      handleDrop(date, employeeId);
+    },
+  });
+
+  const entryDragProps = (e: TimeEntry) => ({
+    draggable: true,
+    onDragStart: (ev: React.DragEvent) => {
+      ev.dataTransfer.effectAllowed = "move";
+      ev.dataTransfer.setData("text/plain", e.id);
+      setDrag({ kind: "entry", id: e.id, employeeId: e.employee_id, date: e.work_date });
+    },
+    onDragEnd: () => {
+      setDrag(null);
+      setDropTarget(null);
+    },
+  });
+
+
   const byDay = useMemo(() => {
     const map = new Map<string, typeof entries>();
     for (const e of entries) {
