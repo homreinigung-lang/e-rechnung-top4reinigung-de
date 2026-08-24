@@ -224,16 +224,23 @@ function DokumentDetail() {
     );
   }, [data]);
 
-  const { canReverseCharge } = useCanReverseCharge();
+  const { canReverseCharge, isLoading: planLoading } = useCanReverseCharge();
   const isSmallBusiness = Boolean(
     (data?.settings as Record<string, unknown> | null | undefined)?.["small_business"],
   );
-  const rawTaxMode = String(form["tax_mode"] ?? "eu_reverse_charge");
+  // Bestandsschutz: Belege, die bereits als Reverse-Charge gespeichert wurden,
+  // dürfen nie automatisch auf 19 % Inland umgestellt werden.
+  const storedTaxMode = String(
+    (data?.doc as Record<string, unknown> | undefined)?.["tax_mode"] ?? "",
+  );
+  const reverseChargeAllowed =
+    canReverseCharge || planLoading || storedTaxMode === "eu_reverse_charge";
+  const rawTaxMode = String(form["tax_mode"] ?? "domestic");
   // Kleinunternehmer § 19 UStG: nie Umsatzsteuer ausweisen.
-  // Feature-Gate: Reverse-Charge nur ab Pro – Basis-Konten rechnen mit 19 % Inland ab.
+  // Feature-Gate: Reverse-Charge nur ab Pro – neue Belege von Basis-Konten rechnen mit 19 % ab.
   const taxMode = isSmallBusiness
     ? "kleinunternehmer"
-    : rawTaxMode === "eu_reverse_charge" && !canReverseCharge
+    : rawTaxMode === "eu_reverse_charge" && !reverseChargeAllowed
       ? "domestic"
       : rawTaxMode;
   const vatRate = vatRateForTaxMode(taxMode);
@@ -618,7 +625,7 @@ function DokumentDetail() {
       tax_mode:
         String(f["tax_mode"] ?? "") === "kleinunternehmer"
           ? "kleinunternehmer"
-          : euReverseCharge && canReverseCharge
+          : euReverseCharge && reverseChargeAllowed
             ? "eu_reverse_charge"
             : "domestic",
     }));
@@ -1235,16 +1242,16 @@ function DokumentDetail() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="domestic">Inland (Deutschland) – 19 % MwSt.</SelectItem>
-              <SelectItem value="eu_reverse_charge" disabled={!canReverseCharge}>
+              <SelectItem value="eu_reverse_charge" disabled={!reverseChargeAllowed}>
                 EU-Ausland – Reverse-Charge (0 % MwSt.)
-                {canReverseCharge ? "" : " – ab Pro"}
+                {reverseChargeAllowed ? "" : " – ab Pro"}
               </SelectItem>
               <SelectItem value="kleinunternehmer">
                 Kleinunternehmer § 19 UStG (0 % MwSt.)
               </SelectItem>
             </SelectContent>
           </Select>
-          {!canReverseCharge && (
+          {!reverseChargeAllowed && (
             <p className="flex flex-wrap items-center gap-1 rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
               <Sparkles className="size-3.5 text-primary" />
               Rechnungen ohne MwSt. (Reverse-Charge für EU-Ausland) sind ab dem{" "}
