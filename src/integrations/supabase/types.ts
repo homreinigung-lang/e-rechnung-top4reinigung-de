@@ -17,6 +17,7 @@ export type Database = {
       account_approvals: {
         Row: {
           auth_user_id: string
+          company_name: string
           created_at: string
           decided_at: string | null
           email: string
@@ -28,6 +29,7 @@ export type Database = {
         }
         Insert: {
           auth_user_id: string
+          company_name?: string
           created_at?: string
           decided_at?: string | null
           email?: string
@@ -39,6 +41,7 @@ export type Database = {
         }
         Update: {
           auth_user_id?: string
+          company_name?: string
           created_at?: string
           decided_at?: string | null
           email?: string
@@ -266,9 +269,11 @@ export type Database = {
           email_signature: string
           email_signature_html: string
           email_signature_logo_url: string
+          employee_count: number
           facebook_url: string
           iban: string
           id: string
+          legal_form: string
           logo_url: string
           owner_name: string
           payment_terms_days: number
@@ -298,9 +303,11 @@ export type Database = {
           email_signature?: string
           email_signature_html?: string
           email_signature_logo_url?: string
+          employee_count?: number
           facebook_url?: string
           iban?: string
           id?: string
+          legal_form?: string
           logo_url?: string
           owner_name?: string
           payment_terms_days?: number
@@ -330,9 +337,11 @@ export type Database = {
           email_signature?: string
           email_signature_html?: string
           email_signature_logo_url?: string
+          employee_count?: number
           facebook_url?: string
           iban?: string
           id?: string
+          legal_form?: string
           logo_url?: string
           owner_name?: string
           payment_terms_days?: number
