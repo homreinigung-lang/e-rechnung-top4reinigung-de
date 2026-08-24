@@ -120,6 +120,69 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
     return { status: "approved" };
   });
 
+/**
+ * Reparatur-Registrierung: Wenn die E-Mail bereits in der Anmeldeverwaltung
+ * existiert, das Konto aber unvollständig ist (kein Firmenprofil, keine
+ * Freigabe, kein Abo), wird es zurückgesetzt: neues Passwort, bestätigte
+ * E-Mail. Vollständige Konten bleiben unangetastet.
+ */
+export const recoverIncompleteAccount = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        email: z.string().email().max(200),
+        password: z.string().min(6).max(200),
+        fullName: z.string().max(200).optional(),
+        companyName: z.string().max(200).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const email = data.email.trim().toLowerCase();
+
+    // Benutzer anhand der E-Mail suchen.
+    let userId: string | null = null;
+    for (let page = 1; page <= 20 && !userId; page++) {
+      const list = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+      if (list.error) throw new Error(list.error.message);
+      const users = list.data?.users ?? [];
+      const hit = users.find((u) => (u.email ?? "").toLowerCase() === email);
+      if (hit) userId = hit.id;
+      if (users.length < 200) break;
+    }
+    if (!userId) return { recovered: false as const, reason: "not_found" as const };
+
+    // Vollständigkeit prüfen: Firmenprofil ODER echte Nutzdaten vorhanden?
+    const [settings, docs, customers, employeeLink] = await Promise.all([
+      supabaseAdmin.from("company_settings").select("id,company_name").eq("user_id", userId).maybeSingle(),
+      supabaseAdmin.from("documents").select("id").eq("user_id", userId).limit(1),
+      supabaseAdmin.from("customers").select("id").eq("user_id", userId).limit(1),
+      supabaseAdmin.from("employees").select("id").eq("auth_user_id", userId).limit(1),
+    ]);
+
+    const hasData =
+      (docs.data ?? []).length > 0 ||
+      (customers.data ?? []).length > 0 ||
+      (employeeLink.data ?? []).length > 0 ||
+      Boolean((settings.data?.company_name ?? "").trim());
+
+    if (hasData) return { recovered: false as const, reason: "in_use" as const };
+
+    // Unvollständiges Konto: Passwort setzen und E-Mail bestätigen.
+    const upd = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: data.password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: (data.fullName ?? "").trim(),
+        company_name: (data.companyName ?? "").trim(),
+      },
+    });
+    if (upd.error) throw new Error(upd.error.message);
+
+    return { recovered: true as const, userId };
+  });
+
 /** Liefert den Freigabestatus des aktuell angemeldeten Kontos. */
 export const getApprovalStatus = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ authUserId: z.string().uuid() }).parse(input))
