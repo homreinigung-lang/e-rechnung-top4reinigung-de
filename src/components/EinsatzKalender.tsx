@@ -1,5 +1,5 @@
 import { holidayName } from "@/lib/feiertage";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState, type DragEvent as ReactDragEvent } from "react";
 import { isoWeek } from "@/lib/kw";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -442,6 +442,127 @@ export function EinsatzKalender({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  /* ---------------------------------------------------------------
+   * Drag & Drop: Einsätze verschieben bzw. Mitarbeiter auf einen Tag ziehen
+   * ------------------------------------------------------------- */
+  type DragPayload =
+    | { kind: "entry"; id: string; employeeId: string | null; date: string }
+    | { kind: "employee"; employeeId: string };
+
+  const [drag, setDrag] = useState<DragPayload | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  /** Einsatz auf einen anderen Tag (und optional Mitarbeiter) verschieben. */
+  const moveEntry = useMutation({
+    mutationFn: async ({
+      id,
+      workDate,
+      employeeId,
+    }: {
+      id: string;
+      workDate: string;
+      employeeId?: string;
+    }) => {
+      const patch: { work_date: string; employee_id?: string; employee_name?: string } = {
+        work_date: workDate,
+      };
+      if (employeeId) {
+        const emp = employees.find((e) => e.id === employeeId);
+        patch.employee_id = employeeId;
+        if (emp) patch.employee_name = emp.name;
+      }
+      const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Einsatz verschoben");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Schnellzuweisung: Mitarbeiter per Drag & Drop auf einen Tag legen. */
+  const quickAssign = useMutation({
+    mutationFn: async ({ employeeId, workDate }: { employeeId: string; workDate: string }) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const emp = employees.find((e) => e.id === employeeId);
+      if (!emp) throw new Error("Mitarbeiter nicht gefunden");
+      const project =
+        filterProject !== ALL ? (projects.find((p) => p.id === filterProject) ?? null) : null;
+      const start = emptyForm.start;
+      const end = emptyForm.end;
+      const breakMinutes = Number(emptyForm.breakMinutes);
+      const { error } = await supabase.from("time_entries").insert({
+        user_id: userId,
+        employee_id: emp.id,
+        employee_name: emp.name,
+        work_date: workDate,
+        start_time: start,
+        end_time: end,
+        break_minutes: breakMinutes,
+        hours: Number(hoursFromTimes(start, end, breakMinutes).toFixed(2)),
+        hourly_rate: Number(emp.hourly_rate ?? 0),
+        project_id: project?.id ?? null,
+        location: project?.name ?? "",
+        note: "",
+        entry_type: "work",
+        absence_reason: "",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Einsatz zugewiesen (08:00–16:00, Pause 30 Min.) – bei Bedarf anpassen");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Gemeinsame Drop-Logik für Monats- und Wochenansicht. */
+  const handleDrop = (date: string, employeeId?: string) => {
+    setDropTarget(null);
+    const payload = drag;
+    setDrag(null);
+    if (!payload) return;
+    if (payload.kind === "employee") {
+      quickAssign.mutate({ employeeId: payload.employeeId, workDate: date });
+      return;
+    }
+    const sameDay = payload.date === date;
+    const sameEmployee = !employeeId || payload.employeeId === employeeId;
+    if (sameDay && sameEmployee) return;
+    moveEntry.mutate({ id: payload.id, workDate: date, ...(employeeId ? { employeeId } : {}) });
+  };
+
+  const dropProps = (dropKey: string, date: string, employeeId?: string) => ({
+    onDragOver: (ev: ReactDragEvent) => {
+      if (!drag) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = drag.kind === "employee" ? "copy" : "move";
+      if (dropTarget !== dropKey) setDropTarget(dropKey);
+    },
+    onDragLeave: () => setDropTarget((c) => (c === dropKey ? null : c)),
+    onDrop: (ev: ReactDragEvent) => {
+      ev.preventDefault();
+      handleDrop(date, employeeId);
+    },
+  });
+
+  const entryDragProps = (e: TimeEntry) => ({
+    draggable: true,
+    onDragStart: (ev: ReactDragEvent) => {
+      ev.dataTransfer.effectAllowed = "move";
+      ev.dataTransfer.setData("text/plain", e.id);
+      setDrag({ kind: "entry", id: e.id, employeeId: e.employee_id, date: e.work_date });
+    },
+    onDragEnd: () => {
+      setDrag(null);
+      setDropTarget(null);
+    },
+  });
+
+
   const byDay = useMemo(() => {
     const map = new Map<string, typeof entries>();
     for (const e of entries) {
@@ -769,6 +890,40 @@ export function EinsatzKalender({
         ))}
       </div>
 
+      {employees.length > 0 && (
+        <div className="kalender-no-print rounded-lg border bg-muted/30 p-3">
+          <p className="text-xs font-medium">
+            Mitarbeiter per Drag &amp; Drop auf einen Tag ziehen
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Standardzeit 08:00–16:00 (Pause 30 Min.) – bestehende Einsätze lassen sich direkt auf
+            einen anderen Tag ziehen.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {employees.map((emp) => (
+              <span
+                key={emp.id}
+                draggable
+                onDragStart={(ev) => {
+                  ev.dataTransfer.effectAllowed = "copy";
+                  ev.dataTransfer.setData("text/plain", emp.id);
+                  setDrag({ kind: "employee", employeeId: emp.id });
+                }}
+                onDragEnd={() => {
+                  setDrag(null);
+                  setDropTarget(null);
+                }}
+                className="cursor-grab select-none rounded-full border bg-background px-3 py-1 text-xs font-medium shadow-sm active:cursor-grabbing"
+              >
+                {emp.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+
+
       {view === "month" && visibleEmployees.length > 0 && (
         <div className="flex flex-wrap gap-2 text-xs">
           {visibleEmployees.map((emp) => {
@@ -820,13 +975,15 @@ export function EinsatzKalender({
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter" || ev.key === " ") openDay(key);
                   }}
+                  {...dropProps(`m-${key}`, key)}
                   className={`min-h-[132px] cursor-pointer space-y-1 bg-background p-2 text-left transition hover:bg-accent/60 ${
                     inMonth ? "" : "opacity-45"
                   } ${key === today ? "ring-1 ring-inset ring-primary" : ""} ${
                     holiday ? "bg-amber-50 dark:bg-amber-950/30" : ""
-                  }`}
+                  } ${dropTarget === `m-${key}` ? "ring-2 ring-inset ring-primary bg-primary/10" : ""}`}
                   title={holiday ? `Feiertag (Saarland): ${holiday}` : undefined}
                 >
+
                   <div className="flex items-center justify-between">
                     <span className={`text-xs ${key === today ? "font-bold text-primary" : ""}`}>
                       {d.getDate()}
@@ -850,13 +1007,15 @@ export function EinsatzKalender({
                         <button
                           key={e.id}
                           type="button"
+                          {...entryDragProps(e)}
                           onClick={(ev) => {
                             ev.stopPropagation();
                             setDetail(e);
                           }}
-                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${
+                          className={`flex w-full cursor-grab items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 active:cursor-grabbing ${
                             donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
                           }`}
+
                           title={
                             donePlan
                               ? `Erledigt: ${e.employee_name} · ${donePlan.projectName} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`} · Ist ${Number(e.hours ?? 0).toFixed(2)} Std.`
@@ -977,8 +1136,13 @@ export function EinsatzKalender({
                         onKeyDown={(ev) => {
                           if (ev.key === "Enter" || ev.key === " ") openDay(key, emp.id);
                         }}
+                        {...dropProps(`w-${emp.id}-${key}`, key, emp.id)}
                         className={`min-h-[112px] cursor-pointer space-y-1 bg-background p-1.5 text-left align-top transition hover:bg-accent/60 ${
                           key === today ? "ring-1 ring-inset ring-primary" : ""
+                        } ${
+                          dropTarget === `w-${emp.id}-${key}`
+                            ? "bg-primary/10 ring-2 ring-inset ring-primary"
+                            : ""
                         }`}
                       >
                         {list.map((e) => {
@@ -988,6 +1152,7 @@ export function EinsatzKalender({
                             <button
                               key={e.id}
                               type="button"
+                              {...entryDragProps(e)}
                               onClick={(ev) => {
                                 ev.stopPropagation();
                                 setDetail(e);
@@ -997,10 +1162,11 @@ export function EinsatzKalender({
                                   ? `Erledigt · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`}`
                                   : statusLabel(e)
                               }
-                              className={`w-full rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${
+                              className={`w-full cursor-grab rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 active:cursor-grabbing ${
                                 donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
                               }`}
                             >
+
                               {reason ? (
                                 <span className="flex items-center gap-1">
                                   {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
@@ -1349,18 +1515,36 @@ export function EinsatzKalender({
             )}
           </p>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+            {form.employeeIds.length === 0 && (
+              <span className="text-xs text-destructive">
+                Bitte zuerst mindestens einen Mitarbeiter auswählen.
+              </span>
+            )}
             <Button
-              onClick={() => day && createPlan.mutate({ ...form, workDate: day })}
-              disabled={
-                form.employeeIds.length === 0 ||
-                createPlan.isPending ||
-                (!isAbsent && (!timesValid || plannedHours <= 0))
-              }
+              onClick={() => {
+                if (!day) return;
+                if (form.employeeIds.length === 0) {
+                  toast.error("Bitte mindestens einen Mitarbeiter auswählen.");
+                  return;
+                }
+                if (!isAbsent && (!timesValid || plannedHours <= 0)) {
+                  toast.error("Bitte gültige Start-/Endzeit eintragen (Dauer über 0 Stunden).");
+                  return;
+                }
+                createPlan.mutate({ ...form, workDate: day });
+              }}
+              disabled={createPlan.isPending}
             >
-              <Plus className="size-4" /> {isAbsent ? "Abwesenheit eintragen" : "Einsatz eintragen"}
+              <Plus className="size-4" />{" "}
+              {createPlan.isPending
+                ? "Wird gespeichert…"
+                : isAbsent
+                  ? "Abwesenheit eintragen"
+                  : "Einsatz eintragen"}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
