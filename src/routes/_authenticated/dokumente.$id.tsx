@@ -625,7 +625,7 @@ function DokumentDetail() {
       tax_mode:
         String(f["tax_mode"] ?? "") === "kleinunternehmer"
           ? "kleinunternehmer"
-          : euReverseCharge && canReverseCharge
+          : euReverseCharge && reverseChargeAllowed
             ? "eu_reverse_charge"
             : "domestic",
     }));
