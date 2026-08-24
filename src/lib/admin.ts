@@ -17,6 +17,7 @@ export type AccountApproval = {
   auth_user_id: string;
   email: string;
   full_name: string;
+  company_name: string;
   status: string;
   created_at: string;
   decided_at: string | null;
@@ -30,7 +31,7 @@ export function useAccountApprovals(enabled: boolean) {
     queryFn: async (): Promise<AccountApproval[]> => {
       const { data, error } = await supabase
         .from("account_approvals")
-        .select("id,auth_user_id,email,full_name,status,created_at,decided_at")
+        .select("id,auth_user_id,email,full_name,company_name,status,created_at,decided_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as AccountApproval[];
@@ -56,6 +57,24 @@ export function useSetApprovalStatus() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+/** Firmenkonto endgültig löschen (inkl. Anmelde-Zugang und Abonnement). */
+export function useDeleteCompanyAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (approvalId: string) => {
+      const { deleteCompanyAccount } = await import("@/lib/approval.functions");
+      await deleteCompanyAccount({ data: { approvalId } });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin_approvals"] });
+      void queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      toast.success("Konto gelöscht");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 
 export type Plan = {
   id: string;

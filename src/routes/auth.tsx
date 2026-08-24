@@ -33,6 +33,9 @@ function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [employeeCount, setEmployeeCount] = useState("1");
+  const [legalForm, setLegalForm] = useState("");
 
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,9 +53,10 @@ function AuthPage() {
     const uid = data.user?.id;
     if (!uid) return false;
     const { status } = await getApprovalStatus({ data: { authUserId: uid } });
-    if (status === "pending") {
+    // Konten sind sofort aktiv; nur gesperrte Firmen werden abgewiesen.
+    if (status === "blocked" || status === "rejected") {
       await supabase.auth.signOut();
-      navigate({ to: "/freigabe-ausstehend", replace: true });
+      toast.error("Dieser Zugang wurde gesperrt. Bitte wenden Sie sich an den Anbieter.");
       return false;
     }
     return true;
@@ -131,7 +135,7 @@ function AuthPage() {
       password,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { full_name: fullName.trim() },
+        data: { full_name: fullName.trim(), company_name: companyName.trim() },
       },
     });
     if (error) {
@@ -140,27 +144,30 @@ function AuthPage() {
       return;
     }
 
-    // Neues Konto bleibt gesperrt, bis der Inhaber es per E-Mail freigibt.
+    // Konto ist sofort aktiv – inklusive 60 Tage kostenloser Testphase.
     if (data.user) {
       try {
-        const res = await requestAccountApproval({
-          data: { authUserId: data.user.id, fullName: fullName.trim() },
+        await requestAccountApproval({
+          data: {
+            authUserId: data.user.id,
+            fullName: fullName.trim(),
+            companyName: companyName.trim(),
+            employeeCount: Number(employeeCount) || 0,
+            legalForm: legalForm.trim(),
+          },
         });
-        if (res.status === "approved") {
-          setLoading(false);
-          if (data.session) navigate({ to: "/dashboard", replace: true });
-          else
-            toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
-          return;
-        }
-      } catch {
-        // Freigabe-Antrag konnte nicht erstellt werden – Konto bleibt gesperrt.
+      } catch (err) {
+        console.warn("Firmendaten konnten nicht gespeichert werden:", err);
       }
     }
 
-    await supabase.auth.signOut();
     setLoading(false);
-    navigate({ to: "/freigabe-ausstehend", replace: true });
+    if (data.session) {
+      toast.success("Willkommen! Ihre kostenlose Testphase über 60 Tage läuft ab heute.");
+      navigate({ to: "/dashboard", replace: true });
+      return;
+    }
+    toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
   }
 
   async function google() {
@@ -174,20 +181,17 @@ function AuthPage() {
     if (result.redirected) return;
     const { data } = await supabase.auth.getUser();
     if (data.user) {
-      const res = await requestAccountApproval({
+      await requestAccountApproval({
         data: {
           authUserId: data.user.id,
           fullName: (data.user.user_metadata?.["full_name"] as string | undefined) ?? "",
+          companyName: companyName.trim(),
         },
-      }).catch(() => ({ status: "pending" as const }));
-      if (res.status === "pending") {
-        await supabase.auth.signOut();
-        navigate({ to: "/freigabe-ausstehend", replace: true });
-        return;
-      }
+      }).catch(() => null);
     }
     navigate({ to: "/dashboard", replace: true });
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
@@ -315,10 +319,60 @@ function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company2">Unternehmensname</Label>
+                    <Input
+                      id="company2"
+                      required
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="empcount2">Mitarbeitende</Label>
+                      <Input
+                        id="empcount2"
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        dir="ltr"
+                        required
+                        value={employeeCount}
+                        onChange={(e) => setEmployeeCount(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="legal2">Rechtsform</Label>
+                      <select
+                        id="legal2"
+                        required
+                        value={legalForm}
+                        onChange={(e) => setLegalForm(e.target.value)}
+                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        <option value="">Bitte wählen</option>
+                        <option value="Einzelunternehmen">Einzelunternehmen</option>
+                        <option value="GbR">GbR</option>
+                        <option value="UG (haftungsbeschränkt)">UG (haftungsbeschränkt)</option>
+                        <option value="GmbH">GmbH</option>
+                        <option value="GmbH & Co. KG">GmbH &amp; Co. KG</option>
+                        <option value="OHG">OHG</option>
+                        <option value="KG">KG</option>
+                        <option value="AG">AG</option>
+                        <option value="Sonstige">Sonstige</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p className="rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
+                    Sofort startklar: 60 Tage kostenlos testen – ohne Wartezeit und ohne
+                    Zahlungsdaten.
+                  </p>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    Konto erstellen
+                    Konto erstellen &amp; 60 Tage testen
                   </Button>
                 </form>
+
               </TabsContent>
             </Tabs>
           )}

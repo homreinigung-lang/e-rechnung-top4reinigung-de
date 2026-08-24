@@ -1,9 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, CheckCircle2, Lock } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Building2, CheckCircle2, Lock, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import { approvalStatusLabel, useAccountApprovals, useSetApprovalStatus } from "@/lib/admin";
+import {
+  approvalStatusLabel,
+  useAccountApprovals,
+  useDeleteCompanyAccount,
+  useSetApprovalStatus,
+} from "@/lib/admin";
 
 export const Route = createFileRoute("/_authenticated/admin/firmen")({
   component: FirmenPage,
@@ -19,14 +35,15 @@ function variantFor(status: string): "default" | "secondary" | "destructive" | "
 function FirmenPage() {
   const { data: rows = [], isLoading } = useAccountApprovals(true);
   const setStatus = useSetApprovalStatus();
+  const deleteAccount = useDeleteCompanyAccount();
 
-  const pending = rows.filter((r) => r.status === "pending").length;
-  const blocked = rows.filter((r) => r.status === "blocked").length;
+  const active = rows.filter((r) => r.status === "approved").length;
+  const blocked = rows.filter((r) => r.status === "blocked" || r.status === "rejected").length;
 
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        {rows.length} Konten · {pending} warten auf Freigabe · {blocked} gesperrt
+        {rows.length} Firmenkonten · {active} aktiv · {blocked} gesperrt
       </p>
 
       {isLoading ? (
@@ -43,8 +60,9 @@ function FirmenPage() {
               <div className="flex items-start gap-3">
                 <Building2 className="mt-0.5 size-5 shrink-0 text-primary" />
                 <div>
-                  <p className="font-semibold">{row.full_name || row.email}</p>
+                  <p className="font-semibold">{row.company_name || row.full_name || row.email}</p>
                   <p className="text-xs text-muted-foreground">
+                    {row.full_name ? `${row.full_name} · ` : ""}
                     {row.email} · registriert am {formatDate(row.created_at)}
                   </p>
                 </div>
@@ -65,13 +83,38 @@ function FirmenPage() {
                 </Button>
                 <Button
                   size="sm"
-                  variant="destructive"
+                  variant="outline"
                   disabled={row.status === "blocked" || setStatus.isPending}
                   onClick={() => setStatus.mutate({ id: row.id, status: "blocked" })}
                 >
                   <Lock className="size-4" />
                   Sperren
                 </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="destructive" disabled={deleteAccount.isPending}>
+                      <Trash2 className="size-4" />
+                      Löschen
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Account endgültig löschen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {row.company_name || row.full_name || row.email} wird unwiderruflich
+                        entfernt: Anmelde-Zugang, Freigabe-Eintrag und Abonnement. Dieser Schritt
+                        kann nicht rückgängig gemacht werden.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteAccount.mutate(row.id)}>
+                        Account löschen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           ))}
@@ -79,8 +122,8 @@ function FirmenPage() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Gesperrte Firmen werden beim nächsten Seitenaufruf automatisch abgemeldet und können sich
-        nicht erneut anmelden, bis der Zugang wieder freigegeben wird.
+        Neue Registrierungen sind sofort aktiv und starten mit 60 Tagen kostenloser Testphase.
+        Gesperrte Firmen werden beim nächsten Seitenaufruf automatisch abgemeldet.
       </p>
     </div>
   );
