@@ -9,15 +9,15 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-    // Neue Konten sind erst nach Freigabe durch den Inhaber nutzbar.
-    // Netzwerkfehler dürfen die App nicht blockieren -> im Zweifel Zugriff zulassen.
+    // Konten sind nach der Registrierung sofort nutzbar; nur gesperrte Firmen
+    // werden abgewiesen. Netzwerkfehler dürfen die App nicht blockieren.
     let status: string | null = null;
     try {
       status = (await getApprovalStatus({ data: { authUserId: data.user.id } })).status;
     } catch (error) {
       console.warn("Freigabe-Status konnte nicht geprüft werden:", error);
     }
-    if (status === "pending" || status === "blocked" || status === "rejected") {
+    if (status === "blocked" || status === "rejected") {
       await supabase.auth.signOut();
       throw redirect({ to: "/freigabe-ausstehend" });
     }
