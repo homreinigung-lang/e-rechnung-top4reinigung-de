@@ -134,7 +134,6 @@ function AuthPage() {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
         data: { full_name: fullName.trim(), company_name: companyName.trim() },
       },
     });
@@ -144,15 +143,26 @@ function AuthPage() {
       return;
     }
 
+    // Keine E-Mail-Bestätigung: falls noch keine Sitzung besteht, direkt anmelden.
+    let userId = data.user?.id ?? null;
+    if (!data.session) {
+      const signedIn = await supabase.auth.signInWithPassword({ email, password });
+      if (signedIn.error) {
+        setLoading(false);
+        toast.error("Anmeldung fehlgeschlagen: " + signedIn.error.message);
+        return;
+      }
+      userId = signedIn.data.user?.id ?? userId;
+    }
+
     // Konto ist sofort aktiv – inklusive 60 Tage kostenloser Testphase.
-    if (data.user) {
+    if (userId) {
       try {
         await requestAccountApproval({
           data: {
-            authUserId: data.user.id,
+            authUserId: userId,
             email: email.trim().toLowerCase(),
             fullName: fullName.trim(),
-
             companyName: companyName.trim(),
             employeeCount: Number(employeeCount) || 0,
             legalForm: legalForm.trim(),
@@ -164,12 +174,8 @@ function AuthPage() {
     }
 
     setLoading(false);
-    if (data.session) {
-      toast.success("Willkommen! Ihre kostenlose Testphase über 60 Tage läuft ab heute.");
-      navigate({ to: "/dashboard", replace: true });
-      return;
-    }
-    toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
+    toast.success("Willkommen! Ihre kostenlose Testphase über 60 Tage läuft ab heute.");
+    navigate({ to: "/dashboard", replace: true });
   }
 
   async function google() {
