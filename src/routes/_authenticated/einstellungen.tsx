@@ -640,7 +640,6 @@ function Einstellungen() {
 
       <AccountantAccessCard />
 
-      {isAdmin && <DomainDnsCheckCard />}
 
       {isAdmin && (
       <div className="surface space-y-4 p-6">
