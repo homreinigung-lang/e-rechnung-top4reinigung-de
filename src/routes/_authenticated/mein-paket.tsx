@@ -152,6 +152,26 @@ function MeinPaket() {
             richten es für Sie ein.
           </p>
         )}
+        {sub && currentPlan ? (
+          <div className="mt-6 rounded-md border border-border p-4 text-sm">
+            <p className="font-medium">Monatlicher Preis</p>
+            <p className="mt-1 text-muted-foreground">
+              Grundpreis {euro(currentPlan.price_monthly_cents)}
+              {currentCode === "pro" ? (
+                <>
+                  {" · "}
+                  {employeeCount} aktive Mitarbeitende (inklusive {PRO_INCLUDED_EMPLOYEES})
+                  {extraCount > 0
+                    ? ` · ${extraCount} × ${euro(EXTRA_EMPLOYEE_CENTS)} Aufpreis = ${euro(surchargeCents)}`
+                    : ""}
+                </>
+              ) : null}
+            </p>
+            <p className="mt-2 text-base font-semibold">
+              {euro(monthlyPriceCents(currentPlan, employeeCount))} / Monat
+            </p>
+          </div>
+        ) : null}
         {sub ? (
           <Button
             variant="secondary"
