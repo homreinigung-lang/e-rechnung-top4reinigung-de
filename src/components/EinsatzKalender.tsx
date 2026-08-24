@@ -1007,13 +1007,15 @@ export function EinsatzKalender({
                         <button
                           key={e.id}
                           type="button"
+                          {...entryDragProps(e)}
                           onClick={(ev) => {
                             ev.stopPropagation();
                             setDetail(e);
                           }}
-                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 ${
+                          className={`flex w-full cursor-grab items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 active:cursor-grabbing ${
                             donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
                           }`}
+
                           title={
                             donePlan
                               ? `Erledigt: ${e.employee_name} · ${donePlan.projectName} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`} · Ist ${Number(e.hours ?? 0).toFixed(2)} Std.`
