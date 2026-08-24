@@ -131,7 +131,7 @@ function AuthPage() {
       password,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { full_name: fullName.trim() },
+        data: { full_name: fullName.trim(), company_name: companyName.trim() },
       },
     });
     if (error) {
@@ -140,27 +140,30 @@ function AuthPage() {
       return;
     }
 
-    // Neues Konto bleibt gesperrt, bis der Inhaber es per E-Mail freigibt.
+    // Konto ist sofort aktiv – inklusive 60 Tage kostenloser Testphase.
     if (data.user) {
       try {
-        const res = await requestAccountApproval({
-          data: { authUserId: data.user.id, fullName: fullName.trim() },
+        await requestAccountApproval({
+          data: {
+            authUserId: data.user.id,
+            fullName: fullName.trim(),
+            companyName: companyName.trim(),
+            employeeCount: Number(employeeCount) || 0,
+            legalForm: legalForm.trim(),
+          },
         });
-        if (res.status === "approved") {
-          setLoading(false);
-          if (data.session) navigate({ to: "/dashboard", replace: true });
-          else
-            toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
-          return;
-        }
-      } catch {
-        // Freigabe-Antrag konnte nicht erstellt werden – Konto bleibt gesperrt.
+      } catch (err) {
+        console.warn("Firmendaten konnten nicht gespeichert werden:", err);
       }
     }
 
-    await supabase.auth.signOut();
     setLoading(false);
-    navigate({ to: "/freigabe-ausstehend", replace: true });
+    if (data.session) {
+      toast.success("Willkommen! Ihre kostenlose Testphase über 60 Tage läuft ab heute.");
+      navigate({ to: "/dashboard", replace: true });
+      return;
+    }
+    toast.success("Bitte bestätigen Sie Ihre E-Mail-Adresse über den zugesendeten Link.");
   }
 
   async function google() {
@@ -174,20 +177,17 @@ function AuthPage() {
     if (result.redirected) return;
     const { data } = await supabase.auth.getUser();
     if (data.user) {
-      const res = await requestAccountApproval({
+      await requestAccountApproval({
         data: {
           authUserId: data.user.id,
           fullName: (data.user.user_metadata?.["full_name"] as string | undefined) ?? "",
+          companyName: companyName.trim(),
         },
-      }).catch(() => ({ status: "pending" as const }));
-      if (res.status === "pending") {
-        await supabase.auth.signOut();
-        navigate({ to: "/freigabe-ausstehend", replace: true });
-        return;
-      }
+      }).catch(() => null);
     }
     navigate({ to: "/dashboard", replace: true });
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
