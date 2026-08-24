@@ -640,8 +640,9 @@ function Einstellungen() {
 
       <AccountantAccessCard />
 
-      <DomainDnsCheckCard />
+      {isAdmin && <DomainDnsCheckCard />}
 
+      {isAdmin && (
       <div className="surface space-y-4 p-6">
         <h2 className="font-display text-lg font-semibold">Import aus Lexoffice / Lexware</h2>
         <p className="text-sm text-muted-foreground">
