@@ -8,7 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/PasswordInput";
-import { requestAccountApproval, getApprovalStatus } from "@/lib/approval.functions";
+import {
+  requestAccountApproval,
+  getApprovalStatus,
+  recoverIncompleteAccount,
+} from "@/lib/approval.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -137,15 +141,45 @@ function AuthPage() {
         data: { full_name: fullName.trim(), company_name: companyName.trim() },
       },
     });
+    let userId = data.user?.id ?? null;
+
     if (error) {
-      setLoading(false);
-      toast.error("Registrierung fehlgeschlagen: " + error.message);
-      return;
+      const alreadyRegistered =
+        /already registered|already been registered|user already/i.test(error.message);
+      if (!alreadyRegistered) {
+        setLoading(false);
+        toast.error("Registrierung fehlgeschlagen: " + error.message);
+        return;
+      }
+
+      // E-Mail existiert bereits: unvollständige Konten werden zurückgesetzt.
+      let recovery: { recovered: boolean; reason?: string } = { recovered: false };
+      try {
+        recovery = await recoverIncompleteAccount({
+          data: {
+            email: email.trim().toLowerCase(),
+            password,
+            fullName: fullName.trim(),
+            companyName: companyName.trim(),
+          },
+        });
+      } catch (err) {
+        console.warn("Konto-Reparatur fehlgeschlagen:", err);
+      }
+
+      if (!recovery.recovered) {
+        setLoading(false);
+        toast.error(
+          recovery.reason === "in_use"
+            ? "Diese E-Mail-Adresse wird bereits aktiv genutzt. Bitte melden Sie sich an oder setzen Sie Ihr Passwort zurück."
+            : "Registrierung fehlgeschlagen: " + error.message,
+        );
+        return;
+      }
     }
 
     // Keine E-Mail-Bestätigung: falls noch keine Sitzung besteht, direkt anmelden.
-    let userId = data.user?.id ?? null;
-    if (!data.session) {
+    if (!data?.session) {
       const signedIn = await supabase.auth.signInWithPassword({ email, password });
       if (signedIn.error) {
         setLoading(false);
