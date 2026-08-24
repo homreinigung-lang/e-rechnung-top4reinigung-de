@@ -28,7 +28,7 @@ import {
 import { ImagePlus } from "lucide-react";
 
 import { buildSignatureHtml } from "@/lib/signature";
-import { DomainDnsCheckCard } from "@/components/DomainDnsCheckCard";
+
 import {
   Dialog,
   DialogContent,
