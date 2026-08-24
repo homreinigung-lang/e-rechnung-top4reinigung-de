@@ -33,6 +33,9 @@ function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [employeeCount, setEmployeeCount] = useState("1");
+  const [legalForm, setLegalForm] = useState("");
 
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
