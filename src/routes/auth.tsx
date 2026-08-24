@@ -150,7 +150,9 @@ function AuthPage() {
         await requestAccountApproval({
           data: {
             authUserId: data.user.id,
+            email: email.trim().toLowerCase(),
             fullName: fullName.trim(),
+
             companyName: companyName.trim(),
             employeeCount: Number(employeeCount) || 0,
             legalForm: legalForm.trim(),
