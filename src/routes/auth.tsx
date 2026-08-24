@@ -53,9 +53,10 @@ function AuthPage() {
     const uid = data.user?.id;
     if (!uid) return false;
     const { status } = await getApprovalStatus({ data: { authUserId: uid } });
-    if (status === "pending") {
+    // Konten sind sofort aktiv; nur gesperrte Firmen werden abgewiesen.
+    if (status === "blocked" || status === "rejected") {
       await supabase.auth.signOut();
-      navigate({ to: "/freigabe-ausstehend", replace: true });
+      toast.error("Dieser Zugang wurde gesperrt. Bitte wenden Sie sich an den Anbieter.");
       return false;
     }
     return true;
