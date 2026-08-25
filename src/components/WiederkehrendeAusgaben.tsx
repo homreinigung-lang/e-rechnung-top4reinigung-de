@@ -41,6 +41,17 @@ type Form = {
   notes: string;
 };
 
+/** Wandelt Eingaben wie "1.234,56" oder "12.5" sicher in eine Zahl um (nie NaN). */
+function parseAmount(value: string): number {
+  const raw = (value ?? "").trim();
+  if (!raw) return 0;
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : raw.replace(/\s/g, "");
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
 const empty = (): Form => ({
   title: "",
   supplier: "",
