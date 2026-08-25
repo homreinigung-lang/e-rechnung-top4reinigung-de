@@ -312,7 +312,9 @@ function AuthPage() {
     }
     if (result.redirected) return;
     const { data } = await supabase.auth.getUser();
-    if (data.user) {
+    // Mitarbeiterkonten niemals als Firma anlegen.
+    const target = await resolveStartRoute();
+    if (data.user && target === "/dashboard") {
       await requestAccountApproval({
         data: {
           authUserId: data.user.id,
@@ -321,7 +323,7 @@ function AuthPage() {
         },
       }).catch(() => null);
     }
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: target, replace: true });
   }
 
 
