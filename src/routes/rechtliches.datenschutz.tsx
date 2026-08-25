@@ -54,7 +54,24 @@ function Datenschutz() {
           <li>Belegdaten (Angebote, Rechnungen, Positionen, Zahlungsstatus, Ausgaben)</li>
           <li>Hochgeladene Dateien (z. B. Logo, Belege, PDF-Anhänge)</li>
           <li>Technische Protokolldaten beim Aufruf der Anwendung</li>
+          <li>
+            Registrierungs- und Testphasen-Daten (Firmenname, Rechtsform, Anzahl Mitarbeitender,
+            Beginn und Ende der 60-tägigen Testphase, Abonnement- und Bestellstatus)
+          </li>
         </ul>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">2a. Registrierung und 60-tägige Testphase</h2>
+        <p className="text-sm text-muted-foreground">
+          Bei der Registrierung verarbeiten wir Ihre E-Mail-Adresse, Ihren Namen und Ihre
+          Firmenangaben zur Bereitstellung des Kontos sowie der kostenlosen Testphase über 60 Tage
+          (Art. 6 Abs. 1 lit. b DSGVO). Bestätigungs-, Anmelde- und Passwort-E-Mails werden über
+          unseren E-Mail-Dienstleister Resend versendet; dabei werden E-Mail-Adresse, Zeitpunkt und
+          Zustellstatus verarbeitet. Nach Ablauf der Testphase ohne Bestellung eines Pakets werden
+          Konto- und Nutzungsdaten spätestens nach 6 Monaten gelöscht, soweit keine gesetzlichen
+          Aufbewahrungspflichten bestehen.
+        </p>
       </section>
 
       <section className="space-y-2">
@@ -73,7 +90,10 @@ function Datenschutz() {
           <li>
             Hosting- und Datenbank-/Auth-Dienst der Anwendungsplattform (Speicherung in der EU)
           </li>
-          <li>E-Mail-Versanddienstleister für den Versand von Angeboten und Rechnungen</li>
+          <li>
+            E-Mail-Versanddienstleister (Resend) für den Versand von Angeboten und Rechnungen sowie
+            für Registrierungs-, Bestätigungs- und Passwort-E-Mails
+          </li>
           <li>Google (nur bei Nutzung der optionalen Anmeldung per Google-Konto)</li>
           <li>Steuerberatung/Finanzamt im Rahmen gesetzlicher Pflichten</li>
         </ul>

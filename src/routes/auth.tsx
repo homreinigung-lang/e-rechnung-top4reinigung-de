@@ -13,6 +13,7 @@ import {
   getApprovalStatus,
   recoverIncompleteAccount,
 } from "@/lib/approval.functions";
+import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -210,6 +211,30 @@ function AuthPage() {
     setLoading(false);
     toast.success("Willkommen! Ihre kostenlose Testphase über 60 Tage läuft ab heute.");
     navigate({ to: "/dashboard", replace: true });
+  }
+
+  async function resendConfirmation() {
+    if (!email) {
+      toast.error("Bitte zuerst Ihre E-Mail-Adresse eingeben.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await sendAuthConfirmationEmail({
+        data: { email: email.trim().toLowerCase() },
+      });
+      if (res.sent) {
+        toast.success("Bestätigungslink wurde erneut gesendet. Bitte prüfen Sie Ihr Postfach.");
+      } else {
+        toast.error("Zu dieser E-Mail-Adresse konnte kein Link gesendet werden.");
+      }
+    } catch (err) {
+      toast.error(
+        "Versand fehlgeschlagen: " + (err instanceof Error ? err.message : "Unbekannter Fehler"),
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function google() {
@@ -415,6 +440,20 @@ function AuthPage() {
                   </Button>
                 </form>
 
+                <div className="mt-4 rounded-md border border-border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Keine Bestätigungs-E-Mail erhalten? Der Versand kann sich in seltenen Fällen
+                    verzögern.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void resendConfirmation()}
+                    disabled={loading}
+                    className="mt-2 w-full text-center text-sm font-medium text-primary underline disabled:opacity-50"
+                  >
+                    Bestätigungslink erneut senden
+                  </button>
+                </div>
               </TabsContent>
             </Tabs>
           )}
