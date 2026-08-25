@@ -417,7 +417,7 @@ function AuthPage() {
               </button>
             </form>
           ) : (
-            <Tabs defaultValue="login">
+            <Tabs key={inviteCode ? "register" : "login"} defaultValue={inviteCode ? "register" : "login"}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Anmelden</TabsTrigger>
                 <TabsTrigger value="register">Registrieren</TabsTrigger>
