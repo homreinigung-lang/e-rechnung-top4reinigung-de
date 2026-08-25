@@ -537,6 +537,26 @@ function AuthPage() {
                       <p className="text-sm text-destructive">Die Passwörter stimmen nicht überein.</p>
                     )}
                   </div>
+                  {isEmployeeSignup && (
+                    <div className="space-y-2">
+                      <Label htmlFor="invite">Unternehmens-Code</Label>
+                      <Input
+                        id="invite"
+                        required
+                        dir="ltr"
+                        autoComplete="off"
+                        placeholder="z. B. A1B2C3D4"
+                        className="font-mono tracking-widest uppercase"
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Diesen Code (oder einen Einladungslink) erhalten Sie von Ihrem Arbeitgeber.
+                        Ohne gültigen Code ist keine Registrierung möglich.
+                      </p>
+                    </div>
+                  )}
+
                   {!isEmployeeSignup && (
                     <>
                       <div className="space-y-2">
