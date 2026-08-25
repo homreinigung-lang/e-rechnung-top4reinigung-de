@@ -423,7 +423,43 @@ function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <form onSubmit={signUp} className="mt-6 space-y-4">
+                <div className="mt-6 space-y-2">
+                  <Label>Kontoart</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAccountType("company")}
+                      className={
+                        "rounded-md border px-3 py-2 text-left text-sm " +
+                        (accountType === "company"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground")
+                      }
+                    >
+                      <span className="block font-medium">Firma</span>
+                      <span className="block text-xs">Unternehmenskonto mit Abrechnung</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAccountType("employee")}
+                      className={
+                        "rounded-md border px-3 py-2 text-left text-sm " +
+                        (accountType === "employee"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground")
+                      }
+                    >
+                      <span className="block font-medium">Mitarbeiter/in</span>
+                      <span className="block text-xs">Zugang zu Zeiten &amp; Einsätzen</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isEmployeeSignup
+                      ? "Ihr Arbeitgeber muss Sie zuvor mit dieser E-Mail-Adresse im Personalbereich angelegt haben. Kein Zugriff auf Rechnungen oder Firmeneinstellungen."
+                      : "Für Inhaber und Verwaltung: volle Rechte für Rechnungen, Kunden und Abrechnung."}
+                  </p>
+                </div>
+                <form onSubmit={signUp} className="mt-4 space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name2">Name</Label>
                     <Input
