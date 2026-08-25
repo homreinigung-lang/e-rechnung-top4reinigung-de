@@ -147,12 +147,24 @@ export function AccountantAccessCard() {
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => create.mutate()} disabled={create.isPending}>
-          <KeyRound className="size-4" /> Zugangs-Link generieren &amp; kopieren
+          <KeyRound className="size-4" /> Zugang erstellen
         </Button>
         {accesses[0] && (
-          <Button variant="outline" onClick={() => invite(accesses[0]!)}>
-            <Mail className="size-4" /> Einladung per E-Mail senden
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              disabled={sendInvite.isPending}
+              onClick={() => invite(accesses[0]!)}
+            >
+              <Mail className="size-4" /> Einladung senden
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => copy(linkFor(accesses[0]!.token), "Link in die Zwischenablage kopiert.")}
+            >
+              <Copy className="size-4" /> Link in die Zwischenablage kopieren
+            </Button>
+          </>
         )}
       </div>
 
