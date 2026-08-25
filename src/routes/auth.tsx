@@ -13,6 +13,7 @@ import {
   getApprovalStatus,
   recoverIncompleteAccount,
 } from "@/lib/approval.functions";
+import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
