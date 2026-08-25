@@ -362,5 +362,5 @@ ${companyName}`;
         .eq("user_id", context.userId);
     }
 
-    return { sent: true as const, to: data.email, messageId: delivery.id };
+    return { accepted: true as const, to: data.email, messageId: delivery.id };
   });
