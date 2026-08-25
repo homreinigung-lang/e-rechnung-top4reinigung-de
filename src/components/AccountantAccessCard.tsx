@@ -90,26 +90,12 @@ export function AccountantAccessCard() {
   }
 
   function invite(access: Access) {
-    const to = access.email || email;
+    const to = (email || access.email).trim();
     if (!to) {
       toast.error("Bitte E-Mail-Adresse des Steuerberaters eintragen.");
       return;
     }
-    const body = [
-      "Guten Tag,",
-      "",
-      "anbei Ihr persönlicher Nur-Lese-Zugang zu unseren Rechnungen und Ausgaben (DATEV- und Excel-Export inklusive).",
-      "",
-      `Zugangs-Link: ${linkFor(access.token)}`,
-      `Passwort (dauerhaft gültig): ${access.access_code}`,
-      "",
-      "Der Zugang hat kein Ablaufdatum.",
-      "",
-      "Mit freundlichen Grüßen",
-    ].join("\n");
-    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(
-      "Steuerberater-Zugang (Nur-Lese-Zugriff)",
-    )}&body=${encodeURIComponent(body)}`;
+    sendInvite.mutate({ id: access.id, email: to });
   }
 
   return (
