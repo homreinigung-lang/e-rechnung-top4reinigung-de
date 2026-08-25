@@ -35,6 +35,8 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
+import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
+
 import {
   absenceClasses,
   absenceLabel,
