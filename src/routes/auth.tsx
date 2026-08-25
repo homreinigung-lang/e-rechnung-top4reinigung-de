@@ -43,7 +43,11 @@ function AuthPage() {
   const [legalForm, setLegalForm] = useState("");
 
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const passwordsMatch = password === confirmPassword;
+  const canSubmit = password.length >= 6 && passwordsMatch;
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
 
@@ -134,6 +138,10 @@ function AuthPage() {
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
+    if (!passwordsMatch) {
+      toast.error("Die Passwörter stimmen nicht überein.");
+      return;
+    }
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -387,6 +395,19 @@ function AuthPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="password3">Passwort wiederholen</Label>
+                    <PasswordInput
+                      id="password3"
+                      required
+                      minLength={6}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                    {confirmPassword.length > 0 && !passwordsMatch && (
+                      <p className="text-sm text-destructive">Die Passwörter stimmen nicht überein.</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="company2">Unternehmensname</Label>
                     <Input
                       id="company2"
@@ -435,7 +456,7 @@ function AuthPage() {
                     Sofort startklar: 60 Tage kostenlos testen – ohne Wartezeit und ohne
                     Zahlungsdaten.
                   </p>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
                     Konto erstellen &amp; 60 Tage testen
                   </Button>
                 </form>
