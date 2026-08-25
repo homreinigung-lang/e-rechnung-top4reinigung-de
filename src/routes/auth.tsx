@@ -147,6 +147,48 @@ function AuthPage() {
     toast.success("Wir haben Ihnen einen Link zum Zurücksetzen des Passworts geschickt.");
   }
 
+  /**
+   * Mitarbeiter-Registrierung: kein Firmenkonto, keine Testphase, keine
+   * Abrechnung. Das Konto wird ausschließlich mit einem bestehenden
+   * Mitarbeiter-Stammsatz der einladenden Firma verknüpft.
+   */
+  async function signUpEmployee() {
+    setLoading(true);
+    const mail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.signUp({
+      email: mail,
+      password,
+      options: { data: { full_name: fullName.trim(), account_type: "employee" } },
+    });
+    if (error && !/already registered|already been registered|user already/i.test(error.message)) {
+      setLoading(false);
+      toast.error("Registrierung fehlgeschlagen: " + error.message);
+      return;
+    }
+    const signedIn = await supabase.auth.signInWithPassword({ email: mail, password });
+    if (signedIn.error) {
+      setLoading(false);
+      toast.error(
+        "Anmeldung fehlgeschlagen: " +
+          signedIn.error.message +
+          " Bitte prüfen Sie Ihr Passwort oder nutzen Sie „Passwort vergessen“.",
+      );
+      return;
+    }
+    const { data: linkedId } = await supabase.rpc("link_employee_account");
+    if (!linkedId) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast.error(
+        "Diese E-Mail-Adresse ist keiner Firma zugeordnet. Bitte lassen Sie sich zuerst von Ihrem Arbeitgeber im Personalbereich anlegen.",
+      );
+      return;
+    }
+    setLoading(false);
+    toast.success("Willkommen! Ihr Mitarbeiterzugang ist aktiv.");
+    navigate({ to: "/meine-zeiten", replace: true });
+  }
+
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
     if (!passwordsMatch) {
