@@ -292,3 +292,75 @@ export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
 
     return out;
   });
+
+/**
+ * Versendet den Steuerberater-Einladungslink direkt aus der App (Resend).
+ * Es wird kein externes E-Mail-Programm geöffnet.
+ */
+export const sendAccountantInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; email: string; origin?: string }) => ({
+    id: String(data.id ?? ""),
+    email: String(data.email ?? "").trim(),
+    origin: String(data.origin ?? "").trim(),
+  }))
+  .handler(async ({ data, context }) => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      throw new Error("Bitte eine gültige E-Mail-Adresse eingeben.");
+    }
+
+    const { data: access, error } = await context.supabase
+      .from("accountant_access")
+      .select("id, token, access_code")
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!access) throw new Error("Zugang nicht gefunden.");
+
+    const { data: settings } = await context.supabase
+      .from("company_settings")
+      .select("company_name")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const companyName = settings?.company_name || "Ihr Mandant";
+
+    const { sendMail, siteUrl, escapeHtml } = await import("./approval-mail.server");
+    const base = /^https?:\/\//.test(data.origin) ? data.origin.replace(/\/$/, "") : siteUrl();
+    const link = `${base}/stb/${access.token}`;
+
+    const subject = `Steuerberater-Zugang von ${companyName}`;
+    const text = `Guten Tag,
+
+anbei Ihr persönlicher Nur-Lese-Zugang zu den Rechnungen und Ausgaben von ${companyName} (DATEV- und Excel-Export inklusive).
+
+Zugangs-Link: ${link}
+Passwort (dauerhaft gültig): ${access.access_code}
+
+Der Zugang hat kein Ablaufdatum.
+
+Mit freundlichen Grüßen
+${companyName}`;
+
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.6;font-size:15px">
+      <h2 style="margin:0 0 12px">Ihr Steuerberater-Zugang</h2>
+      <p>Guten Tag,</p>
+      <p>anbei Ihr persönlicher Nur-Lese-Zugang zu den Rechnungen und Ausgaben von <strong>${escapeHtml(companyName)}</strong> (DATEV- und Excel-Export inklusive).</p>
+      <p style="margin:24px 0"><a href="${link}" style="background:#0369a1;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">Zugang öffnen</a></p>
+      <p>Passwort (dauerhaft gültig): <strong>${escapeHtml(access.access_code)}</strong></p>
+      <p style="color:#64748b;font-size:13px">Falls der Button nicht funktioniert: ${escapeHtml(link)}</p>
+      <p style="margin-top:28px;color:#64748b;font-size:12px">${escapeHtml(companyName)}</p>
+    </div>`;
+
+    await sendMail({ to: data.email, subject, html, text });
+
+    if (data.email) {
+      await context.supabase
+        .from("accountant_access")
+        .update({ email: data.email })
+        .eq("id", access.id)
+        .eq("user_id", context.userId);
+    }
+
+    return { sent: true as const, to: data.email };
+  });
