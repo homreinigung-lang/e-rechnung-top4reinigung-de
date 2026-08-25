@@ -235,7 +235,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8">
+        {myEmployee && !isEmployeeAllowedPath(pathname) ? (
+          <div className="surface p-6 text-sm text-muted-foreground">
+            Dieser Bereich ist dem Unternehmenskonto vorbehalten. Sie werden zu „Meine Zeiten“
+            weitergeleitet.
+          </div>
+        ) : (
+          children
+        )}
+      </main>
 
       <footer
         className="no-print border-t py-6"
