@@ -502,57 +502,63 @@ function AuthPage() {
                       <p className="text-sm text-destructive">Die Passwörter stimmen nicht überein.</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company2">Unternehmensname</Label>
-                    <Input
-                      id="company2"
-                      required
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="empcount2">Mitarbeitende</Label>
-                      <Input
-                        id="empcount2"
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        dir="ltr"
-                        required
-                        value={employeeCount}
-                        onChange={(e) => setEmployeeCount(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="legal2">Rechtsform</Label>
-                      <select
-                        id="legal2"
-                        required
-                        value={legalForm}
-                        onChange={(e) => setLegalForm(e.target.value)}
-                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                      >
-                        <option value="">Bitte wählen</option>
-                        <option value="Einzelunternehmen">Einzelunternehmen</option>
-                        <option value="GbR">GbR</option>
-                        <option value="UG (haftungsbeschränkt)">UG (haftungsbeschränkt)</option>
-                        <option value="GmbH">GmbH</option>
-                        <option value="GmbH & Co. KG">GmbH &amp; Co. KG</option>
-                        <option value="OHG">OHG</option>
-                        <option value="KG">KG</option>
-                        <option value="AG">AG</option>
-                        <option value="Sonstige">Sonstige</option>
-                      </select>
-                    </div>
-                  </div>
-                  <p className="rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
-                    Sofort startklar: 60 Tage kostenlos testen – ohne Wartezeit und ohne
-                    Zahlungsdaten.
-                  </p>
+                  {!isEmployeeSignup && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="company2">Unternehmensname</Label>
+                        <Input
+                          id="company2"
+                          required
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="empcount2">Mitarbeitende</Label>
+                          <Input
+                            id="empcount2"
+                            type="number"
+                            min={0}
+                            inputMode="numeric"
+                            dir="ltr"
+                            required
+                            value={employeeCount}
+                            onChange={(e) => setEmployeeCount(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="legal2">Rechtsform</Label>
+                          <select
+                            id="legal2"
+                            required
+                            value={legalForm}
+                            onChange={(e) => setLegalForm(e.target.value)}
+                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                          >
+                            <option value="">Bitte wählen</option>
+                            <option value="Einzelunternehmen">Einzelunternehmen</option>
+                            <option value="GbR">GbR</option>
+                            <option value="UG (haftungsbeschränkt)">UG (haftungsbeschränkt)</option>
+                            <option value="GmbH">GmbH</option>
+                            <option value="GmbH & Co. KG">GmbH &amp; Co. KG</option>
+                            <option value="OHG">OHG</option>
+                            <option value="KG">KG</option>
+                            <option value="AG">AG</option>
+                            <option value="Sonstige">Sonstige</option>
+                          </select>
+                        </div>
+                      </div>
+                      <p className="rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
+                        Sofort startklar: 60 Tage kostenlos testen – ohne Wartezeit und ohne
+                        Zahlungsdaten.
+                      </p>
+                    </>
+                  )}
                   <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
-                    Konto erstellen &amp; 60 Tage testen
+                    {isEmployeeSignup
+                      ? "Mitarbeiterzugang erstellen"
+                      : "Konto erstellen & 60 Tage testen"}
                   </Button>
                 </form>
 
