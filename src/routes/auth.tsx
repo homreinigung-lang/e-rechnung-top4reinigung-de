@@ -350,7 +350,7 @@ function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
+                  <Button type="submit" className="w-full" disabled={loading}>
                     Anmelden
                   </Button>
                   <button
