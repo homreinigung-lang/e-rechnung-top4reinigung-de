@@ -1,71 +1,24 @@
+import { sendVerifiedEmail } from "./resend-email.server";
+
 /**
  * E-Mail-Versand für die Konto-Freigabe (Registrierungsprüfung durch den Inhaber).
  * Nutzt denselben Resend-Gateway wie der Rechnungsversand.
  */
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
-
 export const OWNER_EMAIL = "info@top4reinigung.de";
 
 export function siteUrl() {
   return process.env["PUBLIC_SITE_URL"] || "https://e-rechnung.top4reinigung.de";
 }
 
-export async function sendMail(opts: { to: string; subject: string; html: string; text: string }) {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  const resendKey = process.env["RESEND_API_KEY"];
-  if (!lovableKey || !resendKey) throw new Error("E-Mail-Versand ist nicht konfiguriert.");
-
-  const from = process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
-
-  let response: Response;
-  try {
-    response = await fetch(`${GATEWAY_URL}/emails`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": resendKey,
-      },
-      body: JSON.stringify({
-        from,
-        to: [opts.to],
-        reply_to: OWNER_EMAIL,
-        subject: opts.subject,
-        text: opts.text,
-        html: opts.html,
-      }),
-    });
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "Netzwerkfehler";
-    console.error(`Resend request failed before response: ${detail}`);
-    throw new Error(`E-Mail konnte nicht gesendet werden: ${detail}`);
-  }
-
-  if (!response.ok) {
-    const body = await response.text();
-    let detail = body;
-    try {
-      const parsed = JSON.parse(body) as { message?: string; error?: string; name?: string };
-      detail = parsed.message || parsed.error || parsed.name || body;
-    } catch {
-      // Textantwort des Anbieters unverändert als Fehlerdetail verwenden.
-    }
-    console.error(`Resend request failed [${response.status}]: ${body}`);
-    throw new Error(`E-Mail konnte nicht gesendet werden [${response.status}]: ${detail}`);
-  }
-
-  const result = (await response.json()) as { id?: string; error?: { message?: string } | string };
-  if (result.error) {
-    const detail = typeof result.error === "string" ? result.error : result.error.message;
-    throw new Error(`E-Mail konnte nicht gesendet werden: ${detail || "Unbekannter Anbieterfehler"}`);
-  }
-  if (!result.id) {
-    console.error("Resend accepted the request without returning a message id.");
-    throw new Error("E-Mail konnte nicht gesendet werden: Keine Versandbestätigung erhalten.");
-  }
-
-  console.info(`Resend accepted email ${result.id} for ${opts.to}.`);
-  return { id: result.id };
+export async function sendMail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  companyName?: string;
+  companyEmail?: string;
+}) {
+  return sendVerifiedEmail(opts);
 }
 
 const shell = (inner: string) =>
