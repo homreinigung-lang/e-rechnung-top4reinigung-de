@@ -307,7 +307,7 @@ function AuthPage() {
                   onChange={(e) => setMfaCode(e.target.value)}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
                 Bestätigen
               </Button>
               <button
@@ -350,7 +350,7 @@ function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
                     Anmelden
                   </Button>
                   <button
@@ -456,7 +456,7 @@ function AuthPage() {
                     Sofort startklar: 60 Tage kostenlos testen – ohne Wartezeit und ohne
                     Zahlungsdaten.
                   </p>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
                     Konto erstellen &amp; 60 Tage testen
                   </Button>
                 </form>
