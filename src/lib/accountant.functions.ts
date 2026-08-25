@@ -320,10 +320,11 @@ export const sendAccountantInvite = createServerFn({ method: "POST" })
 
     const { data: settings } = await context.supabase
       .from("company_settings")
-      .select("company_name")
+      .select("company_name, email")
       .eq("user_id", context.userId)
       .maybeSingle();
     const companyName = settings?.company_name || "Ihr Mandant";
+    const companyEmail = settings?.email || undefined;
 
     const { sendMail, siteUrl, escapeHtml } = await import("./approval-mail.server");
     const base = /^https?:\/\//.test(data.origin) ? data.origin.replace(/\/$/, "") : siteUrl();
@@ -352,7 +353,14 @@ ${companyName}`;
       <p style="margin-top:28px;color:#64748b;font-size:12px">${escapeHtml(companyName)}</p>
     </div>`;
 
-    const delivery = await sendMail({ to: data.email, subject, html, text });
+    const delivery = await sendMail({
+      to: data.email,
+      subject,
+      html,
+      text,
+      companyName,
+      companyEmail,
+    });
 
     if (data.email) {
       await context.supabase
