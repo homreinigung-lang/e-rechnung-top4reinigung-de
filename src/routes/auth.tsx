@@ -307,7 +307,7 @@ function AuthPage() {
                   onChange={(e) => setMfaCode(e.target.value)}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
+              <Button type="submit" className="w-full" disabled={loading}>
                 Bestätigen
               </Button>
               <button
