@@ -47,6 +47,7 @@ function AuthPage() {
 
   const [accountType, setAccountType] = useState<"company" | "employee">("company");
   const [inviteCode, setInviteCode] = useState("");
+  const [invitedTab, setInvitedTab] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,6 +73,7 @@ function AuthPage() {
     if (code) {
       setInviteCode(code.toUpperCase());
       setAccountType("employee");
+      setInvitedTab(true);
     }
   }, []);
 
@@ -417,7 +419,7 @@ function AuthPage() {
               </button>
             </form>
           ) : (
-            <Tabs key={inviteCode ? "register" : "login"} defaultValue={inviteCode ? "register" : "login"}>
+            <Tabs key={invitedTab ? "register" : "login"} defaultValue={invitedTab ? "register" : "login"}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Anmelden</TabsTrigger>
                 <TabsTrigger value="register">Registrieren</TabsTrigger>
