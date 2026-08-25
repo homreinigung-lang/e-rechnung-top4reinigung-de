@@ -273,6 +273,7 @@ export type Database = {
           facebook_url: string
           iban: string
           id: string
+          invite_code: string
           legal_form: string
           logo_url: string
           owner_name: string
@@ -307,6 +308,7 @@ export type Database = {
           facebook_url?: string
           iban?: string
           id?: string
+          invite_code?: string
           legal_form?: string
           logo_url?: string
           owner_name?: string
@@ -341,6 +343,7 @@ export type Database = {
           facebook_url?: string
           iban?: string
           id?: string
+          invite_code?: string
           legal_form?: string
           logo_url?: string
           owner_name?: string
@@ -1860,6 +1863,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      gen_invite_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

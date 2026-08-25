@@ -14,7 +14,9 @@ import {
   recoverIncompleteAccount,
 } from "@/lib/approval.functions";
 import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
+import { redeemInviteCode } from "@/lib/employee-invite.functions";
 import { resolveStartRoute } from "@/lib/employee";
+
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -44,13 +46,18 @@ function AuthPage() {
   const [legalForm, setLegalForm] = useState("");
 
   const [accountType, setAccountType] = useState<"company" | "employee">("company");
+  const [inviteCode, setInviteCode] = useState("");
+  const [invitedTab, setInvitedTab] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const passwordsMatch = password === confirmPassword;
-  const canSubmit = password.length >= 6 && passwordsMatch;
   const isEmployeeSignup = accountType === "employee";
+  const canSubmit =
+    password.length >= 6 &&
+    passwordsMatch &&
+    (!isEmployeeSignup || inviteCode.replace(/[\s-]/g, "").length >= 4);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
 
@@ -59,6 +66,18 @@ function AuthPage() {
       if (data.session) navigate({ to: "/dashboard", replace: true });
     });
   }, [navigate]);
+
+  // Einladungslink: /auth?code=XXXXXXXX öffnet direkt die Mitarbeiter-Registrierung.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) {
+      setInviteCode(code.toUpperCase());
+      setAccountType("employee");
+      setInvitedTab(true);
+    }
+  }, []);
+
+
 
   async function ensureApproved(): Promise<boolean> {
     const { data } = await supabase.auth.getUser();
@@ -153,6 +172,11 @@ function AuthPage() {
    * Mitarbeiter-Stammsatz der einladenden Firma verknüpft.
    */
   async function signUpEmployee() {
+    const code = inviteCode.replace(/[\s-]/g, "").toUpperCase();
+    if (code.length < 4) {
+      toast.error("Bitte geben Sie den Unternehmens-Code Ihres Arbeitgebers ein.");
+      return;
+    }
     setLoading(true);
     const mail = email.trim().toLowerCase();
     const { error } = await supabase.auth.signUp({
@@ -175,19 +199,32 @@ function AuthPage() {
       );
       return;
     }
-    const { data: linkedId } = await supabase.rpc("link_employee_account");
-    if (!linkedId) {
+
+    let result: Awaited<ReturnType<typeof redeemInviteCode>> | null = null;
+    try {
+      result = await redeemInviteCode({ data: { code, fullName: fullName.trim() } });
+    } catch (err) {
+      console.warn("Code-Prüfung fehlgeschlagen:", err);
+    }
+
+    if (!result?.ok) {
       await supabase.auth.signOut();
       setLoading(false);
       toast.error(
-        "Diese E-Mail-Adresse ist keiner Firma zugeordnet. Bitte lassen Sie sich zuerst von Ihrem Arbeitgeber im Personalbereich anlegen.",
+        result?.reason === "other_company"
+          ? "Dieses Konto gehört bereits zu einer anderen Firma."
+          : result?.reason === "own_company"
+            ? "Dieser Code gehört zu Ihrem eigenen Firmenkonto."
+            : "Der Unternehmens-Code ist ungültig. Bitte fragen Sie Ihren Arbeitgeber nach einem gültigen Einladungscode.",
       );
       return;
     }
+
     setLoading(false);
     toast.success("Willkommen! Ihr Mitarbeiterzugang ist aktiv.");
     navigate({ to: "/meine-zeiten", replace: true });
   }
+
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
@@ -382,7 +419,7 @@ function AuthPage() {
               </button>
             </form>
           ) : (
-            <Tabs defaultValue="login">
+            <Tabs key={invitedTab ? "register" : "login"} defaultValue={invitedTab ? "register" : "login"}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Anmelden</TabsTrigger>
                 <TabsTrigger value="register">Registrieren</TabsTrigger>
@@ -502,6 +539,26 @@ function AuthPage() {
                       <p className="text-sm text-destructive">Die Passwörter stimmen nicht überein.</p>
                     )}
                   </div>
+                  {isEmployeeSignup && (
+                    <div className="space-y-2">
+                      <Label htmlFor="invite">Unternehmens-Code</Label>
+                      <Input
+                        id="invite"
+                        required
+                        dir="ltr"
+                        autoComplete="off"
+                        placeholder="z. B. A1B2C3D4"
+                        className="font-mono tracking-widest uppercase"
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Diesen Code (oder einen Einladungslink) erhalten Sie von Ihrem Arbeitgeber.
+                        Ohne gültigen Code ist keine Registrierung möglich.
+                      </p>
+                    </div>
+                  )}
+
                   {!isEmployeeSignup && (
                     <>
                       <div className="space-y-2">

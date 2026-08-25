@@ -35,6 +35,8 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
+import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
+
 import {
   absenceClasses,
   absenceLabel,
@@ -461,6 +463,7 @@ export function Personal() {
 
   return (
     <div className="space-y-6">
+      <MitarbeiterEinladung />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Personal</h1>
@@ -468,6 +471,7 @@ export function Personal() {
             Arbeits-Tabelle: Name, Einsatzort und Stunden direkt in der Zeile bearbeiten.
           </p>
         </div>
+
         <Dialog
           open={open}
           onOpenChange={(o) => {
