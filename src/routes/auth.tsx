@@ -138,6 +138,10 @@ function AuthPage() {
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
+    if (!passwordsMatch) {
+      toast.error("Die Passwörter stimmen nicht überein.");
+      return;
+    }
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
