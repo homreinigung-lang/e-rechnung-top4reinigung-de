@@ -43,7 +43,11 @@ function AuthPage() {
   const [legalForm, setLegalForm] = useState("");
 
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const passwordsMatch = password === confirmPassword;
+  const canSubmit = password.length >= 6 && passwordsMatch;
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
 
