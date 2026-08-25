@@ -43,12 +43,17 @@ export function AccountantAccessCard() {
       sendInviteFn({ data: { ...vars, origin: window.location.origin } }),
     onSuccess: async (res) => {
       await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
-      toast.success(`Einladung erfolgreich an ${res.to} gesendet.`, {
-        description: "Der Steuerberater erhält den sicheren Zugangs-Link und das Passwort.",
+      toast.success(`Einladung für ${res.to} wurde von Resend angenommen.`, {
+        description: "Der sichere Zugangs-Link und das Passwort wurden an den Versanddienst übergeben.",
         duration: 8000,
       });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      const message = e.message.startsWith("E-Mail konnte nicht gesendet werden")
+        ? e.message
+        : `E-Mail konnte nicht gesendet werden: ${e.message}`;
+      toast.error(message, { duration: 10000 });
+    },
   });
 
   const { data: accesses = [] } = useQuery({
