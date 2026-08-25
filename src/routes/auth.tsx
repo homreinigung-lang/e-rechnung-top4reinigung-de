@@ -153,6 +153,10 @@ function AuthPage() {
       toast.error("Die Passwörter stimmen nicht überein.");
       return;
     }
+    if (isEmployeeSignup) {
+      await signUpEmployee();
+      return;
+    }
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
