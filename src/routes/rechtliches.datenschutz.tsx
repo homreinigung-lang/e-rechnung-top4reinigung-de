@@ -73,7 +73,10 @@ function Datenschutz() {
           <li>
             Hosting- und Datenbank-/Auth-Dienst der Anwendungsplattform (Speicherung in der EU)
           </li>
-          <li>E-Mail-Versanddienstleister für den Versand von Angeboten und Rechnungen</li>
+          <li>
+            E-Mail-Versanddienstleister (Resend) für den Versand von Angeboten und Rechnungen sowie
+            für Registrierungs-, Bestätigungs- und Passwort-E-Mails
+          </li>
           <li>Google (nur bei Nutzung der optionalen Anmeldung per Google-Konto)</li>
           <li>Steuerberatung/Finanzamt im Rahmen gesetzlicher Pflichten</li>
         </ul>
