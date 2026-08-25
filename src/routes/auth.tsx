@@ -153,6 +153,11 @@ function AuthPage() {
    * Mitarbeiter-Stammsatz der einladenden Firma verknüpft.
    */
   async function signUpEmployee() {
+    const code = inviteCode.replace(/[\s-]/g, "").toUpperCase();
+    if (code.length < 4) {
+      toast.error("Bitte geben Sie den Unternehmens-Code Ihres Arbeitgebers ein.");
+      return;
+    }
     setLoading(true);
     const mail = email.trim().toLowerCase();
     const { error } = await supabase.auth.signUp({
@@ -175,19 +180,32 @@ function AuthPage() {
       );
       return;
     }
-    const { data: linkedId } = await supabase.rpc("link_employee_account");
-    if (!linkedId) {
+
+    let result: Awaited<ReturnType<typeof redeemInviteCode>> | null = null;
+    try {
+      result = await redeemInviteCode({ data: { code, fullName: fullName.trim() } });
+    } catch (err) {
+      console.warn("Code-Prüfung fehlgeschlagen:", err);
+    }
+
+    if (!result?.ok) {
       await supabase.auth.signOut();
       setLoading(false);
       toast.error(
-        "Diese E-Mail-Adresse ist keiner Firma zugeordnet. Bitte lassen Sie sich zuerst von Ihrem Arbeitgeber im Personalbereich anlegen.",
+        result?.reason === "other_company"
+          ? "Dieses Konto gehört bereits zu einer anderen Firma."
+          : result?.reason === "own_company"
+            ? "Dieser Code gehört zu Ihrem eigenen Firmenkonto."
+            : "Der Unternehmens-Code ist ungültig. Bitte fragen Sie Ihren Arbeitgeber nach einem gültigen Einladungscode.",
       );
       return;
     }
+
     setLoading(false);
     toast.success("Willkommen! Ihr Mitarbeiterzugang ist aktiv.");
     navigate({ to: "/meine-zeiten", replace: true });
   }
+
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
