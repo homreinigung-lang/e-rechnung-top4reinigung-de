@@ -14,6 +14,7 @@ import {
   recoverIncompleteAccount,
 } from "@/lib/approval.functions";
 import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
+import { resolveStartRoute } from "@/lib/employee";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -42,12 +43,14 @@ function AuthPage() {
   const [employeeCount, setEmployeeCount] = useState("1");
   const [legalForm, setLegalForm] = useState("");
 
+  const [accountType, setAccountType] = useState<"company" | "employee">("company");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const passwordsMatch = password === confirmPassword;
   const canSubmit = password.length >= 6 && passwordsMatch;
+  const isEmployeeSignup = accountType === "employee";
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
 
@@ -88,9 +91,13 @@ function AuthPage() {
       return;
     }
     const ok = await ensureApproved();
+    if (!ok) {
+      setLoading(false);
+      return;
+    }
+    const target = await resolveStartRoute();
     setLoading(false);
-    if (!ok) return;
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: target, replace: true });
   }
 
   async function verifyMfa(e: React.FormEvent) {
@@ -114,9 +121,13 @@ function AuthPage() {
       return;
     }
     const ok = await ensureApproved();
+    if (!ok) {
+      setLoading(false);
+      return;
+    }
+    const target = await resolveStartRoute();
     setLoading(false);
-    if (!ok) return;
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: target, replace: true });
   }
 
   async function forgotPassword() {
@@ -136,10 +147,56 @@ function AuthPage() {
     toast.success("Wir haben Ihnen einen Link zum Zurücksetzen des Passworts geschickt.");
   }
 
+  /**
+   * Mitarbeiter-Registrierung: kein Firmenkonto, keine Testphase, keine
+   * Abrechnung. Das Konto wird ausschließlich mit einem bestehenden
+   * Mitarbeiter-Stammsatz der einladenden Firma verknüpft.
+   */
+  async function signUpEmployee() {
+    setLoading(true);
+    const mail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.signUp({
+      email: mail,
+      password,
+      options: { data: { full_name: fullName.trim(), account_type: "employee" } },
+    });
+    if (error && !/already registered|already been registered|user already/i.test(error.message)) {
+      setLoading(false);
+      toast.error("Registrierung fehlgeschlagen: " + error.message);
+      return;
+    }
+    const signedIn = await supabase.auth.signInWithPassword({ email: mail, password });
+    if (signedIn.error) {
+      setLoading(false);
+      toast.error(
+        "Anmeldung fehlgeschlagen: " +
+          signedIn.error.message +
+          " Bitte prüfen Sie Ihr Passwort oder nutzen Sie „Passwort vergessen“.",
+      );
+      return;
+    }
+    const { data: linkedId } = await supabase.rpc("link_employee_account");
+    if (!linkedId) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast.error(
+        "Diese E-Mail-Adresse ist keiner Firma zugeordnet. Bitte lassen Sie sich zuerst von Ihrem Arbeitgeber im Personalbereich anlegen.",
+      );
+      return;
+    }
+    setLoading(false);
+    toast.success("Willkommen! Ihr Mitarbeiterzugang ist aktiv.");
+    navigate({ to: "/meine-zeiten", replace: true });
+  }
+
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
     if (!passwordsMatch) {
       toast.error("Die Passwörter stimmen nicht überein.");
+      return;
+    }
+    if (isEmployeeSignup) {
+      await signUpEmployee();
       return;
     }
     setLoading(true);
@@ -255,7 +312,9 @@ function AuthPage() {
     }
     if (result.redirected) return;
     const { data } = await supabase.auth.getUser();
-    if (data.user) {
+    // Mitarbeiterkonten niemals als Firma anlegen.
+    const target = await resolveStartRoute();
+    if (data.user && target === "/dashboard") {
       await requestAccountApproval({
         data: {
           authUserId: data.user.id,
@@ -264,7 +323,7 @@ function AuthPage() {
         },
       }).catch(() => null);
     }
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: target, replace: true });
   }
 
 
@@ -364,7 +423,43 @@ function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <form onSubmit={signUp} className="mt-6 space-y-4">
+                <div className="mt-6 space-y-2">
+                  <Label>Kontoart</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAccountType("company")}
+                      className={
+                        "rounded-md border px-3 py-2 text-left text-sm " +
+                        (accountType === "company"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground")
+                      }
+                    >
+                      <span className="block font-medium">Firma</span>
+                      <span className="block text-xs">Unternehmenskonto mit Abrechnung</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAccountType("employee")}
+                      className={
+                        "rounded-md border px-3 py-2 text-left text-sm " +
+                        (accountType === "employee"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground")
+                      }
+                    >
+                      <span className="block font-medium">Mitarbeiter/in</span>
+                      <span className="block text-xs">Zugang zu Zeiten &amp; Einsätzen</span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isEmployeeSignup
+                      ? "Ihr Arbeitgeber muss Sie zuvor mit dieser E-Mail-Adresse im Personalbereich angelegt haben. Kein Zugriff auf Rechnungen oder Firmeneinstellungen."
+                      : "Für Inhaber und Verwaltung: volle Rechte für Rechnungen, Kunden und Abrechnung."}
+                  </p>
+                </div>
+                <form onSubmit={signUp} className="mt-4 space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name2">Name</Label>
                     <Input
@@ -407,57 +502,63 @@ function AuthPage() {
                       <p className="text-sm text-destructive">Die Passwörter stimmen nicht überein.</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company2">Unternehmensname</Label>
-                    <Input
-                      id="company2"
-                      required
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="empcount2">Mitarbeitende</Label>
-                      <Input
-                        id="empcount2"
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        dir="ltr"
-                        required
-                        value={employeeCount}
-                        onChange={(e) => setEmployeeCount(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="legal2">Rechtsform</Label>
-                      <select
-                        id="legal2"
-                        required
-                        value={legalForm}
-                        onChange={(e) => setLegalForm(e.target.value)}
-                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                      >
-                        <option value="">Bitte wählen</option>
-                        <option value="Einzelunternehmen">Einzelunternehmen</option>
-                        <option value="GbR">GbR</option>
-                        <option value="UG (haftungsbeschränkt)">UG (haftungsbeschränkt)</option>
-                        <option value="GmbH">GmbH</option>
-                        <option value="GmbH & Co. KG">GmbH &amp; Co. KG</option>
-                        <option value="OHG">OHG</option>
-                        <option value="KG">KG</option>
-                        <option value="AG">AG</option>
-                        <option value="Sonstige">Sonstige</option>
-                      </select>
-                    </div>
-                  </div>
-                  <p className="rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
-                    Sofort startklar: 60 Tage kostenlos testen – ohne Wartezeit und ohne
-                    Zahlungsdaten.
-                  </p>
+                  {!isEmployeeSignup && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="company2">Unternehmensname</Label>
+                        <Input
+                          id="company2"
+                          required
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="empcount2">Mitarbeitende</Label>
+                          <Input
+                            id="empcount2"
+                            type="number"
+                            min={0}
+                            inputMode="numeric"
+                            dir="ltr"
+                            required
+                            value={employeeCount}
+                            onChange={(e) => setEmployeeCount(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="legal2">Rechtsform</Label>
+                          <select
+                            id="legal2"
+                            required
+                            value={legalForm}
+                            onChange={(e) => setLegalForm(e.target.value)}
+                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                          >
+                            <option value="">Bitte wählen</option>
+                            <option value="Einzelunternehmen">Einzelunternehmen</option>
+                            <option value="GbR">GbR</option>
+                            <option value="UG (haftungsbeschränkt)">UG (haftungsbeschränkt)</option>
+                            <option value="GmbH">GmbH</option>
+                            <option value="GmbH & Co. KG">GmbH &amp; Co. KG</option>
+                            <option value="OHG">OHG</option>
+                            <option value="KG">KG</option>
+                            <option value="AG">AG</option>
+                            <option value="Sonstige">Sonstige</option>
+                          </select>
+                        </div>
+                      </div>
+                      <p className="rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
+                        Sofort startklar: 60 Tage kostenlos testen – ohne Wartezeit und ohne
+                        Zahlungsdaten.
+                      </p>
+                    </>
+                  )}
                   <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
-                    Konto erstellen &amp; 60 Tage testen
+                    {isEmployeeSignup
+                      ? "Mitarbeiterzugang erstellen"
+                      : "Konto erstellen & 60 Tage testen"}
                   </Button>
                 </form>
 

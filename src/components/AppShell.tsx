@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useMyEmployee } from "@/lib/employee";
+import { useMyEmployee, isEmployeeAllowedPath } from "@/lib/employee";
 import { useIsAdmin } from "@/lib/subscriptions";
 
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -148,6 +148,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [myEmployee]);
 
+  // Strikte Rollentrennung: Mitarbeiterkonten haben keinen Zugriff auf
+  // Firmenbereiche (Rechnungen, Kunden, Einstellungen, Administration).
+  useEffect(() => {
+    if (!myEmployee) return;
+    if (isEmployeeAllowedPath(pathname)) return;
+    navigate({ to: "/meine-zeiten", replace: true });
+  }, [myEmployee, pathname, navigate]);
+
   // Echtzeit-Abgleich mit der Datenbank (Kunden, Rechnungen, Angebote)
   useRealtimeSync();
 
@@ -227,7 +235,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-8">
+        {myEmployee && !isEmployeeAllowedPath(pathname) ? (
+          <div className="surface p-6 text-sm text-muted-foreground">
+            Dieser Bereich ist dem Unternehmenskonto vorbehalten. Sie werden zu „Meine Zeiten“
+            weitergeleitet.
+          </div>
+        ) : (
+          children
+        )}
+      </main>
 
       <footer
         className="no-print border-t py-6"

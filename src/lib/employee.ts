@@ -55,3 +55,39 @@ export function useMyEmployee() {
     },
   });
 }
+
+/**
+ * Routen, die Mitarbeiterkonten aufrufen dürfen. Alles andere gehört zum
+ * Unternehmenskonto (Rechnungen, Kunden, Einstellungen, Administration).
+ */
+export const EMPLOYEE_ALLOWED_PREFIXES = [
+  "/meine-zeiten",
+  "/nachrichten",
+  "/profil",
+  "/hilfe",
+] as const;
+
+export function isEmployeeAllowedPath(pathname: string): boolean {
+  return EMPLOYEE_ALLOWED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+}
+
+/**
+ * Prüft nach der Anmeldung, ob das Konto ein Mitarbeiterkonto ist, und liefert
+ * die passende Startseite. Inhaberkonten landen im Dashboard.
+ */
+export async function resolveStartRoute(): Promise<"/dashboard" | "/meine-zeiten"> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth.user?.id;
+  if (!uid) return "/dashboard";
+  const { data: row } = await supabase
+    .from("employees")
+    .select("id,user_id")
+    .eq("auth_user_id", uid)
+    .maybeSingle();
+  if (row && row.user_id !== uid) return "/meine-zeiten";
+  if (row) return "/dashboard";
+  const { data: linkedId } = await supabase.rpc("link_employee_account");
+  return linkedId ? "/meine-zeiten" : "/dashboard";
+}
