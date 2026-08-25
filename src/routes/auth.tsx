@@ -213,6 +213,30 @@ function AuthPage() {
     navigate({ to: "/dashboard", replace: true });
   }
 
+  async function resendConfirmation() {
+    if (!email) {
+      toast.error("Bitte zuerst Ihre E-Mail-Adresse eingeben.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await sendAuthConfirmationEmail({
+        data: { email: email.trim().toLowerCase() },
+      });
+      if (res.sent) {
+        toast.success("Bestätigungslink wurde erneut gesendet. Bitte prüfen Sie Ihr Postfach.");
+      } else {
+        toast.error("Zu dieser E-Mail-Adresse konnte kein Link gesendet werden.");
+      }
+    } catch (err) {
+      toast.error(
+        "Versand fehlgeschlagen: " + (err instanceof Error ? err.message : "Unbekannter Fehler"),
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function google() {
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
