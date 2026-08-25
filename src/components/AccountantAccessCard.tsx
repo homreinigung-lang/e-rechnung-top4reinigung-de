@@ -2,7 +2,11 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { createAccountantAccess, setAccountantPassword } from "@/lib/accountant.functions";
+import {
+  createAccountantAccess,
+  sendAccountantInvite,
+  setAccountantPassword,
+} from "@/lib/accountant.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +36,20 @@ export function AccountantAccessCard() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const createAccess = useServerFn(createAccountantAccess);
   const savePassword = useServerFn(setAccountantPassword);
+  const sendInviteFn = useServerFn(sendAccountantInvite);
+
+  const sendInvite = useMutation({
+    mutationFn: async (vars: { id: string; email: string }) =>
+      sendInviteFn({ data: { ...vars, origin: window.location.origin } }),
+    onSuccess: async (res) => {
+      await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
+      toast.success(`Einladung erfolgreich an ${res.to} gesendet.`, {
+        description: "Der Steuerberater erhält den sicheren Zugangs-Link und das Passwort.",
+        duration: 8000,
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data: accesses = [] } = useQuery({
     queryKey: ["accountant_access"],
@@ -86,26 +104,12 @@ export function AccountantAccessCard() {
   }
 
   function invite(access: Access) {
-    const to = access.email || email;
+    const to = (email || access.email).trim();
     if (!to) {
       toast.error("Bitte E-Mail-Adresse des Steuerberaters eintragen.");
       return;
     }
-    const body = [
-      "Guten Tag,",
-      "",
-      "anbei Ihr persönlicher Nur-Lese-Zugang zu unseren Rechnungen und Ausgaben (DATEV- und Excel-Export inklusive).",
-      "",
-      `Zugangs-Link: ${linkFor(access.token)}`,
-      `Passwort (dauerhaft gültig): ${access.access_code}`,
-      "",
-      "Der Zugang hat kein Ablaufdatum.",
-      "",
-      "Mit freundlichen Grüßen",
-    ].join("\n");
-    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(
-      "Steuerberater-Zugang (Nur-Lese-Zugriff)",
-    )}&body=${encodeURIComponent(body)}`;
+    sendInvite.mutate({ id: access.id, email: to });
   }
 
   return (
@@ -143,12 +147,24 @@ export function AccountantAccessCard() {
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => create.mutate()} disabled={create.isPending}>
-          <KeyRound className="size-4" /> Zugangs-Link generieren &amp; kopieren
+          <KeyRound className="size-4" /> Zugang erstellen
         </Button>
         {accesses[0] && (
-          <Button variant="outline" onClick={() => invite(accesses[0]!)}>
-            <Mail className="size-4" /> Einladung per E-Mail senden
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              disabled={sendInvite.isPending}
+              onClick={() => invite(accesses[0]!)}
+            >
+              <Mail className="size-4" /> Einladung senden
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => copy(linkFor(accesses[0]!.token), "Link in die Zwischenablage kopiert.")}
+            >
+              <Copy className="size-4" /> Link in die Zwischenablage kopieren
+            </Button>
+          </>
         )}
       </div>
 
@@ -172,8 +188,13 @@ export function AccountantAccessCard() {
                   >
                     <Copy className="size-4" /> Link
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => invite(a)}>
-                    <Mail className="size-4" /> Einladung
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={sendInvite.isPending}
+                    onClick={() => invite(a)}
+                  >
+                    <Mail className="size-4" /> Einladung senden
                   </Button>
                   <ConfirmDeleteButton
                     size="sm"
