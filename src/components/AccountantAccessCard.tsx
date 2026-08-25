@@ -43,9 +43,9 @@ export function AccountantAccessCard() {
       sendInviteFn({ data: { ...vars, origin: window.location.origin } }),
     onSuccess: async (res) => {
       await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
-      toast.success(`Einladung für ${res.to} wurde von Resend angenommen.`, {
-        description: "Der sichere Zugangs-Link und das Passwort wurden an den Versanddienst übergeben.",
-        duration: 8000,
+      toast.info(`Versandauftrag für ${res.to} angenommen.`, {
+        description: `Resend-ID: ${res.messageId}. Die Annahme bestätigt noch nicht die Zustellung; bitte auch den Spam-Ordner prüfen.`,
+        duration: 12000,
       });
     },
     onError: (e: Error) => {

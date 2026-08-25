@@ -64,6 +64,7 @@ export async function sendMail(opts: { to: string; subject: string; html: string
     throw new Error("E-Mail konnte nicht gesendet werden: Keine Versandbestätigung erhalten.");
   }
 
+  console.info(`Resend accepted email ${result.id} for ${opts.to}.`);
   return { id: result.id };
 }
 
