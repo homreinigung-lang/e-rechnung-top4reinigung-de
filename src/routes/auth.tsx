@@ -14,7 +14,9 @@ import {
   recoverIncompleteAccount,
 } from "@/lib/approval.functions";
 import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
+import { redeemInviteCode } from "@/lib/employee-invite.functions";
 import { resolveStartRoute } from "@/lib/employee";
+
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
