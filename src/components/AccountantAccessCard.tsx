@@ -176,8 +176,13 @@ export function AccountantAccessCard() {
                   >
                     <Copy className="size-4" /> Link
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => invite(a)}>
-                    <Mail className="size-4" /> Einladung
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={sendInvite.isPending}
+                    onClick={() => invite(a)}
+                  >
+                    <Mail className="size-4" /> Einladung senden
                   </Button>
                   <ConfirmDeleteButton
                     size="sm"
