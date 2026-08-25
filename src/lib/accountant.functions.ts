@@ -359,7 +359,7 @@ ${companyName}`;
       html,
       text,
       companyName,
-      companyEmail,
+      ...(companyEmail ? { companyEmail } : {}),
     });
 
     if (data.email) {

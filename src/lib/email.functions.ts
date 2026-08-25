@@ -22,9 +22,9 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
       to: data.to,
       subject: data.subject,
       text: data.body,
-      html: data.html,
-      companyName: data.companyName,
-      companyEmail: data.companyEmail,
+      ...(data.html ? { html: data.html } : {}),
+      ...(data.companyName ? { companyName: data.companyName } : {}),
+      ...(data.companyEmail ? { companyEmail: data.companyEmail } : {}),
       attachments: [{ filename: data.filename, content: data.pdfBase64 }],
     });
     return { id: result.id, cc: result.cc };
