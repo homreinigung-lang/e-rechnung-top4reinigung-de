@@ -395,6 +395,19 @@ function AuthPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="password3">Passwort wiederholen</Label>
+                    <PasswordInput
+                      id="password3"
+                      required
+                      minLength={6}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                    {confirmPassword.length > 0 && !passwordsMatch && (
+                      <p className="text-sm text-destructive">Die Passwörter stimmen nicht überein.</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="company2">Unternehmensname</Label>
                     <Input
                       id="company2"
