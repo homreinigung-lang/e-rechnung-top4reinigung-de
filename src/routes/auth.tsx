@@ -440,6 +440,20 @@ function AuthPage() {
                   </Button>
                 </form>
 
+                <div className="mt-4 rounded-md border border-border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Keine Bestätigungs-E-Mail erhalten? Der Versand kann sich in seltenen Fällen
+                    verzögern.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void resendConfirmation()}
+                    disabled={loading}
+                    className="mt-2 w-full text-center text-sm font-medium text-primary underline disabled:opacity-50"
+                  >
+                    Bestätigungslink erneut senden
+                  </button>
+                </div>
               </TabsContent>
             </Tabs>
           )}
