@@ -36,6 +36,20 @@ export function AccountantAccessCard() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const createAccess = useServerFn(createAccountantAccess);
   const savePassword = useServerFn(setAccountantPassword);
+  const sendInviteFn = useServerFn(sendAccountantInvite);
+
+  const sendInvite = useMutation({
+    mutationFn: async (vars: { id: string; email: string }) =>
+      sendInviteFn({ data: { ...vars, origin: window.location.origin } }),
+    onSuccess: async (res) => {
+      await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
+      toast.success(`Einladung erfolgreich an ${res.to} gesendet.`, {
+        description: "Der Steuerberater erhält den sicheren Zugangs-Link und das Passwort.",
+        duration: 8000,
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data: accesses = [] } = useQuery({
     queryKey: ["accountant_access"],
