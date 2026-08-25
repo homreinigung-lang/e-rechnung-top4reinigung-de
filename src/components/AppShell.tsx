@@ -148,6 +148,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [myEmployee]);
 
+  // Strikte Rollentrennung: Mitarbeiterkonten haben keinen Zugriff auf
+  // Firmenbereiche (Rechnungen, Kunden, Einstellungen, Administration).
+  useEffect(() => {
+    if (!myEmployee) return;
+    if (isEmployeeAllowedPath(pathname)) return;
+    navigate({ to: "/meine-zeiten", replace: true });
+  }, [myEmployee, pathname, navigate]);
+
   // Echtzeit-Abgleich mit der Datenbank (Kunden, Rechnungen, Angebote)
   useRealtimeSync();
 
