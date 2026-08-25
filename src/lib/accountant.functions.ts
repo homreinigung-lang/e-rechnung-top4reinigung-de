@@ -352,7 +352,7 @@ ${companyName}`;
       <p style="margin-top:28px;color:#64748b;font-size:12px">${escapeHtml(companyName)}</p>
     </div>`;
 
-    await sendMail({ to: data.email, subject, html, text });
+    const delivery = await sendMail({ to: data.email, subject, html, text });
 
     if (data.email) {
       await context.supabase
@@ -362,5 +362,5 @@ ${companyName}`;
         .eq("user_id", context.userId);
     }
 
-    return { sent: true as const, to: data.email };
+    return { sent: true as const, to: data.email, messageId: delivery.id };
   });

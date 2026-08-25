@@ -17,28 +17,54 @@ export async function sendMail(opts: { to: string; subject: string; html: string
 
   const from = process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
 
-  const response = await fetch(`${GATEWAY_URL}/emails`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${lovableKey}`,
-      "X-Connection-Api-Key": resendKey,
-    },
-    body: JSON.stringify({
-      from,
-      to: [opts.to],
-      reply_to: OWNER_EMAIL,
-      subject: opts.subject,
-      text: opts.text,
-      html: opts.html,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${GATEWAY_URL}/emails`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": resendKey,
+      },
+      body: JSON.stringify({
+        from,
+        to: [opts.to],
+        reply_to: OWNER_EMAIL,
+        subject: opts.subject,
+        text: opts.text,
+        html: opts.html,
+      }),
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Netzwerkfehler";
+    console.error(`Resend request failed before response: ${detail}`);
+    throw new Error(`E-Mail konnte nicht gesendet werden: ${detail}`);
+  }
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`E-Mail konnte nicht gesendet werden [${response.status}]: ${body}`);
+    let detail = body;
+    try {
+      const parsed = JSON.parse(body) as { message?: string; error?: string; name?: string };
+      detail = parsed.message || parsed.error || parsed.name || body;
+    } catch {
+      // Textantwort des Anbieters unverändert als Fehlerdetail verwenden.
+    }
+    console.error(`Resend request failed [${response.status}]: ${body}`);
+    throw new Error(`E-Mail konnte nicht gesendet werden [${response.status}]: ${detail}`);
   }
-  return (await response.json()) as { id?: string };
+
+  const result = (await response.json()) as { id?: string; error?: { message?: string } | string };
+  if (result.error) {
+    const detail = typeof result.error === "string" ? result.error : result.error.message;
+    throw new Error(`E-Mail konnte nicht gesendet werden: ${detail || "Unbekannter Anbieterfehler"}`);
+  }
+  if (!result.id) {
+    console.error("Resend accepted the request without returning a message id.");
+    throw new Error("E-Mail konnte nicht gesendet werden: Keine Versandbestätigung erhalten.");
+  }
+
+  return { id: result.id };
 }
 
 const shell = (inner: string) =>
