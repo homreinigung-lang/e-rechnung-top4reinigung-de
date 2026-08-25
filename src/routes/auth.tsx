@@ -46,13 +46,17 @@ function AuthPage() {
   const [legalForm, setLegalForm] = useState("");
 
   const [accountType, setAccountType] = useState<"company" | "employee">("company");
+  const [inviteCode, setInviteCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const passwordsMatch = password === confirmPassword;
-  const canSubmit = password.length >= 6 && passwordsMatch;
   const isEmployeeSignup = accountType === "employee";
+  const canSubmit =
+    password.length >= 6 &&
+    passwordsMatch &&
+    (!isEmployeeSignup || inviteCode.replace(/[\s-]/g, "").length >= 4);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
 
@@ -61,6 +65,17 @@ function AuthPage() {
       if (data.session) navigate({ to: "/dashboard", replace: true });
     });
   }, [navigate]);
+
+  // Einladungslink: /auth?code=XXXXXXXX öffnet direkt die Mitarbeiter-Registrierung.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) {
+      setInviteCode(code.toUpperCase());
+      setAccountType("employee");
+    }
+  }, []);
+
+
 
   async function ensureApproved(): Promise<boolean> {
     const { data } = await supabase.auth.getUser();
