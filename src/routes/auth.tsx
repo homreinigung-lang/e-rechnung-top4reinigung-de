@@ -14,6 +14,7 @@ import {
   recoverIncompleteAccount,
 } from "@/lib/approval.functions";
 import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
+import { resolveStartRoute } from "@/lib/employee";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -42,12 +43,14 @@ function AuthPage() {
   const [employeeCount, setEmployeeCount] = useState("1");
   const [legalForm, setLegalForm] = useState("");
 
+  const [accountType, setAccountType] = useState<"company" | "employee">("company");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const passwordsMatch = password === confirmPassword;
   const canSubmit = password.length >= 6 && passwordsMatch;
+  const isEmployeeSignup = accountType === "employee";
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
 
@@ -88,9 +91,13 @@ function AuthPage() {
       return;
     }
     const ok = await ensureApproved();
+    if (!ok) {
+      setLoading(false);
+      return;
+    }
+    const target = await resolveStartRoute();
     setLoading(false);
-    if (!ok) return;
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: target, replace: true });
   }
 
   async function verifyMfa(e: React.FormEvent) {
@@ -114,9 +121,13 @@ function AuthPage() {
       return;
     }
     const ok = await ensureApproved();
+    if (!ok) {
+      setLoading(false);
+      return;
+    }
+    const target = await resolveStartRoute();
     setLoading(false);
-    if (!ok) return;
-    navigate({ to: "/dashboard", replace: true });
+    navigate({ to: target, replace: true });
   }
 
   async function forgotPassword() {
