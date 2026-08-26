@@ -20,7 +20,9 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
           onClick={() => onChange(n)}
           className="text-amber-500 transition-transform hover:scale-110"
         >
-          <Star className={`size-6 ${n <= value ? "fill-current" : "fill-transparent opacity-40"}`} />
+          <Star
+            className={`size-6 ${n <= value ? "fill-current" : "fill-transparent opacity-40"}`}
+          />
         </button>
       ))}
     </div>
@@ -111,9 +113,7 @@ export function BewertungCard({ defaultCompanyName = "" }: { defaultCompanyName?
           ) : (
             <Button
               disabled={save.isPending}
-              onClick={() =>
-                save.mutate({ id: review?.id, company_name: company, rating, body })
-              }
+              onClick={() => save.mutate({ id: review?.id, company_name: company, rating, body })}
             >
               {save.isPending
                 ? "Wird gespeichert …"

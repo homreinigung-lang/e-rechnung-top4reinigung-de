@@ -15,23 +15,53 @@ const groups: Group[] = [
   {
     title: "Core Calculation Features",
     rows: [
-      { label: "Angebote & Kostenvoranschläge", plans: { basis: true, pro: true, enterprise: true } },
-      { label: "Rechnungen mit automatischer Nummernvergabe", plans: { basis: true, pro: true, enterprise: true } },
-      { label: "Auftragsbestätigung (Angebot → Auftrag → Rechnung)", plans: { basis: true, pro: true, enterprise: true } },
-      { label: "Kleinunternehmerregelung (§ 19 UStG)", plans: { basis: true, pro: true, enterprise: true } },
-      { label: "EU-Reverse-Charge (§ 13b UStG)", plans: { basis: false, pro: true, enterprise: true } },
-      { label: "Kalkulation nach Fläche & Leistungswerten", plans: { basis: false, pro: true, enterprise: true } },
-      { label: "Leistungsverzeichnis (LV) inkl. PDF-Export", plans: { basis: false, pro: true, enterprise: true } },
-      { label: "Wiederkehrende Rechnungen & Ausgaben", plans: { basis: false, pro: true, enterprise: true } },
+      {
+        label: "Angebote & Kostenvoranschläge",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
+      {
+        label: "Rechnungen mit automatischer Nummernvergabe",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
+      {
+        label: "Auftragsbestätigung (Angebot → Auftrag → Rechnung)",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
+      {
+        label: "Kleinunternehmerregelung (§ 19 UStG)",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
+      {
+        label: "EU-Reverse-Charge (§ 13b UStG)",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Kalkulation nach Fläche & Leistungswerten",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Leistungsverzeichnis (LV) inkl. PDF-Export",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Wiederkehrende Rechnungen & Ausgaben",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
     ],
   },
   {
     title: "Client / Project Management",
     rows: [
-      { label: "Kundenverwaltung mit Kundennummern", plans: { basis: true, pro: true, enterprise: true } },
+      {
+        label: "Kundenverwaltung mit Kundennummern",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
       { label: "Client-360-Kundenakte", plans: { basis: false, pro: true, enterprise: true } },
       { label: "Projekte & Objekt-Mappen", plans: { basis: false, pro: false, enterprise: true } },
-      { label: "Raumbuch & KI-Grundriss-Analyse", plans: { basis: false, pro: false, enterprise: true } },
+      {
+        label: "Raumbuch & KI-Grundriss-Analyse",
+        plans: { basis: false, pro: false, enterprise: true },
+      },
       { label: "Einsatzkarte & Standorte", plans: { basis: false, pro: true, enterprise: true } },
     ],
   },
@@ -39,30 +69,62 @@ const groups: Group[] = [
     title: "Team & Reports",
     rows: [
       { label: "Benutzer", plans: { basis: "1", pro: "bis 20", enterprise: "unbegrenzt" } },
-      { label: "Mobile Zeiterfassung für Mitarbeitende", plans: { basis: false, pro: true, enterprise: true } },
-      { label: "Einsatzplanung & Kalender (Drag & Drop)", plans: { basis: false, pro: true, enterprise: true } },
-      { label: "Urlaub, Abwesenheiten & Zeitkonto", plans: { basis: false, pro: true, enterprise: true } },
-      { label: "Finanz-Dashboard & EÜR-Auswertung", plans: { basis: true, pro: true, enterprise: true } },
-      { label: "Quartals- und Kalkulations-Analysen", plans: { basis: false, pro: true, enterprise: true } },
+      {
+        label: "Mobile Zeiterfassung für Mitarbeitende",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Einsatzplanung & Kalender (Drag & Drop)",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Urlaub, Abwesenheiten & Zeitkonto",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Finanz-Dashboard & EÜR-Auswertung",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
+      {
+        label: "Quartals- und Kalkulations-Analysen",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
     ],
   },
   {
     title: "Export & Integrations",
     rows: [
-      { label: "E-Rechnung: XRechnung 3.0 & ZUGFeRD 2.3", plans: { basis: true, pro: true, enterprise: true } },
+      {
+        label: "E-Rechnung: XRechnung 3.0 & ZUGFeRD 2.3",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
       { label: "PDF-Versand per E-Mail", plans: { basis: true, pro: true, enterprise: true } },
-      { label: "GoBD-Archivierung & Prüfprotokoll", plans: { basis: true, pro: true, enterprise: true } },
-      { label: "Eingehende E-Rechnungen importieren", plans: { basis: false, pro: true, enterprise: true } },
-      { label: "Steuerberater-Portal & DATEV-Export", plans: { basis: false, pro: false, enterprise: true } },
-      { label: "Bankabgleich (Kontoumsätze zuordnen)", plans: { basis: false, pro: false, enterprise: true } },
-      { label: "Backup-Export (Excel / JSON)", plans: { basis: true, pro: true, enterprise: true } },
+      {
+        label: "GoBD-Archivierung & Prüfprotokoll",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
+      {
+        label: "Eingehende E-Rechnungen importieren",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Steuerberater-Portal & DATEV-Export",
+        plans: { basis: false, pro: false, enterprise: true },
+      },
+      {
+        label: "Bankabgleich (Kontoumsätze zuordnen)",
+        plans: { basis: false, pro: false, enterprise: true },
+      },
+      {
+        label: "Backup-Export (Excel / JSON)",
+        plans: { basis: true, pro: true, enterprise: true },
+      },
     ],
   },
 ];
 
 function Cell({ value }: { value: boolean | string | undefined }) {
-  if (typeof value === "string")
-    return <span className="text-xs font-semibold">{value}</span>;
+  if (typeof value === "string") return <span className="text-xs font-semibold">{value}</span>;
   return value ? (
     <Check className="mx-auto size-4 text-primary" aria-label="enthalten" />
   ) : (

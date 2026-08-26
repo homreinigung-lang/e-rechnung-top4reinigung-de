@@ -58,7 +58,12 @@ export function useMyReview() {
 export function useSaveReview() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { id?: string; company_name: string; rating: number; body: string }) => {
+    mutationFn: async (input: {
+      id?: string | undefined;
+      company_name: string;
+      rating: number;
+      body: string;
+    }) => {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) throw new Error("Nicht angemeldet");
