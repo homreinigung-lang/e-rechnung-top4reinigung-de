@@ -10,6 +10,9 @@ export type PlatformPayment = {
   terms: string;
   vat_id: string;
   email: string;
+  address_line: string;
+  postal_code: string;
+  city: string;
 };
 
 export const PLATFORM_SETTINGS_ID = "default";
@@ -23,7 +26,11 @@ export const PLATFORM_PAYMENT_FALLBACK: PlatformPayment = {
   terms: PAYMENT_DETAILS.terms,
   vat_id: PAYMENT_DETAILS.vatId,
   email: PAYMENT_DETAILS.email,
+  address_line: "",
+  postal_code: "",
+  city: "",
 };
+
 
 function merge(row: Partial<PlatformPayment> | null): PlatformPayment {
   const out = { ...PLATFORM_PAYMENT_FALLBACK };
@@ -38,11 +45,12 @@ function merge(row: Partial<PlatformPayment> | null): PlatformPayment {
 export async function fetchPlatformPayment(): Promise<PlatformPayment> {
   const { data } = await supabase
     .from("platform_settings")
-    .select("recipient, iban, bic, bank, terms, vat_id, email")
+    .select("recipient, iban, bic, bank, terms, vat_id, email, address_line, postal_code, city")
     .eq("id", PLATFORM_SETTINGS_ID)
     .maybeSingle();
   return merge(data);
 }
+
 
 /** Bankdaten des Plattform-Betreibers (in der Administration pflegbar). */
 export function usePlatformPayment() {
