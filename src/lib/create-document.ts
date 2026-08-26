@@ -16,9 +16,7 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
     .select("payment_terms_days, small_business")
     .maybeSingle();
 
-  const smallBusiness = Boolean(
-    (settings as Record<string, unknown> | null)?.["small_business"],
-  );
+  const smallBusiness = Boolean((settings as Record<string, unknown> | null)?.["small_business"]);
 
   const number = await reserveDocumentNumber(type);
   const issue = today();
@@ -37,7 +35,6 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
       reverse_charge: false,
       tax_mode: smallBusiness ? "kleinunternehmer" : "domestic",
       vat_rate: smallBusiness ? 0 : 19,
-
     })
     .select("id")
     .single();

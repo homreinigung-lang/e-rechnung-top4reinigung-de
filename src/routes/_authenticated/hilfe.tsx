@@ -77,9 +77,13 @@ function HilfePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Beschreiben Sie kurz Ihr Anliegen – wir melden uns werktags innerhalb von 24 Stunden.</p>
+            <p>
+              Beschreiben Sie kurz Ihr Anliegen – wir melden uns werktags innerhalb von 24 Stunden.
+            </p>
             <Button asChild size="sm">
-              <a href={`mailto:${SUPPORT_MAIL}?subject=${encodeURIComponent("Support-Anfrage GebCalc")}`}>
+              <a
+                href={`mailto:${SUPPORT_MAIL}?subject=${encodeURIComponent("Support-Anfrage GebCalc")}`}
+              >
                 E-Mail an den Support
               </a>
             </Button>
@@ -93,7 +97,9 @@ function HilfePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Manche Funktionen sind an Ihr Paket gebunden. Aktuellen Umfang prüfen oder erweitern:</p>
+            <p>
+              Manche Funktionen sind an Ihr Paket gebunden. Aktuellen Umfang prüfen oder erweitern:
+            </p>
             <Button asChild size="sm" variant="outline">
               <Link to="/mein-paket">Mein Paket ansehen</Link>
             </Button>

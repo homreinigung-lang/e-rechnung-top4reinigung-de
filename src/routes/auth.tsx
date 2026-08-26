@@ -17,7 +17,6 @@ import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
 import { redeemInviteCode } from "@/lib/employee-invite.functions";
 import { resolveStartRoute } from "@/lib/employee";
 
-
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
@@ -76,8 +75,6 @@ function AuthPage() {
       setInvitedTab(true);
     }
   }, []);
-
-
 
   async function ensureApproved(): Promise<boolean> {
     const { data } = await supabase.auth.getUser();
@@ -225,7 +222,6 @@ function AuthPage() {
     navigate({ to: "/meine-zeiten", replace: true });
   }
 
-
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
     if (!passwordsMatch) {
@@ -247,8 +243,9 @@ function AuthPage() {
     let userId = data.user?.id ?? null;
 
     if (error) {
-      const alreadyRegistered =
-        /already registered|already been registered|user already/i.test(error.message);
+      const alreadyRegistered = /already registered|already been registered|user already/i.test(
+        error.message,
+      );
       if (!alreadyRegistered) {
         setLoading(false);
         toast.error("Registrierung fehlgeschlagen: " + error.message);
@@ -363,7 +360,6 @@ function AuthPage() {
     navigate({ to: target, replace: true });
   }
 
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
@@ -419,7 +415,10 @@ function AuthPage() {
               </button>
             </form>
           ) : (
-            <Tabs key={invitedTab ? "register" : "login"} defaultValue={invitedTab ? "register" : "login"}>
+            <Tabs
+              key={invitedTab ? "register" : "login"}
+              defaultValue={invitedTab ? "register" : "login"}
+            >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Anmelden</TabsTrigger>
                 <TabsTrigger value="register">Registrieren</TabsTrigger>
@@ -536,7 +535,9 @@ function AuthPage() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                     {confirmPassword.length > 0 && !passwordsMatch && (
-                      <p className="text-sm text-destructive">Die Passwörter stimmen nicht überein.</p>
+                      <p className="text-sm text-destructive">
+                        Die Passwörter stimmen nicht überein.
+                      </p>
                     )}
                   </div>
                   {isEmployeeSignup && (

@@ -16,10 +16,7 @@ import {
   EXTRA_EMPLOYEE_CENTS,
   PRO_INCLUDED_EMPLOYEES,
 } from "@/lib/plan-orders";
-import {
-  RenewalPaymentDialog,
-  type RenewalPaymentInfo,
-} from "@/components/RenewalPaymentDialog";
+import { RenewalPaymentDialog, type RenewalPaymentInfo } from "@/components/RenewalPaymentDialog";
 import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/mein-paket")({
@@ -28,7 +25,8 @@ export const Route = createFileRoute("/_authenticated/mein-paket")({
       { title: "Mein Paket – GebCalc" },
       {
         name: "description",
-        content: "Aktuelles GebCalc-Paket ansehen, verlängern oder auf ein größeres Paket wechseln.",
+        content:
+          "Aktuelles GebCalc-Paket ansehen, verlängern oder auf ein größeres Paket wechseln.",
       },
       { property: "og:title", content: "Mein Paket – GebCalc" },
       {
@@ -110,7 +108,6 @@ function MeinPaket() {
       netCents: plan ? monthlyPriceCents(plan, employeeCount) : 0,
     });
   }
-
 
   return (
     <div className="space-y-8">
@@ -276,7 +273,12 @@ function MeinPaket() {
                     </li>
                   ))}
                 </ul>
-                <Button asChild className="mt-6" disabled={isCurrent} variant={isCurrent ? "secondary" : "default"}>
+                <Button
+                  asChild
+                  className="mt-6"
+                  disabled={isCurrent}
+                  variant={isCurrent ? "secondary" : "default"}
+                >
                   <a
                     href={requestMail(
                       `Upgrade auf Paket ${plan.name}`,

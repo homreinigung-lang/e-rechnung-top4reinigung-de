@@ -22,7 +22,7 @@ export async function sendVerifiedEmail(options: SendVerifiedEmailOptions) {
 
   const baseFrom = process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
   const baseAddress = baseFrom.match(/<([^>]+)>/)?.[1] ?? baseFrom;
-  const senderName = (options.companyName ?? "").replace(/[<>\"]/g, "").trim();
+  const senderName = (options.companyName ?? "").replace(/[<>"]/g, "").trim();
   const fromAddress = senderName ? `${senderName} <${baseAddress}>` : baseFrom;
   const copyTo = options.companyEmail?.trim() || null;
 
@@ -67,7 +67,9 @@ export async function sendVerifiedEmail(options: SendVerifiedEmailOptions) {
   const result = (await response.json()) as { id?: string; error?: { message?: string } | string };
   if (result.error) {
     const detail = typeof result.error === "string" ? result.error : result.error.message;
-    throw new Error(`E-Mail konnte nicht gesendet werden: ${detail || "Unbekannter Anbieterfehler"}`);
+    throw new Error(
+      `E-Mail konnte nicht gesendet werden: ${detail || "Unbekannter Anbieterfehler"}`,
+    );
   }
   if (!result.id) {
     console.error("Resend accepted the request without returning a message id.");

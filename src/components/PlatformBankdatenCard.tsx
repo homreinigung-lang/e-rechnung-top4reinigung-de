@@ -82,8 +82,8 @@ export function PlatformBankdatenCard() {
         <div className="space-y-1">
           <h2 className="font-display text-lg font-semibold">Bankdaten der Plattform</h2>
           <p className="text-sm text-muted-foreground">
-            Diese Bankdaten erscheinen in allen Zahlungsaufforderungen, im Zahlungs-Modal,
-            im GiroCode-QR und in der Proforma-Rechnung (z. B. Paket-Verlängerung).
+            Diese Bankdaten erscheinen in allen Zahlungsaufforderungen, im Zahlungs-Modal, im
+            GiroCode-QR und in der Proforma-Rechnung (z. B. Paket-Verlängerung).
           </p>
         </div>
       </div>
@@ -105,7 +105,9 @@ export function PlatformBankdatenCard() {
                 aria-invalid={!ibanOk}
               />
               {form.iban.trim() !== "" && (
-                <p className={ibanOk ? "text-xs text-muted-foreground" : "text-xs text-destructive"}>
+                <p
+                  className={ibanOk ? "text-xs text-muted-foreground" : "text-xs text-destructive"}
+                >
                   {ibanOk ? `Gültig: ${formatIban(form.iban)}` : "IBAN-Prüfsumme ungültig"}
                 </p>
               )}

@@ -37,9 +37,7 @@ export function TrialBanner() {
       <div className="flex items-start gap-3">
         <Sparkles className="mt-0.5 size-5 shrink-0 text-primary" />
         <div>
-          <p className="font-semibold">
-            Kostenlose Testphase: noch {days} von 60 Tagen
-          </p>
+          <p className="font-semibold">Kostenlose Testphase: noch {days} von 60 Tagen</p>
           <p className="text-xs text-muted-foreground">
             Voller Funktionsumfang bis {formatDate(data.renews_on)} – danach einfach ein Paket
             wählen.

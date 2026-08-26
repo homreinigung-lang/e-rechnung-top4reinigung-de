@@ -562,7 +562,6 @@ export function EinsatzKalender({
     },
   });
 
-
   const byDay = useMemo(() => {
     const map = new Map<string, typeof entries>();
     for (const e of entries) {
@@ -922,8 +921,6 @@ export function EinsatzKalender({
         </div>
       )}
 
-
-
       {view === "month" && visibleEmployees.length > 0 && (
         <div className="flex flex-wrap gap-2 text-xs">
           {visibleEmployees.map((emp) => {
@@ -983,7 +980,6 @@ export function EinsatzKalender({
                   } ${dropTarget === `m-${key}` ? "ring-2 ring-inset ring-primary bg-primary/10" : ""}`}
                   title={holiday ? `Feiertag (Saarland): ${holiday}` : undefined}
                 >
-
                   <div className="flex items-center justify-between">
                     <span className={`text-xs ${key === today ? "font-bold text-primary" : ""}`}>
                       {d.getDate()}
@@ -1166,7 +1162,6 @@ export function EinsatzKalender({
                                 donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
                               }`}
                             >
-
                               {reason ? (
                                 <span className="flex items-center gap-1">
                                   {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
@@ -1544,7 +1539,6 @@ export function EinsatzKalender({
                   : "Einsatz eintragen"}
             </Button>
           </DialogFooter>
-
         </DialogContent>
       </Dialog>
 

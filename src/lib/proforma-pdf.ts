@@ -38,7 +38,10 @@ export async function buildProformaPdfBytes(d: ProformaData): Promise<Uint8Array
   const muted = rgb(0.42, 0.45, 0.5);
 
   let y = PAGE_H - M;
-  const line = (s: string, opts?: { size?: number; bold?: boolean; color?: typeof text; gap?: number }) => {
+  const line = (
+    s: string,
+    opts?: { size?: number; bold?: boolean; color?: typeof text; gap?: number },
+  ) => {
     const size = opts?.size ?? 10;
     page.drawText(cleanPdfText(s), {
       x: M,
@@ -90,10 +93,10 @@ export async function buildProformaPdfBytes(d: ProformaData): Promise<Uint8Array
   line(`Bank: ${p.bank}`);
   line(`Verwendungszweck: ${d.reference}`, { gap: 10 });
   line(p.terms, { size: 9, color: muted, gap: 4 });
-  line(
-    "Dies ist eine Zahlungsaufforderung (Proforma) und keine umsatzsteuerliche Rechnung.",
-    { size: 9, color: muted },
-  );
+  line("Dies ist eine Zahlungsaufforderung (Proforma) und keine umsatzsteuerliche Rechnung.", {
+    size: 9,
+    color: muted,
+  });
 
   return pdf.save();
 }

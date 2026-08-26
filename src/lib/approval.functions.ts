@@ -78,7 +78,11 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Mitarbeitende bekommen weder Firmenprofil noch Abonnement.
-    const employee = await supabaseAdmin.from("employees").select("id").ilike("email", email).limit(1);
+    const employee = await supabaseAdmin
+      .from("employees")
+      .select("id")
+      .ilike("email", email)
+      .limit(1);
     if ((employee.data ?? []).length > 0) return { status: "approved" };
 
     const settings = await supabaseAdmin
@@ -155,7 +159,11 @@ export const recoverIncompleteAccount = createServerFn({ method: "POST" })
 
     // Vollständigkeit prüfen: Firmenprofil ODER echte Nutzdaten vorhanden?
     const [settings, docs, customers, employeeLink] = await Promise.all([
-      supabaseAdmin.from("company_settings").select("id,company_name").eq("user_id", userId).maybeSingle(),
+      supabaseAdmin
+        .from("company_settings")
+        .select("id,company_name")
+        .eq("user_id", userId)
+        .maybeSingle(),
       supabaseAdmin.from("documents").select("id").eq("user_id", userId).limit(1),
       supabaseAdmin.from("customers").select("id").eq("user_id", userId).limit(1),
       supabaseAdmin.from("employees").select("id").eq("auth_user_id", userId).limit(1),
@@ -202,9 +210,7 @@ export const getApprovalStatus = createServerFn({ method: "POST" })
  */
 export const deleteCompanyAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ approvalId: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input: unknown) => z.object({ approvalId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const isAdmin = await context.supabase.rpc("has_role", {
       _user_id: context.userId,

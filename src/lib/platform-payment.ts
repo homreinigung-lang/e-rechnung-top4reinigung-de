@@ -60,7 +60,9 @@ export function normalizeIban(iban: string): string {
 
 /** Formatiert eine IBAN in 4er-Gruppen. */
 export function formatIban(iban: string): string {
-  return normalizeIban(iban).replace(/(.{4})/g, "$1 ").trim();
+  return normalizeIban(iban)
+    .replace(/(.{4})/g, "$1 ")
+    .trim();
 }
 
 /** Prüft IBAN-Länge und Modulo-97-Prüfsumme. */

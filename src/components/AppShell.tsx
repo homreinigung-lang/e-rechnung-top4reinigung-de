@@ -30,7 +30,6 @@ import {
   HardHat,
   Landmark,
   LifeBuoy,
-
   Map as MapIcon,
   LayoutDashboard,
   LogOut,
@@ -102,7 +101,6 @@ const navGroups: readonly NavGroup[] = [
       { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
     ],
   },
-
 ] as const;
 
 // Menü für Mitarbeiterkonten (nur eigene Zeiten)
@@ -115,7 +113,6 @@ const employeeGroups: readonly NavGroup[] = [
       { to: "/profil", label: "Mein Profil", icon: UserCircle },
       { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
     ],
-
   },
 ] as const;
 
@@ -277,6 +274,5 @@ export function AppShell({ children }: { children: ReactNode }) {
         <span className="hidden sm:inline">Hilfe</span>
       </Link>
     </div>
-
   );
 }
