@@ -62,8 +62,7 @@ const reviews = [
   },
 ];
 
-const avgRating =
-  reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -233,7 +232,9 @@ function Landing() {
                 <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
                   {avgRating.toFixed(1)}
                   <Star className="size-3 fill-current" />
-                  <span className="font-normal text-muted-foreground">· {reviews.length} Bewertungen</span>
+                  <span className="font-normal text-muted-foreground">
+                    · {reviews.length} Bewertungen
+                  </span>
                 </span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -367,8 +368,8 @@ function Landing() {
         <section id="preise" className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-2xl font-bold md:text-3xl">Pakete & Preise</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Transparente Preise – monatlich oder jährlich abrechenbar. Alle Preise zzgl. gesetzlicher
-            Umsatzsteuer.
+            Transparente Preise – monatlich oder jährlich abrechenbar. Alle Preise zzgl.
+            gesetzlicher Umsatzsteuer.
           </p>
           <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {activePlans.map((plan) => (
@@ -394,7 +395,6 @@ function Landing() {
                 <Button className="mt-6" onClick={() => setOrderPlan(plan)}>
                   Paket wählen
                 </Button>
-
               </div>
             ))}
             {activePlans.length === 0 ? (

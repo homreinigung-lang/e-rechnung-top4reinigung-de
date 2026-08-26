@@ -196,7 +196,6 @@ function CompanyProfil() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   return (
     <div className="space-y-6">
       <div>
@@ -241,7 +240,6 @@ function CompanyProfil() {
           )}
         </div>
       ))}
-
 
       <div className="surface space-y-4 p-6">
         <div>

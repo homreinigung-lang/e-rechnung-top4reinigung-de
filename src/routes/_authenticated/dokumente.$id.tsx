@@ -246,7 +246,6 @@ function DokumentDetail() {
   const vatRate = vatRateForTaxMode(taxMode);
   const taxNote = taxNoteForTaxMode(taxMode);
 
-
   const logoSrc = useFileUrl(
     data?.settings && (data.settings as Record<string, unknown>)["logo_url"]
       ? String((data.settings as Record<string, unknown>)["logo_url"])
@@ -656,9 +655,7 @@ function DokumentDetail() {
 
     const signatureText = [
       String(settings?.["email_signature"] ?? "") ||
-        [settings?.["company_name"] ?? "", settings?.["phone"] ?? ""]
-          .filter(Boolean)
-          .join("\n"),
+        [settings?.["company_name"] ?? "", settings?.["phone"] ?? ""].filter(Boolean).join("\n"),
       settings?.["website_url"] ? String(settings["website_url"]) : "",
       settings?.["facebook_url"] ? String(settings["facebook_url"]) : "",
     ]
@@ -680,9 +677,9 @@ function DokumentDetail() {
 
   const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
-  const bankName = String(settings?.["bank_name"] ?? "") ;
-  const iban = String(settings?.["iban"] ?? "") ;
-  const bic = String(settings?.["bic"] ?? "") ;
+  const bankName = String(settings?.["bank_name"] ?? "");
+  const iban = String(settings?.["iban"] ?? "");
+  const bic = String(settings?.["bic"] ?? "");
 
   const epc = isInvoice
     ? buildEpcPayload({
@@ -1236,7 +1233,6 @@ function DokumentDetail() {
             onValueChange={(v) => setField("tax_mode", v)}
             disabled={isSmallBusiness}
           >
-
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -1728,7 +1724,9 @@ function DokumentDetail() {
                   ),
                 )}
               </h2>
-              <p className="mt-3 text-justify text-sm leading-relaxed">{quoteIntro(String(settings?.["company_name"] ?? ""))}</p>
+              <p className="mt-3 text-justify text-sm leading-relaxed">
+                {quoteIntro(String(settings?.["company_name"] ?? ""))}
+              </p>
             </>
           )}
           {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}

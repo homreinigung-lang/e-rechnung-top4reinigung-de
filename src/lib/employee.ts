@@ -68,9 +68,7 @@ export const EMPLOYEE_ALLOWED_PREFIXES = [
 ] as const;
 
 export function isEmployeeAllowedPath(pathname: string): boolean {
-  return EMPLOYEE_ALLOWED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + "/"),
-  );
+  return EMPLOYEE_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 /**

@@ -165,7 +165,9 @@ export function AccountantAccessCard() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => copy(linkFor(accesses[0]!.token), "Link in die Zwischenablage kopiert.")}
+              onClick={() =>
+                copy(linkFor(accesses[0]!.token), "Link in die Zwischenablage kopiert.")
+              }
             >
               <Copy className="size-4" /> Link in die Zwischenablage kopieren
             </Button>

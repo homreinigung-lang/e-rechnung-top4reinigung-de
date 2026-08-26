@@ -75,7 +75,6 @@ export function useDeleteCompanyAccount() {
   });
 }
 
-
 export type Plan = {
   id: string;
   code: string;

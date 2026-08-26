@@ -7,9 +7,7 @@ import { z } from "zod";
  * Der bestehende Rechnungs- und Angebotsversand bleibt davon unberührt.
  */
 export const sendAuthConfirmationEmail = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
-    z.object({ email: z.string().email().max(200) }).parse(input),
-  )
+  .inputValidator((input: unknown) => z.object({ email: z.string().email().max(200) }).parse(input))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

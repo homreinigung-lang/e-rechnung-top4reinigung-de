@@ -39,11 +39,7 @@ const emptyForm = {
   note: "",
 };
 
-import {
-  usePlatformPayment,
-  PLATFORM_PAYMENT_FALLBACK,
-  formatIban,
-} from "@/lib/platform-payment";
+import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
 
 export function PlanOrderDialog({ plan, onOpenChange }: Props) {
   const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
@@ -117,11 +113,19 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Firma *" value={form.companyName} onChange={set("companyName")} />
-                <Field label="Ansprechpartner" value={form.contactName} onChange={set("contactName")} />
+                <Field
+                  label="Ansprechpartner"
+                  value={form.contactName}
+                  onChange={set("contactName")}
+                />
                 <Field label="E-Mail *" type="email" value={form.email} onChange={set("email")} />
                 <Field label="Telefon" value={form.phone} onChange={set("phone")} />
                 <div className="sm:col-span-2">
-                  <Field label="Straße und Hausnummer *" value={form.addressLine} onChange={set("addressLine")} />
+                  <Field
+                    label="Straße und Hausnummer *"
+                    value={form.addressLine}
+                    onChange={set("addressLine")}
+                  />
                 </div>
                 <Field label="PLZ" value={form.postalCode} onChange={set("postalCode")} />
                 <Field label="Ort" value={form.city} onChange={set("city")} />

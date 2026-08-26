@@ -431,9 +431,7 @@ function Einstellungen() {
             rows={5}
             value={form["email_signature"] ?? ""}
             onChange={(e) => setForm({ ...form, email_signature: e.target.value })}
-            placeholder={
-              "Mit freundlichen Grüßen\nIhr Firmenname\nStraße, PLZ Ort"
-            }
+            placeholder={"Mit freundlichen Grüßen\nIhr Firmenname\nStraße, PLZ Ort"}
           />
           <p className="text-xs text-muted-foreground">
             Die Signatur wird automatisch unter jede Rechnungs- und Angebots-E-Mail gesetzt.
@@ -640,46 +638,45 @@ function Einstellungen() {
 
       <AccountantAccessCard />
 
-
       {isAdmin && (
-      <div className="surface space-y-4 p-6">
-        <h2 className="font-display text-lg font-semibold">Import aus Lexoffice / Lexware</h2>
-        <p className="text-sm text-muted-foreground">
-          Datei auswählen – der Typ wird automatisch erkannt: Rechnungen (z. B. Export_RE_…) landen
-          unter „Rechnungen“, Ausgaben (z. B. Export_RA_…) unter „Ausgaben“, Kundenlisten im
-          Kundenstamm. Trennzeichen (; , Tab |), Kodierung (UTF-8 / Windows-1252 / ISO-8859-1) und
-          abweichende Spaltennamen werden automatisch erkannt; unbekannte Spalten werden
-          übersprungen.
-        </p>
-        <Label
-          htmlFor="csv"
-          className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
-        >
-          <Upload className="size-4" /> Datei importieren (Rechnungen, Ausgaben oder Kunden)
-        </Label>
-        <input
-          id="csv"
-          type="file"
-          accept=".csv,.txt,text/csv,text/plain"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void importFile(file);
-            e.target.value = "";
-          }}
-        />
-        {preview && (
-          <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/40 px-4 py-3 text-sm">
-            <span>
-              <strong>{preview.rows.length}</strong> Zeilen erkannt ({KIND_LABEL[preview.kind]}) aus{" "}
-              {preview.fileName}
-            </span>
-            <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
-              Vorschau
-            </Button>
-          </div>
-        )}
-      </div>
+        <div className="surface space-y-4 p-6">
+          <h2 className="font-display text-lg font-semibold">Import aus Lexoffice / Lexware</h2>
+          <p className="text-sm text-muted-foreground">
+            Datei auswählen – der Typ wird automatisch erkannt: Rechnungen (z. B. Export_RE_…)
+            landen unter „Rechnungen“, Ausgaben (z. B. Export_RA_…) unter „Ausgaben“, Kundenlisten
+            im Kundenstamm. Trennzeichen (; , Tab |), Kodierung (UTF-8 / Windows-1252 / ISO-8859-1)
+            und abweichende Spaltennamen werden automatisch erkannt; unbekannte Spalten werden
+            übersprungen.
+          </p>
+          <Label
+            htmlFor="csv"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+          >
+            <Upload className="size-4" /> Datei importieren (Rechnungen, Ausgaben oder Kunden)
+          </Label>
+          <input
+            id="csv"
+            type="file"
+            accept=".csv,.txt,text/csv,text/plain"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void importFile(file);
+              e.target.value = "";
+            }}
+          />
+          {preview && (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/40 px-4 py-3 text-sm">
+              <span>
+                <strong>{preview.rows.length}</strong> Zeilen erkannt ({KIND_LABEL[preview.kind]})
+                aus {preview.fileName}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
+                Vorschau
+              </Button>
+            </div>
+          )}
+        </div>
       )}
 
       <Dialog open={previewOpen} onOpenChange={(o) => setPreviewOpen(o)}>
