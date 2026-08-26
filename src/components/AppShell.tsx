@@ -39,6 +39,7 @@ import {
   Repeat,
   Settings,
   ShieldCheck,
+  Star,
   Trash2,
   TrendingDown,
   UserCircle,
