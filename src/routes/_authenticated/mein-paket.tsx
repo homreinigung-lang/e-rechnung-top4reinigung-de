@@ -118,8 +118,6 @@ function MeinPaket() {
         </p>
       </div>
 
-      <BewertungCard defaultCompanyName={sub?.company_name ?? ""} />
-
       <section className="surface p-6">
         <h2 className="text-lg font-semibold">Aktuelles Abonnement</h2>
         {isLoading ? (
