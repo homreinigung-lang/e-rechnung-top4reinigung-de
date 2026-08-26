@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, FileText, Scale, ShieldCheck } from "lucide-react";
+import { BookOpen, FileCheck2, FileText, Scale, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/rechtliches/")({
   head: () => ({
