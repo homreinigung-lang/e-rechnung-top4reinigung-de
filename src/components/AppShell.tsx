@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { useIsAdmin } from "@/lib/subscriptions";
 
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
+import { BewertungDialog } from "@/components/BewertungDialog";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,7 @@ import {
   Repeat,
   Settings,
   ShieldCheck,
+  Star,
   Trash2,
   TrendingDown,
   UserCircle,
@@ -122,6 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: myEmployee } = useMyEmployee();
   const { data: isAdmin } = useIsAdmin();
+  const [reviewOpen, setReviewOpen] = useState(false);
   const baseGroups = myEmployee ? employeeGroups : navGroups;
   const groups: readonly NavGroup[] =
     !myEmployee && isAdmin
@@ -264,15 +267,30 @@ export function AppShell({ children }: { children: ReactNode }) {
       </footer>
 
       {/* Dezenter Hilfe-Button unten rechts */}
-      <Link
-        to="/hilfe"
-        aria-label="Hilfe und Support öffnen"
-        className="no-print fixed right-4 z-40 inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm font-medium text-muted-foreground shadow-lg backdrop-blur transition-colors hover:text-foreground"
+      <div
+        className="no-print fixed right-4 z-40 flex flex-col items-end gap-2"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
       >
-        <LifeBuoy className="size-4" />
-        <span className="hidden sm:inline">Hilfe</span>
-      </Link>
+        <button
+          type="button"
+          onClick={() => setReviewOpen(true)}
+          aria-label="Bewertung abgeben"
+          className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm font-medium text-muted-foreground shadow-lg backdrop-blur transition-colors hover:text-foreground"
+        >
+          <Star className="size-4 text-amber-500" />
+          <span className="hidden sm:inline">Bewertung</span>
+        </button>
+        <Link
+          to="/hilfe"
+          aria-label="Hilfe und Support öffnen"
+          className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm font-medium text-muted-foreground shadow-lg backdrop-blur transition-colors hover:text-foreground"
+        >
+          <LifeBuoy className="size-4" />
+          <span className="hidden sm:inline">Hilfe</span>
+        </Link>
+      </div>
+
+      <BewertungDialog open={reviewOpen} onOpenChange={setReviewOpen} />
     </div>
   );
 }
