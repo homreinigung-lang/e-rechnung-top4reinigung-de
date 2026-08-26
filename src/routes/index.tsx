@@ -178,53 +178,56 @@ function Landing() {
           <Button asChild size="sm">
             <Link to="/auth">Login</Link>
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={`Kundenbewertungen anzeigen (${avgRating.toFixed(1)} von 5 Sternen, ${reviews.length} Bewertungen)`}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-card/90 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur transition-colors hover:bg-accent"
-              >
-                <span className="flex items-center text-amber-500">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`size-3.5 ${i < Math.round(avgRating) ? "fill-current" : "fill-transparent opacity-40"}`}
-                    />
-                  ))}
-                </span>
-                <span>{avgRating.toFixed(1)}</span>
-                <span className="text-muted-foreground font-normal">· {reviews.length}</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
-              <DropdownMenuLabel className="flex items-center justify-between gap-2">
-                <span>Kundenbewertungen</span>
-                <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
-                  {avgRating.toFixed(1)}
-                  <Star className="size-3 fill-current" />
-                  <span className="font-normal text-muted-foreground">
-                    · {reviews.length} Bewertungen
+          {reviews.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Kundenbewertungen anzeigen (${avgRating.toFixed(1)} von 5 Sternen, ${reviews.length} Bewertungen)`}
+                  className="inline-flex items-center gap-1.5 rounded-full border bg-card/90 px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur transition-colors hover:bg-accent"
+                >
+                  <span className="flex items-center text-amber-500">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`size-3.5 ${i < Math.round(avgRating) ? "fill-current" : "fill-transparent opacity-40"}`}
+                      />
+                    ))}
                   </span>
-                </span>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {reviews.map((r) => (
-                <div key={r.id} className="px-2 py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold">{r.company_name}</span>
-                    <span className="flex items-center gap-0.5 text-amber-500">
-                      {Array.from({ length: r.rating }).map((_, j) => (
-                        <Star key={j} className="size-3 fill-current" />
-                      ))}
+                  <span>{avgRating.toFixed(1)}</span>
+                  <span className="text-muted-foreground font-normal">· {reviews.length}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
+                <DropdownMenuLabel className="flex items-center justify-between gap-2">
+                  <span>Kundenbewertungen</span>
+                  <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
+                    {avgRating.toFixed(1)}
+                    <Star className="size-3 fill-current" />
+                    <span className="font-normal text-muted-foreground">
+                      · {reviews.length} Bewertungen
                     </span>
+                  </span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {reviews.map((r) => (
+                  <div key={r.id} className="px-2 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">{r.company_name}</span>
+                      <span className="flex items-center gap-0.5 text-amber-500">
+                        {Array.from({ length: r.rating }).map((_, j) => (
+                          <Star key={j} className="size-3 fill-current" />
+                        ))}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-primary">Verified Business User</p>
+                    <p className="mt-1 text-xs text-foreground/90 leading-snug">{r.body}</p>
                   </div>
-                  <p className="text-[11px] text-primary">Verified Business User</p>
-                  <p className="mt-1 text-xs text-foreground/90 leading-snug">{r.text}</p>
-                </div>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Menü öffnen">
