@@ -48,7 +48,11 @@ export function PlatformBankdatenCard() {
         terms: form.terms.trim(),
         vat_id: form.vat_id.trim(),
         email: form.email.trim(),
+        address_line: form.address_line.trim(),
+        postal_code: form.postal_code.trim(),
+        city: form.city.trim(),
       };
+
       const { error } = await supabase
         .from("platform_settings")
         .upsert(payload, { onConflict: "id" });

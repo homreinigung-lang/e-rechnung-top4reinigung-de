@@ -16,6 +16,8 @@ import {
 import { Building2, CalendarPlus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
+import { PlatformRechnungDialog } from "@/components/PlatformRechnungDialog";
+
 
 /** Laufzeitende um n Monate verlängern (ab heute, falls bereits abgelaufen). */
 function extendDate(current: string | null, months: number): string {
