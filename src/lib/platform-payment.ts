@@ -42,7 +42,18 @@ function merge(row: Partial<PlatformPayment> | null): PlatformPayment {
   return out;
 }
 
+/**
+ * Zahlungsdaten für angemeldete Kunden: liefert ausschließlich die für die
+ * Zahlung nötigen Felder über eine eng begrenzte Datenbank-Funktion.
+ * Die vollständige Einstellungszeile ist per RLS Administratoren vorbehalten.
+ */
 export async function fetchPlatformPayment(): Promise<PlatformPayment> {
+  const { data } = await supabase.rpc("get_platform_payment");
+  return merge(Array.isArray(data) ? (data[0] ?? null) : null);
+}
+
+/** Vollständige Plattform-Einstellungen – nur für Administratoren lesbar. */
+export async function fetchPlatformSettingsAdmin(): Promise<PlatformPayment> {
   const { data } = await supabase
     .from("platform_settings")
     .select("recipient, iban, bic, bank, terms, vat_id, email, address_line, postal_code, city")
@@ -51,12 +62,20 @@ export async function fetchPlatformPayment(): Promise<PlatformPayment> {
   return merge(data);
 }
 
-
 /** Bankdaten des Plattform-Betreibers (in der Administration pflegbar). */
 export function usePlatformPayment() {
   return useQuery({
     queryKey: ["platform_settings"],
     queryFn: fetchPlatformPayment,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Vollständige Einstellungen für die Administrationsoberfläche. */
+export function usePlatformSettingsAdmin() {
+  return useQuery({
+    queryKey: ["platform_settings", "admin"],
+    queryFn: fetchPlatformSettingsAdmin,
     staleTime: 5 * 60_000,
   });
 }
