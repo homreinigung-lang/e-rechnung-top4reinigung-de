@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Check, Minus } from "lucide-react";
 
 import type { Plan } from "@/lib/admin";
@@ -95,8 +96,8 @@ export function FeatureVergleich({ plans }: { plans: Plan[] }) {
           </thead>
           <tbody>
             {groups.map((g) => (
-              <>
-                <tr key={g.title} className="bg-muted/40">
+              <Fragment key={g.title}>
+                <tr className="bg-muted/40">
                   <td
                     colSpan={plans.length + 1}
                     className="px-4 py-2 text-xs font-semibold tracking-wide uppercase text-muted-foreground"
@@ -114,7 +115,7 @@ export function FeatureVergleich({ plans }: { plans: Plan[] }) {
                     ))}
                   </tr>
                 ))}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
