@@ -110,8 +110,8 @@ export function WiederkehrendeAusgaben({ categories }: { categories: string[] })
       if (!userId) throw new Error("Nicht angemeldet");
       if (!form.title.trim() && !form.supplier.trim())
         throw new Error("Bitte eine Bezeichnung angeben.");
-      const net = Number(form.net_amount || 0);
-      const vat = Number(form.vat_amount || 0);
+      const net = parseAmount(form.net_amount);
+      const vat = parseAmount(form.vat_amount);
       const { error } = await supabase.from("recurring_expenses").insert({
         user_id: userId,
         title: form.title.trim() || form.supplier.trim(),
