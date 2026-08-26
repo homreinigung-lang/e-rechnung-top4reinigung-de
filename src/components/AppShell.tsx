@@ -8,6 +8,7 @@ import { useIsAdmin } from "@/lib/subscriptions";
 
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
+import { BewertungDialog } from "@/components/BewertungDialog";
 
 import { Button } from "@/components/ui/button";
 import {
