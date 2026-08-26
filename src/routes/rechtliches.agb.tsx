@@ -7,7 +7,7 @@ export const Route = createFileRoute("/rechtliches/agb")({
       {
         name: "description",
         content:
-          "Allgemeine Geschäftsbedingungen für Reinigungsdienstleistungen und die Nutzung der GebCalc Rechnungssoftware.",
+          "Allgemeine Geschäftsbedingungen für die gewerbliche Nutzung der GebCalc Cloud-Software (B2B-SaaS).",
       },
       { property: "og:title", content: "AGB – GebCalc" },
       {
@@ -64,25 +64,24 @@ const sections = [
     title: "§ 10 Gewährleistung und Haftung",
     body: "Der Anbieter gewährleistet die vertragsgemäße Nutzbarkeit der Anwendung nach den Regeln des Mietrechts; die verschuldensunabhängige Haftung für anfängliche Mängel nach § 536a Abs. 1 Alt. 1 BGB ist ausgeschlossen. Der Anbieter haftet unbeschränkt bei Vorsatz und grober Fahrlässigkeit sowie bei Verletzung von Leben, Körper und Gesundheit. Bei leicht fahrlässiger Verletzung wesentlicher Vertragspflichten ist die Haftung auf den vertragstypischen, vorhersehbaren Schaden begrenzt; im Übrigen ist die Haftung ausgeschlossen. Für Datenverlust haftet der Anbieter nur in dem Umfang, der bei ordnungsgemäßer und regelmäßiger Datensicherung durch den Kunden entstanden wäre.",
   },
-
   {
-    title: "§ 10 Kostenlose Testphase (60 Tage)",
+    title: "§ 11 Kostenlose Testphase (60 Tage)",
     body: "Neu registrierte Firmenkonten erhalten eine unverbindliche Testphase von 60 Kalendertagen ab Registrierung mit vollem Funktionsumfang. Es sind keine Zahlungsdaten erforderlich, es entstehen keine Kosten und die Testphase geht nicht automatisch in ein kostenpflichtiges Abonnement über. Nach Ablauf der 60 Tage können kostenpflichtige Funktionen nur nach ausdrücklicher Bestellung eines Pakets weitergenutzt werden; bis dahin bleiben bereits erstellte Belege lesbar und exportierbar. Das Konto kann während der Testphase jederzeit ohne Frist und ohne Angabe von Gründen gelöscht werden; ein Widerrufsrecht wird dadurch nicht eingeschränkt.",
   },
   {
-    title: "§ 11 Abonnement, Laufzeit und Kündigung der Software-Nutzung",
+    title: "§ 12 Abonnement, Laufzeit und Kündigung der Software-Nutzung",
     body: "Kostenpflichtige Pakete werden monatlich im Voraus abgerechnet und verlängern sich um jeweils einen Monat, sofern nicht mit einer Frist von 14 Tagen zum Laufzeitende gekündigt wird. Die Kündigung ist in Textform (z. B. per E-Mail) möglich. Preisänderungen werden mindestens 30 Tage vorher mitgeteilt; im Falle einer Erhöhung besteht ein Sonderkündigungsrecht.",
   },
   {
-    title: "§ 12 Registrierung, Konto und E-Mail-Kommunikation",
+    title: "§ 13 Registrierung, Konto und E-Mail-Kommunikation",
     body: "Zugangsdaten sind vertraulich zu behandeln. Im Rahmen der Registrierung versenden wir systembedingte E-Mails (Bestätigungs- und Anmeldelinks, Passwort-Zurücksetzung, Hinweise zur Testphase) über einen von uns beauftragten E-Mail-Dienstleister. Bestätigungslinks sind aus Sicherheitsgründen nur zeitlich begrenzt gültig und können jederzeit erneut angefordert werden.",
   },
   {
-    title: "§ 13 Datenexport und Löschung",
+    title: "§ 14 Datenexport und Löschung",
     body: "Nutzer können ihre Daten jederzeit exportieren (u. a. PDF, XML, Excel/JSON). Nach Kontolöschung werden personenbezogene Daten gelöscht, soweit keine gesetzlichen Aufbewahrungspflichten (insbesondere § 147 AO, § 14b UStG, GoBD) entgegenstehen.",
   },
   {
-    title: "§ 14 Schlussbestimmungen",
+    title: "§ 15 Schlussbestimmungen",
     body: "Es gilt das Recht der Bundesrepublik Deutschland. Gerichtsstand ist – soweit zulässig – der Sitz des Auftragnehmers. Sollten einzelne Bestimmungen unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.",
   },
 ];
