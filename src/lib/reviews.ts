@@ -75,7 +75,7 @@ export function useSaveReview() {
         status: "pending" as const,
       };
       const { error } = input.id
-        ? await supabase.from("reviews").update(payload).eq("id", input.id)
+        ? await supabase.from("reviews").update(payload).eq("id", input.id).eq("user_id", uid)
         : await supabase.from("reviews").insert({ ...payload, user_id: uid });
       if (error) throw error;
     },
