@@ -22,13 +22,16 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  Landmark,
   Lock,
   Mail,
   MapPin,
   MoreVertical,
   Phone,
   Receipt,
+  Server,
   ShieldCheck,
+  Stamp,
   Star,
 } from "lucide-react";
 
@@ -118,9 +121,26 @@ const fallbackPartners = [
 ];
 
 const trustPoints = [
-  "GoBD-konforme Archivierung mit Festschreibung",
-  "E-Rechnung: XRechnung 3.0 & ZUGFeRD 2.3",
-  "Serverstandort EU, Daten je Firma streng getrennt",
+  {
+    icon: ShieldCheck,
+    title: "GoBD-konform",
+    text: "Archivierung mit Festschreibung – prüfungssicher dokumentiert.",
+  },
+  {
+    icon: Stamp,
+    title: "E-Rechnung",
+    text: "XRechnung 3.0 & ZUGFeRD 2.3 – amtlich zertifiziert.",
+  },
+  {
+    icon: Server,
+    title: "Serverstandort EU",
+    text: "Daten je Firma streng getrennt – DSGVO-konform.",
+  },
+  {
+    icon: Landmark,
+    title: "EU ohne Umsatzsteuer",
+    text: "Reverse-Charge nach § 13b UStG – automatisch korrekt.",
+  },
 ];
 
 function Landing() {
@@ -293,11 +313,24 @@ function Landing() {
               <Link to="/auth">Zum Firmen-Login</Link>
             </Button>
           </div>
-          <ul className="mt-8 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {trustPoints.map((t) => (
-              <li key={t} className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
-                <span>{t}</span>
+              <li
+                key={t.title}
+                className="group relative flex flex-col items-center gap-3 rounded-2xl border border-primary/15 bg-gradient-to-b from-primary/[0.06] to-card p-5 text-center shadow-[var(--shadow-panel)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_4px_14px_oklch(0.55_0.19_258/0.14),0_18px_44px_oklch(0.55_0.19_258/0.10)]"
+              >
+                <span className="absolute right-3 top-3 text-[10px] font-semibold uppercase tracking-wider text-primary/40">
+                  Geprüft
+                </span>
+                <span className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/55 text-primary-foreground shadow-md ring-1 ring-primary/20 ring-offset-2 ring-offset-background transition-transform duration-300 group-hover:scale-105">
+                  <t.icon className="size-7" strokeWidth={2} />
+                </span>
+                <span className="flex flex-col gap-1">
+                  <span className="font-display text-sm font-bold leading-tight text-foreground">
+                    {t.title}
+                  </span>
+                  <span className="text-xs leading-snug text-muted-foreground">{t.text}</span>
+                </span>
               </li>
             ))}
           </ul>
