@@ -17,6 +17,7 @@ import { Building2, CalendarPlus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
 import { PlatformRechnungDialog } from "@/components/PlatformRechnungDialog";
+import { BewertungenModeration } from "@/components/BewertungenModeration";
 
 
 /** Laufzeitende um n Monate verlängern (ab heute, falls bereits abgelaufen). */
@@ -251,6 +252,8 @@ function AbonnementsPage() {
           ))}
         </div>
       )}
+
+      <BewertungenModeration />
 
       <p className="text-xs text-muted-foreground">
         Hinweis: Auf der öffentlichen Startseite erscheinen ausschließlich Firmen mit dem Status

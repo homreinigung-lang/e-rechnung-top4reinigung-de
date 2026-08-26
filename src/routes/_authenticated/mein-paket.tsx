@@ -18,6 +18,7 @@ import {
 } from "@/lib/plan-orders";
 import { RenewalPaymentDialog, type RenewalPaymentInfo } from "@/components/RenewalPaymentDialog";
 import { formatDate } from "@/lib/format";
+import { BewertungCard } from "@/components/BewertungCard";
 
 export const Route = createFileRoute("/_authenticated/mein-paket")({
   head: () => ({
@@ -117,6 +118,8 @@ function MeinPaket() {
           Ihre aktuelle Paket-Auswahl, Laufzeit und mögliche Upgrades.
         </p>
       </div>
+
+      <BewertungCard defaultCompanyName={sub?.company_name ?? ""} />
 
       <section className="surface p-6">
         <h2 className="text-lg font-semibold">Aktuelles Abonnement</h2>

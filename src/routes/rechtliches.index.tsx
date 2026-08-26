@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, FileText, Scale, ShieldCheck } from "lucide-react";
+import { BookOpen, FileCheck2, FileText, Scale, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/rechtliches/")({
   head: () => ({
@@ -44,12 +44,19 @@ const items = [
     text: "Informationen nach Art. 13 DSGVO.",
   },
   {
+    to: "/rechtliches/avv",
+    icon: FileCheck2,
+    title: "AVV",
+    text: "Auftragsverarbeitung nach Art. 28 DSGVO für Geschäftskunden.",
+  },
+  {
     to: "/rechtliches/bibliotheken",
     icon: BookOpen,
     title: "Bibliotheken",
     text: "Verwendete Open-Source-Software und Lizenzen.",
   },
 ] as const;
+
 
 function LegalIndex() {
   return (
