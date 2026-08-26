@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchPlatformPayment } from "@/lib/platform-payment";
+import { fetchPlatformSettingsAdmin } from "@/lib/platform-payment";
 import { buildPlatformInvoicePdfBytes } from "@/lib/platform-invoice-pdf";
 import { reserveDocumentNumber } from "@/lib/doc-number";
 import { saveFile } from "@/lib/download";
@@ -44,7 +44,7 @@ export function useCreatePlatformInvoice() {
       const uid = auth.user?.id;
       if (!uid) throw new Error("Nicht angemeldet");
 
-      const payment = await fetchPlatformPayment();
+      const payment = await fetchPlatformSettingsAdmin();
       const netCents = planNetCents(input.plan, input.billingInterval);
       if (netCents <= 0) throw new Error("Für dieses Paket ist kein Preis hinterlegt.");
       const vatCents = Math.round(netCents * VAT_RATE);

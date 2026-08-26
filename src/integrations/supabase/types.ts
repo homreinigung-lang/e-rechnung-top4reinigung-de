@@ -1999,6 +1999,19 @@ export type Database = {
         }
       }
       gen_invite_code: { Args: never; Returns: string }
+      get_platform_payment: {
+        Args: never
+        Returns: {
+          address_line: string
+          bank: string
+          bic: string
+          city: string
+          iban: string
+          postal_code: string
+          recipient: string
+          terms: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

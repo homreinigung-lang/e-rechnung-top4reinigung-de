@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  usePlatformPayment,
+  usePlatformSettingsAdmin,
   PLATFORM_PAYMENT_FALLBACK,
   PLATFORM_SETTINGS_ID,
   formatIban,
@@ -28,7 +28,7 @@ import {
  */
 export function PlatformBankdatenCard() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = usePlatformPayment();
+  const { data, isLoading } = usePlatformSettingsAdmin();
   const [form, setForm] = useState<PlatformPayment>(PLATFORM_PAYMENT_FALLBACK);
 
   useEffect(() => {
