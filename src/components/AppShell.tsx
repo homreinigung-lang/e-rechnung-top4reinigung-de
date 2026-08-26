@@ -124,6 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: myEmployee } = useMyEmployee();
   const { data: isAdmin } = useIsAdmin();
+  const [reviewOpen, setReviewOpen] = useState(false);
   const baseGroups = myEmployee ? employeeGroups : navGroups;
   const groups: readonly NavGroup[] =
     !myEmployee && isAdmin
