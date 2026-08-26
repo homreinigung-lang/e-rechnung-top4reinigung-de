@@ -48,7 +48,7 @@ function Impressum() {
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Kontakt</h2>
         <p className="text-sm text-muted-foreground">
-          Telefon: +49 (0) 6898 000000
+          Telefon: +49 (0) 162 3583882
           <br />
           E-Mail:{" "}
           <a className="underline" href="mailto:info@top4reinigung.de">

@@ -419,8 +419,8 @@ function Landing() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Phone className="size-4 text-primary" />
-                  <a className="hover:underline" href="tel:+4968989999999">
-                    +49 6898 9999999
+                  <a className="hover:underline" href="tel:+491623583882">
+                    +49 (0) 162 3583882
                   </a>
                 </li>
                 <li className="flex items-center gap-2">
