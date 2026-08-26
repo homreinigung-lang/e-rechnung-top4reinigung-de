@@ -45,11 +45,12 @@ function merge(row: Partial<PlatformPayment> | null): PlatformPayment {
 export async function fetchPlatformPayment(): Promise<PlatformPayment> {
   const { data } = await supabase
     .from("platform_settings")
-    .select("recipient, iban, bic, bank, terms, vat_id, email")
+    .select("recipient, iban, bic, bank, terms, vat_id, email, address_line, postal_code, city")
     .eq("id", PLATFORM_SETTINGS_ID)
     .maybeSingle();
   return merge(data);
 }
+
 
 /** Bankdaten des Plattform-Betreibers (in der Administration pflegbar). */
 export function usePlatformPayment() {
