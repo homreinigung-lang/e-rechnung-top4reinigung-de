@@ -109,7 +109,7 @@ export function AccountantAccessCard() {
   }
 
   function invite(access: Access) {
-    const to = (email || access.email).trim();
+    const to = (access.email || email).trim();
     if (!to) {
       toast.error("Bitte E-Mail-Adresse des Steuerberaters eintragen.");
       return;
