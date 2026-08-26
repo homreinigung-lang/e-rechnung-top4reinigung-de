@@ -1083,38 +1083,134 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_invoices: {
+        Row: {
+          billing_interval: string
+          created_at: string
+          created_by: string
+          customer_address_line: string
+          customer_city: string
+          customer_company: string
+          customer_postal_code: string
+          customer_user_id: string | null
+          document_id: string | null
+          gross_cents: number
+          id: string
+          issue_date: string
+          net_cents: number
+          number: string
+          period_end: string
+          period_start: string
+          plan_code: string
+          plan_name: string
+          subscription_id: string | null
+          updated_at: string
+          vat_cents: number
+        }
+        Insert: {
+          billing_interval?: string
+          created_at?: string
+          created_by?: string
+          customer_address_line?: string
+          customer_city?: string
+          customer_company?: string
+          customer_postal_code?: string
+          customer_user_id?: string | null
+          document_id?: string | null
+          gross_cents?: number
+          id?: string
+          issue_date?: string
+          net_cents?: number
+          number: string
+          period_end: string
+          period_start: string
+          plan_code?: string
+          plan_name?: string
+          subscription_id?: string | null
+          updated_at?: string
+          vat_cents?: number
+        }
+        Update: {
+          billing_interval?: string
+          created_at?: string
+          created_by?: string
+          customer_address_line?: string
+          customer_city?: string
+          customer_company?: string
+          customer_postal_code?: string
+          customer_user_id?: string | null
+          document_id?: string | null
+          gross_cents?: number
+          id?: string
+          issue_date?: string
+          net_cents?: number
+          number?: string
+          period_end?: string
+          period_start?: string
+          plan_code?: string
+          plan_name?: string
+          subscription_id?: string | null
+          updated_at?: string
+          vat_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_invoices_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_settings: {
         Row: {
+          address_line: string
           bank: string
           bic: string
+          city: string
           created_at: string
           email: string
           iban: string
           id: string
+          postal_code: string
           recipient: string
           terms: string
           updated_at: string
           vat_id: string
         }
         Insert: {
+          address_line?: string
           bank?: string
           bic?: string
+          city?: string
           created_at?: string
           email?: string
           iban?: string
           id?: string
+          postal_code?: string
           recipient?: string
           terms?: string
           updated_at?: string
           vat_id?: string
         }
         Update: {
+          address_line?: string
           bank?: string
           bic?: string
+          city?: string
           created_at?: string
           email?: string
           iban?: string
           id?: string
+          postal_code?: string
           recipient?: string
           terms?: string
           updated_at?: string
@@ -1564,6 +1660,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          address_line: string
           city: string
           company_name: string
           contact_email: string
@@ -1571,6 +1668,7 @@ export type Database = {
           id: string
           note: string
           plan: string
+          postal_code: string
           renews_on: string | null
           sort_order: number
           started_on: string
@@ -1580,6 +1678,7 @@ export type Database = {
           visible_on_landing: boolean
         }
         Insert: {
+          address_line?: string
           city?: string
           company_name?: string
           contact_email?: string
@@ -1587,6 +1686,7 @@ export type Database = {
           id?: string
           note?: string
           plan?: string
+          postal_code?: string
           renews_on?: string | null
           sort_order?: number
           started_on?: string
@@ -1596,6 +1696,7 @@ export type Database = {
           visible_on_landing?: boolean
         }
         Update: {
+          address_line?: string
           city?: string
           company_name?: string
           contact_email?: string
@@ -1603,6 +1704,7 @@ export type Database = {
           id?: string
           note?: string
           plan?: string
+          postal_code?: string
           renews_on?: string | null
           sort_order?: number
           started_on?: string
