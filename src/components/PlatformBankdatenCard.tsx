@@ -119,6 +119,10 @@ export function PlatformBankdatenCard() {
             {field("bic", "BIC", "SAKSDE55XXX")}
             {field("vat_id", "USt-IdNr.", "DE123456789")}
             {field("email", "Kontakt-E-Mail", "info@example.de")}
+            {field("address_line", "Straße und Hausnummer", "Musterstraße 1")}
+            {field("postal_code", "PLZ", "66111")}
+            {field("city", "Ort", "Saarbrücken")}
+
           </div>
 
           <div className="space-y-1.5">
