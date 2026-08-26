@@ -1658,6 +1658,39 @@ export type Database = {
           },
         ]
       }
+      reviews: {
+        Row: {
+          body: string
+          company_name: string
+          created_at: string
+          id: string
+          rating: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           address_line: string
