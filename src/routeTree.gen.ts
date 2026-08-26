@@ -36,6 +36,7 @@ import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/t
 import { Route as AuthenticatedWiederkehrendRouteImport } from './routes/_authenticated/wiederkehrend'
 import { Route as RechtlichesIndexRouteImport } from './routes/rechtliches.index'
 import { Route as RechtlichesAgbRouteImport } from './routes/rechtliches.agb'
+import { Route as RechtlichesAvvRouteImport } from './routes/rechtliches.avv'
 import { Route as RechtlichesBibliothekenRouteImport } from './routes/rechtliches.bibliotheken'
 import { Route as RechtlichesDatenschutzRouteImport } from './routes/rechtliches.datenschutz'
 import { Route as RechtlichesImpressumRouteImport } from './routes/rechtliches.impressum'
@@ -196,6 +197,11 @@ const RechtlichesAgbRoute = RechtlichesAgbRouteImport.update({
   path: '/agb',
   getParentRoute: () => RechtlichesRoute,
 } as any)
+const RechtlichesAvvRoute = RechtlichesAvvRouteImport.update({
+  id: '/avv',
+  path: '/avv',
+  getParentRoute: () => RechtlichesRoute,
+} as any)
 const RechtlichesBibliothekenRoute = RechtlichesBibliothekenRouteImport.update({
   id: '/bibliotheken',
   path: '/bibliotheken',
@@ -316,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/team': typeof AuthenticatedTeamRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
+  '/rechtliches/avv': typeof RechtlichesAvvRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
   '/rechtliches/impressum': typeof RechtlichesImpressumRoute
@@ -359,6 +366,7 @@ export interface FileRoutesByTo {
   '/team': typeof AuthenticatedTeamRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
+  '/rechtliches/avv': typeof RechtlichesAvvRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
   '/rechtliches/impressum': typeof RechtlichesImpressumRoute
@@ -406,6 +414,7 @@ export interface FileRoutesById {
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
+  '/rechtliches/avv': typeof RechtlichesAvvRoute
   '/rechtliches/bibliotheken': typeof RechtlichesBibliothekenRoute
   '/rechtliches/datenschutz': typeof RechtlichesDatenschutzRoute
   '/rechtliches/impressum': typeof RechtlichesImpressumRoute
@@ -453,6 +462,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/wiederkehrend'
     | '/rechtliches/agb'
+    | '/rechtliches/avv'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
     | '/rechtliches/impressum'
@@ -496,6 +506,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/wiederkehrend'
     | '/rechtliches/agb'
+    | '/rechtliches/avv'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
     | '/rechtliches/impressum'
@@ -542,6 +553,7 @@ export interface FileRouteTypes {
     | '/_authenticated/team'
     | '/_authenticated/wiederkehrend'
     | '/rechtliches/agb'
+    | '/rechtliches/avv'
     | '/rechtliches/bibliotheken'
     | '/rechtliches/datenschutz'
     | '/rechtliches/impressum'
@@ -766,6 +778,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RechtlichesAgbRouteImport
       parentRoute: typeof RechtlichesRoute
     }
+    '/rechtliches/avv': {
+      id: '/rechtliches/avv'
+      path: '/avv'
+      fullPath: '/rechtliches/avv'
+      preLoaderRoute: typeof RechtlichesAvvRouteImport
+      parentRoute: typeof RechtlichesRoute
+    }
     '/rechtliches/bibliotheken': {
       id: '/rechtliches/bibliotheken'
       path: '/bibliotheken'
@@ -966,6 +985,7 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface RechtlichesRouteChildren {
   RechtlichesAgbRoute: typeof RechtlichesAgbRoute
+  RechtlichesAvvRoute: typeof RechtlichesAvvRoute
   RechtlichesBibliothekenRoute: typeof RechtlichesBibliothekenRoute
   RechtlichesDatenschutzRoute: typeof RechtlichesDatenschutzRoute
   RechtlichesImpressumRoute: typeof RechtlichesImpressumRoute
@@ -974,6 +994,7 @@ interface RechtlichesRouteChildren {
 
 const RechtlichesRouteChildren: RechtlichesRouteChildren = {
   RechtlichesAgbRoute: RechtlichesAgbRoute,
+  RechtlichesAvvRoute: RechtlichesAvvRoute,
   RechtlichesBibliothekenRoute: RechtlichesBibliothekenRoute,
   RechtlichesDatenschutzRoute: RechtlichesDatenschutzRoute,
   RechtlichesImpressumRoute: RechtlichesImpressumRoute,

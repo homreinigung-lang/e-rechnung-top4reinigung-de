@@ -44,12 +44,19 @@ const items = [
     text: "Informationen nach Art. 13 DSGVO.",
   },
   {
+    to: "/rechtliches/avv",
+    icon: FileCheck2,
+    title: "AVV",
+    text: "Auftragsverarbeitung nach Art. 28 DSGVO für Geschäftskunden.",
+  },
+  {
     to: "/rechtliches/bibliotheken",
     icon: BookOpen,
     title: "Bibliotheken",
     text: "Verwendete Open-Source-Software und Lizenzen.",
   },
 ] as const;
+
 
 function LegalIndex() {
   return (
