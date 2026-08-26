@@ -14,7 +14,10 @@ export type Subscription = {
   note: string;
   started_on: string;
   renews_on: string | null;
+  address_line?: string;
+  postal_code?: string;
 };
+
 
 export const PLANS = ["basis", "pro", "enterprise"] as const;
 export const STATUS = ["active", "trial", "inactive"] as const;
