@@ -18,7 +18,6 @@ import {
 } from "@/lib/plan-orders";
 import { RenewalPaymentDialog, type RenewalPaymentInfo } from "@/components/RenewalPaymentDialog";
 import { formatDate } from "@/lib/format";
-import { BewertungCard } from "@/components/BewertungCard";
 
 export const Route = createFileRoute("/_authenticated/mein-paket")({
   head: () => ({
