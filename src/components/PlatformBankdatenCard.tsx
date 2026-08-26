@@ -48,7 +48,11 @@ export function PlatformBankdatenCard() {
         terms: form.terms.trim(),
         vat_id: form.vat_id.trim(),
         email: form.email.trim(),
+        address_line: form.address_line.trim(),
+        postal_code: form.postal_code.trim(),
+        city: form.city.trim(),
       };
+
       const { error } = await supabase
         .from("platform_settings")
         .upsert(payload, { onConflict: "id" });
@@ -115,6 +119,10 @@ export function PlatformBankdatenCard() {
             {field("bic", "BIC", "SAKSDE55XXX")}
             {field("vat_id", "USt-IdNr.", "DE123456789")}
             {field("email", "Kontakt-E-Mail", "info@example.de")}
+            {field("address_line", "Straße und Hausnummer", "Musterstraße 1")}
+            {field("postal_code", "PLZ", "66111")}
+            {field("city", "Ort", "Saarbrücken")}
+
           </div>
 
           <div className="space-y-1.5">
