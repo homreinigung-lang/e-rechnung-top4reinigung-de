@@ -10,6 +10,9 @@ export type PlatformPayment = {
   terms: string;
   vat_id: string;
   email: string;
+  address_line: string;
+  postal_code: string;
+  city: string;
 };
 
 export const PLATFORM_SETTINGS_ID = "default";
@@ -23,7 +26,11 @@ export const PLATFORM_PAYMENT_FALLBACK: PlatformPayment = {
   terms: PAYMENT_DETAILS.terms,
   vat_id: PAYMENT_DETAILS.vatId,
   email: PAYMENT_DETAILS.email,
+  address_line: "",
+  postal_code: "",
+  city: "",
 };
+
 
 function merge(row: Partial<PlatformPayment> | null): PlatformPayment {
   const out = { ...PLATFORM_PAYMENT_FALLBACK };
