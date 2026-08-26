@@ -45,6 +45,11 @@ export const Route = createFileRoute("/")({
           "Software für Reinigungsfirmen: Angebote, Kalkulation und E-Rechnungen für Büroreinigung, Unterhaltsreinigung und Treppenhausreinigung – GoBD-konform, EU-Reverse-Charge.",
       },
       {
+        name: "keywords",
+        content:
+          "Rechnungssoftware Reinigung, E-Rechnung, XRechnung, ZUGFeRD, Gebäudereinigung Software, Büroreinigung, Unterhaltsreinigung, Treppenhausreinigung, Reverse-Charge, § 13b UStG, GoBD, Angebot, Kalkulation, Zeiterfassung, Einsatzplanung",
+      },
+      {
         property: "og:title",
         content: "GebCalc – Software für Gebäudereinigung & E-Rechnung",
       },
@@ -55,7 +60,17 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://e-rechnung.top4reinigung.de/" },
+      { property: "og:image", content: "https://e-rechnung.top4reinigung.de/app-icon-192.png" },
+      { property: "og:locale", content: "de_DE" },
+      { property: "og:site_name", content: "GebCalc" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "GebCalc – Software für Gebäudereinigung & E-Rechnung" },
+      {
+        name: "twitter:description",
+        content:
+          "Angebote, Kalkulation, Zeiterfassung und rechtssichere E-Rechnungen für Reinigungsfirmen.",
+      },
+      { name: "twitter:image", content: "https://e-rechnung.top4reinigung.de/app-icon-192.png" },
     ],
     links: [{ rel: "canonical", href: "https://e-rechnung.top4reinigung.de/" }],
     scripts: [
@@ -71,6 +86,21 @@ export const Route = createFileRoute("/")({
           inLanguage: "de-DE",
           description:
             "Software für Reinigungsfirmen: Angebote, Kalkulation, Zeiterfassung und GoBD-konforme E-Rechnungen (XRechnung, ZUGFeRD).",
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "EUR",
+            price: "0",
+            availability: "https://schema.org/InStock",
+            url: "https://e-rechnung.top4reinigung.de/#preise",
+          },
+          featureList: [
+            "Rechnungen und Angebote erstellen",
+            "E-Rechnung XRechnung 3.0 & ZUGFeRD 2.3",
+            "EU-Reverse-Charge nach § 13b UStG",
+            "Kalkulation & Leistungsverzeichnis",
+            "Mitarbeiter-Zeiterfassung & Einsatzplanung",
+            "GoBD-konforme Archivierung",
+          ],
         }),
       },
     ],

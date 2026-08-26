@@ -91,10 +91,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "format-detection", content: "telephone=no" },
       { title: "GebCalc – Rechnungssystem" },
       { property: "og:site_name", content: "GebCalc" },
+      { property: "og:locale", content: "de_DE" },
       {
         name: "description",
         content:
           "Rechnungen und Angebote für Reinigungsdienstleistungen erstellen, verwalten und per E-Mail versenden.",
+      },
+      {
+        name: "keywords",
+        content:
+          "Rechnungssoftware, E-Rechnung, XRechnung, ZUGFeRD, Gebäudereinigung, Unterhaltsreinigung, Büroreinigung, Treppenhausreinigung, Reverse-Charge, GoBD, Angebot, Kalkulation, Zeiterfassung",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -111,6 +117,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", type: "image/png", sizes: "64x64", href: "/favicon.png?v=5" },
       { rel: "icon", type: "image/png", sizes: "192x192", href: "/app-icon-192.png?v=5" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "GebCalc",
+          url: "https://e-rechnung.top4reinigung.de/",
+          logo: "https://e-rechnung.top4reinigung.de/app-icon-192.png",
+          description:
+            "Rechnungssystem für Reinigungsdienstleistungen: Angebote, Kalkulation, Zeiterfassung und GoBD-konforme E-Rechnungen.",
+          email: "info@top4reinigung.de",
+          telephone: "+491623583882",
+          areaServed: "DE",
+          knowsLanguage: "de",
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,
