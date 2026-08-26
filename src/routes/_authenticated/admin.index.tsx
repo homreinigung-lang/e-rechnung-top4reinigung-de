@@ -235,6 +235,8 @@ function AbonnementsPage() {
                   <CheckCircle2 className="size-4" />
                   Freischalten
                 </Button>
+                <PlatformRechnungDialog subscription={row} />
+
               </div>
 
               {row.status === "trial" ? (
