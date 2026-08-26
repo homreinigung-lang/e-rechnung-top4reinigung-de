@@ -22,7 +22,7 @@ export async function sendVerifiedEmail(options: SendVerifiedEmailOptions) {
 
   const baseFrom = process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
   const baseAddress = baseFrom.match(/<([^>]+)>/)?.[1] ?? baseFrom;
-  const senderName = (options.companyName ?? "").replace(/[<>\"]/g, "").trim();
+  const senderName = (options.companyName ?? "").replace(/[<>"]/g, "").trim();
   const fromAddress = senderName ? `${senderName} <${baseAddress}>` : baseFrom;
   const copyTo = options.companyEmail?.trim() || null;
 
