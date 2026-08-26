@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { usePublicPartners } from "@/lib/subscriptions";
 import { usePlans, euro, type Plan } from "@/lib/admin";
 import { PlanOrderDialog } from "@/components/PlanOrderDialog";
+import { TestimonialCarousel } from "@/components/TestimonialCarousel";
+import { FeatureVergleich } from "@/components/FeatureVergleich";
+import { useApprovedReviews } from "@/lib/reviews";
 
 import {
   DropdownMenu,
@@ -28,41 +31,6 @@ import {
   ShieldCheck,
   Star,
 } from "lucide-react";
-
-const reviews = [
-  {
-    name: "Top4 Reinigung",
-    role: "Geschäftsführer",
-    rating: 5,
-    text: "Rechnungen und Angebote gehen jetzt in wenigen Minuten raus. Der Reverse-Charge-Hinweis für EU-Kunden ist endlich automatisch korrekt.",
-  },
-  {
-    name: "SGS Industrial Services",
-    role: "Facility Management",
-    rating: 5,
-    text: "Die E-Rechnung (XRechnung/ZUGFeRD) wird von unseren Kunden ohne Beanstandung akzeptiert. GoBD-Archivierung passt für das Finanzamt.",
-  },
-  {
-    name: "Saar Facility GmbH",
-    role: "Objektleitung",
-    rating: 5,
-    text: "Kalkulation, Leistungsverzeichnis und Einsatzplanung laufen in einer Oberfläche – das spart uns deutlich Zeit im Tagesgeschäft.",
-  },
-  {
-    name: "CleanPoint Süd",
-    role: "Buchhaltung",
-    rating: 5,
-    text: "DATEV-Export und das Steuerberater-Portal funktionieren reibungslos. Der Support reagiert schnell und kompetent.",
-  },
-  {
-    name: "Hausmeister Union",
-    role: "Betriebsleiter",
-    rating: 5,
-    text: "Mitarbeiter erfassen ihre Zeiten mobil, Urlaub und Abwesenheit sind sauber abgebildet. Sehr durchdachte Lösung.",
-  },
-];
-
-const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -159,6 +127,9 @@ function Landing() {
   const navigate = useNavigate();
   const { data: dbPartners } = usePublicPartners();
   const { data: plans } = usePlans();
+  const { data: reviews = [] } = useApprovedReviews();
+  const avgRating =
+    reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
   const activePlans = (plans ?? []).filter((p) => p.active);
   const partners =
     dbPartners && dbPartners.length > 0
@@ -238,17 +209,17 @@ function Landing() {
                 </span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {reviews.map((r, i) => (
-                <div key={i} className="px-2 py-2.5">
+              {reviews.map((r) => (
+                <div key={r.id} className="px-2 py-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold">{r.name}</span>
+                    <span className="text-sm font-semibold">{r.company_name}</span>
                     <span className="flex items-center gap-0.5 text-amber-500">
                       {Array.from({ length: r.rating }).map((_, j) => (
                         <Star key={j} className="size-3 fill-current" />
                       ))}
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">{r.role}</p>
+                  <p className="text-[11px] text-primary">Verified Business User</p>
                   <p className="mt-1 text-xs text-foreground/90 leading-snug">{r.text}</p>
                 </div>
               ))}
@@ -282,6 +253,11 @@ function Landing() {
               <DropdownMenuItem asChild>
                 <Link to="/rechtliches/datenschutz" className="w-full cursor-pointer">
                   Datenschutz
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/rechtliches/avv" className="w-full cursor-pointer">
+                  AVV
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -403,7 +379,10 @@ function Landing() {
               </p>
             ) : null}
           </div>
+          <FeatureVergleich plans={activePlans} />
         </section>
+
+        <TestimonialCarousel />
 
         <section className="mx-auto max-w-6xl px-6 py-20">
           <div className="grid gap-6 lg:grid-cols-2">
@@ -472,6 +451,9 @@ function Landing() {
             </Link>
             <Link to="/rechtliches/datenschutz" className="hover:text-foreground hover:underline">
               Datenschutz
+            </Link>
+            <Link to="/rechtliches/avv" className="hover:text-foreground hover:underline">
+              AVV
             </Link>
             <Link to="/rechtliches/bibliotheken" className="hover:text-foreground hover:underline">
               Bibliotheken
