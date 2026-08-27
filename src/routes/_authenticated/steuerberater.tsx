@@ -701,14 +701,16 @@ function SteuerberaterZugriffsstatus() {
             </div>
           </div>
           <ConfirmDeleteButton
-            icon={ShieldOff}
-            iconClassName="size-4"
+            size="sm"
+            variant="destructive"
             ariaLabel="Zugang widerrufen"
             title="Zugang wirklich widerrufen?"
             description={`Der Steuerberater-Zugang „${aktiv.email || "ohne E-Mail"}" wird unwiderruflich widerrufen. Der Steuerberater kann danach nicht mehr auf Ihre Daten zugreifen. Diese Aktion kann nicht rückgängig gemacht werden.`}
             confirmLabel="Zugang widerrufen"
             onConfirm={() => revoke.mutate(aktiv.id)}
-          />
+          >
+            <ShieldOff className="size-4" /> Widerrufen
+          </ConfirmDeleteButton>
         </div>
       )}
     </section>
