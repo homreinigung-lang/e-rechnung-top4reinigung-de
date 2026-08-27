@@ -292,7 +292,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
       </div>
 
-      <BewertungDialog open={reviewOpen} onOpenChange={setReviewOpen} />
+      {!myEmployee ? <BewertungDialog open={reviewOpen} onOpenChange={setReviewOpen} /> : null}
     </div>
   );
 }
