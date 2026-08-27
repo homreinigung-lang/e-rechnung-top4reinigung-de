@@ -1240,7 +1240,8 @@ function KalkulationPage() {
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
+
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
