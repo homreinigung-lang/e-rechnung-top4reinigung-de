@@ -522,11 +522,10 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
   ctx.y -= 8;
 
-  // ---- Steuerhinweis ------------------------------------------------------
-  if (d.taxNote) {
-    const lines = wrap(regular, 8.5, d.taxNote, CONTENT_W - 12);
+  // ---- Steuerhinweis (Zeilen bereits oben umbrochen) ----------------------
+  if (d.taxNote && taxNoteLines.length > 0) {
+    const lines = taxNoteLines;
     const boxH = lines.length * 11 + 12;
-    ensure(ctx, boxH + 6);
     ctx.page.drawRectangle({
       x: M_X,
       y: ctx.y - boxH + 10,
