@@ -894,6 +894,31 @@ function DokumentDetail() {
     };
   }
 
+  /**
+   * Vor jeder Ausgabe (PDF, E-Rechnung, Versand) den aktuellen Bearbeitungsstand
+   * verbindlich speichern. Sonst kann ein PDF Positionen enthalten, die in der
+   * Datenbank (und damit in Vorschau/Übersicht/Portal) gar nicht existieren.
+   */
+  async function persistBeforeOutput(): Promise<boolean> {
+    if (locked) return true;
+    try {
+      await save.mutateAsync();
+      return true;
+    } catch {
+      // Fehlermeldung kommt bereits aus der Mutation.
+      return false;
+    }
+  }
+
+  /** Versand/Festschreiben ohne Positionen verhindert leere Belege (§ 14 UStG). */
+  function ensureHasItems(): boolean {
+    if (items.length > 0) return true;
+    toast.error("Der Beleg enthält keine Positionen. Bitte zuerst Positionen erfassen.", {
+      duration: 8000,
+    });
+    return false;
+  }
+
   async function exportZugferd() {
     const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
     try {
