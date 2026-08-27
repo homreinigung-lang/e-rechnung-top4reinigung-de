@@ -14,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { deleteBlockedMessage, describeGobdError, isLockedDocument } from "@/lib/gobd-guard";
@@ -48,6 +55,7 @@ import {
   Copy,
   FileText,
   Gavel,
+  MoreVertical,
   Plus,
   Receipt,
   Trash2,
