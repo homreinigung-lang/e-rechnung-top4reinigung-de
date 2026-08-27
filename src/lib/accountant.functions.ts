@@ -178,20 +178,9 @@ export const getAccountantReceiptUrl = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; expenseId: string }) => data)
   .handler(async ({ data }): Promise<string> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
 
-    const { data: access } = await supabaseAdmin
-      .from("accountant_access")
-      .select("user_id, access_code, active")
-      .eq("token", data.token)
-      .maybeSingle();
-
-    if (
-      !access ||
-      !access.active ||
-      access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
-    ) {
-      throw new Error("Zugang ungültig.");
-    }
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
     const { data: expense } = await supabaseAdmin
       .from("expenses")
