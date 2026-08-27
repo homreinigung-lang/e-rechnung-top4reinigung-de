@@ -823,7 +823,7 @@ function DokumentDetail() {
       customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
       introText: isInvoice
-        ? undefined
+        ? `${INVOICE_INTRO}${form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""}`
         : `${isOrder ? ORDER_INTRO : quoteIntro(companyName)}${
             form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""
           }`,
