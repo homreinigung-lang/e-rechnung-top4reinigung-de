@@ -358,6 +358,8 @@ function Steuerberater() {
         </p>
       </div>
 
+      <SteuerberaterZugriffsstatus />
+
       <div className="no-print">
         <AccountantAccessCard />
       </div>
