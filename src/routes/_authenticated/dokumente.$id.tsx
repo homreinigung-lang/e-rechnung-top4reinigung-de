@@ -894,7 +894,34 @@ function DokumentDetail() {
     };
   }
 
+  /**
+   * Vor jeder Ausgabe (PDF, E-Rechnung, Versand) den aktuellen Bearbeitungsstand
+   * verbindlich speichern. Sonst kann ein PDF Positionen enthalten, die in der
+   * Datenbank (und damit in Vorschau/Übersicht/Portal) gar nicht existieren.
+   */
+  async function persistBeforeOutput(): Promise<boolean> {
+    if (locked) return true;
+    try {
+      await save.mutateAsync();
+      return true;
+    } catch {
+      // Fehlermeldung kommt bereits aus der Mutation.
+      return false;
+    }
+  }
+
+  /** Versand/Festschreiben ohne Positionen verhindert leere Belege (§ 14 UStG). */
+  function ensureHasItems(): boolean {
+    if (items.length > 0) return true;
+    toast.error("Der Beleg enthält keine Positionen. Bitte zuerst Positionen erfassen.", {
+      duration: 8000,
+    });
+    return false;
+  }
+
   async function exportZugferd() {
+    if (!ensureHasItems()) return;
+    if (!(await persistBeforeOutput())) return;
     const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
     try {
       const input = eRechnungInput();
@@ -918,6 +945,7 @@ function DokumentDetail() {
 
   /** Fertiges Dokument direkt als A4-PDF herunterladen (pdf-lib, kein Browser-Druck). */
   async function downloadPdf() {
+    if (!(await persistBeforeOutput())) return;
     const toastId = toast.loading("PDF wird erzeugt…");
     try {
       const bytes = await buildDocumentPdfBytes(await buildPdfData());
@@ -946,15 +974,30 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-4" /> Drucken
           </Button>
-          <Button variant="outline" onClick={() => setMailOpen(true)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void (async () => {
+                if (!ensureHasItems()) return;
+                if (!(await persistBeforeOutput())) return;
+                setMailOpen(true);
+              })();
+            }}
+          >
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
           {doc.status === "draft" && (
             <Button
               variant="outline"
               title="Beleg als versendet kennzeichnen, ohne eine E-Mail zu verschicken"
-              onClick={() => setSendStatus.mutate("sent")}
-              disabled={setSendStatus.isPending}
+              onClick={() => {
+                void (async () => {
+                  if (!ensureHasItems()) return;
+                  if (!(await persistBeforeOutput())) return;
+                  setSendStatus.mutate("sent");
+                })();
+              }}
+              disabled={setSendStatus.isPending || save.isPending}
             >
               <Check className="size-4" /> Als versendet markieren
             </Button>
