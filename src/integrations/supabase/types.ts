@@ -1165,6 +1165,13 @@ export type Database = {
             foreignKeyName: "platform_invoices_subscription_id_fkey"
             columns: ["subscription_id"]
             isOneToOne: false
+            referencedRelation: "public_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
             referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
@@ -1918,7 +1925,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_partners: {
+        Row: {
+          city: string | null
+          company_name: string | null
+          id: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          city?: string | null
+          company_name?: string | null
+          id?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          city?: string | null
+          company_name?: string | null
+          id?: string | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       create_storno: { Args: { _id: string }; Returns: string }
