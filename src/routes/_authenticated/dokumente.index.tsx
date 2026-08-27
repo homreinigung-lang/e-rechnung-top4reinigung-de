@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { reserveDocumentNumber } from "@/lib/doc-number";
+import { draftPlaceholderNumber } from "@/lib/doc-number";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -133,7 +133,7 @@ function DokumenteListe() {
         (settings as Record<string, unknown> | null)?.["small_business"],
       );
 
-      const number = await reserveDocumentNumber(type);
+      const number = draftPlaceholderNumber(type);
       const issue = today();
       const { data, error } = await supabase
         .from("documents")
@@ -181,7 +181,7 @@ function DokumenteListe() {
         .eq("document_id", docId)
         .order("position");
 
-      const number = await reserveDocumentNumber(src.type as "invoice" | "quote" | "order");
+      const number = draftPlaceholderNumber(src.type as "invoice" | "quote" | "order");
       const {
         id: _i,
         created_at: _c,

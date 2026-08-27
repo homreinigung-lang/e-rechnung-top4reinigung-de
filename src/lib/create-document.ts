@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { addDays, today } from "@/lib/format";
-import { reserveDocumentNumber } from "@/lib/doc-number";
+import { draftPlaceholderNumber } from "@/lib/doc-number";
 
 /**
  * Legt einen neuen Beleg (Rechnung oder Angebot) als Entwurf an und liefert
@@ -18,7 +18,9 @@ export async function createDocument(type: "invoice" | "quote"): Promise<string>
 
   const smallBusiness = Boolean((settings as Record<string, unknown> | null)?.["small_business"]);
 
-  const number = await reserveDocumentNumber(type);
+  // Entwurf erhält nur eine Platzhalter-Nummer; die fortlaufende Nummer
+  // wird erst beim Festschreiben/Versenden vergeben (GoBD, keine Lücken).
+  const number = draftPlaceholderNumber(type);
   const issue = today();
 
   const { data, error } = await supabase

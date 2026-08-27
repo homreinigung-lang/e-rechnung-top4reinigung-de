@@ -52,6 +52,7 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
+import { isDraftPlaceholder } from "@/lib/doc-number";
 import {
   deleteBlockedMessage,
   describeGobdError,
@@ -582,6 +583,7 @@ function DokumentDetail() {
   const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
+  const introText = String(form["intro_text"] ?? "").trim();
   const senderLine = [
     settings?.["company_name"] ?? "",
     settings?.["address_line"] ?? "",
@@ -824,10 +826,11 @@ function DokumentDetail() {
       customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
       introText: isInvoice
-        ? `${INVOICE_INTRO}${form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""}`
+        ? introText || INVOICE_INTRO
         : `${isOrder ? ORDER_INTRO : quoteIntro(companyName)}${
-            form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""
+            introText ? `\n\n${introText}` : ""
           }`,
+
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
         : items
@@ -1324,9 +1327,11 @@ function DokumentDetail() {
             </Label>
             <Input id="number" value={docNumber} readOnly disabled className="bg-muted" />
             <p className="text-xs text-muted-foreground">
-              Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle
-              Änderung ist nicht möglich.
+              {isDraftPlaceholder(docNumber)
+                ? "Vorschau-/Testnummer. Die endgültige, fortlaufende Nummer wird erst beim Festschreiben bzw. Versenden vergeben – so entstehen keine Lücken (§ 14 UStG / GoBD)."
+                : "Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle Änderung ist nicht möglich."}
             </p>
+
           </div>
           <div className="space-y-2">
             <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
@@ -1781,13 +1786,12 @@ function DokumentDetail() {
               </p>
             </>
           )}
-          {isInvoice && (
-            <p className="mt-3 text-sm leading-relaxed">{INVOICE_INTRO}</p>
+          {/* Einleitungstext live aus dem Eingabefeld – direkt über der Positionstabelle. */}
+          {isInvoice && !introText && (
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{INVOICE_INTRO}</p>
           )}
-          {form["intro_text"] && (
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">
-              {String(form["intro_text"])}
-            </p>
+          {introText && (
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{introText}</p>
           )}
 
           <div className="invoice-table-wrap mt-4 overflow-x-auto">
