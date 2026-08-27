@@ -688,37 +688,92 @@ function KalkulationPage() {
             quantity: p.quantity,
             unit: p.unit,
             unit_price: p.unit_price,
+            section: p.section,
+            source_lv_item_id: p.sourceLvItemId,
           })),
         );
         if (error) throw error;
       }
 
-      // Gemeinsame Datenquelle: kalkulierte Positionen zurück ins Projekt-LV.
+      /**
+       * Gemeinsame Datenquelle: Positionen zurück ins Projekt-LV – ohne Duplikate.
+       * Übernommene Zeilen werden an ihrer Herkunftsstelle aktualisiert (Bereich
+       * bleibt erhalten), nur wirklich neue Positionen landen im Bereich
+       * „Kalkulation". Gelöscht wird ausschließlich, was diese Kalkulation
+       * zuvor selbst im Bereich „Kalkulation" angelegt hat.
+       */
+      const linkedIds: Record<string, string> = {};
       if (projectId) {
-        await supabase
+        const { data: existingRows, error: exErr } = await supabase
           .from("project_lv_items")
-          .delete()
-          .eq("project_id", projectId)
-          .eq("section", "Kalkulation");
-        if (lvPositions.length > 0) {
-          const { error } = await supabase.from("project_lv_items").insert(
-            lvPositions.map((p, n) => ({
-              project_id: projectId,
-              user_id: userId,
-              position: n + 1,
-              section: "Kalkulation",
-              title: p.description.slice(0, 120),
-              description: p.description,
-              quantity: p.quantity,
-              unit: p.unit,
-              unit_price: p.unit_price,
-            })),
-          );
+          .select("id, section")
+          .eq("project_id", projectId);
+        if (exErr) throw exErr;
+        const existing = new Map((existingRows ?? []).map((r) => [r.id, r.section]));
+
+        const keep = new Set(
+          lvPositions
+            .map((p) => p.sourceLvItemId)
+            .filter((v): v is string => !!v && existing.has(v)),
+        );
+
+        const stale = (existingRows ?? [])
+          .filter((r) => r.section === KALK_SECTION && !keep.has(r.id))
+          .map((r) => r.id);
+        if (stale.length > 0) {
+          const { error } = await supabase.from("project_lv_items").delete().in("id", stale);
           if (error) throw error;
+        }
+
+        const inserts: { pos: (typeof lvPositions)[number]; index: number }[] = [];
+        for (let n = 0; n < lvPositions.length; n++) {
+          const p = lvPositions[n]!;
+          if (p.sourceLvItemId && existing.has(p.sourceLvItemId)) {
+            const { error } = await supabase
+              .from("project_lv_items")
+              .update({
+                position: n + 1,
+                // Bereich bleibt unverändert – keine Verschiebung fremder Abschnitte.
+                title: p.description.slice(0, 120),
+                description: p.description,
+                quantity: p.quantity,
+                unit: p.unit,
+                unit_price: p.unit_price,
+              })
+              .eq("id", p.sourceLvItemId);
+            if (error) throw error;
+          } else {
+            inserts.push({ pos: p, index: n });
+          }
+        }
+
+        if (inserts.length > 0) {
+          const { data: created, error } = await supabase
+            .from("project_lv_items")
+            .insert(
+              inserts.map(({ pos, index }) => ({
+                project_id: projectId,
+                user_id: userId,
+                position: index + 1,
+                section: KALK_SECTION,
+                title: pos.description.slice(0, 120),
+                description: pos.description,
+                quantity: pos.quantity,
+                unit: pos.unit,
+                unit_price: pos.unit_price,
+              })),
+            )
+            .select("id");
+          if (error) throw error;
+          (created ?? []).forEach((row, i) => {
+            const src = inserts[i];
+            if (src) linkedIds[src.pos.key] = row.id;
+          });
         }
       }
 
-      return id!;
+      return { id: id!, linkedIds };
+
     },
     onSuccess: (id) => {
       setCalcId(id);
