@@ -920,6 +920,8 @@ function DokumentDetail() {
   }
 
   async function exportZugferd() {
+    if (!ensureHasItems()) return;
+    if (!(await persistBeforeOutput())) return;
     const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
     try {
       const input = eRechnungInput();
@@ -943,6 +945,7 @@ function DokumentDetail() {
 
   /** Fertiges Dokument direkt als A4-PDF herunterladen (pdf-lib, kein Browser-Druck). */
   async function downloadPdf() {
+    if (!(await persistBeforeOutput())) return;
     const toastId = toast.loading("PDF wird erzeugt…");
     try {
       const bytes = await buildDocumentPdfBytes(await buildPdfData());
