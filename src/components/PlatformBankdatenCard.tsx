@@ -17,6 +17,7 @@ import {
   normalizeIban,
   type PlatformPayment,
 } from "@/lib/platform-payment";
+import { useIsAdmin } from "@/lib/subscriptions";
 
 /**
  * Pflegt die Bankdaten des Plattform-Betreibers (Tabelle platform_settings).
@@ -28,7 +29,8 @@ import {
  */
 export function PlatformBankdatenCard() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = usePlatformSettingsAdmin();
+  const { data: isAdmin = false } = useIsAdmin();
+  const { data, isLoading } = usePlatformSettingsAdmin(isAdmin);
   const [form, setForm] = useState<PlatformPayment>(PLATFORM_PAYMENT_FALLBACK);
 
   useEffect(() => {
