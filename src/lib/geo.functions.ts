@@ -1,11 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * Geokodierung von Adressen über OpenStreetMap/Nominatim.
  * Läuft serverseitig, damit CORS und User-Agent-Vorgaben eingehalten werden.
+ * Nur für angemeldete Konten, um Missbrauch des externen Dienstes zu verhindern.
  */
 export const geocodeAddresses = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ addresses: z.array(z.string().min(3)).max(12) }).parse(data))
   .handler(async ({ data }) => {
     const unique = Array.from(new Set(data.addresses.map((a) => a.trim()).filter(Boolean)));
