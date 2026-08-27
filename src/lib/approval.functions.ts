@@ -125,81 +125,54 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
   });
 
 /**
- * Reparatur-Registrierung: Wenn die E-Mail bereits in der Anmeldeverwaltung
- * existiert, das Konto aber unvollständig ist (kein Firmenprofil, keine
- * Freigabe, kein Abo), wird es zurückgesetzt: neues Passwort, bestätigte
- * E-Mail. Vollständige Konten bleiben unangetastet.
+ * Sicherer Ersatz der früheren „Reparatur-Registrierung“: Es wird niemals ein
+ * Passwort ohne Nachweis gesetzt. Stattdessen erhält die angegebene Adresse –
+ * sofern ein Konto existiert – einen zeitlich begrenzten Link zum Zurücksetzen
+ * des Passworts. Die Antwort ist immer gleich, damit nicht erkennbar ist, ob
+ * eine E-Mail-Adresse registriert ist.
  */
-export const recoverIncompleteAccount = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
-    z
-      .object({
-        email: z.string().email().max(200),
-        password: z.string().min(6).max(200),
-        fullName: z.string().max(200).optional(),
-        companyName: z.string().max(200).optional(),
-      })
-      .parse(input),
-  )
+export const sendAccountRecoveryLink = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ email: z.string().email().max(200) }).parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const email = data.email.trim().toLowerCase();
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { sendMail, siteUrl, escapeHtml } = await import("./approval-mail.server");
 
-    // Benutzer anhand der E-Mail suchen.
-    let userId: string | null = null;
-    for (let page = 1; page <= 20 && !userId; page++) {
-      const list = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
-      if (list.error) throw new Error(list.error.message);
-      const users = list.data?.users ?? [];
-      const hit = users.find((u) => (u.email ?? "").toLowerCase() === email);
-      if (hit) userId = hit.id;
-      if (users.length < 200) break;
+      const link = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo: `${siteUrl()}/auth` },
+      });
+      const action = link.error ? null : (link.data?.properties?.action_link ?? null);
+      if (action) {
+        await sendMail({
+          to: email,
+          subject: "Passwort für GebCalc zurücksetzen",
+          text: `Setzen Sie Ihr Passwort über diesen Link zurück:\n\n${action}\n\nDer Link ist nur begrenzt gültig.`,
+          html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.6;font-size:15px">
+            <h2 style="margin:0 0 12px">Passwort zurücksetzen</h2>
+            <p>Für <strong>${escapeHtml(email)}</strong> wurde ein Zugang angefordert.</p>
+            <p style="margin:24px 0"><a href="${action}" style="background:#0369a1;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">Passwort festlegen</a></p>
+            <p style="color:#64748b;font-size:12px">Wenn Sie das nicht waren, ignorieren Sie diese Nachricht.</p>
+          </div>`,
+        });
+      }
+    } catch {
+      // Fehler werden bewusst nicht nach außen gegeben (keine Kontoauskunft).
     }
-    if (!userId) return { recovered: false as const, reason: "not_found" as const };
-
-    // Vollständigkeit prüfen: Firmenprofil ODER echte Nutzdaten vorhanden?
-    const [settings, docs, customers, employeeLink] = await Promise.all([
-      supabaseAdmin
-        .from("company_settings")
-        .select("id,company_name")
-        .eq("user_id", userId)
-        .maybeSingle(),
-      supabaseAdmin.from("documents").select("id").eq("user_id", userId).limit(1),
-      supabaseAdmin.from("customers").select("id").eq("user_id", userId).limit(1),
-      supabaseAdmin.from("employees").select("id").eq("auth_user_id", userId).limit(1),
-    ]);
-
-    const hasData =
-      (docs.data ?? []).length > 0 ||
-      (customers.data ?? []).length > 0 ||
-      (employeeLink.data ?? []).length > 0 ||
-      Boolean((settings.data?.company_name ?? "").trim());
-
-    if (hasData) return { recovered: false as const, reason: "in_use" as const };
-
-    // Unvollständiges Konto: Passwort setzen und E-Mail bestätigen.
-    const upd = await supabaseAdmin.auth.admin.updateUserById(userId, {
-      password: data.password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: (data.fullName ?? "").trim(),
-        company_name: (data.companyName ?? "").trim(),
-      },
-    });
-    if (upd.error) throw new Error(upd.error.message);
-
-    return { recovered: true as const, userId };
+    return { sent: true as const };
   });
 
-/** Liefert den Freigabestatus des aktuell angemeldeten Kontos. */
+/** Liefert den Freigabestatus des angemeldeten Kontos (nur das eigene). */
 export const getApprovalStatus = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ authUserId: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("account_approvals")
       .select("status")
-      .eq("auth_user_id", data.authUserId)
+      .eq("auth_user_id", context.userId)
       .maybeSingle();
     return { status: (row?.status as string | undefined) ?? "none" };
   });
