@@ -40,6 +40,7 @@ import {
   QUOTE_DISCLAIMER,
   CANCELLATION_TERMS,
   ORDER_INTRO,
+  INVOICE_INTRO,
   orderHeadline,
   quoteIntro,
   deriveServiceName,

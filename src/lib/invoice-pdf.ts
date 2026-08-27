@@ -486,10 +486,14 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
 
   // ---- Summenblock (nie zerschnitten) ------------------------------------
+  // Der Summenblock wird zusammen mit einem direkt folgenden Steuerhinweis
+  // als eine Einheit behandelt (break-inside: avoid für den gesamten Abschluss).
   const sumW = 210;
   const sumX = M_X + CONTENT_W - sumW;
   const sumH = d.summary.length * 14 + 6;
-  ensure(ctx, sumH);
+  const taxNoteLines = d.taxNote ? wrap(regular, 8.5, d.taxNote, CONTENT_W - 12) : [];
+  const taxNoteH = taxNoteLines.length > 0 ? taxNoteLines.length * 11 + 12 + 6 : 0;
+  ensure(ctx, sumH + taxNoteH + 8);
   for (const row of d.summary) {
     if (row.rule) {
       ctx.page.drawLine({
