@@ -1896,7 +1896,7 @@ function KalkulationPage() {
                           onChange={(e) => patchAiItem(i.id, { unit_price: e.target.value })}
                         />
                         <span className="text-sm sm:text-right">
-                          {formatMoney(num(i.quantity) * num(i.unit_price))}
+                          {formatMoney(num(i.quantity) * parseGermanNumber(i.unit_price))}
                         </span>
                         <Button
                           type="button"
