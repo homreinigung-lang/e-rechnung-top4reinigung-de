@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated")({
     // werden abgewiesen. Netzwerkfehler dürfen die App nicht blockieren.
     let status: string | null = null;
     try {
-      status = (await getApprovalStatus({ data: { authUserId: data.user.id } })).status;
+      status = (await getApprovalStatus()).status;
     } catch (error) {
       console.warn("Freigabe-Status konnte nicht geprüft werden:", error);
     }

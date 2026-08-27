@@ -307,14 +307,12 @@ function AuthPage() {
     }
     setLoading(true);
     try {
-      const res = await sendAuthConfirmationEmail({
+      await sendAuthConfirmationEmail({
         data: { email: email.trim().toLowerCase() },
       });
-      if (res.sent) {
-        toast.success("Bestätigungslink wurde erneut gesendet. Bitte prüfen Sie Ihr Postfach.");
-      } else {
-        toast.error("Zu dieser E-Mail-Adresse konnte kein Link gesendet werden.");
-      }
+      toast.success(
+        "Falls ein Konto zu dieser Adresse besteht, haben wir einen Link gesendet. Bitte prüfen Sie Ihr Postfach.",
+      );
     } catch (err) {
       toast.error(
         "Versand fehlgeschlagen: " + (err instanceof Error ? err.message : "Unbekannter Fehler"),
