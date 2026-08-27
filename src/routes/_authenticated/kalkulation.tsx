@@ -849,6 +849,8 @@ function KalkulationPage() {
           quantity: dec(i.quantity),
           unit: i.unit,
           unit_price: dec(i.unit_price),
+          section: i.section || KALK_SECTION,
+          sourceLvItemId: i.source_lv_item_id,
         })),
       );
       toast.success("Kalkulation geladen");
@@ -862,7 +864,7 @@ function KalkulationPage() {
       if (!projectId) throw new Error("Kein Projekt verknüpft");
       const { data, error } = await supabase
         .from("project_lv_items")
-        .select("id, position, title, description, quantity, unit, unit_price")
+        .select("id, position, section, title, description, quantity, unit, unit_price")
         .eq("project_id", projectId)
         .order("position");
       if (error) throw error;
@@ -881,10 +883,15 @@ function KalkulationPage() {
           quantity: dec(r.quantity),
           unit: r.unit || "Pauschal",
           unit_price: dec(r.unit_price),
+          // Herkunft merken: Bereich bleibt erhalten, Rückschreiben aktualisiert
+          // genau diese Zeile statt eine Kopie anzulegen.
+          section: r.section || KALK_SECTION,
+          sourceLvItemId: r.id,
         })),
       );
       toast.success(`${rows.length} Positionen aus dem Projekt-LV übernommen`);
     },
+
     onError: (e: Error) => toast.error(e.message),
   });
 
