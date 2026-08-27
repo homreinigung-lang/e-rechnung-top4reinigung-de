@@ -994,7 +994,15 @@ function DokumentDetail() {
                 void (async () => {
                   if (!ensureHasItems()) return;
                   if (!(await persistBeforeOutput())) return;
-                  setSendStatus.mutate("sent");
+                  await setSendStatus.mutateAsync("sent");
+                  // GoBD: Rechnungen werden beim Versand automatisch festgeschrieben.
+                  if (isInvoice) {
+                    try {
+                      await finalize.mutateAsync();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Festschreiben fehlgeschlagen");
+                    }
+                  }
                 })();
               }}
               disabled={setSendStatus.isPending || save.isPending}
