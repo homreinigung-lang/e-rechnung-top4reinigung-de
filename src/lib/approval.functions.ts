@@ -17,10 +17,11 @@ function isoPlusDays(days: number): string {
  * Freigabe-Wartezeit mehr.
  */
 export const requestAccountApproval = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z
       .object({
-        authUserId: z.string().uuid(),
+        authUserId: z.string().uuid().optional(),
         email: z.string().email().max(200).optional(),
         fullName: z.string().max(200).optional(),
         companyName: z.string().max(200).optional(),
@@ -29,10 +30,11 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(data.authUserId);
+    // Immer das angemeldete Konto – eine fremde Kennung wird ignoriert.
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(context.userId);
     const user = userData?.user ?? null;
     if (!user) {
       // Kommt vor, wenn die Registrierung eine E-Mail-Bestätigung erfordert oder
