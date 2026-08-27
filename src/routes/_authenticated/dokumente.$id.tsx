@@ -52,6 +52,7 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
+import { isDraftPlaceholder } from "@/lib/doc-number";
 import {
   deleteBlockedMessage,
   describeGobdError,
@@ -582,6 +583,7 @@ function DokumentDetail() {
   const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
+  const introText = String(form["intro_text"] ?? "").trim();
   const senderLine = [
     settings?.["company_name"] ?? "",
     settings?.["address_line"] ?? "",
@@ -1783,13 +1785,12 @@ function DokumentDetail() {
               </p>
             </>
           )}
-          {isInvoice && (
-            <p className="mt-3 text-sm leading-relaxed">{INVOICE_INTRO}</p>
+          {/* Einleitungstext live aus dem Eingabefeld – direkt über der Positionstabelle. */}
+          {isInvoice && !introText && (
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{INVOICE_INTRO}</p>
           )}
-          {form["intro_text"] && (
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">
-              {String(form["intro_text"])}
-            </p>
+          {introText && (
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{introText}</p>
           )}
 
           <div className="invoice-table-wrap mt-4 overflow-x-auto">
