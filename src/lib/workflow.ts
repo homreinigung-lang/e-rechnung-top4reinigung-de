@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
-import { reserveDocumentNumber } from "@/lib/doc-number";
+import { draftPlaceholderNumber } from "@/lib/doc-number";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -221,7 +221,8 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .from("company_settings")
     .select("payment_terms_days")
     .maybeSingle();
-  const number = await reserveDocumentNumber(target);
+  // Entwurf: Platzhalter-Nummer, echte Nummer erst beim Festschreiben.
+  const number = draftPlaceholderNumber(target);
 
   const issue = today();
   const {
