@@ -1781,7 +1781,14 @@ function DokumentDetail() {
               </p>
             </>
           )}
-          {form["intro_text"] && <p className="mt-2">{String(form["intro_text"])}</p>}
+          {isInvoice && (
+            <p className="mt-3 text-sm leading-relaxed">{INVOICE_INTRO}</p>
+          )}
+          {form["intro_text"] && (
+            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">
+              {String(form["intro_text"])}
+            </p>
+          )}
 
           <div className="invoice-table-wrap mt-4 overflow-x-auto">
             <table className="invoice-table w-full border-collapse text-left text-sm">
