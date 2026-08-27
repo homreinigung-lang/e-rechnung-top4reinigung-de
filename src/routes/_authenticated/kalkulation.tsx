@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -9,6 +9,7 @@ import {
   FileSignature,
   FileText,
   Plus,
+  Save,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -18,22 +19,29 @@ import { analyzeProject } from "@/lib/project-scan.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
-import { formatMoney, formatNumber } from "@/lib/format";
+import {
+  formatMoney,
+  formatNumber,
+  parseGermanNumber,
+  parsePositiveNumber,
+  taxNoteForTaxMode,
+  vatRateForTaxMode,
+} from "@/lib/format";
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
 import { useRaumbuch } from "@/lib/raumbuch";
 import {
   buildConsolidatedPositions,
+  buildDiscountPosition,
   checkPlausibility,
   detectStairs,
   normalizeItems,
   positionsTotal,
-  reconcilePositionsTotal,
   round2,
-  toCents,
   MIN_STAIR_RATE,
 } from "@/lib/kalkulation-engine";
+
 
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
@@ -66,7 +74,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type KalkulationSearch = { area?: number; objekt?: string; belag?: string };
+type KalkulationSearch = { area?: number; objekt?: string; belag?: string; projekt?: string };
 
 export const Route = createFileRoute("/_authenticated/kalkulation")({
   validateSearch: (search: Record<string, unknown>): KalkulationSearch => {
@@ -75,8 +83,10 @@ export const Route = createFileRoute("/_authenticated/kalkulation")({
       ...(Number.isFinite(area) && area > 0 ? { area } : {}),
       ...(search["objekt"] ? { objekt: String(search["objekt"]) } : {}),
       ...(search["belag"] ? { belag: String(search["belag"]) } : {}),
+      ...(search["projekt"] ? { projekt: String(search["projekt"]) } : {}),
     };
   },
+
   head: () => ({
     meta: [
       { title: "Kalkulation – Reinigungspreise berechnen" },
@@ -132,9 +142,12 @@ const EXTRAS: { key: string; label: string; price: number }[] = [
   { key: "entsorgung", label: "Müllentsorgung", price: 35 },
 ];
 
+/**
+ * Robuste Zahleneingabe: akzeptiert „1.234,56", „1234,56" und „1234.56".
+ * Negative Werte sind in der Kalkulation nicht zulässig.
+ */
 function num(value: string): number {
-  const n = Number(value.replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+  return parsePositiveNumber(value);
 }
 
 /** 52 Wochen / 12 Monate */
@@ -161,10 +174,6 @@ type AiItem = {
   unit_price: string;
 };
 
-const AUTO_BALANCE_DESCRIPTIONS = new Set([
-  "Manuelle Endpreisanpassung",
-  "Manueller Preisnachlass",
-]);
 
 function KalkulationPage() {
   const navigate = useNavigate();
@@ -186,10 +195,30 @@ function KalkulationPage() {
   const [hasLift, setHasLift] = useState(false);
   const [liftRate, setLiftRate] = useState("5,00");
   const [discountPercent, setDiscountPercent] = useState("0");
+  const [discountAmountInput, setDiscountAmountInput] = useState("0");
   const [discountReason, setDiscountReason] = useState("");
-  const [finalPrice, setFinalPrice] = useState("");
-  const [finalTouched, setFinalTouched] = useState(false);
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [glassArea, setGlassArea] = useState("0");
+  const [taxMode, setTaxMode] = useState("domestic");
+  const [calcId, setCalcId] = useState<string | null>(null);
+  const [calcTitle, setCalcTitle] = useState(search.objekt ?? "");
+  const [projectId, setProjectId] = useState<string | null>(search.projekt ?? null);
+  const queryClient = useQueryClient();
+
+  // Steuerart einmalig aus dem Firmenprofil vorbelegen (§ 19 UStG).
+  useEffect(() => {
+    let active = true;
+    void supabase
+      .from("company_settings")
+      .select("small_business")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active && data?.small_business) setTaxMode("kleinunternehmer");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
 
   const [note, setNote] = useState(() => {
     const parts: string[] = [];
@@ -408,7 +437,9 @@ function KalkulationPage() {
         typeValue: selected.value,
         typeLabel: selected.label,
         mode,
-        areaSqm: num(area),
+        // Glasreinigung rechnet mit der separat erfassten Glasfläche.
+        areaSqm: selected.value === "glas" ? num(glassArea) : num(area),
+
         pricePerSqm: num(pricePerSqm),
         hours: num(hours),
         hourlyRate: num(hourlyRate),
@@ -431,6 +462,8 @@ function KalkulationPage() {
       selected.label,
       mode,
       area,
+      glassArea,
+
       pricePerSqm,
       hours,
       hourlyRate,
@@ -448,37 +481,33 @@ function KalkulationPage() {
     () => positionsTotal(stagedPositionsBeforeDiscount),
     [stagedPositionsBeforeDiscount],
   );
-  const discountAmount = round2((subtotal * pct) / 100);
-  const stagedPositions = useMemo(() => {
-    if (pct <= 0 || stagedPositionsBeforeDiscount.length === 0) {
-      return stagedPositionsBeforeDiscount;
-    }
-    return [
-      ...stagedPositionsBeforeDiscount,
-      {
-        description: `Rabatt ${round2(pct)} %${discountReason ? ` – ${discountReason}` : ""}`,
-        quantity: 1,
-        unit: "Pauschal",
-        unit_price: -discountAmount,
-      },
-    ];
-  }, [stagedPositionsBeforeDiscount, pct, discountReason, discountAmount]);
+  const discountFixed = Math.max(0, round2(num(discountAmountInput)));
+  const stagedDiscountPosition = useMemo(
+    () =>
+      buildDiscountPosition(stagedPositionsBeforeDiscount, {
+        percent: pct,
+        amount: discountFixed,
+        reason: discountReason,
+      }),
+    [stagedPositionsBeforeDiscount, pct, discountFixed, discountReason],
+  );
+  const discountTotal = stagedDiscountPosition ? Math.abs(stagedDiscountPosition.unit_price) : 0;
+  const stagedPositions = useMemo(
+    () =>
+      stagedDiscountPosition
+        ? [...stagedPositionsBeforeDiscount, stagedDiscountPosition]
+        : stagedPositionsBeforeDiscount,
+    [stagedPositionsBeforeDiscount, stagedDiscountPosition],
+  );
   const base = round2(subtotal - extrasTotal - stairsTotal - round2(num(travel)));
   const suggested = useMemo(() => positionsTotal(stagedPositions), [stagedPositions]);
 
-  // Vorschlag automatisch übernehmen, solange der Endpreis nicht manuell geändert wurde.
-  useEffect(() => {
-    if (!finalTouched) setFinalPrice(suggested ? suggested.toFixed(2).replace(".", ",") : "0,00");
-  }, [suggested, finalTouched]);
-
   /**
-   * Verbindlicher SSOT: Der Endpreis der Grundkalkulation ist das Ziel für das
-   * Leistungsverzeichnis. Alle Ausgaben verwenden ausschließlich diesen
-   * centgenau abgeglichenen Positionssatz. Manuelle LV-Änderungen verändern
-   * daher automatisch nur die sichtbare Ausgleichsposition, nie den Endpreis.
+   * Single Source of Truth: Das Leistungsverzeichnis bestimmt die Summe.
+   * Gesamt netto = Summe aus Menge × Einzelpreis jeder Position – es gibt
+   * keinen aufgezwungenen Endpreis und keine stille Ausgleichsposition mehr.
    */
-  const targetNetTotal = round2(num(finalPrice));
-  const lvBasePositions = useMemo(
+  const lvPositions = useMemo(
     () =>
       aiItems
         .map((item) => ({
@@ -489,29 +518,22 @@ function KalkulationPage() {
         }))
         .filter(
           (item) =>
-            item.description.length > 0 &&
-            !AUTO_BALANCE_DESCRIPTIONS.has(item.description) &&
-            Math.abs(item.quantity * item.unit_price) >= 0.01,
+            item.description.length > 0 && Math.abs(item.quantity * item.unit_price) >= 0.01,
         ),
     [aiItems],
   );
-  const synchronizedLvPositions = useMemo(
-    () => reconcilePositionsTotal(lvBasePositions, targetNetTotal),
-    [lvBasePositions, targetNetTotal],
-  );
-  const balancingPosition =
-    synchronizedLvPositions.length > lvBasePositions.length
-      ? synchronizedLvPositions[synchronizedLvPositions.length - 1]
-      : undefined;
-  const aiTotal = targetNetTotal;
-  const vatAmount = round2(aiTotal * 0.19);
+  const aiTotal = useMemo(() => positionsTotal(lvPositions), [lvPositions]);
+  const vatRate = vatRateForTaxMode(taxMode);
+  const taxNote = taxNoteForTaxMode(taxMode);
+  const vatAmount = round2((aiTotal * vatRate) / 100);
   const grossTotal = round2(aiTotal + vatAmount);
 
   // Jede preis- oder angebotsrelevante Änderung hebt die finale Bestätigung
   // wieder auf – insbesondere direkte Änderungen am Leistungsverzeichnis.
   useEffect(() => {
     setConfirmed(false);
-  }, [suggested, finalPrice, note, discountReason, selected.value, aiItems]);
+  }, [note, discountReason, selected.value, taxMode, aiItems]);
+
 
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
@@ -533,17 +555,13 @@ function KalkulationPage() {
   );
 
   /**
-   * Übernimmt die Grundkalkulation: bestehende Positionen werden zuerst
-   * vollständig geleert, danach wird der konsolidierte Satz eingefügt.
+   * Übernimmt die Grundkalkulation als Positionssatz in das
+   * Leistungsverzeichnis. Ein gewünschter Rabatt erscheint als eigene,
+   * für den Kunden sichtbare Position – keine stille Ausgleichsbuchung.
    */
   function applyCalculation() {
     if (warnings.length > 0) {
       toast.error("Bitte zuerst die markierten Plausibilitätshinweise prüfen.");
-      return;
-    }
-    const targetTotal = round2(num(finalPrice));
-    if (targetTotal <= 0) {
-      toast.error("Bitte einen gültigen Netto-Endpreis größer als 0 eingeben.");
       return;
     }
     const calculatedPositions = stagedPositions;
@@ -551,16 +569,6 @@ function KalkulationPage() {
       toast.error("Die Grundkalkulation ergibt noch keine gültigen Positionen.");
       return;
     }
-    const positions = reconcilePositionsTotal(calculatedPositions, targetTotal);
-    const transferredTotal = positionsTotal(positions);
-    if (toCents(transferredTotal) !== toCents(targetTotal)) {
-      toast.error(
-        "Der Endpreis konnte nicht centgenau in das Leistungsverzeichnis übernommen werden.",
-      );
-      return;
-    }
-    // Nur die fachlichen Grundpositionen speichern. Die ggf. erforderliche
-    // Ausgleichsposition wird zentral und reaktiv aus dem Endpreis abgeleitet.
     setAiItems(
       calculatedPositions.map((p, n) => ({
         id: `calc-${Date.now()}-${n}`,
@@ -571,7 +579,7 @@ function KalkulationPage() {
       })),
     );
     toast.success(
-      `Kalkulation übernommen – Gesamt netto ${formatMoney(transferredTotal)} exakt übertragen`,
+      `Kalkulation übernommen – Gesamt netto ${formatMoney(positionsTotal(calculatedPositions))}`,
     );
   }
 
@@ -580,16 +588,237 @@ function KalkulationPage() {
     areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
     monthlyHours,
     visitsPerMonth,
-    positions: synchronizedLvPositions.length,
+    positions: lvPositions.length,
     attachments: attachments.length,
     netTotal: aiTotal,
     confirmed,
   };
 
+  // ---- Speichern / Laden ---------------------------------------------------
+  const { data: savedCalcs = [] } = useQuery({
+    queryKey: ["calculations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("calculations")
+        .select("id, title, net_total, updated_at, project_id")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  function resetCalculation() {
+    setCalcId(null);
+    setCalcTitle("");
+    setAiItems([]);
+    toast.success("Neue Kalkulation gestartet");
+  }
+
+  const saveCalculation = useMutation({
+    mutationFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+
+      const payload = {
+        user_id: userId,
+        project_id: projectId,
+        title: calcTitle.trim() || proposalTitle.trim() || selected.label,
+        cleaning_type: type,
+        mode,
+        area_sqm: num(area),
+        glass_sqm: num(glassArea),
+        price_per_sqm: num(pricePerSqm),
+        hours: num(hours),
+        hourly_rate: num(hourlyRate),
+        frequency: num(frequency),
+        frequency_unit: frequencyUnit,
+        travel: num(travel),
+        extras,
+        stairs,
+        floors: num(floors),
+        stair_rate: num(stairRate),
+        has_lift: hasLift,
+        lift_rate: num(liftRate),
+        discount_percent: pct,
+        discount_amount: discountFixed,
+        discount_reason: discountReason,
+        tax_mode: taxMode,
+        note,
+        proposal_title: proposalTitle,
+        proposal_text: proposalText,
+        net_total: aiTotal,
+      };
+
+      let id = calcId;
+      if (id) {
+        const { error } = await supabase.from("calculations").update(payload).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("calculations")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        id = data.id;
+      }
+
+      await supabase.from("calculation_items").delete().eq("calculation_id", id);
+      if (lvPositions.length > 0) {
+        const { error } = await supabase.from("calculation_items").insert(
+          lvPositions.map((p, n) => ({
+            calculation_id: id!,
+            user_id: userId,
+            position: n + 1,
+            description: p.description,
+            quantity: p.quantity,
+            unit: p.unit,
+            unit_price: p.unit_price,
+          })),
+        );
+        if (error) throw error;
+      }
+
+      // Gemeinsame Datenquelle: kalkulierte Positionen zurück ins Projekt-LV.
+      if (projectId) {
+        await supabase
+          .from("project_lv_items")
+          .delete()
+          .eq("project_id", projectId)
+          .eq("section", "Kalkulation");
+        if (lvPositions.length > 0) {
+          const { error } = await supabase.from("project_lv_items").insert(
+            lvPositions.map((p, n) => ({
+              project_id: projectId,
+              user_id: userId,
+              position: n + 1,
+              section: "Kalkulation",
+              title: p.description.slice(0, 120),
+              description: p.description,
+              quantity: p.quantity,
+              unit: p.unit,
+              unit_price: p.unit_price,
+            })),
+          );
+          if (error) throw error;
+        }
+      }
+
+      return id!;
+    },
+    onSuccess: (id) => {
+      setCalcId(id);
+      void queryClient.invalidateQueries({ queryKey: ["calculations"] });
+      if (projectId) void queryClient.invalidateQueries({ queryKey: ["project_lv", projectId] });
+      toast.success("Kalkulation gespeichert");
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+  });
+
+  const loadCalculation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data: head, error } = await supabase
+        .from("calculations")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      const { data: items } = await supabase
+        .from("calculation_items")
+        .select("*")
+        .eq("calculation_id", id)
+        .order("position");
+      return { head, items: items ?? [] };
+    },
+    onSuccess: ({ head, items }) => {
+      const dec = (v: unknown) => String(Number(v) || 0).replace(".", ",");
+      setCalcId(head.id);
+      setCalcTitle(head.title);
+      setProjectId(head.project_id);
+      setType(head.cleaning_type);
+      setMode(head.mode === "hours" ? "hours" : "area");
+      setArea(dec(head.area_sqm));
+      setGlassArea(dec(head.glass_sqm));
+      setPricePerSqm(dec(head.price_per_sqm));
+      setHours(dec(head.hours));
+      setHourlyRate(dec(head.hourly_rate));
+      setFrequency(dec(head.frequency));
+      setFrequencyUnit(head.frequency_unit === "week" ? "week" : "month");
+      setTravel(dec(head.travel));
+      setExtras(head.extras ?? []);
+      setStairs(head.stairs);
+      setFloors(dec(head.floors));
+      setStairRate(dec(head.stair_rate));
+      setHasLift(head.has_lift);
+      setLiftRate(dec(head.lift_rate));
+      setDiscountPercent(dec(head.discount_percent));
+      setDiscountAmountInput(dec(head.discount_amount));
+      setDiscountReason(head.discount_reason);
+      setTaxMode(head.tax_mode);
+      setNote(head.note);
+      setProposalTitle(head.proposal_title);
+      setProposalText(head.proposal_text);
+      setAiItems(
+        items.map((i, n) => ({
+          id: `db-${i.id}-${n}`,
+          description: i.description,
+          quantity: dec(i.quantity),
+          unit: i.unit,
+          unit_price: dec(i.unit_price),
+        })),
+      );
+      toast.success("Kalkulation geladen");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Positionen aus dem Leistungsverzeichnis des Projekts übernehmen. */
+  const importProjectLv = useMutation({
+    mutationFn: async () => {
+      if (!projectId) throw new Error("Kein Projekt verknüpft");
+      const { data, error } = await supabase
+        .from("project_lv_items")
+        .select("id, position, title, description, quantity, unit, unit_price")
+        .eq("project_id", projectId)
+        .order("position");
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: (rows) => {
+      if (rows.length === 0) {
+        toast.error("Im Projekt sind noch keine LV-Positionen erfasst.");
+        return;
+      }
+      const dec = (v: unknown) => String(Number(v) || 0).replace(".", ",");
+      setAiItems(
+        rows.map((r, n) => ({
+          id: `lv-${r.id}-${n}`,
+          description: r.description?.trim() || r.title || "Position",
+          quantity: dec(r.quantity),
+          unit: r.unit || "Pauschal",
+          unit_price: dec(r.unit_price),
+        })),
+      );
+      toast.success(`${rows.length} Positionen aus dem Projekt-LV übernommen`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Beim Aufruf „In Kalkulation übernehmen" die Projektpositionen mitnehmen.
+  const [lvImported, setLvImported] = useState(false);
+  useEffect(() => {
+    if (!search.projekt || lvImported) return;
+    setLvImported(true);
+    importProjectLv.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.projekt, lvImported]);
+
+
   /** Leistungsverzeichnis als abgabefertiges PDF exportieren. */
   const exportLv = useMutation({
     mutationFn: async () => {
-      const positions = synchronizedLvPositions.map((i, n) => ({
+      const positions = lvPositions.map((i, n) => ({
         oz: `${n + 1}.10`,
         description: i.description,
         quantity: i.quantity,
@@ -636,7 +865,9 @@ function KalkulationPage() {
           { label: "Stundenbedarf", value: `${formatNumber(monthlyHours)} Std./Monat` },
         ],
         positions,
-        vatRate: 19,
+        vatRate,
+        ...(taxNote ? { taxNote } : {}),
+
       });
       await saveFile(
         new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }),
@@ -652,7 +883,7 @@ function KalkulationPage() {
       if (warnings.length > 0) {
         throw new Error("Bitte zuerst die Plausibilitätshinweise klären.");
       }
-      const positions = synchronizedLvPositions;
+      const positions = lvPositions;
       if (positions.length === 0) {
         throw new Error(
           "Es liegen keine gültigen Positionen vor. Bitte zuerst die Kalkulation übernehmen.",
@@ -717,6 +948,7 @@ function KalkulationPage() {
         .join("\n");
 
       const net = positionsTotal(positions);
+      const vat = round2((net * vatRate) / 100);
       const { error: docError } = await supabase
         .from("documents")
         .update({
@@ -726,12 +958,17 @@ function KalkulationPage() {
           discount_percent: 0,
           discount_amount: 0,
           discount_reason: discountReason,
+          // Steuerart der Kalkulation wird verbindlich übernommen.
+          tax_mode: taxMode,
+          vat_rate: vatRate,
+          reverse_charge: taxMode === "eu_reverse_charge",
           net_total: net,
-          vat_amount: round2(net * 0.19),
-          total: round2(net * 1.19),
+          vat_amount: vat,
+          total: round2(net + vat),
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
+
 
       return quoteId;
     },
@@ -1526,10 +1763,65 @@ function KalkulationPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
+                <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_auto]">
+                  <div className="space-y-2">
+                    <Label>Bezeichnung der Kalkulation</Label>
+                    <Input
+                      value={calcTitle}
+                      onChange={(e) => setCalcTitle(e.target.value)}
+                      placeholder="z. B. Unterhaltsreinigung Verwaltungsgebäude 2026"
+                    />
+                    {savedCalcs.length > 0 && (
+                      <Select
+                        value={calcId ?? "new"}
+                        onValueChange={(v) => {
+                          if (v === "new") resetCalculation();
+                          else loadCalculation.mutate(v);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Gespeicherte Kalkulation laden" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">Neue Kalkulation</SelectItem>
+                          {savedCalcs.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {(c.title || "Ohne Bezeichnung") +
+                                ` – ${formatMoney(Number(c.net_total))}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={saveCalculation.isPending}
+                      onClick={() => saveCalculation.mutate()}
+                    >
+                      <Save className="size-4" />
+                      {saveCalculation.isPending ? "Speichert …" : "Kalkulation speichern"}
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={applyCalculation}>
                     <Calculator className="size-4" /> Kalkulation übernehmen
                   </Button>
+                  {projectId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={importProjectLv.isPending}
+                      onClick={() => importProjectLv.mutate()}
+                    >
+                      <FileText className="size-4" /> Positionen aus Projekt-LV laden
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -1561,12 +1853,13 @@ function KalkulationPage() {
                   </Button>
                 </div>
 
-                {synchronizedLvPositions.length === 0 ? (
+                {lvPositions.length === 0 ? (
                   <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
                     Noch keine Positionen. Beschreiben Sie die Arbeit im KI-Assistenten (Tab
                     „Grundriss") oder fügen Sie eine Position manuell hinzu.
                   </p>
                 ) : (
+
                   <div className="space-y-2">
                     <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
                       <span>Leistung</span>
@@ -1614,28 +1907,16 @@ function KalkulationPage() {
                         </Button>
                       </div>
                     ))}
-                    {balancingPosition && (
-                      <div className="grid gap-2 rounded-md border border-dashed bg-muted/40 px-2 py-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center">
-                        <span className="text-sm font-medium">{balancingPosition.description}</span>
-                        <span className="text-sm">{formatNumber(balancingPosition.quantity)}</span>
-                        <span className="text-sm">{balancingPosition.unit}</span>
-                        <span className="text-sm">{formatMoney(balancingPosition.unit_price)}</span>
-                        <span className="text-sm font-medium sm:text-right">
-                          {formatMoney(balancingPosition.quantity * balancingPosition.unit_price)}
-                        </span>
-                        <span />
-                      </div>
-                    )}
                     <div className="flex items-center justify-between border-t pt-3 text-sm font-semibold">
                       <span>Gesamt netto</span>
                       <span>{formatMoney(aiTotal)}</span>
                     </div>
                     <p className="text-right text-xs text-muted-foreground">
-                      {synchronizedLvPositions.length} Position(en) – verbindlich an den Endpreis
-                      gekoppelt
+                      {lvPositions.length} Position(en) – Summe aus Menge × Einzelpreis
                     </p>
                   </div>
                 )}
+
               </CardContent>
             </Card>
 
@@ -1670,13 +1951,21 @@ function KalkulationPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label>Rabatt (%)</Label>
                     <Input
                       inputMode="decimal"
                       value={discountPercent}
                       onChange={(e) => setDiscountPercent(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rabatt (fester Betrag netto)</Label>
+                    <Input
+                      inputMode="decimal"
+                      value={discountAmountInput}
+                      onChange={(e) => setDiscountAmountInput(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -1689,64 +1978,73 @@ function KalkulationPage() {
                   </div>
                 </div>
 
-                {pct > 0 && (
+                {discountTotal > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
-                      Rabatt {formatNumber(pct)} %{discountReason ? ` – ${discountReason}` : ""}
+                      Rabatt{pct > 0 ? ` ${formatNumber(pct)} %` : ""}
+                      {discountFixed > 0 ? ` + ${formatMoney(discountFixed)}` : ""}
+                      {discountReason ? ` – ${discountReason}` : ""}
                     </span>
-                    <span>−{formatMoney(discountAmount)}</span>
+                    <span>−{formatMoney(discountTotal)}</span>
                   </div>
                 )}
 
-                <div className="space-y-2 rounded-md border p-3">
-                  <Label>Endpreis Grundkalkulation netto (frei anpassbar)</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={finalPrice}
-                    onChange={(e) => {
-                      setFinalTouched(true);
-                      setFinalPrice(e.target.value);
-                    }}
-                  />
+                <div className="space-y-2">
+                  <Label>Steuerart</Label>
+                  <Select value={taxMode} onValueChange={setTaxMode}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="domestic">Inland – 19 % USt.</SelectItem>
+                      <SelectItem value="eu_reverse_charge">
+                        EU-Ausland – Reverse-Charge (0 %)
+                      </SelectItem>
+                      <SelectItem value="kleinunternehmer">
+                        Kleinunternehmer § 19 UStG (0 %)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {taxNote ? <p className="text-xs text-muted-foreground">{taxNote}</p> : null}
+                </div>
+
+                <div className="space-y-2 rounded-md border p-3 text-sm">
+                  <div className="flex justify-between font-medium">
+                    <span>Vorschlag Grundkalkulation (netto)</span>
+                    <span>{formatMoney(suggested)}</span>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Berechneter Vorschlag: {formatMoney(suggested)}. „Kalkulation übernehmen“
-                    überträgt diesen Endpreis einschließlich manueller Anpassungen centgenau in die
-                    Positionen des Leistungsverzeichnisses.
+                    Über „Kalkulation übernehmen“ werden diese Werte als Positionen in das
+                    Leistungsverzeichnis geschrieben. Maßgeblich für Angebot und PDF ist immer die
+                    Summe der einzelnen LV-Positionen.
                   </p>
-                  {finalTouched && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFinalTouched(false)}
-                      className="px-0"
-                    >
-                      Berechneten Preis wiederherstellen
-                    </Button>
-                  )}
                 </div>
 
                 <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Positionen im Leistungsverzeichnis</span>
-                    <span>{synchronizedLvPositions.length}</span>
+                    <span>{lvPositions.length}</span>
                   </div>
                   <div className="flex justify-between border-t pt-1 font-medium">
                     <span>Gesamt netto</span>
                     <span>{formatMoney(aiTotal)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>zzgl. 19 % MwSt.</span>
+                    <span>
+                      {vatRate > 0 ? `zzgl. ${formatNumber(vatRate)} % MwSt.` : "Umsatzsteuer"}
+                    </span>
                     <span>{formatMoney(vatAmount)}</span>
                   </div>
                   <div className="flex justify-between text-base font-semibold">
-                    <span>Gesamt brutto</span>
+                    <span>{vatRate > 0 ? "Gesamt brutto" : "Gesamtbetrag"}</span>
                     <span>{formatMoney(grossTotal)}</span>
                   </div>
                   <p className="pt-1 text-xs text-muted-foreground">
-                    Der Endpreis der Grundkalkulation ist verbindlich. Die Positionen werden bei
-                    jeder Änderung automatisch centgenau abgeglichen.
+                    Die Gesamtsumme ergibt sich ausschließlich aus Menge × Einzelpreis der
+                    LV-Positionen – ohne stille Ausgleichsposition.
                   </p>
                 </div>
+
 
                 {warnings.length > 0 && (
                   <div className="flex gap-2 rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">

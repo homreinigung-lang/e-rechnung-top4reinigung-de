@@ -49,7 +49,10 @@ export type LvPdfData = {
   meta: Array<{ label: string; value: string }>;
   positions: LvPosition[];
   vatRate: number;
+  /** Pflichthinweis bei 0 % (Reverse-Charge oder § 19 UStG). */
+  taxNote?: string;
 };
+
 
 function clean(value: string): string {
   return (value ?? "")
@@ -243,12 +246,20 @@ export async function buildLvPdf(data: LvPdfData): Promise<Uint8Array> {
   // ---- Summen -------------------------------------------------------------
   y -= 14;
   ensure(60);
-  const vat = (net * data.vatRate) / 100;
-  const sums: Array<[string, string, boolean]> = [
-    ["Angebotssumme netto", formatMoney(net), false],
-    [`zzgl. ${formatNumber(data.vatRate)} % USt.`, formatMoney(vat), false],
-    ["Angebotssumme brutto", formatMoney(net + vat), true],
-  ];
+  const rate = Number.isFinite(data.vatRate) ? data.vatRate : 0;
+  const vat = (net * rate) / 100;
+  const sums: Array<[string, string, boolean]> =
+    rate > 0
+      ? [
+          ["Angebotssumme netto", formatMoney(net), false],
+          [`zzgl. ${formatNumber(rate)} % USt.`, formatMoney(vat), false],
+          ["Angebotssumme brutto", formatMoney(net + vat), true],
+        ]
+      : [
+          ["Angebotssumme netto", formatMoney(net), false],
+          ["Umsatzsteuer", "0,00 €", false],
+          ["Angebotssumme gesamt", formatMoney(net), true],
+        ];
   const sumX = M_X + CONTENT_W - 80 * MM;
   for (const [label, value, strong] of sums) {
     if (strong) {
@@ -273,6 +284,17 @@ export async function buildLvPdf(data: LvPdfData): Promise<Uint8Array> {
     );
     y -= 14;
   }
+
+  // ---- Steuerlicher Pflichthinweis (Reverse-Charge / § 19 UStG) ------------
+  if (data.taxNote?.trim()) {
+    y -= 6;
+    for (const line of wrap(regular, 8.5, data.taxNote.trim(), CONTENT_W)) {
+      ensure(12);
+      draw(line, M_X, y, 8.5, regular, MUTED);
+      y -= 10;
+    }
+  }
+
 
   // ---- Fuß ----------------------------------------------------------------
   const footerLines = [

@@ -22,6 +22,40 @@ export function formatNumber(value: number): string {
   return DE_NUMBER.format(Number.isFinite(value) ? value : 0);
 }
 
+/**
+ * Liest eine deutsche Zahleneingabe robust ein: „1.234,56" (Tausenderpunkt),
+ * „1234,56", „1234.56" und „1 234,56" ergeben alle 1234,56.
+ */
+export function parseGermanNumber(value: string | number | null | undefined): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  let raw = String(value ?? "")
+    .replace(/[\s\u00a0€]/g, "")
+    .replace(/[^0-9,.\-]/g, "");
+  if (!raw) return 0;
+
+  const lastComma = raw.lastIndexOf(",");
+  const lastDot = raw.lastIndexOf(".");
+  if (lastComma >= 0 && lastDot >= 0) {
+    // Das zuletzt stehende Zeichen ist das Dezimaltrennzeichen.
+    if (lastComma > lastDot) raw = raw.replace(/\./g, "").replace(",", ".");
+    else raw = raw.replace(/,/g, "");
+  } else if (lastComma >= 0) {
+    raw = raw.replace(/\./g, "").replace(",", ".");
+  } else if (lastDot >= 0 && /^-?\d{1,3}(\.\d{3})+$/.test(raw)) {
+    // Reiner Tausenderpunkt ohne Dezimalstellen: 1.234 → 1234
+    raw = raw.replace(/\./g, "");
+  }
+
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Wie parseGermanNumber, aber niemals negativ (für Mengen, Flächen, Preise). */
+export function parsePositiveNumber(value: string | number | null | undefined): number {
+  return Math.max(0, parseGermanNumber(value));
+}
+
+
 const DE_DATE = new Intl.DateTimeFormat(DE_LOCALE, {
   calendar: "gregory",
   numberingSystem: "latn",
