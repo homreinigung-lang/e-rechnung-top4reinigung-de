@@ -226,6 +226,8 @@ export type Database = {
           id: string
           position: number
           quantity: number
+          section: string
+          source_lv_item_id: string | null
           unit: string
           unit_price: number
           updated_at: string
@@ -238,6 +240,8 @@ export type Database = {
           id?: string
           position?: number
           quantity?: number
+          section?: string
+          source_lv_item_id?: string | null
           unit?: string
           unit_price?: number
           updated_at?: string
@@ -250,6 +254,8 @@ export type Database = {
           id?: string
           position?: number
           quantity?: number
+          section?: string
+          source_lv_item_id?: string | null
           unit?: string
           unit_price?: number
           updated_at?: string

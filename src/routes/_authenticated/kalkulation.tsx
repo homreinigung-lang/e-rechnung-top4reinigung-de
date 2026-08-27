@@ -172,7 +172,15 @@ type AiItem = {
   quantity: string;
   unit: string;
   unit_price: string;
+  /** Ursprünglicher LV-Bereich (bleibt beim Rückschreiben erhalten). */
+  section?: string;
+  /** Herkunfts-Zeile in project_lv_items – verhindert Duplikate. */
+  sourceLvItemId?: string | null;
 };
+
+/** Standardbereich für Positionen, die in der Kalkulation neu entstehen. */
+const KALK_SECTION = "Kalkulation";
+
 
 
 function KalkulationPage() {
@@ -511,13 +519,16 @@ function KalkulationPage() {
     () =>
       aiItems
         .map((item) => ({
+          key: item.id,
           description: item.description.trim(),
           quantity: round2(num(item.quantity)),
           unit: item.unit.trim() || "Pauschal",
           // Einzelpreise dürfen negativ sein (ausgewiesene Rabattposition).
           unit_price: round2(parseGermanNumber(item.unit_price)),
-
+          section: (item.section || "").trim() || KALK_SECTION,
+          sourceLvItemId: item.sourceLvItemId ?? null,
         }))
+
         .filter(
           (item) =>
             item.description.length > 0 && Math.abs(item.quantity * item.unit_price) >= 0.01,
@@ -677,44 +688,114 @@ function KalkulationPage() {
             quantity: p.quantity,
             unit: p.unit,
             unit_price: p.unit_price,
+            section: p.section,
+            source_lv_item_id: p.sourceLvItemId,
           })),
         );
         if (error) throw error;
       }
 
-      // Gemeinsame Datenquelle: kalkulierte Positionen zurück ins Projekt-LV.
+      /**
+       * Gemeinsame Datenquelle: Positionen zurück ins Projekt-LV – ohne Duplikate.
+       * Übernommene Zeilen werden an ihrer Herkunftsstelle aktualisiert (Bereich
+       * bleibt erhalten), nur wirklich neue Positionen landen im Bereich
+       * „Kalkulation". Gelöscht wird ausschließlich, was diese Kalkulation
+       * zuvor selbst im Bereich „Kalkulation" angelegt hat.
+       */
+      const linkedIds: Record<string, string> = {};
       if (projectId) {
-        await supabase
+        const { data: existingRows, error: exErr } = await supabase
           .from("project_lv_items")
-          .delete()
-          .eq("project_id", projectId)
-          .eq("section", "Kalkulation");
-        if (lvPositions.length > 0) {
-          const { error } = await supabase.from("project_lv_items").insert(
-            lvPositions.map((p, n) => ({
-              project_id: projectId,
-              user_id: userId,
-              position: n + 1,
-              section: "Kalkulation",
-              title: p.description.slice(0, 120),
-              description: p.description,
-              quantity: p.quantity,
-              unit: p.unit,
-              unit_price: p.unit_price,
-            })),
-          );
+          .select("id, section")
+          .eq("project_id", projectId);
+        if (exErr) throw exErr;
+        const existing = new Map((existingRows ?? []).map((r) => [r.id, r.section]));
+
+        const keep = new Set(
+          lvPositions
+            .map((p) => p.sourceLvItemId)
+            .filter((v): v is string => !!v && existing.has(v)),
+        );
+
+        const stale = (existingRows ?? [])
+          .filter((r) => r.section === KALK_SECTION && !keep.has(r.id))
+          .map((r) => r.id);
+        if (stale.length > 0) {
+          const { error } = await supabase.from("project_lv_items").delete().in("id", stale);
           if (error) throw error;
+        }
+
+        const inserts: { pos: (typeof lvPositions)[number]; index: number }[] = [];
+        for (let n = 0; n < lvPositions.length; n++) {
+          const p = lvPositions[n]!;
+          if (p.sourceLvItemId && existing.has(p.sourceLvItemId)) {
+            const { error } = await supabase
+              .from("project_lv_items")
+              .update({
+                position: n + 1,
+                // Bereich bleibt unverändert – keine Verschiebung fremder Abschnitte.
+                title: p.description.slice(0, 120),
+                description: p.description,
+                quantity: p.quantity,
+                unit: p.unit,
+                unit_price: p.unit_price,
+              })
+              .eq("id", p.sourceLvItemId);
+            if (error) throw error;
+          } else {
+            inserts.push({ pos: p, index: n });
+          }
+        }
+
+        if (inserts.length > 0) {
+          const { data: created, error } = await supabase
+            .from("project_lv_items")
+            .insert(
+              inserts.map(({ pos, index }) => ({
+                project_id: projectId,
+                user_id: userId,
+                position: index + 1,
+                section: KALK_SECTION,
+                title: pos.description.slice(0, 120),
+                description: pos.description,
+                quantity: pos.quantity,
+                unit: pos.unit,
+                unit_price: pos.unit_price,
+              })),
+            )
+            .select("id");
+          if (error) throw error;
+          (created ?? []).forEach((row, i) => {
+            const src = inserts[i];
+            if (src) linkedIds[src.pos.key] = row.id;
+          });
         }
       }
 
-      return id!;
+      // Verknüpfung auch in der gespeicherten Kalkulation festhalten,
+      // damit ein erneutes Laden weiterhin duplikatfrei zurückschreibt.
+      for (const [key, lvId] of Object.entries(linkedIds)) {
+        const idx = lvPositions.findIndex((p) => p.key === key);
+        if (idx < 0) continue;
+        await supabase
+          .from("calculation_items")
+          .update({ source_lv_item_id: lvId })
+          .eq("calculation_id", id)
+          .eq("position", idx + 1);
+      }
+
+      return { id: id!, linkedIds };
     },
-    onSuccess: (id) => {
+    onSuccess: ({ id, linkedIds }) => {
       setCalcId(id);
+      setAiItems((prev) =>
+        prev.map((i) => (linkedIds[i.id] ? { ...i, sourceLvItemId: linkedIds[i.id]! } : i)),
+      );
       void queryClient.invalidateQueries({ queryKey: ["calculations"] });
       if (projectId) void queryClient.invalidateQueries({ queryKey: ["project_lv", projectId] });
       toast.success("Kalkulation gespeichert");
     },
+
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
@@ -768,6 +849,8 @@ function KalkulationPage() {
           quantity: dec(i.quantity),
           unit: i.unit,
           unit_price: dec(i.unit_price),
+          section: i.section || KALK_SECTION,
+          sourceLvItemId: i.source_lv_item_id,
         })),
       );
       toast.success("Kalkulation geladen");
@@ -781,7 +864,7 @@ function KalkulationPage() {
       if (!projectId) throw new Error("Kein Projekt verknüpft");
       const { data, error } = await supabase
         .from("project_lv_items")
-        .select("id, position, title, description, quantity, unit, unit_price")
+        .select("id, position, section, title, description, quantity, unit, unit_price")
         .eq("project_id", projectId)
         .order("position");
       if (error) throw error;
@@ -800,10 +883,15 @@ function KalkulationPage() {
           quantity: dec(r.quantity),
           unit: r.unit || "Pauschal",
           unit_price: dec(r.unit_price),
+          // Herkunft merken: Bereich bleibt erhalten, Rückschreiben aktualisiert
+          // genau diese Zeile statt eine Kopie anzulegen.
+          section: r.section || KALK_SECTION,
+          sourceLvItemId: r.id,
         })),
       );
       toast.success(`${rows.length} Positionen aus dem Projekt-LV übernommen`);
     },
+
     onError: (e: Error) => toast.error(e.message),
   });
 
