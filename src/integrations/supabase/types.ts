@@ -218,6 +218,160 @@ export type Database = {
           },
         ]
       }
+      calculation_items: {
+        Row: {
+          calculation_id: string
+          created_at: string
+          description: string
+          id: string
+          position: number
+          quantity: number
+          unit: string
+          unit_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calculation_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          position?: number
+          quantity?: number
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calculation_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          position?: number
+          quantity?: number
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calculation_items_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "calculations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calculations: {
+        Row: {
+          area_sqm: number
+          cleaning_type: string
+          created_at: string
+          discount_amount: number
+          discount_percent: number
+          discount_reason: string
+          extras: string[]
+          floors: number
+          frequency: number
+          frequency_unit: string
+          glass_sqm: number
+          has_lift: boolean
+          hourly_rate: number
+          hours: number
+          id: string
+          lift_rate: number
+          mode: string
+          net_total: number
+          note: string
+          price_per_sqm: number
+          project_id: string | null
+          proposal_text: string
+          proposal_title: string
+          stair_rate: number
+          stairs: boolean
+          tax_mode: string
+          title: string
+          travel: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area_sqm?: number
+          cleaning_type?: string
+          created_at?: string
+          discount_amount?: number
+          discount_percent?: number
+          discount_reason?: string
+          extras?: string[]
+          floors?: number
+          frequency?: number
+          frequency_unit?: string
+          glass_sqm?: number
+          has_lift?: boolean
+          hourly_rate?: number
+          hours?: number
+          id?: string
+          lift_rate?: number
+          mode?: string
+          net_total?: number
+          note?: string
+          price_per_sqm?: number
+          project_id?: string | null
+          proposal_text?: string
+          proposal_title?: string
+          stair_rate?: number
+          stairs?: boolean
+          tax_mode?: string
+          title?: string
+          travel?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area_sqm?: number
+          cleaning_type?: string
+          created_at?: string
+          discount_amount?: number
+          discount_percent?: number
+          discount_reason?: string
+          extras?: string[]
+          floors?: number
+          frequency?: number
+          frequency_unit?: string
+          glass_sqm?: number
+          has_lift?: boolean
+          hourly_rate?: number
+          hours?: number
+          id?: string
+          lift_rate?: number
+          mode?: string
+          net_total?: number
+          note?: string
+          price_per_sqm?: number
+          project_id?: string | null
+          proposal_text?: string
+          proposal_title?: string
+          stair_rate?: number
+          stairs?: boolean
+          tax_mode?: string
+          title?: string
+          travel?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calculations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           body: string

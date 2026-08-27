@@ -217,32 +217,34 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
 }
 
 /**
- * Gleicht einen Positionssatz centgenau an einen verbindlichen Netto-Endpreis an.
- * Eine sichtbare Ausgleichsposition vermeidet Rundungsreste bei Positionen mit
- * Mengen größer als 1 und macht manuelle Preisänderungen im LV nachvollziehbar.
+ * Erzeugt eine ausdrückliche, für den Kunden nachvollziehbare Rabattposition
+ * (Prozentsatz und/oder fester Betrag). Es gibt keine stille Ausgleichs-
+ * position mehr: Die Gesamtsumme ergibt sich immer aus den Positionen selbst.
  */
-export function reconcilePositionsTotal(
+export function buildDiscountPosition(
   positions: CalcPosition[],
-  targetTotal: number,
-): CalcPosition[] {
-  const targetCents = toCents(targetTotal);
-  const currentCents = toCents(positionsTotal(positions));
-  const differenceCents = targetCents - currentCents;
+  discount: { percent: number; amount: number; reason: string },
+): CalcPosition | null {
+  const base = positionsTotal(positions);
+  const pct = Math.min(100, Math.max(0, Number(discount.percent) || 0));
+  const fixed = Math.max(0, round2(Number(discount.amount) || 0));
+  const fromPercent = pct > 0 ? round2((base * pct) / 100) : 0;
+  const total = round2(fromPercent + fixed);
+  if (total <= 0) return null;
 
-  if (differenceCents === 0) return positions;
+  const parts: string[] = [];
+  if (pct > 0) parts.push(`${round2(pct)} %`);
+  if (fixed > 0) parts.push(`Festbetrag ${round2(fixed)} €`);
+  const reason = discount.reason.trim();
 
-  const difference = fromCents(differenceCents);
-
-  return [
-    ...positions,
-    {
-      description: difference > 0 ? "Manuelle Endpreisanpassung" : "Manueller Preisnachlass",
-      quantity: 1,
-      unit: "Pauschal",
-      unit_price: difference,
-    },
-  ];
+  return {
+    description: `Rabatt (${parts.join(" + ")})${reason ? ` – ${reason}` : ""}`,
+    quantity: 1,
+    unit: "Pauschal",
+    unit_price: -total,
+  };
 }
+
 
 /**
  * Bereinigt KI-Positionen: sinnvolle Preise statt 0,00 €, saubere Rundung,
