@@ -288,7 +288,9 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
 
   if (d.introText) {
     const lines = wrap(regular, 9.5, d.introText, CONTENT_W);
-    ensure(ctx, lines.length * 12 + 6);
+    // Einleitung nie allein am Seitenende stehen lassen – ggf. zusammen mit
+    // dem Tabellenkopf auf die nächste Seite umbrechen (keep-with-next).
+    ensure(ctx, lines.length * 12 + 6 + (d.items.length > 0 ? 50 : 0));
     for (const line of lines) {
       text(ctx, line, { y: ctx.y, size: 9.5 });
       ctx.y -= 12;
