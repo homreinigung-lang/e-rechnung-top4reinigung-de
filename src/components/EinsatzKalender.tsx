@@ -468,7 +468,8 @@ export function EinsatzKalender({
       workDate: string;
       employeeId?: string;
     }) => {
-      const patch: Record<string, unknown> = {
+      const emp = employeeId ? employees.find((e) => e.id === employeeId) : null;
+      const patch = {
         work_date: workDate,
         completed_at: null,
         billed: false,
@@ -477,12 +478,10 @@ export function EinsatzKalender({
         decided_at: null,
         decided_by: null,
         decision_note: "",
+        ...(employeeId ? { employee_id: employeeId } : {}),
+        ...(emp ? { employee_name: emp.name } : {}),
       };
-      if (employeeId) {
-        const emp = employees.find((e) => e.id === employeeId);
-        patch["employee_id"] = employeeId;
-        if (emp) patch["employee_name"] = emp.name;
-      }
+
       const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
       if (error) throw error;
     },
