@@ -271,15 +271,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="no-print fixed right-4 z-40 flex flex-col items-end gap-2"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
       >
-        <button
-          type="button"
-          onClick={() => setReviewOpen(true)}
-          aria-label="Bewertung abgeben"
-          className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm font-medium text-muted-foreground shadow-lg backdrop-blur transition-colors hover:text-foreground"
-        >
-          <Star className="size-4 text-amber-500" />
-          <span className="hidden sm:inline">Bewertung</span>
-        </button>
+        {!myEmployee ? (
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            aria-label="Bewertung abgeben"
+            className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm font-medium text-muted-foreground shadow-lg backdrop-blur transition-colors hover:text-foreground"
+          >
+            <Star className="size-4 text-amber-500" />
+            <span className="hidden sm:inline">Bewertung</span>
+          </button>
+        ) : null}
         <Link
           to="/hilfe"
           aria-label="Hilfe und Support öffnen"
