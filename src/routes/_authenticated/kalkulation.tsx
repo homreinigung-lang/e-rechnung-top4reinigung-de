@@ -772,15 +772,30 @@ function KalkulationPage() {
         }
       }
 
-      return { id: id!, linkedIds };
+      // Verknüpfung auch in der gespeicherten Kalkulation festhalten,
+      // damit ein erneutes Laden weiterhin duplikatfrei zurückschreibt.
+      for (const [key, lvId] of Object.entries(linkedIds)) {
+        const idx = lvPositions.findIndex((p) => p.key === key);
+        if (idx < 0) continue;
+        await supabase
+          .from("calculation_items")
+          .update({ source_lv_item_id: lvId })
+          .eq("calculation_id", id)
+          .eq("position", idx + 1);
+      }
 
+      return { id: id!, linkedIds };
     },
-    onSuccess: (id) => {
+    onSuccess: ({ id, linkedIds }) => {
       setCalcId(id);
+      setAiItems((prev) =>
+        prev.map((i) => (linkedIds[i.id] ? { ...i, sourceLvItemId: linkedIds[i.id]! } : i)),
+      );
       void queryClient.invalidateQueries({ queryKey: ["calculations"] });
       if (projectId) void queryClient.invalidateQueries({ queryKey: ["project_lv", projectId] });
       toast.success("Kalkulation gespeichert");
     },
+
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
