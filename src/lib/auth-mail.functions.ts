@@ -26,8 +26,8 @@ export const sendAuthConfirmationEmail = createServerFn({ method: "POST" })
     if (!magic.error) link = magic.data?.properties?.action_link ?? null;
 
     if (!link) {
-      // Kein Konto vorhanden – aus Datenschutzgründen keine Auskunft geben.
-      return { sent: false as const, reason: "unknown_account" as const };
+      // Kein Konto vorhanden – aus Datenschutzgründen identische Antwort.
+      return { sent: true as const };
     }
 
     const subject = "Ihr Bestätigungslink für GebCalc";
