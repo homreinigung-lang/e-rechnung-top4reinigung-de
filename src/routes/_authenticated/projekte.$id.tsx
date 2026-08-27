@@ -507,8 +507,10 @@ function ProjektDetail() {
                   area: Math.round(totalSqm * 100) / 100,
                   objekt: project.name || "",
                   belag: topCover[0]?.[0] ?? "",
+                  projekt: project.id,
                 }}
               >
+
                 <Calculator className="size-4" /> In Kalkulation übernehmen
               </Link>
             </Button>
