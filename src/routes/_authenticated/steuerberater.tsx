@@ -12,14 +12,18 @@ import { saveFile } from "@/lib/download";
 import {
   Archive,
   Calculator,
+  Check,
   Download,
   FileSpreadsheet,
   FileText,
+  Lock,
   Printer,
   ShieldCheck,
+  ShieldOff,
 } from "lucide-react";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 
 export const Route = createFileRoute("/_authenticated/steuerberater")({
   head: () => ({
