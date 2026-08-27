@@ -464,11 +464,6 @@ function Steuerberater() {
             {gobdExport.isPending ? "Export wird erstellt…" : "GoBD-Export herunterladen"}
           </Button>
         </div>
-
-        <h3 className="mt-5 font-display text-sm font-semibold">
-          Prüfprotokoll (letzte Einträge im Zeitraum)
-        </h3>
-        <Table rows={auditRows} empty="Noch keine protokollierten Vorgänge im Zeitraum." />
       </section>
 
       <section className="print-area rounded-lg border bg-card p-6">
