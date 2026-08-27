@@ -1324,9 +1324,11 @@ function DokumentDetail() {
             </Label>
             <Input id="number" value={docNumber} readOnly disabled className="bg-muted" />
             <p className="text-xs text-muted-foreground">
-              Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle
-              Änderung ist nicht möglich.
+              {isDraftPlaceholder(docNumber)
+                ? "Vorschau-/Testnummer. Die endgültige, fortlaufende Nummer wird erst beim Festschreiben bzw. Versenden vergeben – so entstehen keine Lücken (§ 14 UStG / GoBD)."
+                : "Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle Änderung ist nicht möglich."}
             </p>
+
           </div>
           <div className="space-y-2">
             <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
