@@ -129,21 +129,6 @@ function Steuerberater() {
     },
   });
 
-  const { data: auditLog = [] } = useQuery({
-    queryKey: ["stb_audit", from, to],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("document_audit_log")
-        .select("*")
-        .gte("created_at", `${from}T00:00:00Z`)
-        .lte("created_at", `${to}T23:59:59Z`)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
   // Zeiterfassung inkl. bestätigter Schichten und Abwesenheiten (K/U) – Basis der Lohnabrechnung.
   const { data: timeEntries = [] } = useQuery({
     queryKey: ["stb_time_entries", from, to],
@@ -276,24 +261,6 @@ function Steuerberater() {
       Buchungstext: e.supplier.slice(0, 60),
     })),
   ];
-
-  const AUDIT_LABEL: Record<string, string> = {
-    finalized: "Festgeschrieben",
-    archived: "PDF archiviert",
-    storno_created: "Stornorechnung erstellt",
-    cancelled: "Storniert",
-    sent: "Versendet",
-    gobd_export: "GoBD-Export",
-    xrechnung_export: "XRechnung (XML) erstellt",
-    zugferd_export: "ZUGFeRD-PDF erstellt",
-  };
-
-  const auditRows: Row[] = auditLog.map((a) => ({
-    Zeitpunkt: new Date(a.created_at).toLocaleString("de-DE-u-ca-gregory-nu-latn"),
-    Beleg: a.document_number,
-    Vorgang: AUDIT_LABEL[a.action] ?? a.action,
-    Details: JSON.stringify(a.details),
-  }));
 
   /** Lohnart-Kürzel: A = Arbeit, K = Krank, U = Urlaub, F = Feiertag, S = Sonstige. */
   function lohnart(t: Record<string, unknown>) {
