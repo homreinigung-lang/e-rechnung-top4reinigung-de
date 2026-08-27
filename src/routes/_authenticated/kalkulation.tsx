@@ -519,6 +519,7 @@ function KalkulationPage() {
     () =>
       aiItems
         .map((item) => ({
+          key: item.id,
           description: item.description.trim(),
           quantity: round2(num(item.quantity)),
           unit: item.unit.trim() || "Pauschal",
