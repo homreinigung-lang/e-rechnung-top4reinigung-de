@@ -17,6 +17,7 @@ import {
   normalizeIban,
   type PlatformPayment,
 } from "@/lib/platform-payment";
+import { useIsAdmin } from "@/lib/subscriptions";
 
 /**
  * Pflegt die Bankdaten des Plattform-Betreibers (Tabelle platform_settings).
