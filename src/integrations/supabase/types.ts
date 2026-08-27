@@ -56,11 +56,13 @@ export type Database = {
       accountant_access: {
         Row: {
           access_code: string
+          activated_at: string | null
           active: boolean
           created_at: string
           email: string
           expires_at: string
           id: string
+          invited_at: string | null
           last_used_at: string | null
           token: string
           updated_at: string
@@ -68,11 +70,13 @@ export type Database = {
         }
         Insert: {
           access_code: string
+          activated_at?: string | null
           active?: boolean
           created_at?: string
           email?: string
           expires_at?: string
           id?: string
+          invited_at?: string | null
           last_used_at?: string | null
           token: string
           updated_at?: string
@@ -80,11 +84,13 @@ export type Database = {
         }
         Update: {
           access_code?: string
+          activated_at?: string | null
           active?: boolean
           created_at?: string
           email?: string
           expires_at?: string
           id?: string
+          invited_at?: string | null
           last_used_at?: string | null
           token?: string
           updated_at?: string
