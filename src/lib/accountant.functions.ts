@@ -205,20 +205,9 @@ export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; month: string }) => data)
   .handler(async ({ data }): Promise<Array<{ name: string; url: string }>> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
 
-    const { data: access } = await supabaseAdmin
-      .from("accountant_access")
-      .select("user_id, access_code, active")
-      .eq("token", data.token)
-      .maybeSingle();
-
-    if (
-      !access ||
-      !access.active ||
-      access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
-    ) {
-      throw new Error("Zugang ungültig.");
-    }
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
     if (!/^\d{4}-\d{2}$/.test(data.month)) throw new Error("Ungültiger Monat.");
     const start = `${data.month}-01`;
