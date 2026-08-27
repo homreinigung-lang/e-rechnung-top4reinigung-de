@@ -79,7 +79,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
 
     const { data: access } = await supabaseAdmin
       .from("accountant_access")
-      .select("id, user_id, access_code, active, expires_at")
+      .select("id, user_id, access_code, active, expires_at, activated_at")
       .eq("token", data.token)
       .maybeSingle();
 
@@ -91,9 +91,13 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       throw new Error("Zugang ungültig.");
     }
 
+    const now = new Date().toISOString();
     await supabaseAdmin
       .from("accountant_access")
-      .update({ last_used_at: new Date().toISOString() })
+      .update({
+        last_used_at: now,
+        ...(access.activated_at ? {} : { activated_at: now }),
+      })
       .eq("id", access.id);
 
     const [documents, expenses, timeEntries, employees, adjustments, settings] = await Promise.all([
@@ -365,7 +369,7 @@ ${companyName}`;
     if (data.email) {
       await context.supabase
         .from("accountant_access")
-        .update({ email: data.email })
+        .update({ email: data.email, invited_at: new Date().toISOString() })
         .eq("id", access.id)
         .eq("user_id", context.userId);
     }
