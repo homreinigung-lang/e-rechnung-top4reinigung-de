@@ -452,7 +452,12 @@ export function EinsatzKalender({
   const [drag, setDrag] = useState<DragPayload | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
-  /** Einsatz auf einen anderen Tag (und optional Mitarbeiter) verschieben. */
+  /**
+   * Einsatz auf einen anderen Tag (und optional Mitarbeiter) verschieben.
+   * Der verschobene Einsatz gilt als neu geplante Aufgabe: Erledigt-Status,
+   * Abrechnung, Fotos und Genehmigungsentscheidungen des Ursprungstages
+   * werden dabei zurückgesetzt.
+   */
   const moveEntry = useMutation({
     mutationFn: async ({
       id,
@@ -463,23 +468,31 @@ export function EinsatzKalender({
       workDate: string;
       employeeId?: string;
     }) => {
-      const patch: { work_date: string; employee_id?: string; employee_name?: string } = {
+      const patch: Record<string, unknown> = {
         work_date: workDate,
+        completed_at: null,
+        billed: false,
+        photo_paths: [],
+        approval_status: "pending",
+        decided_at: null,
+        decided_by: null,
+        decision_note: "",
       };
       if (employeeId) {
         const emp = employees.find((e) => e.id === employeeId);
-        patch.employee_id = employeeId;
-        if (emp) patch.employee_name = emp.name;
+        patch["employee_id"] = employeeId;
+        if (emp) patch["employee_name"] = emp.name;
       }
       const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Einsatz verschoben");
+      toast.success("Einsatz verschoben – als neue Aufgabe (offen) angelegt");
       refresh();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   /** Schnellzuweisung: Mitarbeiter per Drag & Drop auf einen Tag legen. */
   const quickAssign = useMutation({
