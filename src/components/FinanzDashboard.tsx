@@ -239,7 +239,7 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
         <div className="surface p-5">
           <div className="flex items-center gap-2">
             <CalendarClock className="size-4 text-primary" />
-            <h3 className="font-semibold">Anstehend – nächste 30 Tage</h3>
+            <h3 className="font-semibold">Anstehend – nächste 30 Tage &amp; folgende Termine</h3>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
