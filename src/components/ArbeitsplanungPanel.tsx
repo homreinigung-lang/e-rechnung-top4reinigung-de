@@ -28,6 +28,74 @@ import {
 } from "@/lib/planung";
 import { formatDate } from "@/lib/format";
 
+/**
+ * Schnellauswahl: eine Zeitvorlage auf die ganze Woche (Mo–Fr bzw. Mo–So)
+ * übernehmen, damit nicht jeder Tag einzeln gepflegt werden muss.
+ */
+function WeekQuickFill({
+  onApply,
+  onClear,
+}: {
+  onApply: (template: DayTime, dayCount: number) => void;
+  onClear: () => void;
+}) {
+  const [start, setStart] = React.useState("08:00");
+  const [end, setEnd] = React.useState("16:00");
+  const [breakMin, setBreakMin] = React.useState(30);
+
+  const apply = (dayCount: number) => {
+    if (!start || !end) {
+      toast.error("Bitte Von- und Bis-Zeit angeben.");
+      return;
+    }
+    onApply({ start, end, breakMin: Math.max(0, breakMin) }, dayCount);
+  };
+
+  return (
+    <div className="rounded-md border bg-muted/40 p-2">
+      <div className="text-xs font-semibold">Ganze Woche übernehmen</div>
+      <div className="mt-1 grid grid-cols-[1fr_1fr_3.2rem] gap-1">
+        <Input
+          type="time"
+          value={start}
+          onChange={(ev) => setStart(ev.target.value)}
+          className="h-8 px-1 text-xs"
+          aria-label="Von (ganze Woche)"
+        />
+        <Input
+          type="time"
+          value={end}
+          onChange={(ev) => setEnd(ev.target.value)}
+          className="h-8 px-1 text-xs"
+          aria-label="Bis (ganze Woche)"
+        />
+        <Input
+          type="number"
+          min={0}
+          step="5"
+          value={breakMin ? String(breakMin) : ""}
+          placeholder="0"
+          onChange={(ev) => setBreakMin(Number(ev.target.value) || 0)}
+          className="h-8 px-1 text-center text-xs"
+          aria-label="Pause (ganze Woche)"
+        />
+      </div>
+      <div className="mt-1 flex flex-wrap gap-1">
+        <Button type="button" size="sm" variant="secondary" onClick={() => apply(5)}>
+          Mo–Fr
+        </Button>
+        <Button type="button" size="sm" variant="secondary" onClick={() => apply(7)}>
+          Mo–So
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onClear}>
+          Leeren
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
 type Employee = {
   id: string;
   name: string;
@@ -262,6 +330,26 @@ export function Arbeitsplanung() {
       current[index] = { ...(current[index] ?? EMPTY_DAY_TIME), ...patch };
       return { ...d, [key(e, p)]: current };
     });
+
+  /**
+   * Ganze Woche auf einmal setzen: übernimmt eine Zeitvorlage auf die
+   * gewünschten Wochentage (Mo–Fr oder Mo–So) bzw. leert alle Tage.
+   */
+  const applyWeekTimes = (e: string, p: string, template: DayTime, dayCount: number) =>
+    setDraft((d) => {
+      const current = [...(d[key(e, p)] ?? savedTimes(e, p))];
+      const next = Array.from({ length: 7 }, (_, i) =>
+        i < dayCount ? { ...template } : (current[i] ?? { ...EMPTY_DAY_TIME }),
+      );
+      return { ...d, [key(e, p)]: next };
+    });
+
+  const clearWeekTimes = (e: string, p: string) =>
+    setDraft((d) => ({
+      ...d,
+      [key(e, p)]: Array.from({ length: 7 }, () => ({ ...EMPTY_DAY_TIME })),
+    }));
+
 
   const dirtyKeys = React.useMemo(
     () =>
@@ -565,6 +653,13 @@ export function Arbeitsplanung() {
                               <div className="text-sm font-semibold">
                                 {e.name} · {p.name || "Objekt"}
                               </div>
+                              <WeekQuickFill
+                                onApply={(template, dayCount) =>
+                                  applyWeekTimes(e.id, p.id, template, dayCount)
+                                }
+                                onClear={() => clearWeekTimes(e.id, p.id)}
+                              />
+
                               <div className="grid grid-cols-[1.5rem_1fr_1fr_3.2rem_2.6rem] items-center gap-1 text-[10px] text-muted-foreground">
                                 <span />
                                 <span>Von</span>
