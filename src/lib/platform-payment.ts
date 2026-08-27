@@ -72,10 +72,11 @@ export function usePlatformPayment() {
 }
 
 /** Vollständige Einstellungen für die Administrationsoberfläche. */
-export function usePlatformSettingsAdmin() {
+export function usePlatformSettingsAdmin(enabled = true) {
   return useQuery({
     queryKey: ["platform_settings", "admin"],
     queryFn: fetchPlatformSettingsAdmin,
+    enabled,
     staleTime: 5 * 60_000,
   });
 }
