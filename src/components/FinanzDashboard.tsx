@@ -91,23 +91,21 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
   );
   const categoryTotal = categories.reduce((s, c) => s + c.value, 0);
 
-  // Anstehende Serien der nächsten 30 Tage
+  // Anstehende Serien: alle aktiven Serien laden, Fenster erst im Client anwenden.
   const until = isoDay(30);
   const { data: upcoming } = useQuery({
-    queryKey: ["finanz_dashboard_serien", until],
+    queryKey: ["finanz_dashboard_serien"],
     queryFn: async () => {
       const [inv, exp] = await Promise.all([
         supabase
           .from("recurring_invoices")
           .select("id, title, next_run, active, documents:template_document_id (total)")
           .eq("active", true)
-          .lte("next_run", until)
           .order("next_run"),
         supabase
           .from("recurring_expenses")
           .select("id, title, supplier, next_run, active, gross_amount")
           .eq("active", true)
-          .lte("next_run", until)
           .order("next_run"),
       ]);
       if (inv.error) throw inv.error;
@@ -129,8 +127,15 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
     },
   });
 
-  const income = upcoming?.income ?? [];
-  const outgo = upcoming?.outgo ?? [];
+  /** Serien im 30-Tage-Fenster; sonst als Vorschau die nächsten fälligen Serien. */
+  const pick = (rows: { id: string; title: string; next_run: string; amount: number }[]) => {
+    const inWindow = rows.filter((r) => r.next_run <= until);
+    return inWindow.length > 0 ? inWindow : rows.slice(0, 3);
+  };
+
+  const income = pick(upcoming?.income ?? []);
+  const outgo = pick(upcoming?.outgo ?? []);
+
 
   return (
     <section aria-label="Finanz-Dashboard" className="space-y-4">
@@ -234,7 +239,7 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
         <div className="surface p-5">
           <div className="flex items-center gap-2">
             <CalendarClock className="size-4 text-primary" />
-            <h3 className="font-semibold">Anstehend – nächste 30 Tage</h3>
+            <h3 className="font-semibold">Anstehend – nächste 30 Tage &amp; folgende Termine</h3>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
