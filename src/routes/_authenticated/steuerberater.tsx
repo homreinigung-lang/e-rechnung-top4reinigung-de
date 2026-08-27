@@ -617,7 +617,7 @@ function SteuerberaterZugriffsstatus() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("accountant_access")
-        .select("id, email, active, created_at, last_used_at")
+        .select("id, email, active, created_at, last_used_at, invited_at, activated_at")
         .eq("active", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -627,6 +627,8 @@ function SteuerberaterZugriffsstatus() {
         active: boolean;
         created_at: string;
         last_used_at: string | null;
+        invited_at: string | null;
+        activated_at: string | null;
       }[];
     },
   });
@@ -646,7 +648,22 @@ function SteuerberaterZugriffsstatus() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const aktiv = accesses[0];
+  const zugang = accesses[0];
+  const istAktiv = Boolean(zugang && (zugang.activated_at || zugang.last_used_at));
+  const istEingeladen = Boolean(zugang && !istAktiv && zugang.invited_at);
+  const aktiv = zugang;
+  const statusLabel = istAktiv
+    ? "🟢 Aktiv"
+    : istEingeladen
+      ? "🟡 Einladung gesendet"
+      : zugang
+        ? "⚪ Zugang erstellt – noch nicht eingeladen"
+        : "Noch kein Steuerberater verbunden";
+  const statusClass = istAktiv
+    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : istEingeladen
+      ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+      : "border-muted bg-muted/50 text-muted-foreground";
 
   return (
     <section className="no-print rounded-lg border bg-card p-5">
@@ -662,12 +679,10 @@ function SteuerberaterZugriffsstatus() {
         <div
           className={
             "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium " +
-            (aktiv
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "border-muted bg-muted/50 text-muted-foreground")
+            statusClass
           }
         >
-          {aktiv ? "🟢 Aktiv" : "Noch kein Steuerberater verbunden"}
+          {statusLabel}
         </div>
       </div>
 
@@ -696,7 +711,11 @@ function SteuerberaterZugriffsstatus() {
               {aktiv.email || "Steuerberater ohne E-Mail"}
             </div>
             <div className="text-xs text-muted-foreground">
-              Verbunden seit {formatDate(aktiv.created_at)}
+              {istAktiv
+                ? `Aktiv seit ${formatDate(aktiv.activated_at ?? aktiv.last_used_at ?? aktiv.created_at)}`
+                : istEingeladen
+                  ? `Einladung gesendet am ${formatDate(aktiv.invited_at!)} · noch keine Anmeldung`
+                  : `Zugang erstellt am ${formatDate(aktiv.created_at)} · Einladung noch nicht versendet`}
               {aktiv.last_used_at ? ` · zuletzt genutzt ${formatDate(aktiv.last_used_at)}` : ""}
             </div>
           </div>
