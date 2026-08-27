@@ -172,7 +172,15 @@ type AiItem = {
   quantity: string;
   unit: string;
   unit_price: string;
+  /** Ursprünglicher LV-Bereich (bleibt beim Rückschreiben erhalten). */
+  section?: string;
+  /** Herkunfts-Zeile in project_lv_items – verhindert Duplikate. */
+  sourceLvItemId?: string | null;
 };
+
+/** Standardbereich für Positionen, die in der Kalkulation neu entstehen. */
+const KALK_SECTION = "Kalkulation";
+
 
 
 function KalkulationPage() {
