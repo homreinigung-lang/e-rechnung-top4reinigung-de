@@ -435,96 +435,84 @@ function DokumenteListe() {
                       </div>
                     </Link>
 
-                    {d.type === "invoice" &&
-                      d.status !== "paid" &&
-                      d.status !== "cancelled" &&
-                      d.status !== "draft" && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Zahlungserinnerung erfassen"
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Aktionen">
+                          <MoreVertical className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {d.type === "invoice" &&
+                          d.status !== "paid" &&
+                          d.status !== "cancelled" &&
+                          d.status !== "draft" && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (confirm("Freundliche Zahlungserinnerung jetzt senden?")) {
+                                    reminder.mutate({ docId: d.id, kind: "erinnerung" });
+                                  }
+                                }}
+                                disabled={reminder.isPending}
+                              >
+                                <BellRing className="mr-2 size-4" /> Zahlungserinnerung
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (confirm("Offizielle Mahnung jetzt senden? [Jetzt senden]")) {
+                                    reminder.mutate({ docId: d.id, kind: "mahnung" });
+                                  }
+                                }}
+                                disabled={reminder.isPending || !mahnungAllowed(d.due_date)}
+                              >
+                                <Gavel className="mr-2 size-4" /> Mahnung senden
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+
+                        {/* Zahlungsstatus ist von der GoBD-Sperre ausgenommen – jederzeit möglich. */}
+                        {d.type === "invoice" && d.status !== "paid" && d.status !== "cancelled" && (
+                          <DropdownMenuItem
                             onClick={() => {
-                              if (confirm("Freundliche Zahlungserinnerung jetzt senden?")) {
-                                reminder.mutate({ docId: d.id, kind: "erinnerung" });
-                              }
+                              setPayTarget({
+                                id: d.id,
+                                label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
+                              });
+                              setPayDate(formatDate(today()));
                             }}
-                            disabled={reminder.isPending}
+                            disabled={markPaid.isPending}
                           >
-                            <BellRing className="size-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title={
-                              mahnungAllowed(d.due_date)
-                                ? "Offizielle Mahnung senden"
-                                : "Mahnung erst nach Ablauf der Zahlungsfrist (14 Tage) möglich"
+                            <BadgeEuro className="mr-2 size-4 text-primary" /> Als bezahlt markieren
+                          </DropdownMenuItem>
+                        )}
+
+                        <DropdownMenuItem onClick={() => duplicate.mutate(d.id)}>
+                          <Copy className="mr-2 size-4" /> Duplizieren
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className={deletable ? "text-destructive" : "text-muted-foreground"}
+                          title={
+                            deletable
+                              ? "Entwurf löschen"
+                              : "Löschen rechtlich nicht zulässig – bitte stornieren"
+                          }
+                          onClick={() => {
+                            if (!deletable) {
+                              toast.error(deleteBlockedMessage(r), { duration: 9000 });
+                              return;
                             }
-                            onClick={() => {
-                              if (confirm("Offizielle Mahnung jetzt senden? [Jetzt senden]")) {
-                                reminder.mutate({ docId: d.id, kind: "mahnung" });
-                              }
-                            }}
-                            disabled={reminder.isPending || !mahnungAllowed(d.due_date)}
-                          >
-                            <Gavel className="size-4" />
-                          </Button>
-                        </>
-                      )}
-
-                    {/* Zahlungsstatus ist von der GoBD-Sperre ausgenommen – jederzeit möglich. */}
-                    {d.type === "invoice" && d.status !== "paid" && d.status !== "cancelled" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Als bezahlt markieren (Zahlungsdatum erfassen)"
-                        onClick={() => {
-                          setPayTarget({
-                            id: d.id,
-                            label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
-                          });
-                          setPayDate(formatDate(today()));
-                        }}
-                        disabled={markPaid.isPending}
-                      >
-                        <BadgeEuro className="size-4 text-primary" />
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Duplizieren"
-                      onClick={() => duplicate.mutate(d.id)}
-                    >
-                      <Copy className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title={
-                        deletable
-                          ? "Entwurf löschen"
-                          : "Löschen rechtlich nicht zulässig – bitte stornieren"
-                      }
-                      onClick={() => {
-                        if (!deletable) {
-                          toast.error(deleteBlockedMessage(r), { duration: 9000 });
-                          return;
-                        }
-                        setDeleteTarget({
-                          id: d.id,
-                          label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
-                        });
-                      }}
-                    >
-                      <Trash2
-                        className={
-                          deletable ? "size-4 text-destructive" : "size-4 text-muted-foreground"
-                        }
-                      />
-                    </Button>
+                            setDeleteTarget({
+                              id: d.id,
+                              label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
+                            });
+                          }}
+                        >
+                          <Trash2 className="mr-2 size-4" /> Löschen
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </li>
                 );
               })}
