@@ -263,6 +263,26 @@ export function Arbeitsplanung() {
       return { ...d, [key(e, p)]: current };
     });
 
+  /**
+   * Ganze Woche auf einmal setzen: übernimmt eine Zeitvorlage auf die
+   * gewünschten Wochentage (Mo–Fr oder Mo–So) bzw. leert alle Tage.
+   */
+  const applyWeekTimes = (e: string, p: string, template: DayTime, dayCount: number) =>
+    setDraft((d) => {
+      const current = [...(d[key(e, p)] ?? savedTimes(e, p))];
+      const next = Array.from({ length: 7 }, (_, i) =>
+        i < dayCount ? { ...template } : (current[i] ?? { ...EMPTY_DAY_TIME }),
+      );
+      return { ...d, [key(e, p)]: next };
+    });
+
+  const clearWeekTimes = (e: string, p: string) =>
+    setDraft((d) => ({
+      ...d,
+      [key(e, p)]: Array.from({ length: 7 }, () => ({ ...EMPTY_DAY_TIME })),
+    }));
+
+
   const dirtyKeys = React.useMemo(
     () =>
       Object.keys(draft).filter((k) => {
