@@ -1173,7 +1173,25 @@ function KalkulationPage() {
                     />
                   </div>
                 </div>
-              ) : (
+              ) : null}
+
+              {selected.value === "glas" && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label>Glasfläche (m²) – getrennt von der Bodenfläche</Label>
+                  <Input
+                    inputMode="decimal"
+                    value={glassArea}
+                    onChange={(e) => setGlassArea(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Für Glas- und Fensterreinigung wird ausschließlich diese Fläche kalkuliert
+                    (Leistung: 40 m² pro Stunde).
+                  </p>
+                </div>
+              )}
+
+              {mode === "hours" ? (
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Stunden</Label>
