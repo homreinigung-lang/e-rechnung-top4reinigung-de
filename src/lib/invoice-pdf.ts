@@ -288,7 +288,9 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
 
   if (d.introText) {
     const lines = wrap(regular, 9.5, d.introText, CONTENT_W);
-    ensure(ctx, lines.length * 12 + 6);
+    // Einleitung nie allein am Seitenende stehen lassen – ggf. zusammen mit
+    // dem Tabellenkopf auf die nächste Seite umbrechen (keep-with-next).
+    ensure(ctx, lines.length * 12 + 6 + (d.items.length > 0 ? 50 : 0));
     for (const line of lines) {
       text(ctx, line, { y: ctx.y, size: 9.5 });
       ctx.y -= 12;
@@ -486,10 +488,14 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
 
   // ---- Summenblock (nie zerschnitten) ------------------------------------
+  // Der Summenblock wird zusammen mit einem direkt folgenden Steuerhinweis
+  // als eine Einheit behandelt (break-inside: avoid für den gesamten Abschluss).
   const sumW = 210;
   const sumX = M_X + CONTENT_W - sumW;
   const sumH = d.summary.length * 14 + 6;
-  ensure(ctx, sumH);
+  const taxNoteLines = d.taxNote ? wrap(regular, 8.5, d.taxNote, CONTENT_W - 12) : [];
+  const taxNoteH = taxNoteLines.length > 0 ? taxNoteLines.length * 11 + 12 + 6 : 0;
+  ensure(ctx, sumH + taxNoteH + 8);
   for (const row of d.summary) {
     if (row.rule) {
       ctx.page.drawLine({
@@ -518,11 +524,10 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
   ctx.y -= 8;
 
-  // ---- Steuerhinweis ------------------------------------------------------
-  if (d.taxNote) {
-    const lines = wrap(regular, 8.5, d.taxNote, CONTENT_W - 12);
+  // ---- Steuerhinweis (Zeilen bereits oben umbrochen) ----------------------
+  if (d.taxNote && taxNoteLines.length > 0) {
+    const lines = taxNoteLines;
     const boxH = lines.length * 11 + 12;
-    ensure(ctx, boxH + 6);
     ctx.page.drawRectangle({
       x: M_X,
       y: ctx.y - boxH + 10,

@@ -1,5 +1,9 @@
 /** Zentrale Textbausteine für Angebote (Rechnungen bleiben bewusst nüchtern). */
 
+/** Standard-Einleitungstext für Rechnungen. */
+export const INVOICE_INTRO =
+  "Für unsere Leistungen erlauben wir uns, Ihnen folgende Positionen in Rechnung zu stellen:";
+
 /**
  * Einleitungstext für Angebote. Der Firmenname wird immer dynamisch aus den
  * Firmeneinstellungen der angemeldeten Firma übernommen – niemals fest hinterlegt.
