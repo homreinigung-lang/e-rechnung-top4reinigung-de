@@ -323,7 +323,13 @@ function DokumenteListe() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const list = documents.filter((d) => d.type === tab);
+  // Stabile, lückenlose Standard-Sortierung nach Belegnummer (absteigend = neueste zuerst).
+  // Die Nummern sind nullgestellt (z. B. RE-2026-0001), daher ist ein lexikalischer
+  // Sort identisch mit einer numerischen Sortierung und bleibt über Jahre hinweg stabil.
+  const list = documents
+    .filter((d) => d.type === tab)
+    .slice()
+    .sort((a, b) => String(b.number).localeCompare(String(a.number), "de-DE"));
 
   return (
     <div className="space-y-6">
