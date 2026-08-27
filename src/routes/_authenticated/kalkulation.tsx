@@ -293,7 +293,7 @@ function KalkulationPage() {
         if (detectedFloors > 0) setFloors(dec(detectedFloors));
       }
       if (res.note.trim()) setNote((prev) => (prev.trim() ? `${prev}\n${res.note}` : res.note));
-      setFinalTouched(false);
+      
 
       const rate = num(hourlyRate) || res.hourly_rate;
       const cleaned = normalizeItems(res.items, {
