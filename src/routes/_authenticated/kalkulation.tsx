@@ -524,8 +524,10 @@ function KalkulationPage() {
           unit: item.unit.trim() || "Pauschal",
           // Einzelpreise dürfen negativ sein (ausgewiesene Rabattposition).
           unit_price: round2(parseGermanNumber(item.unit_price)),
-
+          section: (item.section || "").trim() || KALK_SECTION,
+          sourceLvItemId: item.sourceLvItemId ?? null,
         }))
+
         .filter(
           (item) =>
             item.description.length > 0 && Math.abs(item.quantity * item.unit_price) >= 0.01,
