@@ -826,10 +826,11 @@ function DokumentDetail() {
       customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
       introText: isInvoice
-        ? `${INVOICE_INTRO}${form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""}`
+        ? introText || INVOICE_INTRO
         : `${isOrder ? ORDER_INTRO : quoteIntro(companyName)}${
-            form["intro_text"] ? `\n\n${String(form["intro_text"])}` : ""
+            introText ? `\n\n${introText}` : ""
           }`,
+
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
         : items
