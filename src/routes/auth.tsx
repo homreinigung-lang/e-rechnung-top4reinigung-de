@@ -80,7 +80,7 @@ function AuthPage() {
     const { data } = await supabase.auth.getUser();
     const uid = data.user?.id;
     if (!uid) return false;
-    const { status } = await getApprovalStatus({ data: { authUserId: uid } });
+    const { status } = await getApprovalStatus();
     // Konten sind sofort aktiv; nur gesperrte Firmen werden abgewiesen.
     if (status === "blocked" || status === "rejected") {
       await supabase.auth.signOut();
