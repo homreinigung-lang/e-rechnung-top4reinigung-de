@@ -76,29 +76,9 @@ export const getAccountantReport = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; from: string; to: string }) => data)
   .handler(async ({ data }): Promise<AccountantReport> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
 
-    const { data: access } = await supabaseAdmin
-      .from("accountant_access")
-      .select("id, user_id, access_code, active, expires_at, activated_at")
-      .eq("token", data.token)
-      .maybeSingle();
-
-    if (
-      !access ||
-      !access.active ||
-      access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
-    ) {
-      throw new Error("Zugang ungültig.");
-    }
-
-    const now = new Date().toISOString();
-    await supabaseAdmin
-      .from("accountant_access")
-      .update({
-        last_used_at: now,
-        ...(access.activated_at ? {} : { activated_at: now }),
-      })
-      .eq("id", access.id);
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
     const [documents, expenses, timeEntries, employees, adjustments, settings] = await Promise.all([
       supabaseAdmin
