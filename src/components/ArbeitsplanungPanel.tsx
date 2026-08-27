@@ -585,6 +585,13 @@ export function Arbeitsplanung() {
                               <div className="text-sm font-semibold">
                                 {e.name} · {p.name || "Objekt"}
                               </div>
+                              <WeekQuickFill
+                                onApply={(template, dayCount) =>
+                                  applyWeekTimes(e.id, p.id, template, dayCount)
+                                }
+                                onClear={() => clearWeekTimes(e.id, p.id)}
+                              />
+
                               <div className="grid grid-cols-[1.5rem_1fr_1fr_3.2rem_2.6rem] items-center gap-1 text-[10px] text-muted-foreground">
                                 <span />
                                 <span>Von</span>
