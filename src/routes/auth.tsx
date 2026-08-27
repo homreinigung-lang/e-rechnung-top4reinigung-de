@@ -11,7 +11,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import {
   requestAccountApproval,
   getApprovalStatus,
-  recoverIncompleteAccount,
+  sendAccountRecoveryLink,
 } from "@/lib/approval.functions";
 import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
 import { redeemInviteCode } from "@/lib/employee-invite.functions";
@@ -80,7 +80,7 @@ function AuthPage() {
     const { data } = await supabase.auth.getUser();
     const uid = data.user?.id;
     if (!uid) return false;
-    const { status } = await getApprovalStatus({ data: { authUserId: uid } });
+    const { status } = await getApprovalStatus();
     // Konten sind sofort aktiv; nur gesperrte Firmen werden abgewiesen.
     if (status === "blocked" || status === "rejected") {
       await supabase.auth.signOut();
@@ -252,30 +252,18 @@ function AuthPage() {
         return;
       }
 
-      // E-Mail existiert bereits: unvollständige Konten werden zurückgesetzt.
-      let recovery: { recovered: boolean; reason?: string } = { recovered: false };
+      // E-Mail existiert bereits: aus Sicherheitsgründen wird kein Passwort
+      // gesetzt, sondern ein Link zum Zurücksetzen an die Adresse geschickt.
       try {
-        recovery = await recoverIncompleteAccount({
-          data: {
-            email: email.trim().toLowerCase(),
-            password,
-            fullName: fullName.trim(),
-            companyName: companyName.trim(),
-          },
-        });
+        await sendAccountRecoveryLink({ data: { email: email.trim().toLowerCase() } });
       } catch (err) {
-        console.warn("Konto-Reparatur fehlgeschlagen:", err);
+        console.warn("Zurücksetz-Link konnte nicht gesendet werden:", err);
       }
-
-      if (!recovery.recovered) {
-        setLoading(false);
-        toast.error(
-          recovery.reason === "in_use"
-            ? "Diese E-Mail-Adresse wird bereits aktiv genutzt. Bitte melden Sie sich an oder setzen Sie Ihr Passwort zurück."
-            : "Registrierung fehlgeschlagen: " + error.message,
-        );
-        return;
-      }
+      setLoading(false);
+      toast.info(
+        "Diese E-Mail-Adresse ist bereits registriert. Wir haben Ihnen einen Link zum Zurücksetzen des Passworts geschickt.",
+      );
+      return;
     }
 
     // Keine E-Mail-Bestätigung: falls noch keine Sitzung besteht, direkt anmelden.
@@ -319,14 +307,12 @@ function AuthPage() {
     }
     setLoading(true);
     try {
-      const res = await sendAuthConfirmationEmail({
+      await sendAuthConfirmationEmail({
         data: { email: email.trim().toLowerCase() },
       });
-      if (res.sent) {
-        toast.success("Bestätigungslink wurde erneut gesendet. Bitte prüfen Sie Ihr Postfach.");
-      } else {
-        toast.error("Zu dieser E-Mail-Adresse konnte kein Link gesendet werden.");
-      }
+      toast.success(
+        "Falls ein Konto zu dieser Adresse besteht, haben wir einen Link gesendet. Bitte prüfen Sie Ihr Postfach.",
+      );
     } catch (err) {
       toast.error(
         "Versand fehlgeschlagen: " + (err instanceof Error ? err.message : "Unbekannter Fehler"),

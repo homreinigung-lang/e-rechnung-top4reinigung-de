@@ -61,9 +61,11 @@ export type Database = {
           created_at: string
           email: string
           expires_at: string
+          failed_attempts: number
           id: string
           invited_at: string | null
           last_used_at: string | null
+          locked_until: string | null
           token: string
           updated_at: string
           user_id: string
@@ -75,9 +77,11 @@ export type Database = {
           created_at?: string
           email?: string
           expires_at?: string
+          failed_attempts?: number
           id?: string
           invited_at?: string | null
           last_used_at?: string | null
+          locked_until?: string | null
           token: string
           updated_at?: string
           user_id: string
@@ -89,9 +93,11 @@ export type Database = {
           created_at?: string
           email?: string
           expires_at?: string
+          failed_attempts?: number
           id?: string
           invited_at?: string | null
           last_used_at?: string | null
+          locked_until?: string | null
           token?: string
           updated_at?: string
           user_id?: string

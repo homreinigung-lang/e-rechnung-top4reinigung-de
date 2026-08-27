@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const schema = z.object({
   domain: z.string().trim().min(3).max(253),
@@ -25,7 +26,9 @@ async function resolve(name: string, type: "TXT" | "A", resolver: "google" | "cl
     .map((a) => clean(a.data));
 }
 
+/** Nur für angemeldete Konten (verhindert Missbrauch der DNS-Auflöser). */
 export const checkDomainDns = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => schema.parse(data))
   .handler(async ({ data }) => {
     const domain = data.domain

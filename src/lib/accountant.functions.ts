@@ -76,29 +76,9 @@ export const getAccountantReport = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; from: string; to: string }) => data)
   .handler(async ({ data }): Promise<AccountantReport> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
 
-    const { data: access } = await supabaseAdmin
-      .from("accountant_access")
-      .select("id, user_id, access_code, active, expires_at, activated_at")
-      .eq("token", data.token)
-      .maybeSingle();
-
-    if (
-      !access ||
-      !access.active ||
-      access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
-    ) {
-      throw new Error("Zugang ungültig.");
-    }
-
-    const now = new Date().toISOString();
-    await supabaseAdmin
-      .from("accountant_access")
-      .update({
-        last_used_at: now,
-        ...(access.activated_at ? {} : { activated_at: now }),
-      })
-      .eq("id", access.id);
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
     const [documents, expenses, timeEntries, employees, adjustments, settings] = await Promise.all([
       supabaseAdmin
@@ -198,20 +178,9 @@ export const getAccountantReceiptUrl = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; expenseId: string }) => data)
   .handler(async ({ data }): Promise<string> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
 
-    const { data: access } = await supabaseAdmin
-      .from("accountant_access")
-      .select("user_id, access_code, active")
-      .eq("token", data.token)
-      .maybeSingle();
-
-    if (
-      !access ||
-      !access.active ||
-      access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
-    ) {
-      throw new Error("Zugang ungültig.");
-    }
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
     const { data: expense } = await supabaseAdmin
       .from("expenses")
@@ -236,20 +205,9 @@ export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; month: string }) => data)
   .handler(async ({ data }): Promise<Array<{ name: string; url: string }>> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
 
-    const { data: access } = await supabaseAdmin
-      .from("accountant_access")
-      .select("user_id, access_code, active")
-      .eq("token", data.token)
-      .maybeSingle();
-
-    if (
-      !access ||
-      !access.active ||
-      access.access_code.toUpperCase() !== normalizeCode(data.code ?? "")
-    ) {
-      throw new Error("Zugang ungültig.");
-    }
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
     if (!/^\d{4}-\d{2}$/.test(data.month)) throw new Error("Ungültiger Monat.");
     const start = `${data.month}-01`;
