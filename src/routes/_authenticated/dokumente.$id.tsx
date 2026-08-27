@@ -974,15 +974,30 @@ function DokumentDetail() {
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-4" /> Drucken
           </Button>
-          <Button variant="outline" onClick={() => setMailOpen(true)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void (async () => {
+                if (!ensureHasItems()) return;
+                if (!(await persistBeforeOutput())) return;
+                setMailOpen(true);
+              })();
+            }}
+          >
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
           {doc.status === "draft" && (
             <Button
               variant="outline"
               title="Beleg als versendet kennzeichnen, ohne eine E-Mail zu verschicken"
-              onClick={() => setSendStatus.mutate("sent")}
-              disabled={setSendStatus.isPending}
+              onClick={() => {
+                void (async () => {
+                  if (!ensureHasItems()) return;
+                  if (!(await persistBeforeOutput())) return;
+                  setSendStatus.mutate("sent");
+                })();
+              }}
+              disabled={setSendStatus.isPending || save.isPending}
             >
               <Check className="size-4" /> Als versendet markieren
             </Button>
