@@ -52,7 +52,7 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
-import { isDraftPlaceholder } from "@/lib/doc-number";
+import { ensureOfficialNumber, isDraftPlaceholder } from "@/lib/doc-number";
 import {
   deleteBlockedMessage,
   describeGobdError,
@@ -998,6 +998,14 @@ function DokumentDetail() {
                   if (!ensureHasItems()) return;
                   if (!(await persistBeforeOutput())) return;
                   await setSendStatus.mutateAsync("sent");
+                  // Mit dem Versand wird aus dem Entwurf ein echter Beleg:
+                  // offizielle, fortlaufende Nummer vergeben (statt DEMO-Platzhalter).
+                  try {
+                    await ensureOfficialNumber(id);
+                    await queryClient.invalidateQueries({ queryKey: ["document", id] });
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
+                  }
                   // GoBD: Rechnungen werden beim Versand automatisch festgeschrieben.
                   if (isInvoice) {
                     try {
@@ -2033,6 +2041,14 @@ function DokumentDetail() {
             await logAudit("sent", { id, number: docNumber }, { to: mail.to });
           } catch {
             /* Protokollierung darf den Versand nicht blockieren */
+          }
+          // Entwurfsnummer (DEMO) beim Versand durch die offizielle Nummer ersetzen.
+          if (!locked) {
+            try {
+              await ensureOfficialNumber(id);
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
+            }
           }
           // Rechnungen werden beim Versand automatisch festgeschrieben (GoBD).
           if (isInvoice && !locked) {

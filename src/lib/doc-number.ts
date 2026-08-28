@@ -28,3 +28,29 @@ export function draftPlaceholderNumber(kind: DocKind | "storno"): string {
 export function isDraftPlaceholder(number: string | null | undefined): boolean {
   return /-DEMO-/.test(String(number ?? ""));
 }
+
+/**
+ * Vergibt automatisch die offizielle, fortlaufende Belegnummer (z. B. AN-2026-0001,
+ * RE-2026-0001), sobald ein Entwurf zu einem echten Beleg wird (Versand, Annahme,
+ * Umwandlung). Belege mit bereits vergebener Nummer bleiben unverändert.
+ */
+export async function ensureOfficialNumber(id: string): Promise<string> {
+  const { data: doc, error } = await supabase
+    .from("documents")
+    .select("id, number, type")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  if (!isDraftPlaceholder(doc.number)) return String(doc.number);
+
+  const number = await reserveDocumentNumber(doc.type as DocKind);
+  const { error: updateError } = await supabase
+    .from("documents")
+    .update({ number } as never)
+    .eq("id", id);
+  if (updateError) throw updateError;
+
+  const { logAudit } = await import("@/lib/gobd");
+  await logAudit("number_assigned", { id, number }, { previous: doc.number });
+  return number;
+}
