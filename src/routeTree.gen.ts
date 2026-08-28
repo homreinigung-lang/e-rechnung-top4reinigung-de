@@ -25,6 +25,7 @@ import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authen
 import { Route as AuthenticatedHilfeRouteImport } from './routes/_authenticated/hilfe'
 import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenticated/kalkulation'
 import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/karte'
+import { Route as AuthenticatedLvFormularRouteImport } from './routes/_authenticated/lv-formular'
 import { Route as AuthenticatedMeinPaketRouteImport } from './routes/_authenticated/mein-paket'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedNachrichtenRouteImport } from './routes/_authenticated/nachrichten'
@@ -136,6 +137,11 @@ const AuthenticatedKalkulationRoute =
 const AuthenticatedKarteRoute = AuthenticatedKarteRouteImport.update({
   id: '/karte',
   path: '/karte',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLvFormularRoute = AuthenticatedLvFormularRouteImport.update({
+  id: '/lv-formular',
+  path: '/lv-formular',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMeinPaketRoute = AuthenticatedMeinPaketRouteImport.update({
@@ -312,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/hilfe': typeof AuthenticatedHilfeRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/karte': typeof AuthenticatedKarteRoute
+  '/lv-formular': typeof AuthenticatedLvFormularRoute
   '/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByTo {
   '/hilfe': typeof AuthenticatedHilfeRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
   '/karte': typeof AuthenticatedKarteRoute
+  '/lv-formular': typeof AuthenticatedLvFormularRoute
   '/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
@@ -404,6 +412,7 @@ export interface FileRoutesById {
   '/_authenticated/hilfe': typeof AuthenticatedHilfeRoute
   '/_authenticated/kalkulation': typeof AuthenticatedKalkulationRoute
   '/_authenticated/karte': typeof AuthenticatedKarteRoute
+  '/_authenticated/lv-formular': typeof AuthenticatedLvFormularRoute
   '/_authenticated/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/nachrichten': typeof AuthenticatedNachrichtenRoute
@@ -452,6 +461,7 @@ export interface FileRouteTypes {
     | '/hilfe'
     | '/kalkulation'
     | '/karte'
+    | '/lv-formular'
     | '/mein-paket'
     | '/meine-zeiten'
     | '/nachrichten'
@@ -496,6 +506,7 @@ export interface FileRouteTypes {
     | '/hilfe'
     | '/kalkulation'
     | '/karte'
+    | '/lv-formular'
     | '/mein-paket'
     | '/meine-zeiten'
     | '/nachrichten'
@@ -543,6 +554,7 @@ export interface FileRouteTypes {
     | '/_authenticated/hilfe'
     | '/_authenticated/kalkulation'
     | '/_authenticated/karte'
+    | '/_authenticated/lv-formular'
     | '/_authenticated/mein-paket'
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/nachrichten'
@@ -699,6 +711,13 @@ declare module '@tanstack/react-router' {
       path: '/karte'
       fullPath: '/karte'
       preLoaderRoute: typeof AuthenticatedKarteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/lv-formular': {
+      id: '/_authenticated/lv-formular'
+      path: '/lv-formular'
+      fullPath: '/lv-formular'
+      preLoaderRoute: typeof AuthenticatedLvFormularRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/mein-paket': {
@@ -936,6 +955,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHilfeRoute: typeof AuthenticatedHilfeRoute
   AuthenticatedKalkulationRoute: typeof AuthenticatedKalkulationRoute
   AuthenticatedKarteRoute: typeof AuthenticatedKarteRoute
+  AuthenticatedLvFormularRoute: typeof AuthenticatedLvFormularRoute
   AuthenticatedMeinPaketRoute: typeof AuthenticatedMeinPaketRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedNachrichtenRoute: typeof AuthenticatedNachrichtenRoute
@@ -963,6 +983,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHilfeRoute: AuthenticatedHilfeRoute,
   AuthenticatedKalkulationRoute: AuthenticatedKalkulationRoute,
   AuthenticatedKarteRoute: AuthenticatedKarteRoute,
+  AuthenticatedLvFormularRoute: AuthenticatedLvFormularRoute,
   AuthenticatedMeinPaketRoute: AuthenticatedMeinPaketRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedNachrichtenRoute: AuthenticatedNachrichtenRoute,
