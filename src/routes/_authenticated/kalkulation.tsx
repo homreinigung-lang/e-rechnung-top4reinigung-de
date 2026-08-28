@@ -564,6 +564,27 @@ function KalkulationPage() {
     [lvItems],
   );
   const lvTotal = useMemo(() => positionsTotal(lvPositions), [lvPositions]);
+
+  /** Positionen der KI-Analyse – reine Vorschau, unabhängig vom LV. */
+  const kiPositions = useMemo(
+    () =>
+      kiItems
+        .map((item) => ({
+          key: item.id,
+          description: item.description.trim(),
+          quantity: round2(num(item.quantity)),
+          unit: item.unit.trim() || "Pauschal",
+          unit_price: round2(parseGermanNumber(item.unit_price)),
+          section: KI_SECTION,
+          sourceLvItemId: null as string | null,
+        }))
+        .filter(
+          (item) =>
+            item.description.length > 0 && Math.abs(item.quantity * item.unit_price) >= 0.01,
+        ),
+    [kiItems],
+  );
+  const kiTotal = useMemo(() => positionsTotal(kiPositions), [kiPositions]);
   const vatRate = vatRateForTaxMode(taxMode);
   const taxNote = taxNoteForTaxMode(taxMode);
   const vatAmount = round2((lvTotal * vatRate) / 100);
