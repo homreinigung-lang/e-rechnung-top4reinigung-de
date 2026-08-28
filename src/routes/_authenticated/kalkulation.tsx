@@ -406,11 +406,14 @@ function KalkulationPage() {
         quantity: String(it.quantity > 0 ? it.quantity : 1).replace(".", ","),
         unit: it.unit || "Pauschal",
         unit_price: hourlyRate,
+        section: KI_SECTION,
+        sourceLvItemId: null,
       }));
-      if (posFromItems.length > 0) setLvItems((prev) => [...prev, ...posFromItems]);
+      // Auch der Dokumenten-Scan bleibt im KI-Bereich.
+      if (posFromItems.length > 0) setKiItems((prev) => [...prev, ...posFromItems]);
 
       toast.success(
-        `Analyse übernommen – ${scan.rooms.length} Räume, ${posFromItems.length} Positionen`,
+        `Analyse fertig – ${scan.rooms.length} Räume, ${posFromItems.length} Vorschlagspositionen`,
       );
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
