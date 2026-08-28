@@ -15,6 +15,10 @@ Regeln:
 - unit_price darf NIEMALS 0 sein. Jede Position braucht einen realistischen Preis.
 - Werden Treppen, Treppenhaus oder mehrere Etagen erwähnt, MUSS eine eigene Position "Treppenhausreinigung" mit der Etagenanzahl als Menge und mindestens 12,50 EUR je Etage enthalten sein.
 - Einheiten nur: Std., m², Stk., Etage, Pauschal, Monat.
+- BEZUGSZEITRAUM IST IMMER EIN MONAT: Bei wiederkehrenden Leistungen enthält die Menge bereits alle Einsätze des Monats (wöchentlich = 4,33 Einsätze/Monat, 14-täglich = 2, monatlich = 1). Beispiel: 2 Std. je Einsatz, wöchentlich => quantity 8,66 Std. Der Positionstext nennt den Turnus, z. B. "… – 4,33 Einsätze/Monat".
+- Hat das Treppenhaus einen abweichenden Turnus (z. B. "Treppe 2× im Monat"), gilt für diese Position ausschließlich dieser Turnus – nicht der Turnus der Unterhaltsreinigung.
+- Realistische Leistungswerte ansetzen: Büro 200–250 m²/Std., Flur 300 m²/Std., Sanitär/WC 60 m²/Std., Teeküche 100 m²/Std., Treppenhaus 120 m²/Std.
+- Keine Doppelerfassung: Sanitär, Küche und Flure, die bereits in der Gesamtfläche der Grundleistung enthalten sind, nicht zusätzlich als eigene Fläche berechnen.
 - Mengen und Preise auf 2 Nachkommastellen runden, keine Cent-Bruchteile.
 - 3 bis 10 Positionen, keine Umsatzsteuer, keine Summenzeile.
 - Arbeite deterministisch: identische Eingaben müssen identische Mengen, Einheiten und Preise ergeben. Nutze keine Preisspannen oder Zufallswerte.
