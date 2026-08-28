@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { saveFile } from "@/lib/download";
 import { detectLvForm } from "@/lib/lv-form/detect";
+import { autoAssignMarkers, dedupeMarkerKeys, dedupeMapping } from "@/lib/lv-form/assign";
 import { LV_FIELDS, LV_FIELD_MAP, fieldLabel } from "@/lib/lv-form/fields";
 import { EMPTY_LV_INPUTS, deriveLvValues } from "@/lib/lv-form/derive";
 import { fieldValueText, fillAcroForm, fillFlatPdf } from "@/lib/lv-form/fill";
@@ -218,8 +219,13 @@ export function LvFormFiller() {
     try {
       const result = await detectLvForm(next);
       setDetection(result);
-      setMarkers(result.markers);
-      setMapping(Object.fromEntries(result.acroFields.map((f) => [f.name, f.suggestedKey])));
+      setMarkers(autoAssignMarkers(result.markers));
+      setMapping(
+        dedupeMapping(
+          result.acroFields,
+          Object.fromEntries(result.acroFields.map((f) => [f.name, f.suggestedKey])),
+        ),
+      );
       setActivePage(0);
       const vat = result.constraints.find((c) => c.kind === "vat_rate");
       if (vat) setInputText((prev) => ({ ...prev, mwst_satz: formatGermanNumber(vat.value) }));
@@ -249,7 +255,11 @@ export function LvFormFiller() {
   }
 
   function patchMarker(id: string, values: Partial<LvMarker>) {
-    setMarkers((prev) => prev.map((m) => (m.id === id ? { ...m, ...values } : m)));
+    setMarkers((prev) => {
+      const next = prev.map((m) => (m.id === id ? { ...m, ...values } : m));
+      // Kennzahl-Wechsel: dieselbe Kennzahl darf nur an einer Position stehen.
+      return "key" in values ? dedupeMarkerKeys(next, id) : next;
+    });
   }
 
   function addMarkerAt(event: React.MouseEvent<HTMLDivElement>) {
@@ -257,7 +267,7 @@ export function LvFormFiller() {
     const rect = event.currentTarget.getBoundingClientRect();
     const relX = ((event.clientX - rect.left) / rect.width) * page.width;
     const relY = page.height - ((event.clientY - rect.top) / rect.height) * page.height;
-    setMarkers((prev) => [
+    setMarkers((prev) => autoAssignMarkers([
       ...prev,
       {
         id: `manual-${Date.now()}`,
@@ -271,7 +281,7 @@ export function LvFormFiller() {
         sourceLine: "Manuell gesetzt",
         manual: true,
       },
-    ]);
+    ]));
   }
 
   function onMarkerDrag(event: React.MouseEvent, marker: LvMarker) {
@@ -589,10 +599,13 @@ export function LvFormFiller() {
                     <Select
                       value={mapping[f.name] ?? "none"}
                       onValueChange={(v) =>
-                        setMapping((prev) => ({
-                          ...prev,
-                          [f.name]: v === "none" ? null : (v as LvFieldKey),
-                        }))
+                        setMapping((prev) =>
+                          dedupeMapping(
+                            detection.acroFields,
+                            { ...prev, [f.name]: v === "none" ? null : (v as LvFieldKey) },
+                            f.name,
+                          ),
+                        )
                       }
                     >
                       <SelectTrigger>
