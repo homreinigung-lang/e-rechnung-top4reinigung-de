@@ -691,6 +691,7 @@ function KalkulationPage() {
         stairs,
         floors: num(floors),
         stair_rate: num(stairRate),
+        stair_visits_per_month: num(stairFrequency),
         has_lift: hasLift,
         lift_rate: num(liftRate),
         discount_percent: pct,
