@@ -728,16 +728,25 @@ function DokumentDetail() {
     }
   }
 
+  /**
+   * Vor jeder verbindlichen Ausgabe (Versand, E-Rechnung) die offizielle,
+   * fortlaufende Nummer vergeben – der Kunde darf nie eine DEMO-Nummer erhalten.
+   */
+  async function assignOfficialNumberNow(): Promise<string> {
+    if (locked || !isDraftPlaceholder(docNumber)) return docNumber;
+    const number = await ensureOfficialNumber(id);
+    await queryClient.invalidateQueries({ queryKey: ["documents"] });
+    await queryClient.refetchQueries({ queryKey: ["document", id] });
+    return number;
+  }
+
   async function exportXRechnung() {
     try {
-      const input = eRechnungInput();
+      const number = await assignOfficialNumberNow();
+      const input = eRechnungInput(number);
       warnIfIncomplete(input);
-      downloadXml(buildXRechnungXml(input), `XRechnung_${docNumber.replace(/\W+/g, "_")}.xml`);
-      await logAudit(
-        "xrechnung_export",
-        { id, number: docNumber },
-        { format: "XRechnung 3.0 (UBL)" },
-      );
+      downloadXml(buildXRechnungXml(input), `XRechnung_${number.replace(/\W+/g, "_")}.xml`);
+      await logAudit("xrechnung_export", { id, number }, { format: "XRechnung 3.0 (UBL)" });
       toast.success("XRechnung (XML) erstellt");
     } catch (e) {
       toast.error((e as Error).message);
