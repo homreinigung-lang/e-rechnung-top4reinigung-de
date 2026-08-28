@@ -117,7 +117,7 @@ const CLEANING_TYPES: {
   /** Empfohlener Stundensatz-Korridor (netto). */
   range: [number, number];
 }[] = [
-  { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.55, hourly: 35, range: [34, 37] },
+  { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.35, hourly: 35, range: [34, 37] },
   {
     value: "grund",
     label: "Grundreinigung (Tiefenreinigung)",
@@ -133,8 +133,8 @@ const CLEANING_TYPES: {
     range: [42, 45],
   },
   { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 36, range: [34, 37] },
-  { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.75, hourly: 35, range: [34, 37] },
-  { value: "buero", label: "Büroreinigung", area: 0.65, hourly: 35, range: [34, 37] },
+  { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.6, hourly: 35, range: [34, 37] },
+  { value: "buero", label: "Büroreinigung", area: 0.4, hourly: 35, range: [34, 37] },
 ];
 
 const EXTRAS: { key: string; label: string; price: number }[] = [
