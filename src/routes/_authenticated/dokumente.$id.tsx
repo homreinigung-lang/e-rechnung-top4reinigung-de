@@ -1797,18 +1797,18 @@ function DokumentDetail() {
           <div className="invoice-table-wrap mt-4 overflow-x-auto">
             <table className="invoice-table w-full border-collapse text-left text-sm">
               <colgroup>
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "43%" }} />
+                <col style={{ width: "6%" }} />
+                <col style={{ width: "38%" }} />
                 <col style={{ width: "10%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "15%" }} />
-                <col style={{ width: "15%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "17%" }} />
+                <col style={{ width: "18%" }} />
               </colgroup>
               <thead>
                 <tr className="bg-muted text-[11px] tracking-normal text-muted-foreground uppercase">
                   <th className="px-2 py-2 font-medium">Pos.</th>
                   <th className="px-2 py-2 font-medium">Bezeichnung</th>
-                  <th className="px-2 py-2 text-right font-medium">Menge</th>
+                  <th className="px-2 py-2 text-right font-medium whitespace-nowrap">Menge</th>
                   <th className="px-2 py-2 font-medium">Einheit</th>
                   <th className="px-2 py-2 text-right font-medium">Einzelpreis netto €</th>
                   <th className="px-2 py-2 text-right font-medium">Gesamtpreis netto €</th>
@@ -1847,7 +1847,7 @@ function DokumentDetail() {
                     <tr className="border-b border-border align-top">
                       <td className="px-2 py-2 tabular-nums">{n + 1}</td>
                       <td className="px-2 py-2 break-words whitespace-pre-line">{i.description}</td>
-                      <td className="px-2 py-2 text-right tabular-nums">
+                      <td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">
                         {formatNumber(i.quantity)}
                       </td>
                       <td className="px-2 py-2">{i.unit}</td>
