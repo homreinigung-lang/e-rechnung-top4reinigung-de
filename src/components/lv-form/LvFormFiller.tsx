@@ -1,7 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, FileUp, FolderOpen, Loader2, Move, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileUp,
+  FolderOpen,
+  Loader2,
+  Move,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FILES_BUCKET } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
@@ -26,7 +35,12 @@ import {
   parseGermanCents,
   parseGermanNumber,
 } from "@/lib/lv-form/number";
-import { hasBlockingWarnings, validateLvForm } from "@/lib/lv-form/validate";
+import {
+  hasBlockingWarnings,
+  validateLvArithmetic,
+  validateLvAssignment,
+  validateLvForm,
+} from "@/lib/lv-form/validate";
 import type { LvDetection, LvFieldKey, LvInputs, LvMarker } from "@/lib/lv-form/types";
 
 type MoneyKey = "unterhalt_pauschale_monat" | "grund_pauschale_jahr" | "sonder_stundensatz";
@@ -87,6 +101,7 @@ export function LvFormFiller() {
   const [activePage, setActivePage] = useState(0);
   const [projectId, setProjectId] = useState<string>("none");
   const dragRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["lv-form-projects"],
@@ -108,13 +123,58 @@ export function LvFormFiller() {
   }, [inputText]);
 
   const derived = useMemo(() => deriveLvValues(inputs), [inputs]);
-  const warnings = useMemo(
-    () => validateLvForm(inputs, derived, detection?.constraints ?? []),
-    [inputs, derived, detection],
+
+  /** Zugeordnete Kennzahlen – je nach PDF-Typ aus Feld-Mapping oder Markern. */
+  const assignedKeys = useMemo<LvFieldKey[]>(() => {
+    if (detection?.type === "acroform") {
+      return detection.acroFields
+        .map((f) => mapping[f.name] ?? null)
+        .filter((k): k is LvFieldKey => Boolean(k));
+    }
+    return markers.map((m) => m.key).filter((k): k is LvFieldKey => Boolean(k));
+  }, [detection, mapping, markers]);
+
+  const unassignedMarkers = useMemo(
+    () => (detection?.type === "flat" ? markers.filter((m) => !m.key).length : 0),
+    [detection, markers],
   );
+
+  const warnings = useMemo(() => {
+    if (!detection) return [];
+    return [
+      ...validateLvForm(inputs, derived, detection.constraints),
+      ...validateLvArithmetic(inputs, derived),
+      ...validateLvAssignment({
+        type: detection.type,
+        assignedKeys,
+        unassignedMarkers,
+        scanned: detection.scanned,
+      }),
+    ];
+  }, [inputs, derived, detection, assignedKeys, unassignedMarkers]);
+
+  const hardWarnings = warnings.filter((w) => w.level === "hard");
+  const softWarnings = warnings.filter((w) => w.level === "soft");
   const blocking = hasBlockingWarnings(warnings);
   const page = detection?.pages[activePage];
   const pageMarkers = markers.filter((m) => m.pageIndex === activePage);
+
+  /** Entfernt das geladene PDF samt Markern, Zuordnungen und Bestätigungen. */
+  function resetAll() {
+    setFile(null);
+    setDetection(null);
+    setMarkers([]);
+    setMapping({});
+    setInputText({ mwst_satz: "19,00" });
+    setAccepted(false);
+    setActivePage(0);
+    setProjectId("none");
+    setBusy(false);
+    setAnalyzing(false);
+    dragRef.current = null;
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    toast.success("Dokument und alle Zuordnungen wurden entfernt.");
+  }
 
   async function handleFile(next: File | null) {
     if (!next) return;
@@ -280,11 +340,26 @@ export function LvFormFiller() {
             </span>
           )}
         </div>
-        <Input
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            ref={fileInputRef}
+            className="max-w-md"
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
+          />
+          {(file || detection) && (
+            <Button type="button" variant="destructive" onClick={resetAll}>
+              <RotateCcw className="size-4" /> PDF komplett löschen
+            </Button>
+          )}
+        </div>
+        {file && (
+          <p className="text-xs text-muted-foreground">
+            Geladen: {file.name} – „PDF komplett löschen" setzt alles zurück für einen frischen
+            Start.
+          </p>
+        )}
         {detection && (
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="rounded-full border px-3 py-1">
@@ -483,9 +558,16 @@ export function LvFormFiller() {
 
             <section className="surface space-y-3 p-5">
               <h2 className="font-display text-lg font-semibold">Prüfung &amp; Export</h2>
+              <p className="text-xs text-muted-foreground">
+                {hardWarnings.length} blockierende, {softWarnings.length} prüfende Hinweise ·
+                Netto-Kontrollsumme: {formatCents(derived.jahr_netto)} € · Brutto:{" "}
+                {formatCents(derived.jahr_brutto)} € · zugeordnete Kennzahlen:{" "}
+                {assignedKeys.length}
+              </p>
               {warnings.length === 0 ? (
                 <p className="inline-flex items-center gap-2 text-sm text-emerald-600">
-                  <CheckCircle2 className="size-4" /> Keine Auffälligkeiten gefunden.
+                  <CheckCircle2 className="size-4" /> Alle Prüfungen bestanden – Rechenkette,
+                  Summen und Zuordnungen sind konsistent.
                 </p>
               ) : (
                 <ul className="space-y-2 text-sm">
@@ -540,7 +622,7 @@ export function LvFormFiller() {
 
               <Button
                 className="w-full"
-                disabled={busy || (blocking && !accepted) || markers.every((m) => !m.key) === (detection.type !== "acroform")}
+                disabled={busy || (blocking && !accepted) || assignedKeys.length === 0}
                 onClick={() => void handleExport()}
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <FileUp className="size-4" />}
