@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { classifyLabel } from "./detect";
 import { EMPTY_LV_INPUTS, deriveLvValues } from "./derive";
 import { formatCents, formatGermanNumber, parseGermanCents, parseGermanNumber } from "./number";
-import { hasBlockingWarnings, validateLvForm } from "./validate";
+import {
+  hasBlockingWarnings,
+  validateLvArithmetic,
+  validateLvAssignment,
+  validateLvForm,
+} from "./validate";
 import type { LvConstraint, LvInputs } from "./types";
 
 describe("deutsche Zahlen", () => {
@@ -99,5 +104,43 @@ describe("Feldzuordnung aus Zeilentext", () => {
 
   it("liefert null bei unbekanntem Text", () => {
     expect(classifyLabel("Anlage 7 Unterschrift Bieter").key).toBeNull();
+  });
+});
+
+describe("Endprüfung vor Export", () => {
+  const inputs: LvInputs = {
+    ...EMPTY_LV_INPUTS,
+    unterhalt_pauschale_monat: 100000,
+    unterhalt_stunden_monat: 100,
+    sonder_stundensatz: 3500,
+    sonder_kontingent: 10,
+  };
+
+  it("meldet keine harten Fehler bei konsistenter Rechenkette", () => {
+    const d = deriveLvValues(inputs);
+    expect(validateLvArithmetic(inputs, d).filter((w) => w.level === "hard")).toHaveLength(0);
+  });
+
+  it("erkennt manipulierte Summen", () => {
+    const d = { ...deriveLvValues(inputs), jahr_netto: 1 };
+    expect(hasBlockingWarnings(validateLvArithmetic(inputs, d))).toBe(true);
+  });
+
+  it("blockiert fehlende und doppelte Zuordnungen", () => {
+    const none = validateLvAssignment({
+      type: "flat",
+      assignedKeys: [],
+      unassignedMarkers: 2,
+      scanned: false,
+    });
+    expect(hasBlockingWarnings(none)).toBe(true);
+
+    const dup = validateLvAssignment({
+      type: "acroform",
+      assignedKeys: ["jahr_netto", "jahr_netto", "mwst_betrag", "jahr_brutto"],
+      unassignedMarkers: 0,
+      scanned: false,
+    });
+    expect(hasBlockingWarnings(dup)).toBe(true);
   });
 });
