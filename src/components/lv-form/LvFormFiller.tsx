@@ -255,7 +255,11 @@ export function LvFormFiller() {
   }
 
   function patchMarker(id: string, values: Partial<LvMarker>) {
-    setMarkers((prev) => prev.map((m) => (m.id === id ? { ...m, ...values } : m)));
+    setMarkers((prev) => {
+      const next = prev.map((m) => (m.id === id ? { ...m, ...values } : m));
+      // Kennzahl-Wechsel: dieselbe Kennzahl darf nur an einer Position stehen.
+      return "key" in values ? dedupeMarkerKeys(next, id) : next;
+    });
   }
 
   function addMarkerAt(event: React.MouseEvent<HTMLDivElement>) {
