@@ -85,7 +85,17 @@ export function LvFormFiller() {
   const [analyzing, setAnalyzing] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [activePage, setActivePage] = useState(0);
+  const [projectId, setProjectId] = useState<string>("none");
   const dragRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["lv-form-projects"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name").order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
 
   const inputs: LvInputs = useMemo(() => {
     const next = { ...EMPTY_LV_INPUTS };
