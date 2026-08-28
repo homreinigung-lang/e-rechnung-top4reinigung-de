@@ -268,8 +268,11 @@ function KalkulationPage() {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
   }
 
-  // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
+  // ---- KI-Positionsvorschläge (eigener Bereich, kein Zugriff aufs LV) ------
   const [aiPrompt, setAiPrompt] = useState("");
+  /** Vorschläge der KI-/Grundriss-Analyse – reine Vorschau bis zur Übernahme. */
+  const [kiItems, setKiItems] = useState<AiItem[]>([]);
+  /** Das Leistungsverzeichnis: einzige Quelle für Angebot, PDF und Speicherung. */
   const [lvItems, setLvItems] = useState<AiItem[]>([]);
   const analyze = useServerFn(analyzeCalculation);
   const aiSuggest = useMutation({
