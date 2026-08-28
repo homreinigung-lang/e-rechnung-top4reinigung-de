@@ -196,21 +196,28 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
   if (input.stairs) {
     const floors = Math.max(1, Math.round(input.floors || 1));
     const rate = round2(input.stairRate > 0 ? input.stairRate : MIN_STAIR_RATE);
+    // Das Treppenhaus hat oft einen eigenen Turnus (z. B. 2× monatlich bei
+    // wöchentlicher Unterhaltsreinigung). Ohne eigene Angabe gilt der Haupt-Turnus.
+    const stairVisits =
+      Number(input.stairVisitsPerMonth) > 0
+        ? Math.max(1, round2(Number(input.stairVisitsPerMonth)))
+        : visits;
     positions.push({
-      description: `Treppenhausreinigung – ${floors} Etagen, ${visits} Einsätze/Monat`,
-      quantity: round2(floors * visits),
+      description: `Treppenhausreinigung – ${floors} Etagen, ${stairVisits} Einsätze/Monat`,
+      quantity: round2(floors * stairVisits),
       unit: "Etage",
       unit_price: rate,
     });
     if (input.hasLift && input.liftRate > 0) {
       positions.push({
         description: "Aufzugkabine reinigen",
-        quantity: visits,
+        quantity: stairVisits,
         unit: "Einsatz",
         unit_price: round2(input.liftRate),
       });
     }
   }
+
 
   for (const extra of input.extras) {
     if (extra.price > 0) {
