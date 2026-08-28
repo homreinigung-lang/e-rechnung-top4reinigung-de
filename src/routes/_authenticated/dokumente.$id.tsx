@@ -335,8 +335,18 @@ function DokumentDetail() {
     },
     onSuccess: () => {
       toast.success("Gespeichert");
-      queryClient.invalidateQueries({ queryKey: ["document", id] });
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      // Verlässt der Beleg den Entwurfsstatus, wird die offizielle Nummer vergeben.
+      void (async () => {
+        if (String(form["status"] ?? "draft") !== "draft") {
+          try {
+            await ensureOfficialNumber(id);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
+          }
+        }
+        await queryClient.invalidateQueries({ queryKey: ["document", id] });
+        await queryClient.invalidateQueries({ queryKey: ["documents"] });
+      })();
     },
     onError: (e: Error) =>
       toast.error(describeGobdError(e, data?.doc as unknown as Record<string, unknown>), {
@@ -518,6 +528,8 @@ function DokumentDetail() {
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Beleg nicht gefunden");
+      // Versand = echter Beleg: offizielle, fortlaufende Nummer vergeben.
+      if (next === "sent") await ensureOfficialNumber(id);
       await logAudit(
         next === "sent" ? "marked_sent" : "marked_draft",
         { id, number: docNumber },
