@@ -328,20 +328,29 @@ function KalkulationPage() {
       }
 
       const list = cleaned.map((i, n) => ({
-        id: `${Date.now()}-${n}`,
+        id: `ki-${Date.now()}-${n}`,
         description: i.description,
         quantity: String(i.quantity).replace(".", ","),
         unit: i.unit,
         unit_price: String(i.unit_price).replace(".", ","),
+        section: KI_SECTION,
+        sourceLvItemId: null,
       }));
-      setLvItems(list);
-      toast.success(`Kalkulation übernommen – ${list.length} Positionen erstellt (frei anpassbar)`);
+      // Die KI schreibt ausschließlich in ihren eigenen Bereich – das
+      // Leistungsverzeichnis ändert sich erst per bewusstem Klick.
+      setKiItems(list);
+      toast.success(
+        `KI-Analyse fertig – ${list.length} Vorschlagspositionen (noch nicht im Angebot)`,
+      );
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
   const patchLvItem = (id: string, patch: Partial<AiItem>) =>
     setLvItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+
+  const patchKiItem = (id: string, patch: Partial<AiItem>) =>
+    setKiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
   // ---- Projekt-Analyse direkt aus den hochgeladenen Unterlagen -------------
   const runProjectScan = useServerFn(analyzeProject);
