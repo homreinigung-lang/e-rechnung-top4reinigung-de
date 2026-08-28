@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { saveFile } from "@/lib/download";
 import { detectLvForm } from "@/lib/lv-form/detect";
+import { autoAssignMarkers, dedupeMapping } from "@/lib/lv-form/assign";
 import { LV_FIELDS, LV_FIELD_MAP, fieldLabel } from "@/lib/lv-form/fields";
 import { EMPTY_LV_INPUTS, deriveLvValues } from "@/lib/lv-form/derive";
 import { fieldValueText, fillAcroForm, fillFlatPdf } from "@/lib/lv-form/fill";
