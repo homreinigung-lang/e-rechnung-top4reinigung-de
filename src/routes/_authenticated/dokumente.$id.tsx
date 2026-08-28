@@ -707,16 +707,17 @@ function DokumentDetail() {
     : null;
 
   // ---- E-Rechnung (XRechnung / ZUGFeRD) ----------------------------------
-  function eRechnungInput(): ERechnungInput {
+  function eRechnungInput(numberOverride?: string): ERechnungInput {
+    const number = numberOverride ?? docNumber;
     return {
-      doc: { ...docRecord, ...form, number: docNumber },
+      doc: { ...docRecord, ...form, number },
       items,
       settings: settings as Record<string, unknown> | null,
       netTotal,
       vatAmount,
       grossTotal,
       vatRate,
-      number: docNumber,
+      number,
     };
   }
 
@@ -727,16 +728,25 @@ function DokumentDetail() {
     }
   }
 
+  /**
+   * Vor jeder verbindlichen Ausgabe (Versand, E-Rechnung) die offizielle,
+   * fortlaufende Nummer vergeben – der Kunde darf nie eine DEMO-Nummer erhalten.
+   */
+  async function assignOfficialNumberNow(): Promise<string> {
+    if (locked || !isDraftPlaceholder(docNumber)) return docNumber;
+    const number = await ensureOfficialNumber(id);
+    await queryClient.invalidateQueries({ queryKey: ["documents"] });
+    await queryClient.refetchQueries({ queryKey: ["document", id] });
+    return number;
+  }
+
   async function exportXRechnung() {
     try {
-      const input = eRechnungInput();
+      const number = await assignOfficialNumberNow();
+      const input = eRechnungInput(number);
       warnIfIncomplete(input);
-      downloadXml(buildXRechnungXml(input), `XRechnung_${docNumber.replace(/\W+/g, "_")}.xml`);
-      await logAudit(
-        "xrechnung_export",
-        { id, number: docNumber },
-        { format: "XRechnung 3.0 (UBL)" },
-      );
+      downloadXml(buildXRechnungXml(input), `XRechnung_${number.replace(/\W+/g, "_")}.xml`);
+      await logAudit("xrechnung_export", { id, number }, { format: "XRechnung 3.0 (UBL)" });
       toast.success("XRechnung (XML) erstellt");
     } catch (e) {
       toast.error((e as Error).message);
@@ -939,17 +949,18 @@ function DokumentDetail() {
     if (!(await persistBeforeOutput())) return;
     const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
     try {
-      const input = eRechnungInput();
+      const number = await assignOfficialNumberNow();
+      const input = eRechnungInput(number);
       warnIfIncomplete(input);
-      const pdfBytes = await buildDocumentPdfBytes(await buildPdfData());
+      const pdfBytes = await buildDocumentPdfBytes(await buildPdfData(number));
       const hybrid = await embedZugferdXml(pdfBytes, buildZugferdXml(input), {
-        number: docNumber,
+        number,
         title: DOC_TYPE_LABEL[doc.type] ?? "Rechnung",
       });
-      downloadBytes(hybrid, `ZUGFeRD_${docNumber.replace(/\W+/g, "_")}.pdf`);
+      downloadBytes(hybrid, `ZUGFeRD_${number.replace(/\W+/g, "_")}.pdf`);
       await logAudit(
         "zugferd_export",
-        { id, number: docNumber },
+        { id, number },
         { format: "ZUGFeRD 2.3 / Factur-X (EN 16931)" },
       );
       toast.success("ZUGFeRD-PDF (hybride E-Rechnung) erstellt", { id: toastId });
@@ -995,6 +1006,14 @@ function DokumentDetail() {
               void (async () => {
                 if (!ensureHasItems()) return;
                 if (!(await persistBeforeOutput())) return;
+                // Offizielle Nummer VOR dem Versand vergeben, damit PDF,
+                // Dateiname und E-Mail-Text nie eine DEMO-Nummer enthalten.
+                try {
+                  await assignOfficialNumberNow();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
+                  return;
+                }
                 setMailOpen(true);
               })();
             }}
