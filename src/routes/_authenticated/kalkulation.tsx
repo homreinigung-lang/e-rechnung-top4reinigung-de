@@ -200,6 +200,8 @@ function KalkulationPage() {
   const [stairs, setStairs] = useState(false);
   const [floors, setFloors] = useState("1");
   const [stairRate, setStairRate] = useState(String(STAIR_RATE_PER_FLOOR));
+  /** Eigener Turnus des Treppenhauses (Einsätze/Monat). Leer/0 = wie Grundleistung. */
+  const [stairFrequency, setStairFrequency] = useState("0");
   const [hasLift, setHasLift] = useState(false);
   const [liftRate, setLiftRate] = useState("5,00");
   const [discountPercent, setDiscountPercent] = useState("0");
