@@ -489,6 +489,7 @@ function KalkulationPage() {
       stairs,
       floors,
       stairRate,
+      stairVisitsPerMonth,
       hasLift,
       liftRate,
       extras,
