@@ -636,6 +636,21 @@ function KalkulationPage() {
 
   }
 
+  /**
+   * Abgleich zwischen aktuellem Kalkulations-Vorschlag und dem, was im
+   * Leistungsverzeichnis unter „Kalkulation" tatsächlich steht. Weicht beides
+   * ab, entsteht das Angebot aus einem veralteten Stand – darauf wird
+   * ausdrücklich hingewiesen.
+   */
+  const lvCalcTotal = useMemo(
+    () => positionsTotal(lvPositions.filter((p) => p.section === KALK_SECTION)),
+    [lvPositions],
+  );
+  const calcOutOfSync = useMemo(
+    () => Math.abs(round2(lvCalcTotal) - round2(suggested)) >= 0.01,
+    [lvCalcTotal, suggested],
+  );
+
   const analyseSnapshot: KalkulationSnapshot = {
     typeLabel: selected.label,
     areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
@@ -646,6 +661,7 @@ function KalkulationPage() {
     netTotal: aiTotal,
     confirmed,
   };
+
 
   // ---- Speichern / Laden ---------------------------------------------------
   const { data: savedCalcs = [] } = useQuery({
