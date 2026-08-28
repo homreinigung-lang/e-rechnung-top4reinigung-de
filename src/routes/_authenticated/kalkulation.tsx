@@ -268,7 +268,7 @@ function KalkulationPage() {
 
   // ---- KI-Positionsvorschläge (voll manuell überschreibbar) ----------------
   const [aiPrompt, setAiPrompt] = useState("");
-  const [aiItems, setAiItems] = useState<AiItem[]>([]);
+  const [lvItems, setLvItems] = useState<AiItem[]>([]);
   const analyze = useServerFn(analyzeCalculation);
   const aiSuggest = useMutation({
     mutationFn: async () => analyze({ data: { prompt: aiPrompt } }),
@@ -332,14 +332,14 @@ function KalkulationPage() {
         unit: i.unit,
         unit_price: String(i.unit_price).replace(".", ","),
       }));
-      setAiItems(list);
+      setLvItems(list);
       toast.success(`Kalkulation übernommen – ${list.length} Positionen erstellt (frei anpassbar)`);
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
 
-  const patchAiItem = (id: string, patch: Partial<AiItem>) =>
-    setAiItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+  const patchLvItem = (id: string, patch: Partial<AiItem>) =>
+    setLvItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
   // ---- Projekt-Analyse direkt aus den hochgeladenen Unterlagen -------------
   const runProjectScan = useServerFn(analyzeProject);
@@ -393,7 +393,7 @@ function KalkulationPage() {
         unit: it.unit || "Pauschal",
         unit_price: hourlyRate,
       }));
-      if (posFromItems.length > 0) setAiItems((prev) => [...prev, ...posFromItems]);
+      if (posFromItems.length > 0) setLvItems((prev) => [...prev, ...posFromItems]);
 
       toast.success(
         `Analyse übernommen – ${scan.rooms.length} Räume, ${posFromItems.length} Positionen`,
@@ -528,7 +528,7 @@ function KalkulationPage() {
    */
   const lvPositions = useMemo(
     () =>
-      aiItems
+      lvItems
         .map((item) => ({
           key: item.id,
           description: item.description.trim(),
@@ -544,19 +544,19 @@ function KalkulationPage() {
           (item) =>
             item.description.length > 0 && Math.abs(item.quantity * item.unit_price) >= 0.01,
         ),
-    [aiItems],
+    [lvItems],
   );
-  const aiTotal = useMemo(() => positionsTotal(lvPositions), [lvPositions]);
+  const lvTotal = useMemo(() => positionsTotal(lvPositions), [lvPositions]);
   const vatRate = vatRateForTaxMode(taxMode);
   const taxNote = taxNoteForTaxMode(taxMode);
-  const vatAmount = round2((aiTotal * vatRate) / 100);
-  const grossTotal = round2(aiTotal + vatAmount);
+  const vatAmount = round2((lvTotal * vatRate) / 100);
+  const grossTotal = round2(lvTotal + vatAmount);
 
   // Jede preis- oder angebotsrelevante Änderung hebt die finale Bestätigung
   // wieder auf – insbesondere direkte Änderungen am Leistungsverzeichnis.
   useEffect(() => {
     setConfirmed(false);
-  }, [note, discountReason, selected.value, taxMode, aiItems]);
+  }, [note, discountReason, selected.value, taxMode, lvItems]);
 
 
   // Live-Kennzahlen für die integrierte Projekt-Analyse
@@ -615,7 +615,7 @@ function KalkulationPage() {
     const stamp = Date.now();
     const isForeign = (i: AiItem) =>
       Boolean(i.sourceLvItemId) || ((i.section || "").trim() || KALK_SECTION) !== KALK_SECTION;
-    const keptForeign = aiItems.filter(isForeign).length;
+    const keptForeign = lvItems.filter(isForeign).length;
     const fresh: AiItem[] = calculatedPositions.map((p, n) => ({
       id: `calc-${stamp}-${n}`,
       description: p.description,
@@ -625,7 +625,7 @@ function KalkulationPage() {
       section: KALK_SECTION,
       sourceLvItemId: null,
     }));
-    setAiItems((prev) => [...prev.filter(isForeign), ...fresh]);
+    setLvItems((prev) => [...prev.filter(isForeign), ...fresh]);
     toast.success(
       `Kalkulation übernommen – Bereich „${KALK_SECTION}“ netto ${formatMoney(positionsTotal(calculatedPositions))}` +
         (keptForeign > 0
@@ -658,7 +658,7 @@ function KalkulationPage() {
     visitsPerMonth,
     positions: lvPositions.length,
     attachments: attachments.length,
-    netTotal: aiTotal,
+    netTotal: lvTotal,
     confirmed,
   };
 
@@ -679,7 +679,7 @@ function KalkulationPage() {
   function resetCalculation() {
     setCalcId(null);
     setCalcTitle("");
-    setAiItems([]);
+    setLvItems([]);
     toast.success("Neue Kalkulation gestartet");
   }
 
@@ -717,7 +717,7 @@ function KalkulationPage() {
         note,
         proposal_title: proposalTitle,
         proposal_text: proposalText,
-        net_total: aiTotal,
+        net_total: lvTotal,
       };
 
       let id = calcId;
@@ -845,7 +845,7 @@ function KalkulationPage() {
     },
     onSuccess: ({ id, linkedIds }) => {
       setCalcId(id);
-      setAiItems((prev) =>
+      setLvItems((prev) =>
         prev.map((i) => (linkedIds[i.id] ? { ...i, sourceLvItemId: linkedIds[i.id]! } : i)),
       );
       void queryClient.invalidateQueries({ queryKey: ["calculations"] });
@@ -900,7 +900,7 @@ function KalkulationPage() {
       setNote(head.note);
       setProposalTitle(head.proposal_title);
       setProposalText(head.proposal_text);
-      setAiItems(
+      setLvItems(
         items.map((i, n) => ({
           id: `db-${i.id}-${n}`,
           description: i.description,
@@ -934,7 +934,7 @@ function KalkulationPage() {
         return;
       }
       const dec = (v: unknown) => String(Number(v) || 0).replace(".", ",");
-      setAiItems(
+      setLvItems(
         rows.map((r, n) => ({
           id: `lv-${r.id}-${n}`,
           description: r.description?.trim() || r.title || "Position",
@@ -2050,7 +2050,7 @@ function KalkulationPage() {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      setAiItems((prev) => [
+                      setLvItems((prev) => [
                         ...prev,
                         {
                           id: `${Date.now()}`,
@@ -2082,7 +2082,7 @@ function KalkulationPage() {
                       <span className="text-right">Gesamt</span>
                       <span />
                     </div>
-                    {aiItems.map((i) => (
+                    {lvItems.map((i) => (
                       <div
                         key={i.id}
                         className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center"
@@ -2090,21 +2090,21 @@ function KalkulationPage() {
                         <Input
                           value={i.description}
                           placeholder="Leistung"
-                          onChange={(e) => patchAiItem(i.id, { description: e.target.value })}
+                          onChange={(e) => patchLvItem(i.id, { description: e.target.value })}
                         />
                         <Input
                           inputMode="decimal"
                           value={i.quantity}
-                          onChange={(e) => patchAiItem(i.id, { quantity: e.target.value })}
+                          onChange={(e) => patchLvItem(i.id, { quantity: e.target.value })}
                         />
                         <Input
                           value={i.unit}
-                          onChange={(e) => patchAiItem(i.id, { unit: e.target.value })}
+                          onChange={(e) => patchLvItem(i.id, { unit: e.target.value })}
                         />
                         <Input
                           inputMode="decimal"
                           value={i.unit_price}
-                          onChange={(e) => patchAiItem(i.id, { unit_price: e.target.value })}
+                          onChange={(e) => patchLvItem(i.id, { unit_price: e.target.value })}
                         />
                         <span className="text-sm sm:text-right">
                           {formatMoney(num(i.quantity) * parseGermanNumber(i.unit_price))}
@@ -2114,7 +2114,7 @@ function KalkulationPage() {
                           variant="ghost"
                           size="icon"
                           aria-label="Position entfernen"
-                          onClick={() => setAiItems((prev) => prev.filter((x) => x.id !== i.id))}
+                          onClick={() => setLvItems((prev) => prev.filter((x) => x.id !== i.id))}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -2122,7 +2122,7 @@ function KalkulationPage() {
                     ))}
                     <div className="flex items-center justify-between border-t pt-3 text-sm font-semibold">
                       <span>Gesamt netto</span>
-                      <span>{formatMoney(aiTotal)}</span>
+                      <span>{formatMoney(lvTotal)}</span>
                     </div>
                     <p className="text-right text-xs text-muted-foreground">
                       {lvPositions.length} Position(en) – Summe aus Menge × Einzelpreis
@@ -2240,7 +2240,7 @@ function KalkulationPage() {
                   </div>
                   <div className="flex justify-between border-t pt-1 font-medium">
                     <span>Gesamt netto</span>
-                    <span>{formatMoney(aiTotal)}</span>
+                    <span>{formatMoney(lvTotal)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>
@@ -2287,7 +2287,7 @@ function KalkulationPage() {
 
                 <Button
                   className="w-full"
-                  disabled={toQuote.isPending || aiTotal <= 0 || !confirmed || warnings.length > 0}
+                  disabled={toQuote.isPending || lvTotal <= 0 || !confirmed || warnings.length > 0}
                   onClick={() => toQuote.mutate()}
                 >
                   <FileSignature className="size-4" />
