@@ -874,6 +874,7 @@ function KalkulationPage() {
       setStairs(head.stairs);
       setFloors(dec(head.floors));
       setStairRate(dec(head.stair_rate));
+      setStairFrequency(dec(head.stair_visits_per_month));
       setHasLift(head.has_lift);
       setLiftRate(dec(head.lift_rate));
       setDiscountPercent(dec(head.discount_percent));
