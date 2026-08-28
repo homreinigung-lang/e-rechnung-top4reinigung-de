@@ -2224,7 +2224,7 @@ function KalkulationPage() {
 
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={applyCalculation}>
-                    <Calculator className="size-4" /> Kalkulation übernehmen
+                    <Calculator className="size-4" /> Grundkalkulation für Angebot übernehmen
                   </Button>
                   {projectId && (
                     <Button
