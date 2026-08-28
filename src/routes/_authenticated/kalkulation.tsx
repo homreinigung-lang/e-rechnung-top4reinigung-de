@@ -1073,9 +1073,7 @@ function KalkulationPage() {
         parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
       }
 
-      if (discountReason.trim() && pct > 0) {
-        parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
-      }
+
       if (note.trim()) parts.push(note.trim());
 
       const { error: itemError } = await supabase.from("document_items").insert(
