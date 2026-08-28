@@ -636,6 +636,21 @@ function KalkulationPage() {
 
   }
 
+  /**
+   * Abgleich zwischen aktuellem Kalkulations-Vorschlag und dem, was im
+   * Leistungsverzeichnis unter „Kalkulation" tatsächlich steht. Weicht beides
+   * ab, entsteht das Angebot aus einem veralteten Stand – darauf wird
+   * ausdrücklich hingewiesen.
+   */
+  const lvCalcTotal = useMemo(
+    () => positionsTotal(lvPositions.filter((p) => p.section === KALK_SECTION)),
+    [lvPositions],
+  );
+  const calcOutOfSync = useMemo(
+    () => Math.abs(round2(lvCalcTotal) - round2(suggested)) >= 0.01,
+    [lvCalcTotal, suggested],
+  );
+
   const analyseSnapshot: KalkulationSnapshot = {
     typeLabel: selected.label,
     areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
@@ -646,6 +661,7 @@ function KalkulationPage() {
     netTotal: aiTotal,
     confirmed,
   };
+
 
   // ---- Speichern / Laden ---------------------------------------------------
   const { data: savedCalcs = [] } = useQuery({
@@ -1028,34 +1044,36 @@ function KalkulationPage() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
 
+      /**
+       * Die Leistungsbeschreibung wird aus den tatsächlich abgerechneten
+       * Positionen abgeleitet – nicht aus dem Formularzustand. So kann der
+       * Text nie eine andere Abrechnungsmethode (m² statt Std.) nennen als
+       * die, nach der wirklich fakturiert wird.
+       */
+      const isHourUnit = (u: string) => /^(std|stunde)/i.test(u.trim());
       const parts: string[] = [selected.label];
-      if (mode === "area") {
-        parts.push(`${formatNumber(num(area))} m² × ${formatMoney(num(pricePerSqm))}/m²`);
-      } else {
-        parts.push(`${formatNumber(num(hours))} Std. × ${formatMoney(num(hourlyRate))}/Std.`);
+      for (const p of positions) {
+        if (p.unit_price < 0) {
+          parts.push(`${p.description}: ${formatMoney(p.unit_price)}`);
+          continue;
+        }
+        const line = isHourUnit(p.unit)
+          ? `${p.description}: ${formatNumber(p.quantity)} Std. × ${formatMoney(p.unit_price)}/Std. = ${formatMoney(round2(p.quantity * p.unit_price))}`
+          : `${p.description}: ${formatNumber(p.quantity)} ${p.unit} × ${formatMoney(p.unit_price)} = ${formatMoney(round2(p.quantity * p.unit_price))}`;
+        parts.push(line);
       }
       parts.push(
-        `${formatNumber(num(frequency))} Einsätze ${
+        `Turnus: ${formatNumber(num(frequency))} Einsätze ${
           frequencyUnit === "week"
             ? `pro Woche (× 4,33 = ${formatNumber(visitsPerMonth)} pro Monat)`
             : "pro Monat"
         }`,
       );
-      if (stairs) {
-        parts.push(
-          `Treppenhausreinigung: ${formatNumber(num(floors))} Etagen × ${formatMoney(num(stairRate))}/Etage`,
-        );
-        parts.push(
-          hasLift
-            ? `Aufzug vorhanden – Aufzugkabine inkl. (${formatMoney(num(liftRate))}/Einsatz)`
-            : "Kein Aufzug vorhanden",
-        );
-      }
-      const chosen = EXTRAS.filter((e) => extras.includes(e.key)).map((e) => e.label);
-      if (chosen.length > 0) parts.push(`Zusatzleistungen: ${chosen.join(", ")}`);
       if (discountReason.trim() && pct > 0) {
         parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
       }
+
+
       if (note.trim()) parts.push(note.trim());
 
       const { error: itemError } = await supabase.from("document_items").insert(
@@ -1983,6 +2001,24 @@ function KalkulationPage() {
                     </Button>
                   </div>
                 </div>
+
+                {calcOutOfSync && (
+                  <div
+                    role="alert"
+                    className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/60 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                  >
+                    <AlertTriangle className="size-5 shrink-0" />
+                    <p className="flex-1">
+                      Das Leistungsverzeichnis weicht vom aktuellen Vorschlag ab: Bereich
+                      „Kalkulation" {formatMoney(lvCalcTotal)} statt {formatMoney(suggested)}. Ein
+                      Angebot würde den veralteten Stand übernehmen.
+                    </p>
+                    <Button type="button" size="sm" onClick={applyCalculation}>
+                      <Calculator className="size-4" /> Jetzt übernehmen
+                    </Button>
+                  </div>
+                )}
+
 
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={applyCalculation}>
