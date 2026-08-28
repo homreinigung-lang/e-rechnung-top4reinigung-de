@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
-import { draftPlaceholderNumber } from "@/lib/doc-number";
+import { draftPlaceholderNumber, ensureOfficialNumber } from "@/lib/doc-number";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -144,6 +144,7 @@ export async function setQuoteDecision(id: string, decision: "accepted" | "decli
     .update({ status: decision } as never)
     .eq("id", id);
   if (updateError) throw updateError;
+  if (decision === "accepted") await ensureOfficialNumber(id);
   await logAudit(decision === "accepted" ? "quote_accepted" : "quote_declined", doc, {});
 }
 
@@ -210,6 +211,9 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
   }
   const converted = (src as unknown as Record<string, unknown>)["converted_document_id"];
   if (converted) throw new Error("Dieser Beleg wurde bereits umgewandelt.");
+
+  // Der Quellbeleg wird mit der Umwandlung verbindlich – offizielle Nummer vergeben.
+  const sourceNumber = await ensureOfficialNumber(sourceId);
 
   const { data: items } = await supabase
     .from("document_items")
@@ -287,7 +291,7 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
 
   await logAudit(
     target === "order" ? "quote_converted_order" : "order_converted_invoice",
-    { id: sourceId, number: src.number },
+    { id: sourceId, number: sourceNumber },
     { target, number },
   );
   return created.id as string;
