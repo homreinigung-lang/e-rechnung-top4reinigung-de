@@ -1006,6 +1006,14 @@ function DokumentDetail() {
               void (async () => {
                 if (!ensureHasItems()) return;
                 if (!(await persistBeforeOutput())) return;
+                // Offizielle Nummer VOR dem Versand vergeben, damit PDF,
+                // Dateiname und E-Mail-Text nie eine DEMO-Nummer enthalten.
+                try {
+                  await assignOfficialNumberNow();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
+                  return;
+                }
                 setMailOpen(true);
               })();
             }}
