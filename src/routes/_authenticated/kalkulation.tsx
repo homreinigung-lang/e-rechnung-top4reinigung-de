@@ -578,6 +578,7 @@ function KalkulationPage() {
     [mode, area, analysisTotals, stairs, floors],
   );
 
+
   /**
    * Übernimmt die Grundkalkulation als Positionssatz in das
    * Leistungsverzeichnis. Ein gewünschter Rabatt erscheint als eigene,
