@@ -707,16 +707,17 @@ function DokumentDetail() {
     : null;
 
   // ---- E-Rechnung (XRechnung / ZUGFeRD) ----------------------------------
-  function eRechnungInput(): ERechnungInput {
+  function eRechnungInput(numberOverride?: string): ERechnungInput {
+    const number = numberOverride ?? docNumber;
     return {
-      doc: { ...docRecord, ...form, number: docNumber },
+      doc: { ...docRecord, ...form, number },
       items,
       settings: settings as Record<string, unknown> | null,
       netTotal,
       vatAmount,
       grossTotal,
       vatRate,
-      number: docNumber,
+      number,
     };
   }
 
