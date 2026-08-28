@@ -219,8 +219,13 @@ export function LvFormFiller() {
     try {
       const result = await detectLvForm(next);
       setDetection(result);
-      setMarkers(result.markers);
-      setMapping(Object.fromEntries(result.acroFields.map((f) => [f.name, f.suggestedKey])));
+      setMarkers(autoAssignMarkers(result.markers));
+      setMapping(
+        dedupeMapping(
+          result.acroFields,
+          Object.fromEntries(result.acroFields.map((f) => [f.name, f.suggestedKey])),
+        ),
+      );
       setActivePage(0);
       const vat = result.constraints.find((c) => c.kind === "vat_rate");
       if (vat) setInputText((prev) => ({ ...prev, mwst_satz: formatGermanNumber(vat.value) }));
