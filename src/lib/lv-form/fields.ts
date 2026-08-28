@@ -78,7 +78,6 @@ export const LV_FIELDS: LvFieldMeta[] = [
     keywords: [
       ["stundenverrechnungssatz"],
       ["verrechnungssatz", "stunde"],
-girl_placeholder_removed    ],
   },
   {
     key: "sonder_kontingent",
