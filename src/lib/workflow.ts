@@ -57,6 +57,7 @@ export async function sendReminder(id: string, kind: ReminderKind): Promise<numb
     .eq("id", id)
     .single();
   if (error) throw error;
+  await ensureOfficialNumber(id);
   if (doc.status === "paid" || doc.status === "cancelled") {
     throw new Error("Für bezahlte oder stornierte Rechnungen ist keine Mahnung möglich.");
   }
@@ -104,6 +105,7 @@ export async function markInvoicePaid(id: string, paidDate?: string): Promise<st
   if (doc.type !== "invoice") throw new Error("Nur Rechnungen können als bezahlt markiert werden.");
   if (doc.status === "cancelled")
     throw new Error("Stornierte Rechnungen können nicht bezahlt werden.");
+  await ensureOfficialNumber(id);
 
   const { error: updateError } = await supabase
     .from("documents")
