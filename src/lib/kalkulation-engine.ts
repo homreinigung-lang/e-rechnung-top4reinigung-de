@@ -57,11 +57,20 @@ export type PlausibilityInput = {
   rooms: number;
   floors: number;
   toilets?: number;
+  /** Netto-Monatssumme der Kalkulation (optional, für die Preisprüfung). */
+  monthlyNet?: number;
+  /** Kalkulierte Arbeitsstunden pro Monat (optional, für die Preisprüfung). */
+  hoursPerMonth?: number;
 };
+
+/** Obergrenze für einen plausiblen Monatspreis je m² (Unterhaltsreinigung). */
+export const MAX_MONTHLY_EUR_PER_SQM = 2.5;
+/** Untergrenze für einen wirtschaftlich tragfähigen Stundenerlös. */
+export const MIN_EFFECTIVE_HOURLY_RATE = 25;
 
 /**
  * Plausibilitätsprüfung: meldet unrealistische Kombinationen
- * (z. B. 3 Etagen und 8 Räume auf 18 m²).
+ * (z. B. 3 Etagen und 8 Räume auf 18 m²) sowie unrealistische Preisniveaus.
  */
 export function checkPlausibility(input: PlausibilityInput): string[] {
   const warnings: string[] = [];
@@ -69,6 +78,8 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
   const rooms = Number(input.rooms) || 0;
   const floors = Number(input.floors) || 0;
   const toilets = Number(input.toilets) || 0;
+  const monthly = Number(input.monthlyNet) || 0;
+  const hoursPerMonth = Number(input.hoursPerMonth) || 0;
 
   if (area <= 0) return warnings;
 
@@ -92,8 +103,25 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
       "Die angegebene Fläche ist ungewöhnlich klein für die genannte Raum-/Etagenanzahl. Bitte Flächenangabe kontrollieren.",
     );
   }
+  if (monthly > 0) {
+    const perSqm = monthly / area;
+    if (perSqm > MAX_MONTHLY_EUR_PER_SQM) {
+      warnings.push(
+        `Der Monatspreis entspricht ${round2(perSqm)} €/m² – marktüblich sind bis ca. ${MAX_MONTHLY_EUR_PER_SQM.toFixed(2).replace(".", ",")} €/m² pro Monat. Bitte m²-Preis oder Turnus prüfen.`,
+      );
+    }
+    if (hoursPerMonth > 0) {
+      const effective = monthly / hoursPerMonth;
+      if (effective < MIN_EFFECTIVE_HOURLY_RATE) {
+        warnings.push(
+          `Rechnerischer Stundenerlös nur ${round2(effective)} €/Std. – unterhalb der Tarif-/Kostendeckung (ca. ${MIN_EFFECTIVE_HOURLY_RATE} €/Std.).`,
+        );
+      }
+    }
+  }
   return warnings;
 }
+
 
 export type ConsolidatedInput = {
   typeValue: string;
@@ -107,6 +135,8 @@ export type ConsolidatedInput = {
   stairs: boolean;
   floors: number;
   stairRate: number;
+  /** Eigener Turnus der Treppenhausreinigung (Einsätze/Monat). 0 = wie Grundleistung. */
+  stairVisitsPerMonth?: number;
   hasLift: boolean;
   liftRate: number;
   extras: { label: string; price: number }[];
@@ -166,21 +196,28 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
   if (input.stairs) {
     const floors = Math.max(1, Math.round(input.floors || 1));
     const rate = round2(input.stairRate > 0 ? input.stairRate : MIN_STAIR_RATE);
+    // Das Treppenhaus hat oft einen eigenen Turnus (z. B. 2× monatlich bei
+    // wöchentlicher Unterhaltsreinigung). Ohne eigene Angabe gilt der Haupt-Turnus.
+    const stairVisits =
+      Number(input.stairVisitsPerMonth) > 0
+        ? Math.max(1, round2(Number(input.stairVisitsPerMonth)))
+        : visits;
     positions.push({
-      description: `Treppenhausreinigung – ${floors} Etagen, ${visits} Einsätze/Monat`,
-      quantity: round2(floors * visits),
+      description: `Treppenhausreinigung – ${floors} Etagen, ${stairVisits} Einsätze/Monat`,
+      quantity: round2(floors * stairVisits),
       unit: "Etage",
       unit_price: rate,
     });
     if (input.hasLift && input.liftRate > 0) {
       positions.push({
         description: "Aufzugkabine reinigen",
-        quantity: visits,
+        quantity: stairVisits,
         unit: "Einsatz",
         unit_price: round2(input.liftRate),
       });
     }
   }
+
 
   for (const extra of input.extras) {
     if (extra.price > 0) {

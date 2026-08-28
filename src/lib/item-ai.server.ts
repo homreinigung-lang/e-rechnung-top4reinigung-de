@@ -15,6 +15,10 @@ Regeln:
 - unit_price darf NIEMALS 0 sein. Jede Position braucht einen realistischen Preis.
 - Werden Treppen, Treppenhaus oder mehrere Etagen erwähnt, MUSS eine eigene Position "Treppenhausreinigung" mit der Etagenanzahl als Menge und mindestens 12,50 EUR je Etage enthalten sein.
 - Einheiten nur: Std., m², Stk., Etage, Pauschal, Monat.
+- BEZUGSZEITRAUM IST IMMER EIN MONAT: Bei wiederkehrenden Leistungen enthält die Menge bereits alle Einsätze des Monats (wöchentlich = 4,33 Einsätze/Monat, 14-täglich = 2, monatlich = 1). Beispiel: 2 Std. je Einsatz, wöchentlich => quantity 8,66 Std. Der Positionstext nennt den Turnus, z. B. "… – 4,33 Einsätze/Monat".
+- Hat das Treppenhaus einen abweichenden Turnus (z. B. "Treppe 2× im Monat"), gilt für diese Position ausschließlich dieser Turnus – nicht der Turnus der Unterhaltsreinigung.
+- Realistische Leistungswerte ansetzen: Büro 200–250 m²/Std., Flur 300 m²/Std., Sanitär/WC 60 m²/Std., Teeküche 100 m²/Std., Treppenhaus 120 m²/Std.
+- Keine Doppelerfassung: Sanitär, Küche und Flure, die bereits in der Gesamtfläche der Grundleistung enthalten sind, nicht zusätzlich als eigene Fläche berechnen.
 - Mengen und Preise auf 2 Nachkommastellen runden, keine Cent-Bruchteile.
 - 3 bis 10 Positionen, keine Umsatzsteuer, keine Summenzeile.
 - Arbeite deterministisch: identische Eingaben müssen identische Mengen, Einheiten und Preise ergeben. Nutze keine Preisspannen oder Zufallswerte.
@@ -127,7 +131,7 @@ const CALC_SYSTEM = `${SYSTEM}
 Zusätzlich schätzt du die Eckdaten der Kalkulation:
 - cleaning_type: einer von unterhalt | grund | bau | glas | treppenhaus | buero
 - mode: "area" wenn eine Fläche genannt oder ableitbar ist, sonst "hours"
-- area_sqm, hours, hourly_rate, price_per_sqm (m²-Preis netto: unterhalt 0,55 · grund 1,90 · bau 2,60 · glas 1,40 · treppenhaus 0,75 · buero 0,65)
+- area_sqm, hours (Stunden JE EINSATZ), hourly_rate, price_per_sqm (m²-Preis netto JE EINSATZ: unterhalt 0,35 · grund 1,90 · bau 2,60 · glas 1,40 · treppenhaus 0,60 · buero 0,40)
 - frequency + frequency_unit (week|month), floors, stairs (Treppenhaus enthalten?), travel (Anfahrtspauschale netto, 0 wenn unbekannt)
 - note: kurze deutsche Bemerkung zur Leistung.
 Unbekannte Zahlen mit 0 belegen.`;

@@ -117,7 +117,7 @@ const CLEANING_TYPES: {
   /** Empfohlener Stundensatz-Korridor (netto). */
   range: [number, number];
 }[] = [
-  { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.55, hourly: 35, range: [34, 37] },
+  { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.35, hourly: 35, range: [34, 37] },
   {
     value: "grund",
     label: "Grundreinigung (Tiefenreinigung)",
@@ -133,8 +133,8 @@ const CLEANING_TYPES: {
     range: [42, 45],
   },
   { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 36, range: [34, 37] },
-  { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.75, hourly: 35, range: [34, 37] },
-  { value: "buero", label: "Büroreinigung", area: 0.65, hourly: 35, range: [34, 37] },
+  { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.6, hourly: 35, range: [34, 37] },
+  { value: "buero", label: "Büroreinigung", area: 0.4, hourly: 35, range: [34, 37] },
 ];
 
 const EXTRAS: { key: string; label: string; price: number }[] = [
@@ -200,6 +200,8 @@ function KalkulationPage() {
   const [stairs, setStairs] = useState(false);
   const [floors, setFloors] = useState("1");
   const [stairRate, setStairRate] = useState(String(STAIR_RATE_PER_FLOOR));
+  /** Eigener Turnus des Treppenhauses (Einsätze/Monat). Leer/0 = wie Grundleistung. */
+  const [stairFrequency, setStairFrequency] = useState("0");
   const [hasLift, setHasLift] = useState(false);
   const [liftRate, setLiftRate] = useState("5,00");
   const [discountPercent, setDiscountPercent] = useState("0");
@@ -422,16 +424,23 @@ function KalkulationPage() {
     [extras],
   );
 
+  /** Treppenhaus-Turnus: eigener Wert, sonst der Turnus der Grundleistung. */
+  const stairVisitsPerMonth = useMemo(
+    () => (num(stairFrequency) > 0 ? num(stairFrequency) : visitsPerMonth),
+    [stairFrequency, visitsPerMonth],
+  );
+
   const stairsTotal = useMemo(
     () =>
       round2(
         stairs
-          ? round2(num(floors) * visitsPerMonth) * round2(num(stairRate)) +
-              (hasLift ? round2(visitsPerMonth) * round2(num(liftRate)) : 0)
+          ? round2(num(floors) * stairVisitsPerMonth) * round2(num(stairRate)) +
+              (hasLift ? round2(stairVisitsPerMonth) * round2(num(liftRate)) : 0)
           : 0,
       ),
-    [stairs, floors, stairRate, hasLift, liftRate, visitsPerMonth],
+    [stairs, floors, stairRate, hasLift, liftRate, stairVisitsPerMonth],
   );
+
 
   const pct = Math.min(100, Math.max(0, num(discountPercent)));
 
@@ -455,6 +464,7 @@ function KalkulationPage() {
         stairs,
         floors: num(floors),
         stairRate: num(stairRate),
+        stairVisitsPerMonth,
         hasLift,
         liftRate: num(liftRate),
         extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
@@ -479,6 +489,7 @@ function KalkulationPage() {
       stairs,
       floors,
       stairRate,
+      stairVisitsPerMonth,
       hasLift,
       liftRate,
       extras,
@@ -566,6 +577,23 @@ function KalkulationPage() {
       }),
     [mode, area, analysisTotals, stairs, floors],
   );
+
+  /**
+   * Preisniveau-Hinweise (blockieren nicht): warnt bei unrealistisch hohem
+   * Monatspreis je m² oder zu niedrigem rechnerischem Stundenerlös.
+   */
+  const priceHints = useMemo(
+    () =>
+      checkPlausibility({
+        areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
+        rooms: 0,
+        floors: 0,
+        monthlyNet: suggested,
+        hoursPerMonth: monthlyHours,
+      }),
+    [mode, area, analysisTotals, suggested, monthlyHours],
+  );
+
 
   /**
    * Übernimmt die Grundkalkulation als Positionssatz in das
@@ -663,6 +691,7 @@ function KalkulationPage() {
         stairs,
         floors: num(floors),
         stair_rate: num(stairRate),
+        stair_visits_per_month: num(stairFrequency),
         has_lift: hasLift,
         lift_rate: num(liftRate),
         discount_percent: pct,
@@ -845,6 +874,7 @@ function KalkulationPage() {
       setStairs(head.stairs);
       setFloors(dec(head.floors));
       setStairRate(dec(head.stair_rate));
+      setStairFrequency(dec(head.stair_visits_per_month));
       setHasLift(head.has_lift);
       setLiftRate(dec(head.lift_rate));
       setDiscountPercent(dec(head.discount_percent));
@@ -1131,6 +1161,18 @@ function KalkulationPage() {
               <div className="space-y-1">
                 <p className="font-medium">Angaben bitte prüfen</p>
                 {warnings.map((w) => (
+                  <p key={w}>{w}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {priceHints.length > 0 && (
+            <div className="flex gap-2 rounded-lg border border-sky-500/60 bg-sky-50 p-4 text-sm text-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Preisniveau prüfen</p>
+                {priceHints.map((w) => (
                   <p key={w}>{w}</p>
                 ))}
               </div>
@@ -1443,6 +1485,20 @@ function KalkulationPage() {
                         />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <Label>Treppenhaus-Turnus (Einsätze pro Monat)</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={stairFrequency}
+                        onChange={(e) => setStairFrequency(e.target.value)}
+                        placeholder="0 = wie Grundleistung"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Eigener Turnus, z. B. „2" für zweimal monatlich bei wöchentlicher
+                        Unterhaltsreinigung. 0 übernimmt den Turnus der Grundleistung (
+                        {formatNumber(visitsPerMonth)} Einsätze/Monat).
+                      </p>
+                    </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Gibt es einen Aufzug?</Label>
@@ -1473,7 +1529,7 @@ function KalkulationPage() {
                     <p className="text-xs text-muted-foreground">
                       ({formatNumber(num(floors))} Etagen × {formatMoney(num(stairRate))}
                       {hasLift ? ` + Aufzug ${formatMoney(num(liftRate))}` : ""}) ×{" "}
-                      {formatNumber(visitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
+                      {formatNumber(stairVisitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
                     </p>
                   </>
                 )}
