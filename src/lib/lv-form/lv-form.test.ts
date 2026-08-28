@@ -1,0 +1,103 @@
+import { describe, expect, it } from "vitest";
+import { classifyLabel } from "./detect";
+import { EMPTY_LV_INPUTS, deriveLvValues } from "./derive";
+import { formatCents, formatGermanNumber, parseGermanCents, parseGermanNumber } from "./number";
+import { hasBlockingWarnings, validateLvForm } from "./validate";
+import type { LvConstraint, LvInputs } from "./types";
+
+describe("deutsche Zahlen", () => {
+  it("liest Tausenderpunkte und Dezimalkomma", () => {
+    expect(parseGermanNumber("1.234,50")).toBe(1234.5);
+    expect(parseGermanNumber("220,5")).toBe(220.5);
+    expect(parseGermanNumber("")).toBeNull();
+  });
+
+  it("rechnet in Cent ohne Rundungsfehler", () => {
+    expect(parseGermanCents("2.945,25")).toBe(294525);
+    expect(parseGermanCents("0,07")).toBe(7);
+    expect(formatCents(294525)).toBe("2.945,25");
+    expect(formatGermanNumber(220.5)).toBe("220,50");
+  });
+});
+
+describe("abgeleitete Werte", () => {
+  const inputs: LvInputs = {
+    ...EMPTY_LV_INPUTS,
+    unterhalt_pauschale_monat: 294525,
+    unterhalt_stunden_monat: 220.5,
+    grund_pauschale_jahr: 180000,
+    grund_stunden_jahr: 60,
+    sonder_stundensatz: 3250,
+    sonder_kontingent: 10,
+    mwst_satz: 19,
+  };
+
+  it("berechnet Wertung, Jahresbetrag und MwSt.", () => {
+    const d = deriveLvValues(inputs);
+    expect(d.unterhalt_wertung).toBe(294525 * 12);
+    expect(d.grund_wertung).toBe(180000);
+    expect(d.sonder_wertung).toBe(32500);
+    expect(d.jahr_netto).toBe(294525 * 12 + 180000 + 32500);
+    expect(d.mwst_betrag).toBe(Math.round((d.jahr_netto * 19) / 100));
+    expect(d.jahr_brutto).toBe(d.jahr_netto + d.mwst_betrag);
+  });
+
+  it("bleibt bei Nullwerten stabil", () => {
+    const d = deriveLvValues(EMPTY_LV_INPUTS);
+    expect(d.jahr_brutto).toBe(0);
+  });
+});
+
+describe("Plausibilitätsprüfung", () => {
+  const base: LvInputs = {
+    ...EMPTY_LV_INPUTS,
+    unterhalt_pauschale_monat: 294525,
+    unterhalt_stunden_monat: 220.5,
+    grund_pauschale_jahr: 180000,
+    grund_stunden_jahr: 60,
+    sonder_stundensatz: 3250,
+    sonder_kontingent: 10,
+  };
+  const constraints: LvConstraint[] = [
+    { kind: "min_hours_month", value: 220.5, pageIndex: 0, sourceLine: "Mindestumfang 220,5 Std." },
+  ];
+
+  it("meldet keine harte Warnung bei erfülltem Mindestumfang", () => {
+    const warnings = validateLvForm(base, deriveLvValues(base), constraints);
+    expect(hasBlockingWarnings(warnings)).toBe(false);
+  });
+
+  it("blockiert Unterschreitung des Mindestumfangs", () => {
+    const low = { ...base, unterhalt_stunden_monat: 180 };
+    const warnings = validateLvForm(low, deriveLvValues(low), constraints);
+    expect(hasBlockingWarnings(warnings)).toBe(true);
+    expect(warnings.some((w) => w.message.includes("220,50"))).toBe(true);
+  });
+
+  it("blockiert fehlende Basiswerte", () => {
+    const warnings = validateLvForm(
+      EMPTY_LV_INPUTS,
+      deriveLvValues(EMPTY_LV_INPUTS),
+      [],
+    );
+    expect(hasBlockingWarnings(warnings)).toBe(true);
+  });
+});
+
+describe("Feldzuordnung aus Zeilentext", () => {
+  it("erkennt die Monatspauschale", () => {
+    expect(classifyLabel("Pauschalpreis pro Monat € / monatlich / netto").key).toBe(
+      "unterhalt_pauschale_monat",
+    );
+  });
+
+  it("erkennt Stunden pro Monat", () => {
+    expect(classifyLabel("zugrunde liegende Stunden pro Monat").key).toBe(
+      "unterhalt_stunden_monat",
+    );
+  });
+
+  it("liefert null bei unbekanntem Text", () => {
+    expect(classifyLabel("Anlage 7 Unterschrift Bieter").key).toBeNull();
+  });
+});
