@@ -159,6 +159,37 @@ export function LvFormFiller() {
   const page = detection?.pages[activePage];
   const pageMarkers = markers.filter((m) => m.pageIndex === activePage);
 
+  /**
+   * Stapel-Versatz in Pixeln, damit sich nahe beieinander liegende Marker
+   * nicht gegenseitig verdecken: Kollidiert ein Marker mit einem bereits
+   * platzierten, wird er eine Zeile (26 px) tiefer gesetzt.
+   */
+  const markerStack = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!page || page.imageHeight === 0 || page.imageWidth === 0) return map;
+    const rowH = (26 / page.imageHeight) * 100; // Markerhöhe in % der Seitenhöhe
+    const estW = (230 / page.imageWidth) * 100; // geschätzte Markerbreite in %
+    const placed: { topPct: number; leftPct: number }[] = [];
+    const sorted = [...pageMarkers].sort((a, b) => b.y - a.y || a.x - b.x);
+    for (const m of sorted) {
+      const top = ((page.height - m.y) / page.height) * 100;
+      const left = (m.x / page.width) * 100;
+      let stack = 0;
+      while (
+        placed.some(
+          (p) =>
+            Math.abs(p.topPct - (top + stack * rowH)) < rowH * 0.9 &&
+            Math.abs(p.leftPct - left) < estW,
+        )
+      ) {
+        stack++;
+      }
+      map.set(m.id, stack);
+      placed.push({ topPct: top + stack * rowH, leftPct: left });
+    }
+    return map;
+  }, [page, pageMarkers]);
+
   /** Entfernt das geladene PDF samt Markern, Zuordnungen und Bestätigungen. */
   function resetAll() {
     setFile(null);
