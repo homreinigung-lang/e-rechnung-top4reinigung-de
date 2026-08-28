@@ -135,6 +135,8 @@ export type ConsolidatedInput = {
   stairs: boolean;
   floors: number;
   stairRate: number;
+  /** Eigener Turnus der Treppenhausreinigung (Einsätze/Monat). 0 = wie Grundleistung. */
+  stairVisitsPerMonth?: number;
   hasLift: boolean;
   liftRate: number;
   extras: { label: string; price: number }[];
