@@ -2002,6 +2002,24 @@ function KalkulationPage() {
                   </div>
                 </div>
 
+                {calcOutOfSync && (
+                  <div
+                    role="alert"
+                    className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/60 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                  >
+                    <AlertTriangle className="size-5 shrink-0" />
+                    <p className="flex-1">
+                      Das Leistungsverzeichnis weicht vom aktuellen Vorschlag ab: Bereich
+                      „Kalkulation" {formatMoney(lvCalcTotal)} statt {formatMoney(suggested)}. Ein
+                      Angebot würde den veralteten Stand übernehmen.
+                    </p>
+                    <Button type="button" size="sm" onClick={applyCalculation}>
+                      <Calculator className="size-4" /> Jetzt übernehmen
+                    </Button>
+                  </div>
+                )}
+
+
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={applyCalculation}>
                     <Calculator className="size-4" /> Kalkulation übernehmen
