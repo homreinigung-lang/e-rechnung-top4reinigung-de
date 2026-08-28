@@ -204,6 +204,36 @@ export function LvFormFiller() {
     window.addEventListener("mouseup", up);
   }
 
+  /** Legt die erzeugte Kopie zusätzlich bei den Projektunterlagen ab. */
+  async function archiveToProject(blob: Blob, filename: string) {
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const path = `${userId}/lv-formulare/${crypto.randomUUID()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from(FILES_BUCKET)
+        .upload(path, blob, { upsert: true, contentType: "application/pdf" });
+      if (uploadError) throw uploadError;
+      const { error } = await supabase.from("project_documents").insert({
+        user_id: userId,
+        project_id: projectId,
+        file_name: filename,
+        file_path: path,
+        mime_type: "application/pdf",
+        file_size: blob.size,
+      });
+      if (error) throw error;
+      toast.success("Ausgefülltes LV bei den Projektunterlagen abgelegt.");
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? `Ablage im Projekt fehlgeschlagen: ${e.message}`
+          : "Ablage im Projekt fehlgeschlagen.",
+      );
+    }
+  }
+
   async function handleExport() {
     if (!file || !detection) return;
     if (blocking && !accepted) {
