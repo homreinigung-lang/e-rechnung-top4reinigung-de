@@ -582,18 +582,30 @@ function KalkulationPage() {
       toast.error("Die Grundkalkulation ergibt noch keine gültigen Positionen.");
       return;
     }
-    setAiItems(
-      calculatedPositions.map((p, n) => ({
-        id: `calc-${Date.now()}-${n}`,
-        description: p.description,
-        quantity: String(p.quantity).replace(".", ","),
-        unit: p.unit,
-        unit_price: String(p.unit_price).replace(".", ","),
-      })),
-    );
+    // Positionen aus anderen LV-Bereichen (z. B. aus dem Projekt importiert)
+    // bleiben erhalten – überschrieben wird nur der Bereich „Kalkulation“.
+    const stamp = Date.now();
+    const isForeign = (i: AiItem) =>
+      Boolean(i.sourceLvItemId) || ((i.section || "").trim() || KALK_SECTION) !== KALK_SECTION;
+    const keptForeign = aiItems.filter(isForeign).length;
+    const fresh: AiItem[] = calculatedPositions.map((p, n) => ({
+      id: `calc-${stamp}-${n}`,
+      description: p.description,
+      quantity: String(p.quantity).replace(".", ","),
+      unit: p.unit,
+      unit_price: String(p.unit_price).replace(".", ","),
+      section: KALK_SECTION,
+      sourceLvItemId: null,
+    }));
+    setAiItems((prev) => [...prev.filter(isForeign), ...fresh]);
     toast.success(
-      `Kalkulation übernommen – Gesamt netto ${formatMoney(positionsTotal(calculatedPositions))}`,
+      `Kalkulation übernommen – Bereich „${KALK_SECTION}“ netto ${formatMoney(positionsTotal(calculatedPositions))}` +
+        (keptForeign > 0
+          ? ` · ${keptForeign} Position(en) aus anderen Bereichen bleiben unverändert.`
+          : ""),
     );
+
+
   }
 
   const analyseSnapshot: KalkulationSnapshot = {
