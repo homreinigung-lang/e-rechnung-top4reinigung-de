@@ -528,6 +528,8 @@ function DokumentDetail() {
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("Beleg nicht gefunden");
+      // Versand = echter Beleg: offizielle, fortlaufende Nummer vergeben.
+      if (next === "sent") await ensureOfficialNumber(id);
       await logAudit(
         next === "sent" ? "marked_sent" : "marked_draft",
         { id, number: docNumber },
