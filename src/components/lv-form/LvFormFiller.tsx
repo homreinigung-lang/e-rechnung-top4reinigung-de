@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { saveFile } from "@/lib/download";
 import { detectLvForm } from "@/lib/lv-form/detect";
-import { LV_FIELDS, fieldLabel } from "@/lib/lv-form/fields";
+import { LV_FIELDS, LV_FIELD_MAP, fieldLabel } from "@/lib/lv-form/fields";
 import { EMPTY_LV_INPUTS, deriveLvValues } from "@/lib/lv-form/derive";
 import { fieldValueText, fillAcroForm, fillFlatPdf } from "@/lib/lv-form/fill";
 import {
@@ -158,6 +158,37 @@ export function LvFormFiller() {
   const blocking = hasBlockingWarnings(warnings);
   const page = detection?.pages[activePage];
   const pageMarkers = markers.filter((m) => m.pageIndex === activePage);
+
+  /**
+   * Stapel-Versatz in Pixeln, damit sich nahe beieinander liegende Marker
+   * nicht gegenseitig verdecken: Kollidiert ein Marker mit einem bereits
+   * platzierten, wird er eine Zeile (26 px) tiefer gesetzt.
+   */
+  const markerStack = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!page || page.imageHeight === 0 || page.imageWidth === 0) return map;
+    const rowH = (26 / page.imageHeight) * 100; // Markerhöhe in % der Seitenhöhe
+    const estW = (230 / page.imageWidth) * 100; // geschätzte Markerbreite in %
+    const placed: { topPct: number; leftPct: number }[] = [];
+    const sorted = [...pageMarkers].sort((a, b) => b.y - a.y || a.x - b.x);
+    for (const m of sorted) {
+      const top = ((page.height - m.y) / page.height) * 100;
+      const left = (m.x / page.width) * 100;
+      let stack = 0;
+      while (
+        placed.some(
+          (p) =>
+            Math.abs(p.topPct - (top + stack * rowH)) < rowH * 0.9 &&
+            Math.abs(p.leftPct - left) < estW,
+        )
+      ) {
+        stack++;
+      }
+      map.set(m.id, stack);
+      placed.push({ topPct: top + stack * rowH, leftPct: left });
+    }
+    return map;
+  }, [page, pageMarkers]);
 
   /** Entfernt das geladene PDF samt Markern, Zuordnungen und Bestätigungen. */
   function resetAll() {
@@ -414,53 +445,78 @@ export function LvFormFiller() {
                   className="w-full select-none"
                   draggable={false}
                 />
-                {pageMarkers.map((marker) => (
-                  <div
-                    key={marker.id}
-                    onClick={(e) => e.stopPropagation()}
-                    className={`absolute flex -translate-y-1/2 items-center gap-1 rounded border px-1 py-0.5 text-[11px] shadow-sm ${markerColor(marker)}`}
-                    style={{
-                      left: `${(marker.x / page.width) * 100}%`,
-                      top: `${((page.height - marker.y) / page.height) * 100}%`,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      title="Verschieben"
-                      className="cursor-move"
-                      onMouseDown={(e) => onMarkerDrag(e, marker)}
+                {pageMarkers.map((marker) => {
+                  const meta = marker.key ? LV_FIELD_MAP.get(marker.key) : undefined;
+                  const stack = markerStack.get(marker.id) ?? 0;
+                  return (
+                    <div
+                      key={marker.id}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute z-10 flex items-center gap-1.5 whitespace-nowrap rounded border px-1.5 py-1 text-[11px] shadow-sm transition-shadow hover:z-30 hover:shadow-md ${markerColor(marker)}`}
+                      style={{
+                        left: `${(marker.x / page.width) * 100}%`,
+                        top: `calc(${((page.height - marker.y) / page.height) * 100}% + ${stack * 26}px)`,
+                      }}
                     >
-                      <Move className="size-3" />
-                    </button>
-                    <select
-                      className="max-w-[150px] bg-transparent text-[11px] outline-none"
-                      value={marker.key ?? ""}
-                      onChange={(e) =>
-                        patchMarker(marker.id, {
-                          key: (e.target.value || null) as LvFieldKey | null,
-                          manual: true,
-                        })
-                      }
-                    >
-                      <option value="">– nicht ausfüllen –</option>
-                      {LV_FIELDS.map((f) => (
-                        <option key={f.key} value={f.key}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="font-semibold tabular-nums">
-                      {marker.key ? fieldValueText(marker.key, inputs, derived) : "—"}
-                    </span>
-                    <button
-                      type="button"
-                      title="Position entfernen"
-                      onClick={() => setMarkers((prev) => prev.filter((m) => m.id !== marker.id))}
-                    >
-                      <Trash2 className="size-3 text-destructive" />
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        type="button"
+                        title="Verschieben"
+                        className="shrink-0 cursor-move"
+                        onMouseDown={(e) => onMarkerDrag(e, marker)}
+                      >
+                        <Move className="size-3" />
+                      </button>
+                      <select
+                        className="w-[130px] shrink-0 truncate bg-transparent text-[11px] outline-none"
+                        value={marker.key ?? ""}
+                        onChange={(e) =>
+                          patchMarker(marker.id, {
+                            key: (e.target.value || null) as LvFieldKey | null,
+                            manual: true,
+                          })
+                        }
+                      >
+                        <option value="">– nicht ausfüllen –</option>
+                        {LV_FIELDS.map((f) => (
+                          <option key={f.key} value={f.key}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+                      {meta?.kind === "input" ? (
+                        <input
+                          className="w-20 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-right text-[11px] font-semibold tabular-nums outline-none focus:ring-1 focus:ring-ring"
+                          value={inputText[marker.key as string] ?? ""}
+                          placeholder="0,00"
+                          inputMode="decimal"
+                          title="Wert direkt hier eingeben – alle Berechnungen passen sich sofort an"
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onChange={(e) =>
+                            setInputText((prev) => ({
+                              ...prev,
+                              [marker.key as string]: e.target.value,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <span className="shrink-0 font-semibold tabular-nums">
+                          {marker.key ? fieldValueText(marker.key, inputs, derived) : "—"}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        title="Position entfernen"
+                        className="shrink-0"
+                        onClick={() =>
+                          setMarkers((prev) => prev.filter((m) => m.id !== marker.id))
+                        }
+                      >
+                        <Trash2 className="size-3 text-destructive" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>
