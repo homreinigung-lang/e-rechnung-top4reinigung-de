@@ -1483,6 +1483,20 @@ function KalkulationPage() {
                         />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <Label>Treppenhaus-Turnus (Einsätze pro Monat)</Label>
+                      <Input
+                        inputMode="decimal"
+                        value={stairFrequency}
+                        onChange={(e) => setStairFrequency(e.target.value)}
+                        placeholder="0 = wie Grundleistung"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Eigener Turnus, z. B. „2" für zweimal monatlich bei wöchentlicher
+                        Unterhaltsreinigung. 0 übernimmt den Turnus der Grundleistung (
+                        {formatNumber(visitsPerMonth)} Einsätze/Monat).
+                      </p>
+                    </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Gibt es einen Aufzug?</Label>
@@ -1513,7 +1527,7 @@ function KalkulationPage() {
                     <p className="text-xs text-muted-foreground">
                       ({formatNumber(num(floors))} Etagen × {formatMoney(num(stairRate))}
                       {hasLift ? ` + Aufzug ${formatMoney(num(liftRate))}` : ""}) ×{" "}
-                      {formatNumber(visitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
+                      {formatNumber(stairVisitsPerMonth)} Einsätze = {formatMoney(stairsTotal)}
                     </p>
                   </>
                 )}
