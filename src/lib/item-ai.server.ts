@@ -131,7 +131,7 @@ const CALC_SYSTEM = `${SYSTEM}
 Zusätzlich schätzt du die Eckdaten der Kalkulation:
 - cleaning_type: einer von unterhalt | grund | bau | glas | treppenhaus | buero
 - mode: "area" wenn eine Fläche genannt oder ableitbar ist, sonst "hours"
-- area_sqm, hours, hourly_rate, price_per_sqm (m²-Preis netto: unterhalt 0,55 · grund 1,90 · bau 2,60 · glas 1,40 · treppenhaus 0,75 · buero 0,65)
+- area_sqm, hours (Stunden JE EINSATZ), hourly_rate, price_per_sqm (m²-Preis netto JE EINSATZ: unterhalt 0,35 · grund 1,90 · bau 2,60 · glas 1,40 · treppenhaus 0,60 · buero 0,40)
 - frequency + frequency_unit (week|month), floors, stairs (Treppenhaus enthalten?), travel (Anfahrtspauschale netto, 0 wenn unbekannt)
 - note: kurze deutsche Bemerkung zur Leistung.
 Unbekannte Zahlen mit 0 belegen.`;
