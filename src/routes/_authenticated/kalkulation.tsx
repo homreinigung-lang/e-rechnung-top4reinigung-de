@@ -1165,6 +1165,18 @@ function KalkulationPage() {
             </div>
           )}
 
+          {priceHints.length > 0 && (
+            <div className="flex gap-2 rounded-lg border border-sky-500/60 bg-sky-50 p-4 text-sm text-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-medium">Preisniveau prüfen</p>
+                {priceHints.map((w) => (
+                  <p key={w}>{w}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Objektbeschreibung</CardTitle>
