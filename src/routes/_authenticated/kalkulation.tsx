@@ -464,6 +464,7 @@ function KalkulationPage() {
         stairs,
         floors: num(floors),
         stairRate: num(stairRate),
+        stairVisitsPerMonth,
         hasLift,
         liftRate: num(liftRate),
         extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
