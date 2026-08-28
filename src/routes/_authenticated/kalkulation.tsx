@@ -1044,31 +1044,35 @@ function KalkulationPage() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
 
+      /**
+       * Die Leistungsbeschreibung wird aus den tatsächlich abgerechneten
+       * Positionen abgeleitet – nicht aus dem Formularzustand. So kann der
+       * Text nie eine andere Abrechnungsmethode (m² statt Std.) nennen als
+       * die, nach der wirklich fakturiert wird.
+       */
+      const isHourUnit = (u: string) => /^(std|stunde)/i.test(u.trim());
       const parts: string[] = [selected.label];
-      if (mode === "area") {
-        parts.push(`${formatNumber(num(area))} m² × ${formatMoney(num(pricePerSqm))}/m²`);
-      } else {
-        parts.push(`${formatNumber(num(hours))} Std. × ${formatMoney(num(hourlyRate))}/Std.`);
+      for (const p of positions) {
+        if (p.unit_price < 0) {
+          parts.push(`${p.description}: ${formatMoney(p.unit_price)}`);
+          continue;
+        }
+        const line = isHourUnit(p.unit)
+          ? `${p.description}: ${formatNumber(p.quantity)} Std. × ${formatMoney(p.unit_price)}/Std. = ${formatMoney(round2(p.quantity * p.unit_price))}`
+          : `${p.description}: ${formatNumber(p.quantity)} ${p.unit} × ${formatMoney(p.unit_price)} = ${formatMoney(round2(p.quantity * p.unit_price))}`;
+        parts.push(line);
       }
       parts.push(
-        `${formatNumber(num(frequency))} Einsätze ${
+        `Turnus: ${formatNumber(num(frequency))} Einsätze ${
           frequencyUnit === "week"
             ? `pro Woche (× 4,33 = ${formatNumber(visitsPerMonth)} pro Monat)`
             : "pro Monat"
         }`,
       );
-      if (stairs) {
-        parts.push(
-          `Treppenhausreinigung: ${formatNumber(num(floors))} Etagen × ${formatMoney(num(stairRate))}/Etage`,
-        );
-        parts.push(
-          hasLift
-            ? `Aufzug vorhanden – Aufzugkabine inkl. (${formatMoney(num(liftRate))}/Einsatz)`
-            : "Kein Aufzug vorhanden",
-        );
+      if (discountReason.trim() && pct > 0) {
+        parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
       }
-      const chosen = EXTRAS.filter((e) => extras.includes(e.key)).map((e) => e.label);
-      if (chosen.length > 0) parts.push(`Zusatzleistungen: ${chosen.join(", ")}`);
+
       if (discountReason.trim() && pct > 0) {
         parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
       }
