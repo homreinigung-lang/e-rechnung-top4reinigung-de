@@ -424,16 +424,23 @@ function KalkulationPage() {
     [extras],
   );
 
+  /** Treppenhaus-Turnus: eigener Wert, sonst der Turnus der Grundleistung. */
+  const stairVisitsPerMonth = useMemo(
+    () => (num(stairFrequency) > 0 ? num(stairFrequency) : visitsPerMonth),
+    [stairFrequency, visitsPerMonth],
+  );
+
   const stairsTotal = useMemo(
     () =>
       round2(
         stairs
-          ? round2(num(floors) * visitsPerMonth) * round2(num(stairRate)) +
-              (hasLift ? round2(visitsPerMonth) * round2(num(liftRate)) : 0)
+          ? round2(num(floors) * stairVisitsPerMonth) * round2(num(stairRate)) +
+              (hasLift ? round2(stairVisitsPerMonth) * round2(num(liftRate)) : 0)
           : 0,
       ),
-    [stairs, floors, stairRate, hasLift, liftRate, visitsPerMonth],
+    [stairs, floors, stairRate, hasLift, liftRate, stairVisitsPerMonth],
   );
+
 
   const pct = Math.min(100, Math.max(0, num(discountPercent)));
 
