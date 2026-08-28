@@ -222,7 +222,10 @@ export function LvFormFiller() {
               derived,
             );
       const name = file.name.replace(/\.pdf$/i, "");
-      await saveFile(new Blob([bytes as BlobPart], { type: "application/pdf" }), `${name}-ausgefuellt.pdf`);
+      const filename = `${name}-ausgefuellt.pdf`;
+      const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+      await saveFile(blob, filename);
+      if (projectId !== "none") await archiveToProject(blob, filename);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "PDF konnte nicht erzeugt werden.");
     } finally {
