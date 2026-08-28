@@ -512,6 +512,25 @@ export function LvFormFiller() {
                 </ul>
               )}
 
+              <div className="space-y-1">
+                <Label className="inline-flex items-center gap-2">
+                  <FolderOpen className="size-4" /> Kopie bei den Projektunterlagen ablegen
+                </Label>
+                <Select value={projectId} onValueChange={setProjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Projekt wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">– nicht ablegen –</SelectItem>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {blocking && (
                 <label className="flex items-start gap-2 text-sm">
                   <Checkbox checked={accepted} onCheckedChange={(v) => setAccepted(v === true)} />
