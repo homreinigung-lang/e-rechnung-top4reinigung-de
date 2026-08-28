@@ -303,6 +303,7 @@ export type Database = {
           proposal_text: string
           proposal_title: string
           stair_rate: number
+          stair_visits_per_month: number
           stairs: boolean
           tax_mode: string
           title: string
@@ -335,6 +336,7 @@ export type Database = {
           proposal_text?: string
           proposal_title?: string
           stair_rate?: number
+          stair_visits_per_month?: number
           stairs?: boolean
           tax_mode?: string
           title?: string
@@ -367,6 +369,7 @@ export type Database = {
           proposal_text?: string
           proposal_title?: string
           stair_rate?: number
+          stair_visits_per_month?: number
           stairs?: boolean
           tax_mode?: string
           title?: string
