@@ -2429,9 +2429,10 @@ function KalkulationPage() {
                     <span>{formatMoney(suggested)}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Über „Kalkulation übernehmen“ werden diese Werte als Positionen in das
-                    Leistungsverzeichnis geschrieben. Maßgeblich für Angebot und PDF ist immer die
-                    Summe der einzelnen LV-Positionen.
+                    Quelle: Grundkalkulation (primär für Ausschreibungen/LV). Über
+                    „Grundkalkulation für Angebot übernehmen“ werden diese Werte als Positionen in
+                    das Leistungsverzeichnis geschrieben. Maßgeblich für Angebot und PDF ist immer
+                    die Summe der LV-Positionen.
                   </p>
                 </div>
 
