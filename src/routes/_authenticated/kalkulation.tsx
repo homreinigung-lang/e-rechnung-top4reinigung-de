@@ -180,6 +180,8 @@ type AiItem = {
 
 /** Standardbereich für Positionen, die in der Kalkulation neu entstehen. */
 const KALK_SECTION = "Kalkulation";
+/** Bereich für Positionen, die aus der KI-/Grundriss-Analyse übernommen wurden. */
+const KI_SECTION = "KI-Analyse";
 
 
 
