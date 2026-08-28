@@ -578,6 +578,22 @@ function KalkulationPage() {
     [mode, area, analysisTotals, stairs, floors],
   );
 
+  /**
+   * Preisniveau-Hinweise (blockieren nicht): warnt bei unrealistisch hohem
+   * Monatspreis je m² oder zu niedrigem rechnerischem Stundenerlös.
+   */
+  const priceHints = useMemo(
+    () =>
+      checkPlausibility({
+        areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
+        rooms: 0,
+        floors: 0,
+        monthlyNet: suggested,
+        hoursPerMonth: monthlyHours,
+      }),
+    [mode, area, analysisTotals, suggested, monthlyHours],
+  );
+
 
   /**
    * Übernimmt die Grundkalkulation als Positionssatz in das
