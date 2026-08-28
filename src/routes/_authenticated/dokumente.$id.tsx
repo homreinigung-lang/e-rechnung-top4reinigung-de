@@ -949,17 +949,18 @@ function DokumentDetail() {
     if (!(await persistBeforeOutput())) return;
     const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
     try {
-      const input = eRechnungInput();
+      const number = await assignOfficialNumberNow();
+      const input = eRechnungInput(number);
       warnIfIncomplete(input);
-      const pdfBytes = await buildDocumentPdfBytes(await buildPdfData());
+      const pdfBytes = await buildDocumentPdfBytes(await buildPdfData(number));
       const hybrid = await embedZugferdXml(pdfBytes, buildZugferdXml(input), {
-        number: docNumber,
+        number,
         title: DOC_TYPE_LABEL[doc.type] ?? "Rechnung",
       });
-      downloadBytes(hybrid, `ZUGFeRD_${docNumber.replace(/\W+/g, "_")}.pdf`);
+      downloadBytes(hybrid, `ZUGFeRD_${number.replace(/\W+/g, "_")}.pdf`);
       await logAudit(
         "zugferd_export",
-        { id, number: docNumber },
+        { id, number },
         { format: "ZUGFeRD 2.3 / Factur-X (EN 16931)" },
       );
       toast.success("ZUGFeRD-PDF (hybride E-Rechnung) erstellt", { id: toastId });
