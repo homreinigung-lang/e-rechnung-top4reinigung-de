@@ -633,6 +633,78 @@ function KalkulationPage() {
   );
 
 
+  /** Herkunftsbereich einer LV-Zeile (Fallback: „Kalkulation"). */
+  const sectionOf = (i: AiItem) => (i.section || "").trim() || KALK_SECTION;
+
+  type PendingApply = {
+    section: string;
+    label: string;
+    items: AiItem[];
+    /** Zeilen im LV, die aus einer anderen Quelle stammen. */
+    foreignCount: number;
+    foreignTotal: number;
+  };
+  const [pendingApply, setPendingApply] = useState<PendingApply | null>(null);
+
+  /**
+   * Schreibt genau eine Quelle ins Leistungsverzeichnis. Wiederholtes
+   * Übernehmen ersetzt nur die eigenen Zeilen (idempotent, keine Duplikate).
+   * `replaceAll` verwirft zusätzlich alle Zeilen anderer Herkunft.
+   */
+  function writeSource(section: string, items: AiItem[], replaceAll: boolean) {
+    setLvItems((prev) => (replaceAll ? items : [...prev.filter((i) => sectionOf(i) !== section), ...items]));
+    const kept = replaceAll ? 0 : lvItems.filter((i) => sectionOf(i) !== section).length;
+    toast.success(
+      `Bereich „${section}“ übernommen – netto ${formatMoney(positionsTotal(
+        items.map((i) => ({
+          description: i.description,
+          quantity: num(i.quantity),
+          unit: i.unit,
+          unit_price: parseGermanNumber(i.unit_price),
+        })),
+      ))}` + (kept > 0 ? ` · ${kept} Position(en) anderer Herkunft bleiben erhalten.` : ""),
+    );
+  }
+
+  /** Gemeinsamer Einstieg: warnt, wenn Zeilen anderer Herkunft im LV liegen. */
+  function applySource(section: string, label: string, items: AiItem[]) {
+    if (items.length === 0) {
+      toast.error(`${label} enthält noch keine gültigen Positionen.`);
+      return;
+    }
+    const foreign = lvItems.filter((i) => sectionOf(i) !== section);
+    if (foreign.length === 0) {
+      writeSource(section, items, false);
+      return;
+    }
+    setPendingApply({
+      section,
+      label,
+      items,
+      foreignCount: foreign.length,
+      foreignTotal: positionsTotal(
+        lvPositions.filter((p) => p.section !== section),
+      ),
+    });
+  }
+
+  const toAiItems = (
+    positions: { description: string; quantity: number; unit: string; unit_price: number }[],
+    section: string,
+    prefix: string,
+  ): AiItem[] => {
+    const stamp = Date.now();
+    return positions.map((p, n) => ({
+      id: `${prefix}-${stamp}-${n}`,
+      description: p.description,
+      quantity: String(p.quantity).replace(".", ","),
+      unit: p.unit,
+      unit_price: String(p.unit_price).replace(".", ","),
+      section,
+      sourceLvItemId: null,
+    }));
+  };
+
   /**
    * Übernimmt die Grundkalkulation als Positionssatz in das
    * Leistungsverzeichnis. Ein gewünschter Rabatt erscheint als eigene,
@@ -643,35 +715,16 @@ function KalkulationPage() {
       toast.error("Bitte zuerst die markierten Plausibilitätshinweise prüfen.");
       return;
     }
-    const calculatedPositions = stagedPositions;
-    if (calculatedPositions.length === 0) {
-      toast.error("Die Grundkalkulation ergibt noch keine gültigen Positionen.");
-      return;
-    }
-    // Positionen aus anderen LV-Bereichen (z. B. aus dem Projekt importiert)
-    // bleiben erhalten – überschrieben wird nur der Bereich „Kalkulation“.
-    const stamp = Date.now();
-    const isForeign = (i: AiItem) =>
-      Boolean(i.sourceLvItemId) || ((i.section || "").trim() || KALK_SECTION) !== KALK_SECTION;
-    const keptForeign = lvItems.filter(isForeign).length;
-    const fresh: AiItem[] = calculatedPositions.map((p, n) => ({
-      id: `calc-${stamp}-${n}`,
-      description: p.description,
-      quantity: String(p.quantity).replace(".", ","),
-      unit: p.unit,
-      unit_price: String(p.unit_price).replace(".", ","),
-      section: KALK_SECTION,
-      sourceLvItemId: null,
-    }));
-    setLvItems((prev) => [...prev.filter(isForeign), ...fresh]);
-    toast.success(
-      `Kalkulation übernommen – Bereich „${KALK_SECTION}“ netto ${formatMoney(positionsTotal(calculatedPositions))}` +
-        (keptForeign > 0
-          ? ` · ${keptForeign} Position(en) aus anderen Bereichen bleiben unverändert.`
-          : ""),
+    applySource(
+      KALK_SECTION,
+      "Grundkalkulation",
+      toAiItems(stagedPositions, KALK_SECTION, "calc"),
     );
+  }
 
-
+  /** Übernimmt ausschließlich die Positionen der KI-/Grundriss-Analyse. */
+  function applyKiAnalysis() {
+    applySource(KI_SECTION, "KI-Analyse", toAiItems(kiPositions, KI_SECTION, "ki"));
   }
 
   /**
@@ -687,6 +740,15 @@ function KalkulationPage() {
   const calcOutOfSync = useMemo(
     () => Math.abs(round2(lvCalcTotal) - round2(suggested)) >= 0.01,
     [lvCalcTotal, suggested],
+  );
+  /** Gleicher Abgleich für den KI-Bereich. */
+  const lvKiTotal = useMemo(
+    () => positionsTotal(lvPositions.filter((p) => p.section === KI_SECTION)),
+    [lvPositions],
+  );
+  const kiOutOfSync = useMemo(
+    () => kiPositions.length > 0 && Math.abs(round2(lvKiTotal) - round2(kiTotal)) >= 0.01,
+    [lvKiTotal, kiTotal, kiPositions],
   );
 
   const analyseSnapshot: KalkulationSnapshot = {
