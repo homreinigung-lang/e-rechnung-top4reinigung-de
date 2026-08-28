@@ -1359,6 +1359,108 @@ function KalkulationPage() {
             </CardContent>
           </Card>
 
+          {/* --- Bereich A: KI-Analyse (eigene Positionen, eigener Übernahme-Button) --- */}
+          <Card className="border-dashed bg-muted/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="size-5" /> Positionen der KI-Analyse
+              </CardTitle>
+              <CardDescription>
+                Quelle: KI-Analyse (Grundriss/Beschreibung) – für normale Angebote an Endkunden.
+                Diese Positionen sind ein Vorschlag und gelangen erst per Klick ins
+                Leistungsverzeichnis.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {kiItems.length === 0 ? (
+                <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  Noch keine KI-Positionen. Auftrag oben beschreiben oder einen Grundriss im Tab
+                  „Grundriss" analysieren.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
+                    <span>Leistung</span>
+                    <span>Menge</span>
+                    <span>Einheit</span>
+                    <span>Einzelpreis</span>
+                    <span className="text-right">Gesamt</span>
+                    <span />
+                  </div>
+                  {kiItems.map((i) => (
+                    <div
+                      key={i.id}
+                      className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center"
+                    >
+                      <Input
+                        value={i.description}
+                        placeholder="Leistung"
+                        onChange={(e) => patchKiItem(i.id, { description: e.target.value })}
+                      />
+                      <Input
+                        inputMode="decimal"
+                        value={i.quantity}
+                        onChange={(e) => patchKiItem(i.id, { quantity: e.target.value })}
+                      />
+                      <Input
+                        value={i.unit}
+                        onChange={(e) => patchKiItem(i.id, { unit: e.target.value })}
+                      />
+                      <Input
+                        inputMode="decimal"
+                        value={i.unit_price}
+                        onChange={(e) => patchKiItem(i.id, { unit_price: e.target.value })}
+                      />
+                      <span className="text-right text-sm tabular-nums">
+                        {formatMoney(round2(num(i.quantity) * parseGermanNumber(i.unit_price)))}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Position entfernen"
+                        onClick={() => setKiItems((prev) => prev.filter((x) => x.id !== i.id))}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex justify-between border-t pt-2 text-sm font-medium">
+                    <span>Summe KI-Analyse (netto)</span>
+                    <span>{formatMoney(kiTotal)}</span>
+                  </div>
+                </div>
+              )}
+
+              {kiOutOfSync && (
+                <div
+                  role="alert"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                >
+                  <AlertTriangle className="size-4 shrink-0" />
+                  <p className="flex-1">
+                    Im Leistungsverzeichnis steht für diesen Bereich {formatMoney(lvKiTotal)} statt{" "}
+                    {formatMoney(kiTotal)}.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={kiPositions.length === 0}
+                  onClick={applyKiAnalysis}
+                >
+                  <Sparkles className="size-4" /> KI-Positionen für Angebot übernehmen
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
