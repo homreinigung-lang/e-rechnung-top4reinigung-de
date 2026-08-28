@@ -1,6 +1,9 @@
 import { useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, FileUp, Loader2, Move, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileUp, FolderOpen, Loader2, Move, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { FILES_BUCKET } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,7 +85,17 @@ export function LvFormFiller() {
   const [analyzing, setAnalyzing] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [activePage, setActivePage] = useState(0);
+  const [projectId, setProjectId] = useState<string>("none");
   const dragRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["lv-form-projects"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name").order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
 
   const inputs: LvInputs = useMemo(() => {
     const next = { ...EMPTY_LV_INPUTS };
@@ -191,6 +204,36 @@ export function LvFormFiller() {
     window.addEventListener("mouseup", up);
   }
 
+  /** Legt die erzeugte Kopie zusätzlich bei den Projektunterlagen ab. */
+  async function archiveToProject(blob: Blob, filename: string) {
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const path = `${userId}/lv-formulare/${crypto.randomUUID()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from(FILES_BUCKET)
+        .upload(path, blob, { upsert: true, contentType: "application/pdf" });
+      if (uploadError) throw uploadError;
+      const { error } = await supabase.from("project_documents").insert({
+        user_id: userId,
+        project_id: projectId,
+        file_name: filename,
+        file_path: path,
+        mime_type: "application/pdf",
+        file_size: blob.size,
+      });
+      if (error) throw error;
+      toast.success("Ausgefülltes LV bei den Projektunterlagen abgelegt.");
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? `Ablage im Projekt fehlgeschlagen: ${e.message}`
+          : "Ablage im Projekt fehlgeschlagen.",
+      );
+    }
+  }
+
   async function handleExport() {
     if (!file || !detection) return;
     if (blocking && !accepted) {
@@ -209,7 +252,10 @@ export function LvFormFiller() {
               derived,
             );
       const name = file.name.replace(/\.pdf$/i, "");
-      await saveFile(new Blob([bytes as BlobPart], { type: "application/pdf" }), `${name}-ausgefuellt.pdf`);
+      const filename = `${name}-ausgefuellt.pdf`;
+      const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+      await saveFile(blob, filename);
+      if (projectId !== "none") await archiveToProject(blob, filename);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "PDF konnte nicht erzeugt werden.");
     } finally {
@@ -465,6 +511,25 @@ export function LvFormFiller() {
                   ))}
                 </ul>
               )}
+
+              <div className="space-y-1">
+                <Label className="inline-flex items-center gap-2">
+                  <FolderOpen className="size-4" /> Kopie bei den Projektunterlagen ablegen
+                </Label>
+                <Select value={projectId} onValueChange={setProjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Projekt wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">– nicht ablegen –</SelectItem>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {blocking && (
                 <label className="flex items-start gap-2 text-sm">
