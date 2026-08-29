@@ -8,6 +8,8 @@ import { analyzeProject, type ScannedProject } from "@/lib/project-scan.function
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
+import { LvPositionen } from "@/components/LvPositionen";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
