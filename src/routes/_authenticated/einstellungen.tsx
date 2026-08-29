@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { saveFile } from "@/lib/download";
+import { buildCsvWithSummary } from "@/lib/table-summary";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { Leistungswerte } from "@/components/Leistungswerte";
@@ -68,21 +69,13 @@ const SMTP_FIELDS = [
   { key: "smtp_from", label: "Absenderadresse" },
 ] as const;
 
-function csvEscape(value: unknown) {
-  const s = String(value ?? "");
-  return `"${s.replace(/"/g, '""')}"`;
-}
-
 function downloadCsv(name: string, rows: Record<string, unknown>[]) {
   if (rows.length === 0) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
   }
-  const headers = Object.keys(rows[0]!);
-  const csv = [
-    headers.join(";"),
-    ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(";")),
-  ].join("\n");
+  // Endsummen stehen generisch immer ganz oben im Export.
+  const csv = buildCsvWithSummary(rows, { title: name.replace(/\.csv$/i, ""), eol: "\n" });
   void saveFile(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), name);
 }
 
