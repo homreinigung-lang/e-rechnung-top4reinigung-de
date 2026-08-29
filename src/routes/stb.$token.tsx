@@ -641,6 +641,8 @@ function DataTable({ rows, empty }: { rows: Table[]; empty: string }) {
   if (rows.length === 0) return <p className="mt-2 text-sm text-muted-foreground">{empty}</p>;
   const headers = Object.keys(rows[0]!);
   return (
+    <>
+    <TableSummary rows={rows} />
     <div className="mt-2 overflow-x-auto">
       <table className="w-full text-left text-xs">
         <thead>
