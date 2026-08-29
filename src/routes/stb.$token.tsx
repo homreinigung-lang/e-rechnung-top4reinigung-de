@@ -170,7 +170,7 @@ async function exportHoursPdf(
   for (const [name, v] of per) {
     totalH += v.hours;
     totalA += v.amount;
-    doc.text(name.slice(0, 40), 15, y);
+    doc.text(`${name}${v.personnel ? ` (${v.personnel})` : ""}`.slice(0, 44), 15, y);
     doc.text(`${v.sick}`, 100, y, { align: "right" });
     doc.text(`${v.vacation}`, 130, y, { align: "right" });
     doc.text(`${de(v.hours)} Std.`, 160, y, { align: "right" });
