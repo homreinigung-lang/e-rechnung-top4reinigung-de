@@ -463,7 +463,7 @@ export function Zeiterfassung() {
     doc.text("Einzelnachweis", 15, y);
     y += 6;
     doc.setFontSize(8);
-    for (const e of monthEntries) {
+    for (const e of pdfEntries) {
       if (y > 282) {
         doc.addPage();
         y = 20;
