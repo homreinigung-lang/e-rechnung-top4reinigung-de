@@ -385,9 +385,7 @@ export function Zeiterfassung() {
     // Generischer Zusammenfassungsblock ganz oben im Export.
     // Strikt nur Datensätze des gewählten Monats (Sicherheitsnetz für den Export).
     const monthStart = `${month}-01`;
-    const monthEnd = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
-      .toISOString()
-      .slice(0, 10);
+    const monthEnd = monthEndDate(month);
     const objRows = filterRowsByDateRange(
       rows.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ""]))),
       { from: monthStart, to: monthEnd },
@@ -415,9 +413,7 @@ export function Zeiterfassung() {
   const exportPdf = async () => {
     // Sicherheitsnetz: PDF nutzt dieselbe strikte Datumsfilterung wie CSV/Excel.
     const pdfFrom = `${month}-01`;
-    const pdfTo = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
-      .toISOString()
-      .slice(0, 10);
+    const pdfTo = monthEndDate(month);
     const pdfEntries = filterRowsByDateRange(monthEntries, {
       from: pdfFrom,
       to: pdfTo,
