@@ -25,7 +25,12 @@ import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { TableSummary } from "@/components/TableSummary";
-import { buildCsvWithSummary, summaryHtml } from "@/lib/table-summary";
+import {
+  buildCsvBlob,
+  filterRowsByDateRange,
+  summaryHtml,
+  type DateRange,
+} from "@/lib/table-summary";
 
 export const Route = createFileRoute("/_authenticated/steuerberater")({
   head: () => ({
@@ -58,7 +63,7 @@ function download(name: string, blob: Blob) {
   void saveFile(blob, name);
 }
 
-function downloadCsv(name: string, rows: Row[]) {
+function downloadCsv(name: string, rows: Row[], range?: DateRange) {
   if (rows.length === 0) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
@@ -68,7 +73,12 @@ function downloadCsv(name: string, rows: Row[]) {
   download(name, new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
 }
 
-function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[]) {
+function downloadExcel(
+  name: string,
+  sheets: { title: string; rows: Row[] }[],
+  range?: DateRange,
+) {
+  sheets = sheets.map((s) => ({ ...s, rows: filterRowsByDateRange(s.rows, range) }));
   const filled = sheets.filter((s) => s.rows.length > 0);
   const tables = filled
     .map((s) => {
@@ -407,27 +417,27 @@ function Steuerberater() {
       </section>
 
       <section className="no-print flex flex-wrap gap-2">
-        <Button onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows)}>
+        <Button onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}>
           <Download className="size-4" /> DATEV-Export (CSV)
         </Button>
-        <Button variant="outline" onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows)}>
+        <Button variant="outline" onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows, { from, to })}>
           <Download className="size-4" /> Rechnungen (CSV)
         </Button>
         <Button
           variant="outline"
-          onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows)}
+          onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows, { from, to })}
         >
           <Download className="size-4" /> Ausgaben (CSV)
         </Button>
         <Button
           variant="outline"
-          onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows)}
+          onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows, { from, to })}
         >
           <Download className="size-4" /> Stundenzettel (CSV)
         </Button>
         <Button
           variant="outline"
-          onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows)}
+          onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows, { from, to })}
         >
           <Download className="size-4" /> Lohnabrechnung (CSV)
         </Button>
