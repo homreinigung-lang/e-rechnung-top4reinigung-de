@@ -600,6 +600,7 @@ function Table({ rows, empty }: { rows: Row[]; empty: string }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

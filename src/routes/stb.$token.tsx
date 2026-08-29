@@ -667,5 +667,6 @@ function DataTable({ rows, empty }: { rows: Table[]; empty: string }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
