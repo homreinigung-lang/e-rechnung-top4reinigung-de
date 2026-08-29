@@ -536,22 +536,21 @@ function LvDetail({
         </div>
       </div>
 
-      {/* Eigene Kalkulation */}
-      <div className="space-y-2 rounded-md border p-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Ihre Kalkulation
-        </div>
+      {/* Eigene Kalkulation – Hauptarbeitsbereich */}
+      <div className="space-y-3 rounded-md border-2 border-foreground/15 bg-background p-3 shadow-sm">
+        <div className="text-sm font-semibold">Ihre Kalkulation</div>
         <div className="space-y-1">
           <Label className="text-xs" htmlFor={`price-${item.id}`}>
             Preis / Einheit (netto)
+            {priceValue <= 0 && <span className="ml-0.5 text-muted-foreground">*</span>}
           </Label>
           <Input
             id={`price-${item.id}`}
             inputMode="decimal"
             placeholder="0,00 €"
             value={price}
-            autoFocus
-            className={priceValue > 0 ? "" : "border-red-300 focus-visible:ring-red-400"}
+            autoFocus={quantity > 0 && Boolean(item.unit.trim())}
+            className={priceValue > 0 ? "font-medium" : "border-dashed border-foreground/40"}
             onChange={(e) => setPrice(e.target.value)}
             onBlur={commitPrice}
             onKeyDown={(e) => {
@@ -564,9 +563,9 @@ function LvDetail({
             }}
           />
         </div>
-        <div className="flex items-baseline justify-between border-t pt-2">
-          <span className="text-sm text-muted-foreground">Gesamtpreis</span>
-          <span className="tabular-nums text-lg font-semibold">{formatMoney(sum)}</span>
+        <div className="flex items-baseline justify-between rounded-md bg-muted/60 px-3 py-2">
+          <span className="text-sm">Gesamtpreis</span>
+          <span className="tabular-nums text-xl font-bold">{formatMoney(sum)}</span>
         </div>
         <button
           type="button"
