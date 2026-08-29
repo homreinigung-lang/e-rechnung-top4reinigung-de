@@ -120,6 +120,14 @@ export function LvPositionen({ items, onPatch, onAdd, onRemove }: Props) {
   const selected = items.find((it) => it.id === selectedId) ?? null;
   const selIndex = selected ? visible.findIndex((it) => it.id === selected.id) : -1;
 
+  /** Offene Positionen ab der aktuellen Position (umlaufend), ohne die aktuelle. */
+  function openOthers(currentId: string): LvPositionItem[] {
+    const base = visible.length > 0 ? visible : items;
+    const start = base.findIndex((it) => it.id === currentId);
+    const ordered = start >= 0 ? [...base.slice(start + 1), ...base.slice(0, start)] : base;
+    return ordered.filter((it) => it.id !== currentId && lvStatus(it) === "offen");
+  }
+
   return (
     <div className="space-y-4">
       {/* Fortschritt & Filter */}
