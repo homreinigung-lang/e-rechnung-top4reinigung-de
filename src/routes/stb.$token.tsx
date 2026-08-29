@@ -27,6 +27,8 @@ import {
 
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
+import { TableSummary } from "@/components/TableSummary";
+import { buildCsvWithSummary, summaryHtml } from "@/lib/table-summary";
 
 export const Route = createFileRoute("/stb/$token")({
   head: () => ({
@@ -76,11 +78,8 @@ function downloadCsv(name: string, rows: Table[]) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
   }
-  const headers = Object.keys(rows[0]!);
-  const csv = [
-    headers.join(";"),
-    ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(";")),
-  ].join("\r\n");
+  // Endsummen stehen generisch immer ganz oben im Export.
+  const csv = buildCsvWithSummary(rows, { title: name.replace(/\.csv$/i, "") });
   download(name, new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
 }
 function downloadExcel(name: string, sheets: { title: string; rows: Table[] }[]) {
@@ -88,7 +87,7 @@ function downloadExcel(name: string, sheets: { title: string; rows: Table[] }[])
     .filter((s) => s.rows.length > 0)
     .map((s) => {
       const headers = Object.keys(s.rows[0]!);
-      return `<h3>${s.title}</h3><table border="1"><tr>${headers
+      return `<h3>${s.title}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
         .map((h) => `<th>${h}</th>`)
         .join("")}</tr>${s.rows
         .map((r) => `<tr>${headers.map((h) => `<td>${r[h] ?? ""}</td>`).join("")}</tr>`)
