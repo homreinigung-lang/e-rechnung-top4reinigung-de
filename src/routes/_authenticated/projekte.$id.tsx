@@ -8,6 +8,8 @@ import { analyzeProject, type ScannedProject } from "@/lib/project-scan.function
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
+import { LvPositionen } from "@/components/LvPositionen";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -448,6 +450,12 @@ function ProjektDetail() {
                 <Loader2 className="size-4 animate-spin" /> KI-Analyse läuft …
               </span>
             )}
+            {!analyzing && isTender && project.source_file_name && (
+              <span className="text-sm text-emerald-700">
+                ✓ Datei geladen{items.length > 0 ? ` · ${items.length} Positionen erkannt` : ""}
+              </span>
+            )}
+
           </div>
         </div>
 
@@ -648,129 +656,22 @@ function ProjektDetail() {
       {/* Modus: Leistungsverzeichnis */}
       {isTender && (
         <section className="surface space-y-4 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">Leistungsverzeichnis</h2>
-              <p className="text-sm text-muted-foreground">
-                {items.filter((i) => i.done).length} von {items.length} Punkten erledigt
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => addItem.mutate()}>
-              <Plus className="size-4" /> Position ergänzen
-            </Button>
-          </div>
-
-          {items.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Noch keine Positionen. Ausschreibung hochladen oder Positionen manuell ergänzen.
+          <div>
+            <h2 className="text-lg font-semibold">Leistungsverzeichnis</h2>
+            <p className="text-sm text-muted-foreground">
+              Positionen prüfen, fehlende Preise ergänzen – Gesamtpreise werden automatisch
+              berechnet.
             </p>
-          ) : (
-            <ul className="divide-y">
-              {items.map((it) => (
-                <li key={it.id} className="flex flex-wrap items-start gap-3 py-3">
-                  <Checkbox
-                    className="mt-2"
-                    checked={it.done}
-                    onCheckedChange={(v) =>
-                      patchItem.mutate({ itemId: it.id, values: { done: Boolean(v) } })
-                    }
-                  />
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <Input
-                        defaultValue={it.section}
-                        placeholder="Leistungsbereich"
-                        onBlur={(e) =>
-                          patchItem.mutate({ itemId: it.id, values: { section: e.target.value } })
-                        }
-                      />
-                      <Input
-                        defaultValue={it.title}
-                        placeholder="Position"
-                        onBlur={(e) =>
-                          patchItem.mutate({ itemId: it.id, values: { title: e.target.value } })
-                        }
-                      />
-                    </div>
-                    <Textarea
-                      rows={2}
-                      defaultValue={it.description}
-                      placeholder="Beschreibung"
-                      onBlur={(e) =>
-                        patchItem.mutate({ itemId: it.id, values: { description: e.target.value } })
-                      }
-                    />
-                    <div className="grid gap-2 sm:grid-cols-4">
-                      <Input
-                        type="number"
-                        defaultValue={it.quantity}
-                        placeholder="Menge"
-                        onBlur={(e) =>
-                          patchItem.mutate({
-                            itemId: it.id,
-                            values: { quantity: Number(e.target.value) || 0 },
-                          })
-                        }
-                      />
-                      <Input
-                        defaultValue={it.unit}
-                        placeholder="Einheit"
-                        onBlur={(e) =>
-                          patchItem.mutate({ itemId: it.id, values: { unit: e.target.value } })
-                        }
-                      />
-                      <Input
-                        type="number"
-                        step="0.01"
-                        defaultValue={it.unit_price}
-                        placeholder="Einzelpreis netto"
-                        onBlur={(e) =>
-                          patchItem.mutate({
-                            itemId: it.id,
-                            values: { unit_price: Number(e.target.value) || 0 },
-                          })
-                        }
-                      />
-                      <Input
-                        type="date"
-                        defaultValue={it.deadline ?? ""}
-                        onBlur={(e) =>
-                          patchItem.mutate({
-                            itemId: it.id,
-                            values: { deadline: e.target.value || null },
-                          })
-                        }
-                      />
-                    </div>
-                    <Input
-                      defaultValue={it.evidence}
-                      placeholder="Geforderter Nachweis"
-                      onBlur={(e) =>
-                        patchItem.mutate({ itemId: it.id, values: { evidence: e.target.value } })
-                      }
-                    />
-                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Checkbox
-                        checked={it.critical}
-                        onCheckedChange={(v) =>
-                          patchItem.mutate({ itemId: it.id, values: { critical: Boolean(v) } })
-                        }
-                      />
-                      Kritischer Punkt / Frist
-                      {it.deadline && <span> – fällig am {formatDate(it.deadline)}</span>}
-                    </label>
-                  </div>
-                  <ConfirmDeleteButton
-                    title="Position wirklich löschen?"
-                    description={`Die Position „${it.title || "ohne Titel"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
-                    onConfirm={() => removeItem.mutate(it.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
+          </div>
+          <LvPositionen
+            items={items}
+            onPatch={(itemId, values) => patchItem.mutate({ itemId, values })}
+            onAdd={() => addItem.mutate()}
+            onRemove={(itemId) => removeItem.mutate(itemId)}
+          />
         </section>
       )}
+
 
       {/* Objekt-Mappe: operative Vertrags- und Einsatzdaten */}
       <section className="surface space-y-4 p-5">
