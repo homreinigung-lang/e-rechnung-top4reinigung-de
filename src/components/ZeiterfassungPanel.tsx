@@ -129,6 +129,18 @@ function monthKey(d: string) {
   return d.slice(0, 7);
 }
 
+/**
+ * Letzter Tag eines Monats als reines Datum (JJJJ-MM-TT), ohne Zeitzonen-
+ * Verschiebung – `toISOString()` würde in Europe/Berlin einen Tag zu früh liefern.
+ */
+function monthEndDate(monthValue: string) {
+  const year = Number(monthValue.slice(0, 4));
+  const monthIndex = Number(monthValue.slice(5, 7));
+  const day = new Date(Date.UTC(year, monthIndex, 0)).getUTCDate();
+  return `${monthValue}-${String(day).padStart(2, "0")}`;
+}
+
+
 export function Zeiterfassung() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
