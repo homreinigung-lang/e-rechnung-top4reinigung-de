@@ -54,6 +54,10 @@ function num(v: unknown) {
 function de(v: number) {
   return v.toFixed(2).replace(".", ",");
 }
+/** Wandelt deutsche Zahlenstrings ("1.234,56") zurück in eine Zahl. */
+function parseDe(v: unknown) {
+  return Number(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
+}
 function csvEscape(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
