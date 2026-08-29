@@ -60,9 +60,6 @@ function de(v: number) {
 function parseDe(v: unknown) {
   return Number(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
 }
-function csvEscape(value: unknown) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
-}
 function download(name: string, blob: Blob) {
   void (async () => {
     try {
