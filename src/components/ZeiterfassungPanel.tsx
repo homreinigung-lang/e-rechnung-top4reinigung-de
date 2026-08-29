@@ -465,7 +465,7 @@ export function Zeiterfassung() {
     doc.line(15, y, 195, y);
     y += 6;
     doc.setFontSize(9);
-    for (const [name, v] of totals.perEmployee) {
+    for (const [name, v] of pdfTotals.perEmployee) {
       doc.text(String(name).slice(0, 45), 15, y);
       doc.text(`${de(v.hours)} Std.`, 120, y, { align: "right" });
       doc.text(formatMoney(v.amount), 195, y, { align: "right" });
@@ -480,8 +480,8 @@ export function Zeiterfassung() {
     y += 6;
     doc.setFontSize(10);
     doc.text("Gesamt", 15, y);
-    doc.text(`${de(totals.hours)} Std.`, 120, y, { align: "right" });
-    doc.text(formatMoney(totals.amount), 195, y, { align: "right" });
+    doc.text(`${de(pdfTotals.hours)} Std.`, 120, y, { align: "right" });
+    doc.text(formatMoney(pdfTotals.amount), 195, y, { align: "right" });
 
     y += 12;
     doc.setFontSize(11);
