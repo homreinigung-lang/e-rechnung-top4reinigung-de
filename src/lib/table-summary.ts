@@ -171,7 +171,7 @@ function csvEscape(value: unknown) {
  */
 export function buildCsvWithSummary(
   rows: TableRow[],
-  options?: { title?: string; separator?: string; eol?: string },
+  options?: { title?: string | undefined; separator?: string | undefined; eol?: string | undefined },
 ): string {
   if (rows.length === 0) return "";
   const sep = options?.separator ?? ";";
@@ -264,7 +264,7 @@ export function filterRowsByDateRange<T extends TableRow>(rows: T[], range?: Dat
  */
 export function buildCsvBlob(
   rows: TableRow[],
-  options?: { title?: string; range?: DateRange; eol?: string },
+  options?: { title?: string | undefined; range?: DateRange | undefined; eol?: string | undefined },
 ): Blob | null {
   const filtered = filterRowsByDateRange(rows, options?.range);
   if (filtered.length === 0) return null;
