@@ -401,7 +401,17 @@ export function Zeiterfassung() {
   };
 
   const exportPdf = async () => {
-    if (monthEntries.length === 0) {
+    // Sicherheitsnetz: PDF nutzt dieselbe strikte Datumsfilterung wie CSV/Excel.
+    const pdfFrom = `${month}-01`;
+    const pdfTo = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
+      .toISOString()
+      .slice(0, 10);
+    const pdfEntries = filterRowsByDateRange(monthEntries, {
+      from: pdfFrom,
+      to: pdfTo,
+      columns: ["work_date"],
+    });
+    if (pdfEntries.length === 0) {
       toast.error("Keine Einträge in diesem Monat.");
       return;
     }
@@ -453,7 +463,7 @@ export function Zeiterfassung() {
     doc.text("Einzelnachweis", 15, y);
     y += 6;
     doc.setFontSize(8);
-    for (const e of monthEntries) {
+    for (const e of pdfEntries) {
       if (y > 282) {
         doc.addPage();
         y = 20;

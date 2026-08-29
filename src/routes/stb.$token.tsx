@@ -474,7 +474,7 @@ function AccountantPortal() {
                   `Stundenzettel_${period}.pdf`,
                   `Stundenliste ${formatDate(from)} – ${formatDate(to)}`,
                   data.companyName,
-                  timeEntries,
+                  filterRowsByDateRange(timeEntries, { from, to, columns: ["work_date"] }),
                 )
               }
             >
