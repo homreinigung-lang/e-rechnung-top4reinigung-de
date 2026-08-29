@@ -212,29 +212,35 @@ export function LvPositionen({ items, onPatch, onAdd, onRemove }: Props) {
                         selectedId === it.id ? "bg-muted/70" : ""
                       }`}
                     >
-                      <td className="py-2 pr-3 whitespace-nowrap tabular-nums text-muted-foreground">
+                      <td className="py-1.5 pr-3 whitespace-nowrap tabular-nums text-muted-foreground">
                         {posLabel(it)}
                       </td>
-                      <td className="py-2 pr-3">
-                        <div className="font-medium">{it.title || "Ohne Bezeichnung"}</div>
+                      <td className="max-w-[22rem] py-1.5 pr-3">
+                        <div className="truncate font-medium">
+                          {it.title || "Ohne Bezeichnung"}
+                        </div>
                         {it.section && (
-                          <div className="text-xs text-muted-foreground">{it.section}</div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {it.section}
+                          </div>
                         )}
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-1.5 pr-3 text-right tabular-nums">
                         {Number(it.quantity) > 0 ? formatNumber(Number(it.quantity)) : "—"}
                       </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{it.unit || "—"}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-1.5 pr-3 whitespace-nowrap text-muted-foreground">
+                        {it.unit || "—"}
+                      </td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums">
                         {priced ? formatMoney(Number(it.unit_price)) : "—"}
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-1.5 pr-3 text-right font-medium tabular-nums">
                         {priced && Number(it.quantity) > 0 ? formatMoney(total(it)) : "—"}
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-1.5 pr-3">
                         <StatusBadge status={status} />
                       </td>
-                      <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
                         <ConfirmDeleteButton
                           title="Position wirklich löschen?"
                           description={`Die Position „${it.title || "ohne Titel"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
@@ -407,7 +413,7 @@ function LvDetail({
       <div className="flex items-center justify-between gap-2">
         <StatusBadge status={status} />
         <span
-          className={`text-xs transition-opacity ${saved ? "opacity-100" : "opacity-0"} text-emerald-700`}
+          className={`text-xs text-muted-foreground transition-opacity ${saved ? "opacity-100" : "opacity-0"}`}
           aria-live="polite"
         >
           <Check className="mr-1 inline size-3" />
@@ -425,7 +431,7 @@ function LvDetail({
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
-            className={`h-full rounded-full ${completion === 100 ? "bg-emerald-600" : "bg-amber-500"}`}
+            className="h-full rounded-full bg-foreground/70"
             style={{ width: `${completion}%` }}
           />
         </div>
@@ -434,27 +440,27 @@ function LvDetail({
             <li
               key={r.label}
               className={`flex items-center gap-2 ${
-                r.ok ? "text-muted-foreground" : "font-medium text-red-700"
+                r.ok ? "text-muted-foreground" : "font-medium"
               }`}
             >
               {r.ok ? (
-                <Check className="size-3.5 text-emerald-600" />
+                <Check className="size-3.5 text-muted-foreground" />
               ) : (
-                <span className="size-2 rounded-full bg-red-500" />
+                <span className="size-2 rounded-full border border-foreground/60" />
               )}
               {r.label}
             </li>
           ))}
           <li className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="size-2 rounded-full border" />
+            <span className="size-2 rounded-full border border-muted-foreground/40" />
             Bemerkung – optional
           </li>
         </ul>
       </div>
 
-      {/* Ausschreibung */}
-      <div className="space-y-2 rounded-md bg-muted/50 p-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      {/* Ausschreibung – visuell zweitrangig */}
+      <div className="space-y-2 rounded-md bg-muted/40 p-3 text-sm">
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Ausschreibung
         </div>
         <div className="grid gap-2">
@@ -476,20 +482,27 @@ function LvDetail({
           />
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">Menge</Label>
+              <Label className="text-xs">
+                Menge{quantity <= 0 && <span className="ml-0.5 text-muted-foreground">*</span>}
+              </Label>
               <Input
+                autoFocus={quantity <= 0}
                 defaultValue={quantity > 0 ? String(quantity).replace(".", ",") : ""}
                 placeholder="0,00"
-                className={quantity > 0 ? "" : "border-red-300 focus-visible:ring-red-400"}
+                className={quantity > 0 ? "" : "border-dashed border-foreground/40"}
                 onBlur={(e) => save({ quantity: parsePositiveNumber(e.target.value) })}
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Einheit</Label>
+              <Label className="text-xs">
+                Einheit
+                {!item.unit.trim() && <span className="ml-0.5 text-muted-foreground">*</span>}
+              </Label>
               <Input
+                autoFocus={quantity > 0 && !item.unit.trim()}
                 defaultValue={item.unit}
                 placeholder="m², Std., pauschal"
-                className={item.unit.trim() ? "" : "border-red-300 focus-visible:ring-red-400"}
+                className={item.unit.trim() ? "" : "border-dashed border-foreground/40"}
                 onBlur={(e) => save({ unit: e.target.value })}
               />
             </div>
@@ -523,22 +536,21 @@ function LvDetail({
         </div>
       </div>
 
-      {/* Eigene Kalkulation */}
-      <div className="space-y-2 rounded-md border p-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Ihre Kalkulation
-        </div>
+      {/* Eigene Kalkulation – Hauptarbeitsbereich */}
+      <div className="space-y-3 rounded-md border-2 border-foreground/15 bg-background p-3 shadow-sm">
+        <div className="text-sm font-semibold">Ihre Kalkulation</div>
         <div className="space-y-1">
           <Label className="text-xs" htmlFor={`price-${item.id}`}>
             Preis / Einheit (netto)
+            {priceValue <= 0 && <span className="ml-0.5 text-muted-foreground">*</span>}
           </Label>
           <Input
             id={`price-${item.id}`}
             inputMode="decimal"
             placeholder="0,00 €"
             value={price}
-            autoFocus
-            className={priceValue > 0 ? "" : "border-red-300 focus-visible:ring-red-400"}
+            autoFocus={quantity > 0 && Boolean(item.unit.trim())}
+            className={priceValue > 0 ? "font-medium" : "border-dashed border-foreground/40"}
             onChange={(e) => setPrice(e.target.value)}
             onBlur={commitPrice}
             onKeyDown={(e) => {
@@ -551,9 +563,9 @@ function LvDetail({
             }}
           />
         </div>
-        <div className="flex items-baseline justify-between border-t pt-2">
-          <span className="text-sm text-muted-foreground">Gesamtpreis</span>
-          <span className="tabular-nums text-lg font-semibold">{formatMoney(sum)}</span>
+        <div className="flex items-baseline justify-between rounded-md bg-muted/60 px-3 py-2">
+          <span className="text-sm">Gesamtpreis</span>
+          <span className="tabular-nums text-xl font-bold">{formatMoney(sum)}</span>
         </div>
         <button
           type="button"
