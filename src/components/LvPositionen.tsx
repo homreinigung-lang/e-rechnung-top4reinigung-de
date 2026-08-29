@@ -271,6 +271,13 @@ export function LvPositionen({ items, onPatch, onAdd, onRemove }: Props) {
                 hasNext={selIndex >= 0 && selIndex < visible.length - 1}
                 onPrev={() => setSelectedId(visible[selIndex - 1]?.id ?? null)}
                 onNext={() => setSelectedId(visible[selIndex + 1]?.id ?? null)}
+                positionIndex={selIndex >= 0 ? selIndex + 1 : 1}
+                positionCount={visible.length}
+                openCount={openOthers(selected.id).length}
+                onNextOpen={() => {
+                  const next = openOthers(selected.id)[0];
+                  if (next) setSelectedId(next.id);
+                }}
               />
             )}
           </div>
