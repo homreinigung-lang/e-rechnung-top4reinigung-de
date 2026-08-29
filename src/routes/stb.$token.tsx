@@ -320,6 +320,10 @@ function AccountantPortal() {
     Notiz: String(t["note"] || t["absence_reason"] || ""),
   }));
   const hoursTotal = workEntries.reduce((s, t) => s + num(t["hours"]), 0);
+  const wageTotal = workEntries.reduce(
+    (s, t) => s + num(t["hours"]) * num(t["hourly_rate"]),
+    0,
+  );
   const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
   const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
 
