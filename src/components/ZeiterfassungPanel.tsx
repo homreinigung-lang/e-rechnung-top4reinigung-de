@@ -129,6 +129,18 @@ function monthKey(d: string) {
   return d.slice(0, 7);
 }
 
+/**
+ * Letzter Tag eines Monats als reines Datum (JJJJ-MM-TT), ohne Zeitzonen-
+ * Verschiebung – `toISOString()` würde in Europe/Berlin einen Tag zu früh liefern.
+ */
+function monthEndDate(monthValue: string) {
+  const year = Number(monthValue.slice(0, 4));
+  const monthIndex = Number(monthValue.slice(5, 7));
+  const day = new Date(Date.UTC(year, monthIndex, 0)).getUTCDate();
+  return `${monthValue}-${String(day).padStart(2, "0")}`;
+}
+
+
 export function Zeiterfassung() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -373,9 +385,7 @@ export function Zeiterfassung() {
     // Generischer Zusammenfassungsblock ganz oben im Export.
     // Strikt nur Datensätze des gewählten Monats (Sicherheitsnetz für den Export).
     const monthStart = `${month}-01`;
-    const monthEnd = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
-      .toISOString()
-      .slice(0, 10);
+    const monthEnd = monthEndDate(month);
     const objRows = filterRowsByDateRange(
       rows.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ""]))),
       { from: monthStart, to: monthEnd },
@@ -403,9 +413,7 @@ export function Zeiterfassung() {
   const exportPdf = async () => {
     // Sicherheitsnetz: PDF nutzt dieselbe strikte Datumsfilterung wie CSV/Excel.
     const pdfFrom = `${month}-01`;
-    const pdfTo = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
-      .toISOString()
-      .slice(0, 10);
+    const pdfTo = monthEndDate(month);
     const pdfEntries = filterRowsByDateRange(monthEntries, {
       from: pdfFrom,
       to: pdfTo,
@@ -415,8 +423,25 @@ export function Zeiterfassung() {
       toast.error("Keine Einträge in diesem Monat.");
       return;
     }
+    // Kopf-Summen strikt aus denselben gefilterten Einträgen wie der Einzelnachweis.
+    const pdfTotals = (() => {
+      const perEmployee = new Map<string, { hours: number; amount: number }>();
+      let hours = 0;
+      let amount = 0;
+      for (const e of pdfEntries) {
+        const h = Number(e.hours || 0);
+        const a = h * Number(e.hourly_rate || 0);
+        hours += h;
+        amount += a;
+        const key = (e.employee_name as string) || "Ohne Zuordnung";
+        const cur = perEmployee.get(key) ?? { hours: 0, amount: 0 };
+        perEmployee.set(key, { hours: cur.hours + h, amount: cur.amount + a });
+      }
+      return { hours, amount, perEmployee: [...perEmployee.entries()] };
+    })();
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "mm", format: "a4" });
+
     const [y0, m0] = month.split("-");
     let y = 18;
     doc.setFontSize(15);
@@ -440,7 +465,7 @@ export function Zeiterfassung() {
     doc.line(15, y, 195, y);
     y += 6;
     doc.setFontSize(9);
-    for (const [name, v] of totals.perEmployee) {
+    for (const [name, v] of pdfTotals.perEmployee) {
       doc.text(String(name).slice(0, 45), 15, y);
       doc.text(`${de(v.hours)} Std.`, 120, y, { align: "right" });
       doc.text(formatMoney(v.amount), 195, y, { align: "right" });
@@ -455,8 +480,8 @@ export function Zeiterfassung() {
     y += 6;
     doc.setFontSize(10);
     doc.text("Gesamt", 15, y);
-    doc.text(`${de(totals.hours)} Std.`, 120, y, { align: "right" });
-    doc.text(formatMoney(totals.amount), 195, y, { align: "right" });
+    doc.text(`${de(pdfTotals.hours)} Std.`, 120, y, { align: "right" });
+    doc.text(formatMoney(pdfTotals.amount), 195, y, { align: "right" });
 
     y += 12;
     doc.setFontSize(11);
