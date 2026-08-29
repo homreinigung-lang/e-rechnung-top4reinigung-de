@@ -492,7 +492,7 @@ function AccountantPortal() {
                   { title: "Ausgaben", rows: expenseRows },
                   { title: "Stundenzettel", rows: timeRows },
                   { title: "Lohnabrechnung", rows: payrollRows },
-                ])
+                ], { from, to })
               }
             >
               <FileSpreadsheet className="size-4" /> Excel-Export
