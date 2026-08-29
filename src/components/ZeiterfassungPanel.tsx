@@ -423,8 +423,25 @@ export function Zeiterfassung() {
       toast.error("Keine Einträge in diesem Monat.");
       return;
     }
+    // Kopf-Summen strikt aus denselben gefilterten Einträgen wie der Einzelnachweis.
+    const pdfTotals = (() => {
+      const perEmployee = new Map<string, { hours: number; amount: number }>();
+      let hours = 0;
+      let amount = 0;
+      for (const e of pdfEntries) {
+        const h = Number(e.hours || 0);
+        const a = h * Number(e.hourly_rate || 0);
+        hours += h;
+        amount += a;
+        const key = (e.employee_name as string) || "Ohne Zuordnung";
+        const cur = perEmployee.get(key) ?? { hours: 0, amount: 0 };
+        perEmployee.set(key, { hours: cur.hours + h, amount: cur.amount + a });
+      }
+      return { hours, amount, perEmployee: [...perEmployee.entries()] };
+    })();
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "mm", format: "a4" });
+
     const [y0, m0] = month.split("-");
     let y = 18;
     doc.setFontSize(15);
