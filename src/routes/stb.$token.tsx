@@ -156,7 +156,7 @@ async function exportHoursPdf(
   y += 8;
 
   doc.setFontSize(10);
-  doc.text("Mitarbeiter", 15, y);
+  doc.text("Mitarbeiter (Personal-Nr.)", 15, y);
   doc.text("Krank (K)", 100, y, { align: "right" });
   doc.text("Urlaub (U)", 130, y, { align: "right" });
   doc.text("Stunden", 160, y, { align: "right" });
