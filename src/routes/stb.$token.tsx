@@ -76,13 +76,13 @@ function download(name: string, blob: Blob) {
 }
 
 function downloadCsv(name: string, rows: Table[], range?: DateRange) {
-  if (rows.length === 0) {
+  // Strikte Datumsfilterung + Endsummen oben + UTF-8-BOM/Semikolon (Excel-tauglich).
+  const blob = buildCsvBlob(rows, { title: name.replace(/\.csv$/i, ""), range });
+  if (!blob) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
   }
-  // Endsummen stehen generisch immer ganz oben im Export.
-  const csv = buildCsvWithSummary(rows, { title: name.replace(/\.csv$/i, "") });
-  download(name, new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+  download(name, blob);
 }
 function downloadExcel(
   name: string,
