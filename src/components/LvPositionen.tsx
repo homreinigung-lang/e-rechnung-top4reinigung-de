@@ -431,7 +431,7 @@ function LvDetail({
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
-            className={`h-full rounded-full ${completion === 100 ? "bg-emerald-600" : "bg-amber-500"}`}
+            className="h-full rounded-full bg-foreground/70"
             style={{ width: `${completion}%` }}
           />
         </div>
@@ -440,19 +440,19 @@ function LvDetail({
             <li
               key={r.label}
               className={`flex items-center gap-2 ${
-                r.ok ? "text-muted-foreground" : "font-medium text-red-700"
+                r.ok ? "text-muted-foreground" : "font-medium"
               }`}
             >
               {r.ok ? (
-                <Check className="size-3.5 text-emerald-600" />
+                <Check className="size-3.5 text-muted-foreground" />
               ) : (
-                <span className="size-2 rounded-full bg-red-500" />
+                <span className="size-2 rounded-full border border-foreground/60" />
               )}
               {r.label}
             </li>
           ))}
           <li className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="size-2 rounded-full border" />
+            <span className="size-2 rounded-full border border-muted-foreground/40" />
             Bemerkung – optional
           </li>
         </ul>
