@@ -83,14 +83,17 @@ const EXCLUDE_HINTS = [
   "plz",
   "iban",
   "satz",
+  "stundensatz",
   "prozent",
   "%",
   "von",
   "bis",
+  "pause",
   "schlüssel",
   "kennzeichen",
   "wkz",
 ];
+
 
 function classify(column: string): "hours" | "money" | "number" {
   const c = column.toLowerCase();
