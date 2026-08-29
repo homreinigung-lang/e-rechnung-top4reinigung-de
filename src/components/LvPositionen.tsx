@@ -458,9 +458,9 @@ function LvDetail({
         </ul>
       </div>
 
-      {/* Ausschreibung */}
-      <div className="space-y-2 rounded-md bg-muted/50 p-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      {/* Ausschreibung – visuell zweitrangig */}
+      <div className="space-y-2 rounded-md bg-muted/40 p-3 text-sm">
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Ausschreibung
         </div>
         <div className="grid gap-2">
@@ -482,20 +482,27 @@ function LvDetail({
           />
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">Menge</Label>
+              <Label className="text-xs">
+                Menge{quantity <= 0 && <span className="ml-0.5 text-muted-foreground">*</span>}
+              </Label>
               <Input
+                autoFocus={quantity <= 0}
                 defaultValue={quantity > 0 ? String(quantity).replace(".", ",") : ""}
                 placeholder="0,00"
-                className={quantity > 0 ? "" : "border-red-300 focus-visible:ring-red-400"}
+                className={quantity > 0 ? "" : "border-dashed border-foreground/40"}
                 onBlur={(e) => save({ quantity: parsePositiveNumber(e.target.value) })}
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Einheit</Label>
+              <Label className="text-xs">
+                Einheit
+                {!item.unit.trim() && <span className="ml-0.5 text-muted-foreground">*</span>}
+              </Label>
               <Input
+                autoFocus={quantity > 0 && !item.unit.trim()}
                 defaultValue={item.unit}
                 placeholder="m², Std., pauschal"
-                className={item.unit.trim() ? "" : "border-red-300 focus-visible:ring-red-400"}
+                className={item.unit.trim() ? "" : "border-dashed border-foreground/40"}
                 onBlur={(e) => save({ unit: e.target.value })}
               />
             </div>
