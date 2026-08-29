@@ -54,6 +54,10 @@ function num(v: unknown) {
 function de(v: number) {
   return v.toFixed(2).replace(".", ",");
 }
+/** Wandelt deutsche Zahlenstrings ("1.234,56") zurück in eine Zahl. */
+function parseDe(v: unknown) {
+  return Number(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
+}
 function csvEscape(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
@@ -124,22 +128,35 @@ async function exportHoursPdf(
   doc.text(`${companyName || "Stundenübersicht"} · Stunden je Mitarbeiter`, 15, y);
   y += 10;
 
-  const per = new Map<string, { hours: number; amount: number; sick: number; vacation: number }>();
+  const per = new Map<
+    string,
+    { hours: number; amount: number; sick: number; vacation: number; personnel: string }
+  >();
   for (const e of entries) {
     const name = String(e["employee_name"] || "Ohne Zuordnung");
     const code = String(e["lohnart"] ?? "A");
     const h = code === "A" ? num(e["hours"]) : 0;
-    const cur = per.get(name) ?? { hours: 0, amount: 0, sick: 0, vacation: 0 };
+    const cur = per.get(name) ?? { hours: 0, amount: 0, sick: 0, vacation: 0, personnel: "" };
     per.set(name, {
       hours: cur.hours + h,
       amount: cur.amount + h * num(e["hourly_rate"]),
       sick: cur.sick + (code === "K" ? 1 : 0),
       vacation: cur.vacation + (code === "U" ? 1 : 0),
+      personnel: cur.personnel || String(e["personnel_number"] || ""),
     });
   }
 
+  // Kompakte Abrechnungs-Zusammenfassung direkt in der Kopfzeile.
+  const sumH = [...per.values()].reduce((s, v) => s + v.hours, 0);
+  const sumA = [...per.values()].reduce((s, v) => s + v.amount, 0);
   doc.setFontSize(10);
-  doc.text("Mitarbeiter", 15, y);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Gesamtstunden: ${de(sumH)} Std.    Gesamtlohn: ${formatMoney(sumA)}`, 15, y);
+  doc.setFont("helvetica", "normal");
+  y += 8;
+
+  doc.setFontSize(10);
+  doc.text("Mitarbeiter (Personal-Nr.)", 15, y);
   doc.text("Krank (K)", 100, y, { align: "right" });
   doc.text("Urlaub (U)", 130, y, { align: "right" });
   doc.text("Stunden", 160, y, { align: "right" });
@@ -153,7 +170,7 @@ async function exportHoursPdf(
   for (const [name, v] of per) {
     totalH += v.hours;
     totalA += v.amount;
-    doc.text(name.slice(0, 40), 15, y);
+    doc.text(`${name}${v.personnel ? ` (${v.personnel})` : ""}`.slice(0, 44), 15, y);
     doc.text(`${v.sick}`, 100, y, { align: "right" });
     doc.text(`${v.vacation}`, 130, y, { align: "right" });
     doc.text(`${de(v.hours)} Std.`, 160, y, { align: "right" });
@@ -320,6 +337,10 @@ function AccountantPortal() {
     Notiz: String(t["note"] || t["absence_reason"] || ""),
   }));
   const hoursTotal = workEntries.reduce((s, t) => s + num(t["hours"]), 0);
+  const wageTotal = workEntries.reduce(
+    (s, t) => s + num(t["hours"]) * num(t["hourly_rate"]),
+    0,
+  );
   const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
   const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
 
@@ -505,6 +526,46 @@ function AccountantPortal() {
             <h2 className="font-display text-lg font-semibold">
               Auswertung {formatDate(from)} – {formatDate(to)}
             </h2>
+
+            {/* Abrechnungs-Zusammenfassung ganz oben für den Buchhalter. */}
+            <div className="mt-4 rounded-md border-2 border-primary/30 bg-muted/40 p-4">
+              <h3 className="font-display text-sm font-semibold">
+                Abrechnungsübersicht (Zeitraum {formatDate(from)} – {formatDate(to)})
+              </h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="text-xs text-muted-foreground">Gesamtstunden</div>
+                  <div className="text-xl font-semibold">{de(hoursTotal)} Std.</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Gesamtlohn</div>
+                  <div className="text-xl font-semibold">{formatMoney(wageTotal)}</div>
+                </div>
+              </div>
+              {payrollRows.length > 0 && (
+                <table className="mt-3 w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs text-muted-foreground">
+                      <th className="py-1 pr-3 font-medium">Mitarbeiter</th>
+                      <th className="py-1 pr-3 font-medium">Personal-Nr.</th>
+                      <th className="py-1 pr-3 text-right font-medium">Stunden</th>
+                      <th className="py-1 text-right font-medium">Lohn</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payrollRows.map((r) => (
+                      <tr key={String(r["Mitarbeiter"])} className="border-b last:border-0">
+                        <td className="py-1 pr-3">{String(r["Mitarbeiter"])}</td>
+                        <td className="py-1 pr-3">{String(r["Personal-Nr."] || "—")}</td>
+                        <td className="py-1 pr-3 text-right">{String(r["Stunden"])} Std.</td>
+                        <td className="py-1 text-right">{formatMoney(parseDe(r["Lohn"]))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <Kpi label="Umsatz netto" value={formatMoney(netTotal)} />
               <Kpi label="Umsatzsteuer" value={formatMoney(vatTotal)} />
