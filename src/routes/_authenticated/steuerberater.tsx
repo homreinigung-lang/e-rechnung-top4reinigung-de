@@ -24,6 +24,8 @@ import {
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
+import { TableSummary } from "@/components/TableSummary";
+import { buildCsvWithSummary, summaryHtml } from "@/lib/table-summary";
 
 export const Route = createFileRoute("/_authenticated/steuerberater")({
   head: () => ({
@@ -61,20 +63,17 @@ function downloadCsv(name: string, rows: Row[]) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
   }
-  const headers = Object.keys(rows[0]!);
-  const csv = [
-    headers.join(";"),
-    ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(";")),
-  ].join("\r\n");
+  // Endsummen stehen generisch immer ganz oben im Export.
+  const csv = buildCsvWithSummary(rows, { title: name.replace(/\.csv$/i, "") });
   download(name, new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
 }
 
 function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[]) {
-  const tables = sheets
-    .filter((s) => s.rows.length > 0)
+  const filled = sheets.filter((s) => s.rows.length > 0);
+  const tables = filled
     .map((s) => {
       const headers = Object.keys(s.rows[0]!);
-      return `<h3>${s.title}</h3><table border="1"><tr>${headers
+      return `<h3>${s.title}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
         .map((h) => `<th>${h}</th>`)
         .join("")}</tr>${s.rows
         .map((r) => `<tr>${headers.map((h) => `<td>${r[h] ?? ""}</td>`).join("")}</tr>`)
@@ -85,7 +84,11 @@ function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[]) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
   }
-  const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body>${tables}</body></html>`;
+  // Gesamtübersicht aller Blätter zuerst.
+  const overview = filled
+    .map((s) => `<h4>${s.title}</h4>${summaryHtml(s.rows, s.title)}`)
+    .join("");
+  const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body><h2>Zusammenfassung (Endsummen)</h2>${overview}<hr/>${tables}</body></html>`;
   download(name, new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8" }));
 }
 
@@ -574,6 +577,8 @@ function Table({ rows, empty }: { rows: Row[]; empty: string }) {
   if (rows.length === 0) return <p className="mt-2 text-sm text-muted-foreground">{empty}</p>;
   const headers = Object.keys(rows[0]!);
   return (
+    <>
+    <TableSummary rows={rows} />
     <div className="mt-2 overflow-x-auto">
       <table className="w-full text-left text-xs">
         <thead>
@@ -598,6 +603,7 @@ function Table({ rows, empty }: { rows: Row[]; empty: string }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 

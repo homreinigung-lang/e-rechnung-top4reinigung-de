@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
+import { summaryLines } from "@/lib/table-summary";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -356,7 +357,7 @@ export function Zeiterfassung() {
       (e.note as string) || "",
       e.billed ? "Ja" : "Nein",
     ]);
-    const summary = totals.perEmployee.map(([name, v]) => [
+    const perEmployee = totals.perEmployee.map(([name, v]) => [
       name,
       "SUMME",
       "",
@@ -369,7 +370,18 @@ export function Zeiterfassung() {
       "",
       "",
     ]);
-    const csv = [head, ...rows, [], ...summary]
+    // Generischer Zusammenfassungsblock ganz oben im Export.
+    const objRows = rows.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ""])));
+    const preamble = [
+      [`Stundenzettel ${month}`],
+      ["Zusammenfassung (Endsummen)"],
+      ...summaryLines(objRows).map((line) => {
+        const [label, ...rest] = line.split(": ");
+        return [label ?? "", rest.join(": ")];
+      }),
+      [],
+    ];
+    const csv = [...preamble, head, ...rows, [], ...perEmployee]
       .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
       .join("\r\n");
     downloadBlob(
