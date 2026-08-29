@@ -24,6 +24,8 @@ import {
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
+import { TableSummary } from "@/components/TableSummary";
+import { buildCsvWithSummary, summaryHtml } from "@/lib/table-summary";
 
 export const Route = createFileRoute("/_authenticated/steuerberater")({
   head: () => ({
