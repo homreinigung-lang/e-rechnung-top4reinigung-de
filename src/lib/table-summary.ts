@@ -94,7 +94,6 @@ const EXCLUDE_HINTS = [
   "wkz",
 ];
 
-
 function classify(column: string): "hours" | "money" | "number" {
   const c = column.toLowerCase();
   if (HOURS_HINTS.some((h) => c.includes(h))) return "hours";
@@ -171,7 +170,11 @@ function csvEscape(value: unknown) {
  */
 export function buildCsvWithSummary(
   rows: TableRow[],
-  options?: { title?: string | undefined; separator?: string | undefined; eol?: string | undefined },
+  options?: {
+    title?: string | undefined;
+    separator?: string | undefined;
+    eol?: string | undefined;
+  },
 ): string {
   if (rows.length === 0) return "";
   const sep = options?.separator ?? ";";

@@ -63,7 +63,13 @@ function de(v: number) {
 }
 /** Wandelt deutsche Zahlenstrings ("1.234,56") zurück in eine Zahl. */
 function parseDe(v: unknown) {
-  return Number(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
+  return (
+    Number(
+      String(v ?? "")
+        .replace(/\./g, "")
+        .replace(",", "."),
+    ) || 0
+  );
 }
 function download(name: string, blob: Blob) {
   void (async () => {
@@ -343,10 +349,7 @@ function AccountantPortal() {
     Notiz: String(t["note"] || t["absence_reason"] || ""),
   }));
   const hoursTotal = workEntries.reduce((s, t) => s + num(t["hours"]), 0);
-  const wageTotal = workEntries.reduce(
-    (s, t) => s + num(t["hours"]) * num(t["hourly_rate"]),
-    0,
-  );
+  const wageTotal = workEntries.reduce((s, t) => s + num(t["hours"]) * num(t["hourly_rate"]), 0);
   const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
   const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
 
@@ -487,12 +490,16 @@ function AccountantPortal() {
             <Button
               variant="outline"
               onClick={() =>
-                downloadExcel(`Steuerauswertung_${period}.xls`, [
-                  { title: "Rechnungen", rows: docRows },
-                  { title: "Ausgaben", rows: expenseRows },
-                  { title: "Stundenzettel", rows: timeRows },
-                  { title: "Lohnabrechnung", rows: payrollRows },
-                ], { from, to })
+                downloadExcel(
+                  `Steuerauswertung_${period}.xls`,
+                  [
+                    { title: "Rechnungen", rows: docRows },
+                    { title: "Ausgaben", rows: expenseRows },
+                    { title: "Stundenzettel", rows: timeRows },
+                    { title: "Lohnabrechnung", rows: payrollRows },
+                  ],
+                  { from, to },
+                )
               }
             >
               <FileSpreadsheet className="size-4" /> Excel-Export
@@ -648,31 +655,31 @@ function DataTable({ rows, empty }: { rows: Table[]; empty: string }) {
   const headers = Object.keys(rows[0]!);
   return (
     <>
-    <TableSummary rows={rows} />
-    <div className="mt-2 overflow-x-auto">
-      <table className="w-full text-left text-xs">
-        <thead>
-          <tr className="border-b">
-            {headers.map((h) => (
-              <th key={h} className="py-2 pr-3 font-medium">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b last:border-0">
+      <TableSummary rows={rows} />
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-b">
               {headers.map((h) => (
-                <td key={h} className="py-1.5 pr-3">
-                  {r[h]}
-                </td>
+                <th key={h} className="py-2 pr-3 font-medium">
+                  {h}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-b last:border-0">
+                {headers.map((h) => (
+                  <td key={h} className="py-1.5 pr-3">
+                    {r[h]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
