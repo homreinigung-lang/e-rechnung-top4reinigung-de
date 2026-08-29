@@ -505,6 +505,46 @@ function AccountantPortal() {
             <h2 className="font-display text-lg font-semibold">
               Auswertung {formatDate(from)} – {formatDate(to)}
             </h2>
+
+            {/* Abrechnungs-Zusammenfassung ganz oben für den Buchhalter. */}
+            <div className="mt-4 rounded-md border-2 border-primary/30 bg-muted/40 p-4">
+              <h3 className="font-display text-sm font-semibold">
+                Abrechnungsübersicht (Zeitraum {formatDate(from)} – {formatDate(to)})
+              </h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="text-xs text-muted-foreground">Gesamtstunden</div>
+                  <div className="text-xl font-semibold">{de(hoursTotal)} Std.</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Gesamtlohn</div>
+                  <div className="text-xl font-semibold">{formatMoney(wageTotal)}</div>
+                </div>
+              </div>
+              {payrollRows.length > 0 && (
+                <table className="mt-3 w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs text-muted-foreground">
+                      <th className="py-1 pr-3 font-medium">Mitarbeiter</th>
+                      <th className="py-1 pr-3 font-medium">Personal-Nr.</th>
+                      <th className="py-1 pr-3 text-right font-medium">Stunden</th>
+                      <th className="py-1 text-right font-medium">Lohn</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payrollRows.map((r) => (
+                      <tr key={String(r["Mitarbeiter"])} className="border-b last:border-0">
+                        <td className="py-1 pr-3">{String(r["Mitarbeiter"])}</td>
+                        <td className="py-1 pr-3">{String(r["Personal-Nr."] || "—")}</td>
+                        <td className="py-1 pr-3 text-right">{String(r["Stunden"])} Std.</td>
+                        <td className="py-1 text-right">{formatMoney(parseDe(r["Lohn"]))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <Kpi label="Umsatz netto" value={formatMoney(netTotal)} />
               <Kpi label="Umsatzsteuer" value={formatMoney(vatTotal)} />
