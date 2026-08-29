@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import { saveFile } from "@/lib/download";
-import { buildCsvWithSummary } from "@/lib/table-summary";
+import { buildCsvBlob, type DateRange } from "@/lib/table-summary";
 import { Download, Upload } from "lucide-react";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { Leistungswerte } from "@/components/Leistungswerte";
@@ -69,14 +69,14 @@ const SMTP_FIELDS = [
   { key: "smtp_from", label: "Absenderadresse" },
 ] as const;
 
-function downloadCsv(name: string, rows: Record<string, unknown>[]) {
-  if (rows.length === 0) {
+function downloadCsv(name: string, rows: Record<string, unknown>[], range?: DateRange) {
+  // Strikte Datumsfilterung + Endsummen oben + UTF-8-BOM/Semikolon (Excel-tauglich).
+  const blob = buildCsvBlob(rows, { title: name.replace(/\.csv$/i, ""), range });
+  if (!blob) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
   }
-  // Endsummen stehen generisch immer ganz oben im Export.
-  const csv = buildCsvWithSummary(rows, { title: name.replace(/\.csv$/i, ""), eol: "\n" });
-  void saveFile(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), name);
+  void saveFile(blob, name);
 }
 
 function BankdatenSection() {
@@ -230,6 +230,7 @@ function Einstellungen() {
             : "Reverse-Charge",
         Status: d.status,
       })),
+      { from, to },
     );
   }
 
@@ -256,6 +257,7 @@ function Einstellungen() {
         Brutto: Number(e.gross_amount).toFixed(2).replace(".", ","),
         Notiz: e.notes,
       })),
+      { from, to },
     );
   }
 

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
-import { summaryLines } from "@/lib/table-summary";
+import { filterRowsByDateRange, summaryLines } from "@/lib/table-summary";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -371,7 +371,15 @@ export function Zeiterfassung() {
       "",
     ]);
     // Generischer Zusammenfassungsblock ganz oben im Export.
-    const objRows = rows.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ""])));
+    // Strikt nur Datensätze des gewählten Monats (Sicherheitsnetz für den Export).
+    const monthStart = `${month}-01`;
+    const monthEnd = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
+      .toISOString()
+      .slice(0, 10);
+    const objRows = filterRowsByDateRange(
+      rows.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] ?? ""]))),
+      { from: monthStart, to: monthEnd },
+    );
     const preamble = [
       [`Stundenzettel ${month}`],
       ["Zusammenfassung (Endsummen)"],
@@ -381,7 +389,8 @@ export function Zeiterfassung() {
       }),
       [],
     ];
-    const csv = [...preamble, head, ...rows, [], ...perEmployee]
+    const dataRows = objRows.map((r) => head.map((h) => String(r[h] ?? "")));
+    const csv = [...preamble, head, ...dataRows, [], ...perEmployee]
       .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
       .join("\r\n");
     downloadBlob(

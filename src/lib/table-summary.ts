@@ -83,10 +83,12 @@ const EXCLUDE_HINTS = [
   "plz",
   "iban",
   "satz",
+  "stundensatz",
   "prozent",
   "%",
   "von",
   "bis",
+  "pause",
   "schlüssel",
   "kennzeichen",
   "wkz",
@@ -168,7 +170,11 @@ function csvEscape(value: unknown) {
  */
 export function buildCsvWithSummary(
   rows: TableRow[],
-  options?: { title?: string; separator?: string; eol?: string },
+  options?: {
+    title?: string | undefined;
+    separator?: string | undefined;
+    eol?: string | undefined;
+  },
 ): string {
   if (rows.length === 0) return "";
   const sep = options?.separator ?? ";";
@@ -204,4 +210,71 @@ export function summaryHtml(rows: TableRow[], title?: string): string {
     })
     .join("");
   return `<p><b>Zusammenfassung${title ? ` – ${esc(title)}` : ""} (Endsummen)</b></p><table border="1">${cells}</table>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Generische, strikte Datums-Filterung für Tabellen und Exporte
+ * ------------------------------------------------------------------ */
+
+const DATE_HINTS = ["datum", "date", "tag", "zeitraum"];
+
+/** Liest ein Datum aus deutschen („01.08.2026“) oder ISO-Werten („2026-08-01“). */
+export function parseRowDate(value: unknown): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const de = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (de) return `${de[3]}-${de[2]!.padStart(2, "0")}-${de[1]!.padStart(2, "0")}`;
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  return null;
+}
+
+/** Ermittelt die Datumsspalten einer Tabelle (Header-Hinweis oder Werteformat). */
+export function detectDateColumns(rows: TableRow[]): string[] {
+  if (rows.length === 0) return [];
+  const headers = Object.keys(rows[0] ?? {});
+  return headers.filter((h) => {
+    const c = h.toLowerCase();
+    if (DATE_HINTS.some((d) => c.includes(d))) {
+      return rows.some((r) => parseRowDate(r[h]) !== null);
+    }
+    const filled = rows.filter((r) => String(r[h] ?? "").trim() !== "");
+    if (filled.length === 0) return false;
+    return filled.every((r) => parseRowDate(r[h]) !== null);
+  });
+}
+
+export type DateRange = { from?: string; to?: string; columns?: string[] };
+
+/**
+ * Entfernt strikt alle Zeilen außerhalb des gewählten Zeitraums.
+ * Zeilen ohne erkennbares Datum bleiben erhalten (z. B. Summenzeilen).
+ */
+export function filterRowsByDateRange<T extends TableRow>(rows: T[], range?: DateRange): T[] {
+  if (!range || (!range.from && !range.to) || rows.length === 0) return rows;
+  const columns = range.columns?.length ? range.columns : detectDateColumns(rows);
+  if (columns.length === 0) return rows;
+  return rows.filter((row) => {
+    const dates = columns.map((c) => parseRowDate(row[c])).filter((d): d is string => d !== null);
+    if (dates.length === 0) return true;
+    return dates.every((d) => (!range.from || d >= range.from) && (!range.to || d <= range.to));
+  });
+}
+
+/**
+ * Kanonischer CSV-Export: strikte Datumsfilterung, Endsummen oben,
+ * UTF-8-BOM und Semikolon – Excel öffnet die Datei direkt als Tabelle.
+ */
+export function buildCsvBlob(
+  rows: TableRow[],
+  options?: { title?: string | undefined; range?: DateRange | undefined; eol?: string | undefined },
+): Blob | null {
+  const filtered = filterRowsByDateRange(rows, options?.range);
+  if (filtered.length === 0) return null;
+  const title =
+    options?.title && (options.range?.from || options.range?.to)
+      ? `${options.title} (${options.range?.from ?? "…"} bis ${options.range?.to ?? "…"})`
+      : options?.title;
+  const csv = buildCsvWithSummary(filtered, { title, separator: ";", eol: options?.eol ?? "\r\n" });
+  return new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
 }

@@ -25,7 +25,12 @@ import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { TableSummary } from "@/components/TableSummary";
-import { buildCsvWithSummary, summaryHtml } from "@/lib/table-summary";
+import {
+  buildCsvBlob,
+  filterRowsByDateRange,
+  summaryHtml,
+  type DateRange,
+} from "@/lib/table-summary";
 
 export const Route = createFileRoute("/_authenticated/steuerberater")({
   head: () => ({
@@ -58,17 +63,18 @@ function download(name: string, blob: Blob) {
   void saveFile(blob, name);
 }
 
-function downloadCsv(name: string, rows: Row[]) {
-  if (rows.length === 0) {
+function downloadCsv(name: string, rows: Row[], range?: DateRange) {
+  // Strikte Datumsfilterung + Endsummen oben + UTF-8-BOM/Semikolon (Excel-tauglich).
+  const blob = buildCsvBlob(rows, { title: name.replace(/\.csv$/i, ""), range });
+  if (!blob) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
   }
-  // Endsummen stehen generisch immer ganz oben im Export.
-  const csv = buildCsvWithSummary(rows, { title: name.replace(/\.csv$/i, "") });
-  download(name, new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+  download(name, blob);
 }
 
-function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[]) {
+function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[], range?: DateRange) {
+  sheets = sheets.map((s) => ({ ...s, rows: filterRowsByDateRange(s.rows, range) }));
   const filled = sheets.filter((s) => s.rows.length > 0);
   const tables = filled
     .map((s) => {
@@ -85,9 +91,7 @@ function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[]) {
     return;
   }
   // Gesamtübersicht aller Blätter zuerst.
-  const overview = filled
-    .map((s) => `<h4>${s.title}</h4>${summaryHtml(s.rows, s.title)}`)
-    .join("");
+  const overview = filled.map((s) => `<h4>${s.title}</h4>${summaryHtml(s.rows, s.title)}`).join("");
   const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body><h2>Zusammenfassung (Endsummen)</h2>${overview}<hr/>${tables}</body></html>`;
   download(name, new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8" }));
 }
@@ -407,39 +411,48 @@ function Steuerberater() {
       </section>
 
       <section className="no-print flex flex-wrap gap-2">
-        <Button onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows)}>
+        <Button
+          onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}
+        >
           <Download className="size-4" /> DATEV-Export (CSV)
         </Button>
-        <Button variant="outline" onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows)}>
+        <Button
+          variant="outline"
+          onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows, { from, to })}
+        >
           <Download className="size-4" /> Rechnungen (CSV)
         </Button>
         <Button
           variant="outline"
-          onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows)}
+          onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows, { from, to })}
         >
           <Download className="size-4" /> Ausgaben (CSV)
         </Button>
         <Button
           variant="outline"
-          onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows)}
+          onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows, { from, to })}
         >
           <Download className="size-4" /> Stundenzettel (CSV)
         </Button>
         <Button
           variant="outline"
-          onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows)}
+          onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows, { from, to })}
         >
           <Download className="size-4" /> Lohnabrechnung (CSV)
         </Button>
         <Button
           variant="outline"
           onClick={() =>
-            downloadExcel(`Steuerauswertung_${period}.xls`, [
-              { title: "Rechnungen", rows: docRows },
-              { title: "Ausgaben", rows: expenseRows },
-              { title: "Stundenzettel", rows: timeRows },
-              { title: "Lohnabrechnung", rows: payrollRows },
-            ])
+            downloadExcel(
+              `Steuerauswertung_${period}.xls`,
+              [
+                { title: "Rechnungen", rows: docRows },
+                { title: "Ausgaben", rows: expenseRows },
+                { title: "Stundenzettel", rows: timeRows },
+                { title: "Lohnabrechnung", rows: payrollRows },
+              ],
+              { from, to },
+            )
           }
         >
           <FileSpreadsheet className="size-4" /> Excel-Export
@@ -578,31 +591,31 @@ function Table({ rows, empty }: { rows: Row[]; empty: string }) {
   const headers = Object.keys(rows[0]!);
   return (
     <>
-    <TableSummary rows={rows} />
-    <div className="mt-2 overflow-x-auto">
-      <table className="w-full text-left text-xs">
-        <thead>
-          <tr className="border-b">
-            {headers.map((h) => (
-              <th key={h} className="py-2 pr-3 font-medium">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b last:border-0">
+      <TableSummary rows={rows} />
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-b">
               {headers.map((h) => (
-                <td key={h} className="py-1.5 pr-3">
-                  {r[h]}
-                </td>
+                <th key={h} className="py-2 pr-3 font-medium">
+                  {h}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-b last:border-0">
+                {headers.map((h) => (
+                  <td key={h} className="py-1.5 pr-3">
+                    {r[h]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
@@ -641,10 +654,7 @@ function SteuerberaterZugriffsstatus() {
 
   const revoke = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("accountant_access")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("accountant_access").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -694,10 +704,7 @@ function SteuerberaterZugriffsstatus() {
 
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
         {STEUERBERATER_RECHTE.map((recht) => (
-          <li
-            key={recht.label}
-            className="flex items-center gap-2 rounded-md border p-2 text-sm"
-          >
+          <li key={recht.label} className="flex items-center gap-2 rounded-md border p-2 text-sm">
             {recht.erlaubt ? (
               <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             ) : (
@@ -713,9 +720,7 @@ function SteuerberaterZugriffsstatus() {
       {aktiv && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/30 p-3">
           <div className="min-w-0 text-sm">
-            <div className="font-medium">
-              {aktiv.email || "Steuerberater ohne E-Mail"}
-            </div>
+            <div className="font-medium">{aktiv.email || "Steuerberater ohne E-Mail"}</div>
             <div className="text-xs text-muted-foreground">
               {istAktiv
                 ? `Aktiv seit ${formatDate(aktiv.activated_at ?? aktiv.last_used_at ?? aktiv.created_at)}`

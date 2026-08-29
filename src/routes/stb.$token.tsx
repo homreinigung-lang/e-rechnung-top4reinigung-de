@@ -28,7 +28,12 @@ import {
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
 import { TableSummary } from "@/components/TableSummary";
-import { buildCsvWithSummary, summaryHtml } from "@/lib/table-summary";
+import {
+  buildCsvBlob,
+  filterRowsByDateRange,
+  summaryHtml,
+  type DateRange,
+} from "@/lib/table-summary";
 
 export const Route = createFileRoute("/stb/$token")({
   head: () => ({
@@ -58,7 +63,13 @@ function de(v: number) {
 }
 /** Wandelt deutsche Zahlenstrings ("1.234,56") zurück in eine Zahl. */
 function parseDe(v: unknown) {
-  return Number(String(v ?? "").replace(/\./g, "").replace(",", ".")) || 0;
+  return (
+    Number(
+      String(v ?? "")
+        .replace(/\./g, "")
+        .replace(",", "."),
+    ) || 0
+  );
 }
 function download(name: string, blob: Blob) {
   void (async () => {
@@ -70,16 +81,21 @@ function download(name: string, blob: Blob) {
   })();
 }
 
-function downloadCsv(name: string, rows: Table[]) {
-  if (rows.length === 0) {
+function downloadCsv(name: string, rows: Table[], range?: DateRange) {
+  // Strikte Datumsfilterung + Endsummen oben + UTF-8-BOM/Semikolon (Excel-tauglich).
+  const blob = buildCsvBlob(rows, { title: name.replace(/\.csv$/i, ""), range });
+  if (!blob) {
     toast.error("Keine Daten im gewählten Zeitraum.");
     return;
   }
-  // Endsummen stehen generisch immer ganz oben im Export.
-  const csv = buildCsvWithSummary(rows, { title: name.replace(/\.csv$/i, "") });
-  download(name, new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+  download(name, blob);
 }
-function downloadExcel(name: string, sheets: { title: string; rows: Table[] }[]) {
+function downloadExcel(
+  name: string,
+  sheets: { title: string; rows: Table[] }[],
+  range?: DateRange,
+) {
+  sheets = sheets.map((s) => ({ ...s, rows: filterRowsByDateRange(s.rows, range) }));
   const tables = sheets
     .filter((s) => s.rows.length > 0)
     .map((s) => {
@@ -333,10 +349,7 @@ function AccountantPortal() {
     Notiz: String(t["note"] || t["absence_reason"] || ""),
   }));
   const hoursTotal = workEntries.reduce((s, t) => s + num(t["hours"]), 0);
-  const wageTotal = workEntries.reduce(
-    (s, t) => s + num(t["hours"]) * num(t["hourly_rate"]),
-    0,
-  );
+  const wageTotal = workEntries.reduce((s, t) => s + num(t["hours"]) * num(t["hourly_rate"]), 0);
   const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
   const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
 
@@ -438,19 +451,19 @@ function AccountantPortal() {
           <section className="no-print flex flex-wrap gap-2">
             <Button
               variant="outline"
-              onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows)}
+              onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows, { from, to })}
             >
               <Download className="size-4" /> Rechnungen (CSV)
             </Button>
             <Button
               variant="outline"
-              onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows)}
+              onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows, { from, to })}
             >
               <Download className="size-4" /> Ausgaben (CSV)
             </Button>
             <Button
               variant="outline"
-              onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows)}
+              onClick={() => downloadCsv(`Stundenzettel_${period}.csv`, timeRows, { from, to })}
             >
               <Download className="size-4" /> Stundenzettel (CSV)
             </Button>
@@ -469,7 +482,7 @@ function AccountantPortal() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows)}
+              onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows, { from, to })}
             >
               <Download className="size-4" /> Lohnabrechnung (CSV)
             </Button>
@@ -477,12 +490,16 @@ function AccountantPortal() {
             <Button
               variant="outline"
               onClick={() =>
-                downloadExcel(`Steuerauswertung_${period}.xls`, [
-                  { title: "Rechnungen", rows: docRows },
-                  { title: "Ausgaben", rows: expenseRows },
-                  { title: "Stundenzettel", rows: timeRows },
-                  { title: "Lohnabrechnung", rows: payrollRows },
-                ])
+                downloadExcel(
+                  `Steuerauswertung_${period}.xls`,
+                  [
+                    { title: "Rechnungen", rows: docRows },
+                    { title: "Ausgaben", rows: expenseRows },
+                    { title: "Stundenzettel", rows: timeRows },
+                    { title: "Lohnabrechnung", rows: payrollRows },
+                  ],
+                  { from, to },
+                )
               }
             >
               <FileSpreadsheet className="size-4" /> Excel-Export
@@ -638,31 +655,31 @@ function DataTable({ rows, empty }: { rows: Table[]; empty: string }) {
   const headers = Object.keys(rows[0]!);
   return (
     <>
-    <TableSummary rows={rows} />
-    <div className="mt-2 overflow-x-auto">
-      <table className="w-full text-left text-xs">
-        <thead>
-          <tr className="border-b">
-            {headers.map((h) => (
-              <th key={h} className="py-2 pr-3 font-medium">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b last:border-0">
+      <TableSummary rows={rows} />
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-b">
               {headers.map((h) => (
-                <td key={h} className="py-1.5 pr-3">
-                  {r[h]}
-                </td>
+                <th key={h} className="py-2 pr-3 font-medium">
+                  {h}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-b last:border-0">
+                {headers.map((h) => (
+                  <td key={h} className="py-1.5 pr-3">
+                    {r[h]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
