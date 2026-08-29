@@ -450,6 +450,12 @@ function ProjektDetail() {
                 <Loader2 className="size-4 animate-spin" /> KI-Analyse läuft …
               </span>
             )}
+            {!analyzing && isTender && project.source_file_name && (
+              <span className="text-sm text-emerald-700">
+                ✓ Datei geladen{items.length > 0 ? ` · ${items.length} Positionen erkannt` : ""}
+              </span>
+            )}
+
           </div>
         </div>
 
