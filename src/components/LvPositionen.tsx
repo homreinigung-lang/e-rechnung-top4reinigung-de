@@ -212,29 +212,35 @@ export function LvPositionen({ items, onPatch, onAdd, onRemove }: Props) {
                         selectedId === it.id ? "bg-muted/70" : ""
                       }`}
                     >
-                      <td className="py-2 pr-3 whitespace-nowrap tabular-nums text-muted-foreground">
+                      <td className="py-1.5 pr-3 whitespace-nowrap tabular-nums text-muted-foreground">
                         {posLabel(it)}
                       </td>
-                      <td className="py-2 pr-3">
-                        <div className="font-medium">{it.title || "Ohne Bezeichnung"}</div>
+                      <td className="max-w-[22rem] py-1.5 pr-3">
+                        <div className="truncate font-medium">
+                          {it.title || "Ohne Bezeichnung"}
+                        </div>
                         {it.section && (
-                          <div className="text-xs text-muted-foreground">{it.section}</div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {it.section}
+                          </div>
                         )}
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-1.5 pr-3 text-right tabular-nums">
                         {Number(it.quantity) > 0 ? formatNumber(Number(it.quantity)) : "—"}
                       </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{it.unit || "—"}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-1.5 pr-3 whitespace-nowrap text-muted-foreground">
+                        {it.unit || "—"}
+                      </td>
+                      <td className="py-1.5 pr-3 text-right tabular-nums">
                         {priced ? formatMoney(Number(it.unit_price)) : "—"}
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
+                      <td className="py-1.5 pr-3 text-right font-medium tabular-nums">
                         {priced && Number(it.quantity) > 0 ? formatMoney(total(it)) : "—"}
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-1.5 pr-3">
                         <StatusBadge status={status} />
                       </td>
-                      <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
                         <ConfirmDeleteButton
                           title="Position wirklich löschen?"
                           description={`Die Position „${it.title || "ohne Titel"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
@@ -407,7 +413,7 @@ function LvDetail({
       <div className="flex items-center justify-between gap-2">
         <StatusBadge status={status} />
         <span
-          className={`text-xs transition-opacity ${saved ? "opacity-100" : "opacity-0"} text-emerald-700`}
+          className={`text-xs text-muted-foreground transition-opacity ${saved ? "opacity-100" : "opacity-0"}`}
           aria-live="polite"
         >
           <Check className="mr-1 inline size-3" />
