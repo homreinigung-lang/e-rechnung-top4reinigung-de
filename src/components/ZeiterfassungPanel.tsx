@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
+import { summaryLines } from "@/lib/table-summary";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
