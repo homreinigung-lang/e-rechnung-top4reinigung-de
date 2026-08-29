@@ -341,7 +341,11 @@ function LvDetail({
     savedTimer.current = setTimeout(() => setSaved(false), 1600);
   }, []);
 
-  useEffect(() => () => savedTimer.current && clearTimeout(savedTimer.current), []);
+  useEffect(() => {
+    return () => {
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+    };
+  }, []);
 
   /** Speichert nur bei echter Änderung – ohne Rückfrage. */
   const save = useCallback(
