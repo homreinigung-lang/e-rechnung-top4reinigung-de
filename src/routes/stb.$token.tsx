@@ -128,19 +128,32 @@ async function exportHoursPdf(
   doc.text(`${companyName || "Stundenübersicht"} · Stunden je Mitarbeiter`, 15, y);
   y += 10;
 
-  const per = new Map<string, { hours: number; amount: number; sick: number; vacation: number }>();
+  const per = new Map<
+    string,
+    { hours: number; amount: number; sick: number; vacation: number; personnel: string }
+  >();
   for (const e of entries) {
     const name = String(e["employee_name"] || "Ohne Zuordnung");
     const code = String(e["lohnart"] ?? "A");
     const h = code === "A" ? num(e["hours"]) : 0;
-    const cur = per.get(name) ?? { hours: 0, amount: 0, sick: 0, vacation: 0 };
+    const cur = per.get(name) ?? { hours: 0, amount: 0, sick: 0, vacation: 0, personnel: "" };
     per.set(name, {
       hours: cur.hours + h,
       amount: cur.amount + h * num(e["hourly_rate"]),
       sick: cur.sick + (code === "K" ? 1 : 0),
       vacation: cur.vacation + (code === "U" ? 1 : 0),
+      personnel: cur.personnel || String(e["personnel_number"] || ""),
     });
   }
+
+  // Kompakte Abrechnungs-Zusammenfassung direkt in der Kopfzeile.
+  const sumH = [...per.values()].reduce((s, v) => s + v.hours, 0);
+  const sumA = [...per.values()].reduce((s, v) => s + v.amount, 0);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Gesamtstunden: ${de(sumH)} Std.    Gesamtlohn: ${formatMoney(sumA)}`, 15, y);
+  doc.setFont("helvetica", "normal");
+  y += 8;
 
   doc.setFontSize(10);
   doc.text("Mitarbeiter", 15, y);
