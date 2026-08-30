@@ -42,6 +42,7 @@ import {
   absenceLabel,
   absenceReason,
   absenceShort,
+  countsForPayroll,
   isAbsence,
   isEffective,
 } from "@/lib/absence";
