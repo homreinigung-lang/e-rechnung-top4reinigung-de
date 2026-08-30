@@ -432,16 +432,18 @@ export function Personal() {
   /** Monatsabrechnung: Arbeitsstunden, Lohn und Abwesenheitstage je Mitarbeiter. */
   const monthPrefix = `${monthCursor.getFullYear()}-${String(monthCursor.getMonth() + 1).padStart(2, "0")}`;
   const payroll = employees.map((e) => {
+    // Strikt: nur bestätigte Stundenzettel-Einträge des gewählten Monats.
     const rows = entries.filter(
-      (t) => t.employee_id === e.id && String(t.work_date).startsWith(monthPrefix),
+      (t) =>
+        t.employee_id === e.id &&
+        String(t.work_date).startsWith(monthPrefix) &&
+        countsForPayroll(t),
     );
     const workHours = rows
       .filter((t) => !isAbsence(t))
       .reduce((s, t) => s + Number(t.hours || 0), 0);
     const days = (reason: string) =>
-      new Set(
-        rows.filter((t) => absenceReason(t) === reason && isEffective(t)).map((t) => t.work_date),
-      ).size;
+      new Set(rows.filter((t) => absenceReason(t) === reason).map((t) => t.work_date)).size;
     const rate = Number(e.hourly_rate ?? 0);
     return {
       id: e.id,
