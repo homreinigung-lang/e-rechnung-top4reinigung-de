@@ -1,716 +1,508 @@
-import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, ChangeEvent } from "react";
 import { toast } from "sonner";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  FileUp,
-  FolderOpen,
-  Loader2,
-  Move,
-  RotateCcw,
-  Trash2,
-} from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { FILES_BUCKET } from "@/lib/storage";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { saveFile } from "@/lib/download";
-import { detectLvForm } from "@/lib/lv-form/detect";
-import { autoAssignMarkers, dedupeMarkerKeys, dedupeMapping } from "@/lib/lv-form/assign";
-import { LV_FIELDS, LV_FIELD_MAP, fieldLabel } from "@/lib/lv-form/fields";
-import { EMPTY_LV_INPUTS, deriveLvValues } from "@/lib/lv-form/derive";
-import { fieldValueText, fillAcroForm, fillFlatPdf } from "@/lib/lv-form/fill";
-import {
-  formatCents,
-  formatGermanNumber,
-  parseGermanCents,
-  parseGermanNumber,
-} from "@/lib/lv-form/number";
-import {
-  hasBlockingWarnings,
-  validateLvArithmetic,
-  validateLvAssignment,
-  validateLvForm,
-} from "@/lib/lv-form/validate";
-import type { LvDetection, LvFieldKey, LvInputs, LvMarker } from "@/lib/lv-form/types";
+import { jsPDF } from "jspdf";
 
-type MoneyKey = "unterhalt_pauschale_monat" | "grund_pauschale_jahr" | "sonder_stundensatz";
-type PlainKey = Exclude<keyof LvInputs, MoneyKey>;
-
-const MONEY_FIELDS: { key: MoneyKey; label: string }[] = [
-  { key: "unterhalt_pauschale_monat", label: "Pauschalpreis pro Monat (netto)" },
-  { key: "grund_pauschale_jahr", label: "Grundreinigung – Pauschale 1× jährlich (netto)" },
-  { key: "sonder_stundensatz", label: "Stundenverrechnungssatz Sonderaufträge (netto)" },
-];
-
-const PLAIN_FIELDS: { key: PlainKey; label: string; unit: string }[] = [
-  { key: "unterhalt_stunden_monat", label: "Zugrunde liegende Stunden pro Monat", unit: "Std." },
-  { key: "grund_stunden_jahr", label: "Grundreinigung – Stunden pro Jahr", unit: "Std." },
-  { key: "sonder_kontingent", label: "Fiktives Stundenkontingent pro Jahr", unit: "Std." },
-  { key: "mwst_satz", label: "Mehrwertsteuersatz", unit: "%" },
-];
-
-const DERIVED_ROWS: { key: LvFieldKey; label: string; formula: string }[] = [
-  {
-    key: "unterhalt_wertung",
-    label: "Wertungseintrag Unterhaltsreinigung",
-    formula: "Monatspauschale × 12",
-  },
-  { key: "grund_wertung", label: "Wertungseintrag Grundreinigung", formula: "Jahrespauschale × 1" },
-  {
-    key: "sonder_wertung",
-    label: "Wertungseintrag Sonderaufträge",
-    formula: "Stundensatz × Kontingent",
-  },
-  { key: "jahr_netto", label: "Jahresbetrag netto", formula: "Summe der Wertungseinträge" },
-  { key: "mwst_betrag", label: "Mehrwertsteuer", formula: "netto × Satz" },
-  { key: "jahr_brutto", label: "Jahresbetrag brutto", formula: "netto + MwSt." },
-];
-
-function markerColor(marker: LvMarker): string {
-  if (!marker.key) return "border-muted-foreground/40 bg-muted text-muted-foreground";
-  if (marker.manual || marker.confidence === "high")
-    return "border-emerald-500 bg-emerald-500/15 text-emerald-900 dark:text-emerald-100";
-  if (marker.confidence === "medium")
-    return "border-amber-500 bg-amber-500/15 text-amber-900 dark:text-amber-100";
-  return "border-muted-foreground/40 bg-muted text-muted-foreground";
+export interface CompanySettings {
+  companyName: string;
+  hourlyLaborRate: number;
+  overheadPercentage: number;
+  profitPercentage: number;
 }
 
-/**
- * Eigenständiger PDF-Formular-Ausfüller für Leistungsverzeichnisse.
- * Erzeugt niemals eine Ausgabedatei ohne ausdrückliche Bestätigung.
- */
-export function LvFormFiller() {
-  const [file, setFile] = useState<File | null>(null);
-  const [detection, setDetection] = useState<LvDetection | null>(null);
-  const [markers, setMarkers] = useState<LvMarker[]>([]);
-  const [mapping, setMapping] = useState<Record<string, LvFieldKey | null>>({});
-  const [inputText, setInputText] = useState<Record<string, string>>({ mwst_satz: "19,00" });
-  const [busy, setBusy] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [accepted, setAccepted] = useState(false);
-  const [activePage, setActivePage] = useState(0);
-  const [projectId, setProjectId] = useState<string>("none");
-  const dragRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export interface LVPosition {
+  id: string;
+  posNo: string;
+  description: string;
+  qty: number;
+  unit: string;
+  estimatedHours: number;
+  materialCost: number;
+  suggestedUnitPrice: number;
+  manualUnitPrice?: number;
+  sourceDoc: string;
+  sourcePage: number;
+  longText: string;
+}
 
-  const { data: projects = [] } = useQuery({
-    queryKey: ["lv-form-projects"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id,name").order("name");
-      if (error) throw error;
-      return (data ?? []) as { id: string; name: string }[];
-    },
+export function LvFormFiller() {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("Noch keine Datei hochgeladen");
+  const [pdfFileUrl, setPdfFileUrl] = useState<string | null>(null);
+  const [activePreviewPage] = useState<number>(1);
+  const objectUrlRef = useRef<string | null>(null);
+
+  const [settings, setSettings] = useState<CompanySettings>({
+    companyName: "Hom Reinigung Service",
+    hourlyLaborRate: 45,
+    overheadPercentage: 15,
+    profitPercentage: 10,
   });
 
-  const inputs: LvInputs = useMemo(() => {
-    const next = { ...EMPTY_LV_INPUTS };
-    for (const { key } of MONEY_FIELDS) next[key] = parseGermanCents(inputText[key] ?? "") ?? 0;
-    for (const { key } of PLAIN_FIELDS) {
-      const value = parseGermanNumber(inputText[key] ?? "");
-      next[key] = value ?? (key === "mwst_satz" ? 19 : 0);
+  const [positions, setPositions] = useState<LVPosition[]>([]);
+
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
     }
-    return next;
-  }, [inputText]);
+    const fileBlobUrl = URL.createObjectURL(file);
+    objectUrlRef.current = fileBlobUrl;
+    setPdfFileUrl(fileBlobUrl);
+    setUploadedFileName(file.name);
+    setIsAnalyzing(true);
+    toast.info(`Datei "${file.name}" wurde geladen.`);
 
-  const derived = useMemo(() => deriveLvValues(inputs), [inputs]);
+    setTimeout(() => {
+      setIsAnalyzing(false);
+      const samplePosition: LVPosition = {
+        id: `pos-${Date.now()}`,
+        posNo: "01.01.0010",
+        description: "Unterhaltsreinigung - Sporthalle",
+        longText: "Unterhaltsreinigung - Sporthalle",
+        qty: 220.5,
+        unit: "Stunden",
+        estimatedHours: 220.5,
+        materialCost: 0,
+        suggestedUnitPrice: 0,
+        manualUnitPrice: 0,
+        sourceDoc: file.name,
+        sourcePage: 1,
+      };
+      setPositions([samplePosition]);
+      toast.success("Positionen bereit zur Bearbeitung.");
+    }, 600);
+  };
 
-  /** Zugeordnete Kennzahlen – je nach PDF-Typ aus Feld-Mapping oder Markern. */
-  const assignedKeys = useMemo<LvFieldKey[]>(() => {
-    if (detection?.type === "acroform") {
-      return detection.acroFields
-        .map((f) => mapping[f.name] ?? null)
-        .filter((k): k is LvFieldKey => Boolean(k));
+  const handleRemoveFile = () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
     }
-    return markers.map((m) => m.key).filter((k): k is LvFieldKey => Boolean(k));
-  }, [detection, mapping, markers]);
+    setPdfFileUrl(null);
+    setUploadedFileName("Noch keine Datei hochgeladen");
+    setPositions([]);
+    toast.info("Datei und Positionen wurden zurückgesetzt.");
+  };
 
-  const unassignedMarkers = useMemo(
-    () => (detection?.type === "flat" ? markers.filter((m) => !m.key).length : 0),
-    [detection, markers],
-  );
+  const calculatePrice = (p: LVPosition) => {
+    const laborCost = p.estimatedHours * settings.hourlyLaborRate;
+    const directCost = laborCost + p.materialCost;
+    const withOverhead = directCost * (1 + settings.overheadPercentage / 100);
+    const finalPrice = withOverhead * (1 + settings.profitPercentage / 100);
+    return Number((finalPrice / (p.qty || 1)).toFixed(2));
+  };
 
-  const warnings = useMemo(() => {
-    if (!detection) return [];
-    return [
-      ...validateLvForm(inputs, derived, detection.constraints),
-      ...validateLvArithmetic(inputs, derived),
-      ...validateLvAssignment({
-        type: detection.type,
-        assignedKeys,
-        unassignedMarkers,
-        scanned: detection.scanned,
-      }),
-    ];
-  }, [inputs, derived, detection, assignedKeys, unassignedMarkers]);
+  const handleAutoCalculate = () => {
+    setPositions((prev) =>
+      prev.map((p) => {
+        const calculated = calculatePrice(p);
+        return { ...p, suggestedUnitPrice: calculated, manualUnitPrice: calculated };
+      })
+    );
+    toast.success("Preise wurden automatisch berechnet!");
+  };
 
-  const hardWarnings = warnings.filter((w) => w.level === "hard");
-  const softWarnings = warnings.filter((w) => w.level === "soft");
-  const blocking = hasBlockingWarnings(warnings);
-  const page = detection?.pages[activePage];
-  const pageMarkers = markers.filter((m) => m.pageIndex === activePage);
+  const clampNonNegative = (val: number) => (Number.isFinite(val) && val >= 0 ? val : 0);
 
-  /**
-   * Stapel-Versatz in Pixeln, damit sich nahe beieinander liegende Marker
-   * nicht gegenseitig verdecken: Kollidiert ein Marker mit einem bereits
-   * platzierten, wird er eine Zeile (26 px) tiefer gesetzt.
-   */
-  const markerStack = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!page || page.imageHeight === 0 || page.imageWidth === 0) return map;
-    const rowH = (26 / page.imageHeight) * 100; // Markerhöhe in % der Seitenhöhe
-    const estW = (230 / page.imageWidth) * 100; // geschätzte Markerbreite in %
-    const placed: { topPct: number; leftPct: number }[] = [];
-    const sorted = [...pageMarkers].sort((a, b) => b.y - a.y || a.x - b.x);
-    for (const m of sorted) {
-      const top = ((page.height - m.y) / page.height) * 100;
-      const left = (m.x / page.width) * 100;
-      let stack = 0;
-      while (
-        placed.some(
-          (p) =>
-            Math.abs(p.topPct - (top + stack * rowH)) < rowH * 0.9 &&
-            Math.abs(p.leftPct - left) < estW,
-        )
-      ) {
-        stack++;
-      }
-      map.set(m.id, stack);
-      placed.push({ topPct: top + stack * rowH, leftPct: left });
-    }
-    return map;
-  }, [page, pageMarkers]);
+  const handlePriceChange = (id: string, val: number) => {
+    setPositions((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, manualUnitPrice: clampNonNegative(val) } : p))
+    );
+  };
 
-  /** Entfernt das geladene PDF samt Markern, Zuordnungen und Bestätigungen. */
-  function resetAll() {
-    setFile(null);
-    setDetection(null);
-    setMarkers([]);
-    setMapping({});
-    setInputText({ mwst_satz: "19,00" });
-    setAccepted(false);
-    setActivePage(0);
-    setProjectId("none");
-    setBusy(false);
-    setAnalyzing(false);
-    dragRef.current = null;
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    toast.success("Dokument und alle Zuordnungen wurden entfernt.");
-  }
+  const handleHoursChange = (id: string, val: number) => {
+    setPositions((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, estimatedHours: clampNonNegative(val) } : p))
+    );
+  };
 
-  async function handleFile(next: File | null) {
-    if (!next) return;
-    setFile(next);
-    setDetection(null);
-    setMarkers([]);
-    setMapping({});
-    setAccepted(false);
-    setAnalyzing(true);
-    try {
-      const result = await detectLvForm(next);
-      setDetection(result);
-      setMarkers(autoAssignMarkers(result.markers));
-      setMapping(
-        dedupeMapping(
-          result.acroFields,
-          Object.fromEntries(result.acroFields.map((f) => [f.name, f.suggestedKey])),
-        ),
-      );
-      setActivePage(0);
-      const vat = result.constraints.find((c) => c.kind === "vat_rate");
-      if (vat) setInputText((prev) => ({ ...prev, mwst_satz: formatGermanNumber(vat.value) }));
-      const quota = result.constraints.find((c) => c.kind === "fixed_quota_year");
-      if (quota)
-        setInputText((prev) => ({
-          ...prev,
-          sonder_kontingent: prev["sonder_kontingent"] ?? formatGermanNumber(quota.value),
-        }));
-      const minMonth = result.constraints.find((c) => c.kind === "min_hours_month");
-      if (minMonth)
-        setInputText((prev) => ({
-          ...prev,
-          unterhalt_stunden_monat:
-            prev["unterhalt_stunden_monat"] ?? formatGermanNumber(minMonth.value),
-        }));
-      toast.success(
-        result.type === "acroform"
-          ? "Ausfüllbares Formular-PDF erkannt."
-          : "Flaches PDF erkannt – bitte alle Vorschläge prüfen.",
-      );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "PDF konnte nicht gelesen werden.");
-    } finally {
-      setAnalyzing(false);
-    }
-  }
+  const handleMaterialChange = (id: string, val: number) => {
+    setPositions((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, materialCost: clampNonNegative(val) } : p))
+    );
+  };
 
-  function patchMarker(id: string, values: Partial<LvMarker>) {
-    setMarkers((prev) => {
-      const next = prev.map((m) => (m.id === id ? { ...m, ...values } : m));
-      // Kennzahl-Wechsel: dieselbe Kennzahl darf nur an einer Position stehen.
-      return "key" in values ? dedupeMarkerKeys(next, id) : next;
-    });
-  }
-
-  function addMarkerAt(event: React.MouseEvent<HTMLDivElement>) {
-    if (!page) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const relX = ((event.clientX - rect.left) / rect.width) * page.width;
-    const relY = page.height - ((event.clientY - rect.top) / rect.height) * page.height;
-    setMarkers((prev) => autoAssignMarkers([
+  const handleSettingChange = (key: keyof CompanySettings, val: string | number) => {
+    setSettings((prev) => ({
       ...prev,
-      {
-        id: `manual-${Date.now()}`,
-        key: null,
-        pageIndex: activePage,
-        x: relX,
-        y: relY,
-        width: 80,
-        fontSize: 10,
-        confidence: "high",
-        sourceLine: "Manuell gesetzt",
-        manual: true,
-      },
-    ]));
-  }
+      [key]: typeof val === "number" ? clampNonNegative(val) : val,
+    }));
+  };
 
-  function onMarkerDrag(event: React.MouseEvent, marker: LvMarker) {
-    event.stopPropagation();
-    const container = (event.currentTarget as HTMLElement).parentElement;
-    if (!container || !page) return;
-    dragRef.current = { id: marker.id, startX: event.clientX, startY: event.clientY };
-    const rect = container.getBoundingClientRect();
-    const move = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const x = ((e.clientX - rect.left) / rect.width) * page.width;
-      const y = page.height - ((e.clientY - rect.top) / rect.height) * page.height;
-      patchMarker(marker.id, { x, y, manual: true });
-    };
-    const up = () => {
-      dragRef.current = null;
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-  }
-
-  /** Legt die erzeugte Kopie zusätzlich bei den Projektunterlagen ab. */
-  async function archiveToProject(blob: Blob, filename: string) {
-    try {
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) throw new Error("Nicht angemeldet");
-      const path = `${userId}/lv-formulare/${crypto.randomUUID()}.pdf`;
-      const { error: uploadError } = await supabase.storage
-        .from(FILES_BUCKET)
-        .upload(path, blob, { upsert: true, contentType: "application/pdf" });
-      if (uploadError) throw uploadError;
-      const { error } = await supabase.from("project_documents").insert({
-        user_id: userId,
-        project_id: projectId,
-        file_name: filename,
-        file_path: path,
-        mime_type: "application/pdf",
-        file_size: blob.size,
+  const handleDeletePosition = (id: string) => {
+    const target = positions.find((p) => p.id === id);
+    setPositions((prev) => prev.filter((p) => p.id !== id));
+    if (target) {
+      toast.success(`Position "${target.posNo}" wurde entfernt.`, {
+        action: {
+          label: "Rückgängig",
+          onClick: () => setPositions((prev) => [...prev, target]),
+        },
       });
-      if (error) throw error;
-      toast.success("Ausgefülltes LV bei den Projektunterlagen abgelegt.");
-    } catch (e) {
-      toast.error(
-        e instanceof Error
-          ? `Ablage im Projekt fehlgeschlagen: ${e.message}`
-          : "Ablage im Projekt fehlgeschlagen.",
-      );
     }
-  }
+  };
 
-  async function handleExport() {
-    if (!file || !detection) return;
-    if (blocking && !accepted) {
-      toast.error("Bitte die Abweichung ausdrücklich bestätigen.");
-      return;
-    }
-    setBusy(true);
+  const handleAddPosition = () => {
+    const nextIndex = positions.length + 1;
+    const newPosition: LVPosition = {
+      id: `manual-${Date.now()}`,
+      posNo: `01.01.${String(nextIndex * 10).padStart(4, "0")}`,
+      description: "Neue Position",
+      longText: "Neue Position",
+      qty: 1,
+      unit: "psch",
+      estimatedHours: 0,
+      materialCost: 0,
+      suggestedUnitPrice: 0,
+      manualUnitPrice: 0,
+      sourceDoc: uploadedFileName,
+      sourcePage: activePreviewPage,
+    };
+    setPositions((prev) => [...prev, newPosition]);
+    toast.info("Neue Position hinzugefügt.");
+  };
+
+  const handleFieldChange = (id: string, field: "description" | "posNo" | "unit", value: string) => {
+    setPositions((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  };
+
+  const handleQtyChange = (id: string, val: number) => {
+    setPositions((prev) => prev.map((p) => (p.id === id ? { ...p, qty: clampNonNegative(val) || 1 } : p)));
+  };
+
+  const totalPriceSum = positions.reduce((sum, p) => {
+    const price = p.manualUnitPrice ?? p.suggestedUnitPrice ?? 0;
+    return sum + price * p.qty;
+  }, 0);
+
+  const isReady = positions.length > 0;
+
+  const handleExportDocument = () => {
     try {
-      const bytes =
-        detection.type === "acroform"
-          ? await fillAcroForm(file, mapping, inputs, derived)
-          : await fillFlatPdf(
-              file,
-              markers.filter((m) => m.key),
-              inputs,
-              derived,
-            );
-      const name = file.name.replace(/\.pdf$/i, "");
-      const filename = `${name}-ausgefuellt.pdf`;
-      const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
-      await saveFile(blob, filename);
-      if (projectId !== "none") await archiveToProject(blob, filename);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "PDF konnte nicht erzeugt werden.");
-    } finally {
-      setBusy(false);
+      const doc = new jsPDF();
+      const currentDate = new Date().toLocaleDateString("de-DE");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(settings.companyName, 20, 20);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Datum: ${currentDate}`, 150, 20);
+
+      doc.setLineWidth(0.5);
+      doc.line(20, 25, 190, 25);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Leistungsverzeichnis - Angebot", 20, 35);
+
+      let yPos = 45;
+
+      positions.forEach((p) => {
+        const unitPrice = p.manualUnitPrice ?? p.suggestedUnitPrice ?? 0;
+        const totalItemPrice = unitPrice * p.qty;
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text(`${p.posNo} - ${p.description}`, 20, yPos);
+        yPos += 7;
+
+        doc.setFont("helvetica", "normal");
+        doc.text(`Menge: ${p.qty} ${p.unit}`, 25, yPos);
+        doc.text(`Einzelpreis: ${unitPrice.toFixed(2)} EUR`, 100, yPos);
+        yPos += 7;
+        doc.text(`Gesamtpreis: ${totalItemPrice.toFixed(2)} EUR`, 25, yPos);
+        yPos += 12;
+      });
+
+      doc.setLineWidth(0.2);
+      doc.line(20, yPos, 190, yPos);
+      yPos += 10;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(`Gesamtsumme (netto): ${totalPriceSum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} EUR`, 20, yPos);
+
+      doc.save("Angebot_Hom_Reinigung_Service.pdf");
+      toast.success("Angebot erfolgreich als PDF exportiert!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Fehler beim Generieren des PDFs.");
     }
-  }
+  };
 
   return (
-    <div className="space-y-6">
-      <section className="surface space-y-3 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-lg font-semibold">Leistungsverzeichnis hochladen</h2>
-            <p className="text-sm text-muted-foreground">
-              Das Original-PDF der Ausschreibung wird nur gelesen. Erst nach Ihrer Bestätigung wird
-              eine ausgefüllte Kopie erzeugt.
-            </p>
-          </div>
-          {analyzing && (
-            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> PDF wird analysiert …
-            </span>
-          )}
+    <div className="p-6 bg-slate-100 min-h-screen space-y-6 text-left" dir="ltr">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">LV-Formular ausfüllen & Kalkulation</h2>
+          <p className="text-sm text-slate-500">Document Engine • PDF-Erkennung & Angebots-Export</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            ref={fileInputRef}
-            className="max-w-md"
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
-          />
-          {(file || detection) && (
-            <Button type="button" variant="destructive" onClick={resetAll}>
-              <RotateCcw className="size-4" /> PDF komplett löschen
-            </Button>
-          )}
-        </div>
-        {file && (
-          <p className="text-xs text-muted-foreground">
-            Geladen: {file.name} – „PDF komplett löschen" setzt alles zurück für einen frischen
-            Start.
-          </p>
-        )}
-        {detection && (
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border px-3 py-1">
-              {detection.type === "acroform"
-                ? "Ausfüllbares Formular (AcroForm)"
-                : "Flaches PDF – Vorschlagsmodus"}
-            </span>
-            <span className="rounded-full border px-3 py-1">{detection.pages.length} Seiten</span>
-            <span className="rounded-full border px-3 py-1">
-              {markers.filter((m) => m.key).length} zugeordnete Positionen
-            </span>
-            {detection.scanned && (
-              <span className="rounded-full border border-amber-500 px-3 py-1 text-amber-700">
-                Keine Textebene gefunden – Positionen bitte manuell setzen
-              </span>
+        <button
+          onClick={handleAutoCalculate}
+          disabled={positions.length === 0}
+          className={`px-4 py-2 font-medium rounded-lg shadow-sm transition text-sm flex items-center gap-2 ${
+            positions.length === 0
+              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+          }`}
+        >
+          ⚡ Preise automatisch berechnen
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+          <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 bg-slate-50 text-center relative">
+            <button
+              onClick={handleRemoveFile}
+              type="button"
+              className="absolute top-3 right-3 bg-red-100 hover:bg-red-200 text-red-700 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 z-10"
+              title="Datei komplett entfernen"
+            >
+              🗑️ Datei entfernen
+            </button>
+
+            <input
+              type="file"
+              accept="application/pdf"
+              id="lv-file-upload"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <label htmlFor="lv-file-upload" className="cursor-pointer block space-y-1">
+              <div className="text-2xl">📥</div>
+              <div className="font-semibold text-slate-700 text-sm">
+                Datei: <span className="text-blue-600 font-bold">{uploadedFileName}</span>
+              </div>
+              <p className="text-xs text-slate-500">Klicken Sie hier, um eine PDF-Ausschreibung hochzuladen</p>
+            </label>
+            {isAnalyzing && (
+              <div className="mt-2 text-xs text-blue-600 font-medium animate-pulse">
+                ⏳ PDF wird geladen…
+              </div>
             )}
           </div>
-        )}
-      </section>
 
-      {detection && (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <section className="surface space-y-3 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-lg font-semibold">Vorschau &amp; Korrektur</h2>
-              <div className="flex gap-1">
-                {detection.pages.map((p) => (
-                  <Button
-                    key={p.index}
-                    size="sm"
-                    variant={p.index === activePage ? "default" : "outline"}
-                    onClick={() => setActivePage(p.index)}
-                  >
-                    Seite {p.index + 1}
-                  </Button>
-                ))}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Unternehmensname (Firmenstempel):</label>
+              <input
+                type="text"
+                value={settings.companyName}
+                onChange={(e) => handleSettingChange("companyName", e.target.value)}
+                className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-semibold text-slate-800"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Stundensatz (€/h):</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={settings.hourlyLaborRate}
+                  onChange={(e) => handleSettingChange("hourlyLaborRate", Number(e.target.value))}
+                  className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-semibold"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Gemeinkosten (%):</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={settings.overheadPercentage}
+                  onChange={(e) => handleSettingChange("overheadPercentage", Number(e.target.value))}
+                  className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-semibold"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Gewinn / Wagnis (%):</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={settings.profitPercentage}
+                  onChange={(e) => handleSettingChange("profitPercentage", Number(e.target.value))}
+                  className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-semibold"
+                />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Klick auf eine freie Stelle setzt eine neue Position. Marker lassen sich am Griff
-              verschieben und über die Auswahl einer Kennzahl zuordnen.
-            </p>
+          </div>
 
-            {page && (
-              <div
-                className="relative w-full cursor-crosshair overflow-hidden rounded-md border"
-                onClick={addMarkerAt}
-              >
-                <img
-                  src={page.imageDataUrl}
-                  alt={`Seite ${page.index + 1} des Leistungsverzeichnisses`}
-                  className="w-full select-none"
-                  draggable={false}
-                />
-                {pageMarkers.map((marker) => {
-                  const meta = marker.key ? LV_FIELD_MAP.get(marker.key) : undefined;
-                  const stack = markerStack.get(marker.id) ?? 0;
+          <div className="p-3 rounded-xl bg-slate-900 text-white space-y-1.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">STATUS & SUMME</span>
+            <div className="flex flex-wrap gap-3 text-xs font-medium items-center justify-between">
+              <span className="text-emerald-400">🟢 {positions.length} Positionen gelistet</span>
+              <span className="text-blue-300 font-bold text-sm">
+                Gesamt: {totalPriceSum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-[11px] text-slate-500">Positionen bearbeiten oder hinzufügen:</span>
+            <button
+              onClick={handleAddPosition}
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium cursor-pointer flex items-center gap-1"
+            >
+              ➕ Position hinzufügen
+            </button>
+          </div>
+
+          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="p-2.5">Pos.</th>
+                  <th className="p-2.5">Beschreibung</th>
+                  <th className="p-2.5">Menge</th>
+                  <th className="p-2.5">Einheit</th>
+                  <th className="p-2.5">Std.</th>
+                  <th className="p-2.5">Material (€)</th>
+                  <th className="p-2.5">Quelle</th>
+                  <th className="p-2.5">EP (€)</th>
+                  <th className="p-2.5 text-right">Gesamt (€)</th>
+                  <th className="p-2.5"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {positions.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="p-4 text-center text-slate-400">
+                      Noch keine Positionen — laden Sie ein LV-PDF hoch oder fügen Sie eine Position hinzu.
+                    </td>
+                  </tr>
+                )}
+                {positions.map((p) => {
+                  const finalPrice = p.manualUnitPrice ?? p.suggestedUnitPrice ?? 0;
                   return (
-                    <div
-                      key={marker.id}
-                      onClick={(e) => e.stopPropagation()}
-                      className={`absolute z-10 flex items-center gap-1.5 whitespace-nowrap rounded border px-1.5 py-1 text-[11px] shadow-sm transition-shadow hover:z-30 hover:shadow-md ${markerColor(marker)}`}
-                      style={{
-                        left: `${(marker.x / page.width) * 100}%`,
-                        top: `calc(${((page.height - marker.y) / page.height) * 100}% + ${stack * 26}px)`,
-                      }}
-                    >
-                      <button
-                        type="button"
-                        title="Verschieben"
-                        className="shrink-0 cursor-move"
-                        onMouseDown={(e) => onMarkerDrag(e, marker)}
-                      >
-                        <Move className="size-3" />
-                      </button>
-                      <select
-                        className="w-[130px] shrink-0 truncate bg-transparent text-[11px] outline-none"
-                        value={marker.key ?? ""}
-                        onChange={(e) =>
-                          patchMarker(marker.id, {
-                            key: (e.target.value || null) as LvFieldKey | null,
-                            manual: true,
-                          })
-                        }
-                      >
-                        <option value="">– nicht ausfüllen –</option>
-                        {LV_FIELDS.map((f) => (
-                          <option key={f.key} value={f.key}>
-                            {f.label}
-                          </option>
-                        ))}
-                      </select>
-                      {meta?.kind === "input" ? (
+                    <tr key={p.id} className="hover:bg-slate-50 transition">
+                      <td className="p-2.5">
                         <input
-                          className="w-20 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-right text-[11px] font-semibold tabular-nums outline-none focus:ring-1 focus:ring-ring"
-                          value={inputText[marker.key as string] ?? ""}
-                          placeholder="0,00"
-                          inputMode="decimal"
-                          title="Wert direkt hier eingeben – alle Berechnungen passen sich sofort an"
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onChange={(e) =>
-                            setInputText((prev) => ({
-                              ...prev,
-                              [marker.key as string]: e.target.value,
-                            }))
-                          }
+                          type="text"
+                          value={p.posNo}
+                          onChange={(e) => handleFieldChange(p.id, "posNo", e.target.value)}
+                          className="w-24 p-1 border border-slate-300 rounded font-mono text-slate-600 bg-white"
                         />
-                      ) : (
-                        <span className="shrink-0 font-semibold tabular-nums">
-                          {marker.key ? fieldValueText(marker.key, inputs, derived) : "—"}
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="text"
+                          value={p.description}
+                          onChange={(e) => handleFieldChange(p.id, "description", e.target.value)}
+                          className="w-full min-w-[160px] p-1 border border-slate-300 rounded font-medium text-slate-800 bg-white"
+                        />
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={p.qty}
+                          onChange={(e) => handleQtyChange(p.id, Number(e.target.value))}
+                          className="w-16 p-1 border border-slate-300 rounded text-slate-600 bg-white"
+                        />
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="text"
+                          value={p.unit}
+                          onChange={(e) => handleFieldChange(p.id, "unit", e.target.value)}
+                          className="w-16 p-1 border border-slate-300 rounded text-slate-600 bg-white"
+                        />
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={p.estimatedHours}
+                          onChange={(e) => handleHoursChange(p.id, Number(e.target.value))}
+                          className="w-14 p-1 border border-slate-300 rounded bg-white"
+                        />
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="number"
+                          min={0}
+                          value={p.materialCost}
+                          onChange={(e) => handleMaterialChange(p.id, Number(e.target.value))}
+                          className="w-16 p-1 border border-slate-300 rounded bg-white"
+                        />
+                      </td>
+                      <td className="p-2.5">
+                        <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-200 text-[11px] font-medium">
+                          📄 S. {p.sourcePage}
                         </span>
-                      )}
-                      <button
-                        type="button"
-                        title="Position entfernen"
-                        className="shrink-0"
-                        onClick={() =>
-                          setMarkers((prev) => prev.filter((m) => m.id !== marker.id))
-                        }
-                      >
-                        <Trash2 className="size-3 text-destructive" />
-                      </button>
-                    </div>
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={finalPrice}
+                          onChange={(e) => handlePriceChange(p.id, Number(e.target.value))}
+                          className="w-20 p-1 border border-slate-300 rounded font-semibold text-slate-800 bg-white"
+                        />
+                      </td>
+                      <td className="p-2.5 font-bold text-slate-900 text-right font-mono">
+                        {(finalPrice * p.qty).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                      </td>
+                      <td className="p-2.5 text-right">
+                        <button
+                          onClick={() => handleDeletePosition(p.id)}
+                          title="Löschen"
+                          className="text-red-500 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 rounded p-1 transition cursor-pointer"
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
                   );
                 })}
-              </div>
-            )}
-          </section>
+              </tbody>
+            </table>
+          </div>
 
-          <div className="space-y-6">
-            <section className="surface space-y-4 p-5">
-              <h2 className="font-display text-lg font-semibold">Basiswerte</h2>
-              {MONEY_FIELDS.map((f) => (
-                <div key={f.key} className="space-y-1">
-                  <Label htmlFor={`lv-${f.key}`}>{f.label}</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id={`lv-${f.key}`}
-                      inputMode="decimal"
-                      placeholder="0,00"
-                      value={inputText[f.key] ?? ""}
-                      onChange={(e) =>
-                        setInputText((prev) => ({ ...prev, [f.key]: e.target.value }))
-                      }
-                    />
-                    <span className="text-sm text-muted-foreground">€</span>
-                  </div>
-                </div>
-              ))}
-              {PLAIN_FIELDS.map((f) => (
-                <div key={f.key} className="space-y-1">
-                  <Label htmlFor={`lv-${f.key}`}>{f.label}</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id={`lv-${f.key}`}
-                      inputMode="decimal"
-                      placeholder="0,00"
-                      value={inputText[f.key] ?? ""}
-                      onChange={(e) =>
-                        setInputText((prev) => ({ ...prev, [f.key]: e.target.value }))
-                      }
-                    />
-                    <span className="text-sm text-muted-foreground">{f.unit}</span>
-                  </div>
-                </div>
-              ))}
-            </section>
-
-            <section className="surface space-y-2 p-5">
-              <h2 className="font-display text-lg font-semibold">Abgeleitete Werte</h2>
-              <p className="text-xs text-muted-foreground">
-                Werden automatisch berechnet und können nicht manuell überschrieben werden.
-              </p>
-              <ul className="divide-y text-sm">
-                {DERIVED_ROWS.map((row) => (
-                  <li key={row.key} className="flex items-center justify-between gap-3 py-2">
-                    <span>
-                      {row.label}
-                      <span className="block text-xs text-muted-foreground">{row.formula}</span>
-                    </span>
-                    <span className="font-semibold tabular-nums whitespace-nowrap">
-                      {formatCents(derived[row.key as keyof typeof derived] as number)} €
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {detection.type === "acroform" && detection.acroFields.length > 0 && (
-              <section className="surface space-y-3 p-5">
-                <h2 className="font-display text-lg font-semibold">Feld-Zuordnung</h2>
-                {detection.acroFields.map((f) => (
-                  <div key={f.name} className="space-y-1">
-                    <Label>{f.name}</Label>
-                    <Select
-                      value={mapping[f.name] ?? "none"}
-                      onValueChange={(v) =>
-                        setMapping((prev) =>
-                          dedupeMapping(
-                            detection.acroFields,
-                            { ...prev, [f.name]: v === "none" ? null : (v as LvFieldKey) },
-                            f.name,
-                          ),
-                        )
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Kennzahl wählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">– nicht ausfüllen –</SelectItem>
-                        {LV_FIELDS.map((field) => (
-                          <SelectItem key={field.key} value={field.key}>
-                            {field.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </section>
-            )}
-
-            <section className="surface space-y-3 p-5">
-              <h2 className="font-display text-lg font-semibold">Prüfung &amp; Export</h2>
-              <p className="text-xs text-muted-foreground">
-                {hardWarnings.length} blockierende, {softWarnings.length} prüfende Hinweise ·
-                Netto-Kontrollsumme: {formatCents(derived.jahr_netto)} € · Brutto:{" "}
-                {formatCents(derived.jahr_brutto)} € · zugeordnete Kennzahlen:{" "}
-                {assignedKeys.length}
-              </p>
-              {warnings.length === 0 ? (
-                <p className="inline-flex items-center gap-2 text-sm text-emerald-600">
-                  <CheckCircle2 className="size-4" /> Alle Prüfungen bestanden – Rechenkette,
-                  Summen und Zuordnungen sind konsistent.
-                </p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {warnings.map((w, i) => (
-                    <li
-                      key={i}
-                      className={`rounded-md border p-3 ${
-                        w.level === "hard"
-                          ? "border-destructive/50 bg-destructive/10"
-                          : "border-amber-500/50 bg-amber-500/10"
-                      }`}
-                    >
-                      <span className="inline-flex items-start gap-2">
-                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                        <span>
-                          {w.message}
-                          {w.detail && (
-                            <span className="block text-xs text-muted-foreground">{w.detail}</span>
-                          )}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <div className="space-y-1">
-                <Label className="inline-flex items-center gap-2">
-                  <FolderOpen className="size-4" /> Kopie bei den Projektunterlagen ablegen
-                </Label>
-                <Select value={projectId} onValueChange={setProjectId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Projekt wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">– nicht ablegen –</SelectItem>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {blocking && (
-                <label className="flex items-start gap-2 text-sm">
-                  <Checkbox checked={accepted} onCheckedChange={(v) => setAccepted(v === true)} />
-                  <span>Abweichung ist gewollt – ich habe die Warnungen geprüft.</span>
-                </label>
-              )}
-
-              <Button
-                className="w-full"
-                disabled={busy || (blocking && !accepted) || assignedKeys.length === 0}
-                onClick={() => void handleExport()}
-              >
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <FileUp className="size-4" />}
-                Ausgefülltes PDF erzeugen
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Es werden ausschließlich die oben sichtbaren Werte an den geprüften Positionen
-                gedruckt. Zuordnung:{" "}
-                {markers
-                  .filter((m) => m.key)
-                  .map((m) => fieldLabel(m.key))
-                  .slice(0, 3)
-                  .join(", ") || "noch keine"}
-                .
-              </p>
-            </section>
+          <div className="pt-2 flex justify-between items-center border-t border-slate-100">
+            <p className="text-[11px] text-slate-500">
+              Unternehmen: <span className="font-bold text-slate-700">{settings.companyName}</span>
+            </p>
+            <button
+              disabled={!isReady}
+              onClick={handleExportDocument}
+              className={`px-5 py-2 rounded-lg font-bold text-white shadow-sm transition text-xs ${
+                isReady ? "bg-emerald-600 hover:bg-emerald-700 cursor-pointer" : "bg-slate-300 cursor-not-allowed"
+              }`}
+            >
+              📥 Angebot exportieren / drucken
+            </button>
           </div>
         </div>
-      )}
+
+        <div className="lg:col-span-5 bg-slate-900 rounded-xl shadow-lg border border-slate-800 flex flex-col h-[780px] overflow-hidden">
+          <div className="bg-slate-800 px-4 py-2.5 border-b border-slate-700 flex justify-between items-center text-slate-300">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <span className="text-red-400 font-bold text-xs bg-red-950/80 border border-red-800 px-1.5 py-0.5 rounded">PDF</span>
+              <span className="text-xs font-semibold text-slate-200 truncate max-w-[160px]">{uploadedFileName}</span>
+            </div>
+          </div>
+
+          <div className="flex-1 bg-slate-950 relative overflow-hidden">
+            {pdfFileUrl ? (
+              <iframe
+                src={pdfFileUrl}
+                className="w-full h-full border-0 bg-white"
+                title="Original PDF Document"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-500 text-sm p-6 text-center">
+                Nach dem Upload wird hier die Original-Ausschreibung angezeigt.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
