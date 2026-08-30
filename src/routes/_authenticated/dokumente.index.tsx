@@ -47,7 +47,6 @@ import {
   type ReminderKind,
 } from "@/lib/workflow";
 import {
-import { requireUserId } from "@/lib/auth-user";
   ArrowRightLeft,
   BadgeEuro,
   BellRing,
@@ -62,6 +61,7 @@ import { requireUserId } from "@/lib/auth-user";
   Trash2,
   X,
 } from "lucide-react";
+import { requireUserId } from "@/lib/auth-user";
 
 export const Route = createFileRoute("/_authenticated/dokumente/")({
   validateSearch: (

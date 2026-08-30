@@ -25,13 +25,13 @@ import { Plus, Trash2, Scale } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
 import {
-import { requireUserId } from "@/lib/auth-user";
   formatStunden,
   zeitkontoFor,
   sollHours,
   type Adjustment,
   type TimeEntryLike,
 } from "@/lib/zeitkonto";
+import { requireUserId } from "@/lib/auth-user";
 
 export type ZeitkontoEmployee = {
   id: string;
