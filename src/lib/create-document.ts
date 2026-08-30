@@ -1,15 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import { addDays, today } from "@/lib/format";
 import { draftPlaceholderNumber } from "@/lib/doc-number";
+import { requireUserId } from "@/lib/auth-user";
 
 /**
  * Legt einen neuen Beleg (Rechnung oder Angebot) als Entwurf an und liefert
  * dessen ID zurück. Die Nummer wird fortlaufend vergeben.
  */
 export async function createDocument(type: "invoice" | "quote"): Promise<string> {
-  const { data: auth } = await supabase.auth.getUser();
-  const userId = auth.user?.id;
-  if (!userId) throw new Error("Nicht angemeldet");
+  const userId = await requireUserId();
 
   const { data: settings } = await supabase
     .from("company_settings")

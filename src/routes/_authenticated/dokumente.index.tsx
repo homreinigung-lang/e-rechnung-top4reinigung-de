@@ -47,6 +47,7 @@ import {
   type ReminderKind,
 } from "@/lib/workflow";
 import {
+import { requireUserId } from "@/lib/auth-user";
   ArrowRightLeft,
   BadgeEuro,
   BellRing,
@@ -120,9 +121,7 @@ function DokumenteListe() {
 
   const create = useMutation({
     mutationFn: async (type: "invoice" | "quote") => {
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) throw new Error("Nicht angemeldet");
+      const userId = await requireUserId();
 
       const { data: settings } = await supabase
         .from("company_settings")
@@ -166,9 +165,7 @@ function DokumenteListe() {
 
   const duplicate = useMutation({
     mutationFn: async (docId: string) => {
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) throw new Error("Nicht angemeldet");
+      const userId = await requireUserId();
       const { data: src, error } = await supabase
         .from("documents")
         .select("*")

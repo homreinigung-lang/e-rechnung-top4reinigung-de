@@ -34,6 +34,7 @@ import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { Urlaubsantraege } from "@/components/Urlaubsantraege";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
+import { requireUserId } from "@/lib/auth-user";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -226,9 +227,7 @@ export function Zeiterfassung() {
 
   const saveEmployee = useMutation({
     mutationFn: async (values: typeof emptyEmployee) => {
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) throw new Error("Nicht angemeldet");
+      const userId = await requireUserId();
       const payload = {
         name: values.name.trim(),
         role: values.role,
@@ -272,9 +271,7 @@ export function Zeiterfassung() {
 
   const saveEntry = useMutation({
     mutationFn: async (values: EntryForm) => {
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) throw new Error("Nicht angemeldet");
+      const userId = await requireUserId();
       const hours = values.hours
         ? num(values.hours)
         : computeHours(values.start_time, values.end_time, values.break_minutes);
