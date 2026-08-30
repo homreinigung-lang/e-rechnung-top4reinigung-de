@@ -522,6 +522,7 @@ function Steuerberater() {
           />
         </div>
 
+        <EuerSummaryToggle incomeGross={euer.incomeGross} profit={euer.profit} />
         <Table
           rows={[
             { Position: "Betriebseinnahmen (netto)", Betrag: formatMoney(euer.incomeNet) },
@@ -536,6 +537,7 @@ function Steuerberater() {
             },
           ]}
           empty=""
+          summary={null}
         />
 
         <h3 className="mt-6 font-display text-sm font-semibold">Betriebsausgaben je Kategorie</h3>
