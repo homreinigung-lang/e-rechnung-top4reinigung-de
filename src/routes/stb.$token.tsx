@@ -326,8 +326,14 @@ function AccountantPortal() {
     Brutto: de(num(e["gross_amount"])),
   }));
 
-  const workEntries = timeEntries.filter((t) => String(t["lohnart"] ?? "A") === "A");
-  const absenceEntries = timeEntries.filter((t) => String(t["lohnart"] ?? "A") !== "A");
+  /** Nur bestätigte Einträge fließen in Stunden-, Lohn- und Tagessummen ein. */
+  const isConfirmed = (t: Row) => String(t["approval_status"] ?? "approved") === "approved";
+  const workEntries = timeEntries.filter(
+    (t) => String(t["lohnart"] ?? "A") === "A" && isConfirmed(t),
+  );
+  const absenceEntries = timeEntries.filter(
+    (t) => String(t["lohnart"] ?? "A") !== "A" && isConfirmed(t),
+  );
 
   const timeRows: Table[] = timeEntries.map((t) => ({
     Datum: formatDate(String(t["work_date"] ?? "")),
@@ -367,12 +373,14 @@ function AccountantPortal() {
           "Kranktage (K)": 0,
           "Urlaubstage (U)": 0,
         };
-        if (code === "A") {
+        if (code === "A" && isConfirmed(t)) {
           cur["Stunden"] = (cur["Stunden"] as number) + num(t["hours"]);
           cur["Lohn"] = (cur["Lohn"] as number) + num(t["hours"]) * num(t["hourly_rate"]);
         }
-        if (code === "K") cur["Kranktage (K)"] = (cur["Kranktage (K)"] as number) + 1;
-        if (code === "U") cur["Urlaubstage (U)"] = (cur["Urlaubstage (U)"] as number) + 1;
+        if (isConfirmed(t) && code === "K")
+          cur["Kranktage (K)"] = (cur["Kranktage (K)"] as number) + 1;
+        if (isConfirmed(t) && code === "U")
+          cur["Urlaubstage (U)"] = (cur["Urlaubstage (U)"] as number) + 1;
         acc.set(name, cur);
         return acc;
       }, new Map<string, Record<string, string | number>>())

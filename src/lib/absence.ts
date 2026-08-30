@@ -87,3 +87,13 @@ export function approvalClasses(status: ApprovalStatus) {
   if (status === "rejected") return "bg-destructive/10 text-destructive border-destructive/30";
   return "bg-sky-500/10 text-sky-600 border-sky-500/30";
 }
+
+/**
+ * Zählt der Eintrag für die Lohnabrechnung (Stundenzettel)?
+ * Nur bestätigte Einträge: Arbeitszeiten und Abwesenheiten müssen genehmigt
+ * sein. Offene (pending) Planungs-/Schichteinträge fließen NICHT in die
+ * Stunden- und Lohnsumme ein.
+ */
+export function countsForPayroll(entry: ApprovableLike) {
+  return approvalStatus(entry) === "approved";
+}
