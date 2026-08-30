@@ -315,6 +315,8 @@ function Steuerberater() {
           } | null;
           const name = String(t["employee_name"] || emp?.name || "Ohne Zuordnung");
           const code = lohnart(t);
+          // Nur bestätigte Einträge zählen für Stunden und Lohn.
+          const confirmed = String(t["approval_status"] ?? "approved") === "approved";
           const cur = acc.get(name) ?? {
             name,
             pnr: String(emp?.personnel_number ?? ""),
@@ -323,12 +325,12 @@ function Steuerberater() {
             sick: 0,
             vacation: 0,
           };
-          if (code === "A") {
+          if (code === "A" && confirmed) {
             cur.hours += num(t["hours"]);
             cur.amount += num(t["hours"]) * num(t["hourly_rate"]);
           }
-          if (code === "K") cur.sick += 1;
-          if (code === "U") cur.vacation += 1;
+          if (confirmed && code === "K") cur.sick += 1;
+          if (confirmed && code === "U") cur.vacation += 1;
           acc.set(name, cur);
           return acc;
         },
