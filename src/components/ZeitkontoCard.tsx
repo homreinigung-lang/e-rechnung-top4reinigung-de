@@ -31,6 +31,7 @@ import {
   type Adjustment,
   type TimeEntryLike,
 } from "@/lib/zeitkonto";
+import { requireUserId } from "@/lib/auth-user";
 
 export type ZeitkontoEmployee = {
   id: string;
@@ -96,9 +97,7 @@ export function ZeitkontoCard({
       const value = Number(String(hours).replace(",", "."));
       if (!Number.isFinite(value) || value === 0)
         throw new Error("Bitte eine Stundenzahl (+/-) eingeben.");
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = emp.user_id ?? auth.user?.id;
-      if (!uid) throw new Error("Nicht angemeldet");
+      const uid = emp.user_id ?? (await requireUserId());
       const { error } = await supabase.from("time_account_adjustments").insert({
         user_id: uid,
         employee_id: emp.id,
