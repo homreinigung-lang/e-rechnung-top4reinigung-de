@@ -159,8 +159,8 @@ function num(value: string): number {
   return parsePositiveNumber(value);
 }
 
-/** 52 Wochen / 12 Monate */
-const WEEKS_PER_MONTH = 4.33;
+/** Monatsfaktor exakt aus 52 Wochen / 12 Monaten (siehe src/lib/constants.ts). */
+
 const STAIR_RATE_PER_FLOOR = 12.5;
 
 /** Hochgeladener Grundriss/Foto inkl. abgelesener Eckdaten. */
