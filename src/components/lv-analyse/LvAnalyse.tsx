@@ -861,9 +861,6 @@ export default function LvAnalyse() {
   );
 }
 
-function round2(n: number) {
-  return Math.round(n * 100) / 100;
-}
 
 function EmptyHint({ result }: { result: LvAnalysisResult | null }) {
   return (
