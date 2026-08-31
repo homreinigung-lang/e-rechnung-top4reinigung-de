@@ -55,39 +55,57 @@ export function canExport(result: LvAnalysisResult | null, items: LvNormalizedIt
 }
 
 /**
- * Auswahl der zu exportierenden Positionen: freigegebene zuerst.
- * Gibt es keine Freigabe, wird bewusst nichts exportiert.
+ * Auswahl der zu exportierenden Positionen: ausschließlich freigegebene Positionen
+ * der aktuellen Analyse. Positionen früherer Uploads werden nie exportiert.
  */
-export function selectExportItems(items: LvNormalizedItem[]): LvNormalizedItem[] {
-  return items.filter((i) => i.approved);
+export function selectExportItems(
+  items: LvNormalizedItem[],
+  analysisId?: string | null,
+): LvNormalizedItem[] {
+  return items.filter(
+    (i) => i.approved && (!analysisId || i.analysis_id === analysisId) && hasOwnPrice(i),
+  );
 }
 
-export const EXPORT_HEADERS = [
+/** Spalten der Ausschreibung (geforderte Daten aus dem Dokument). */
+export const TENDER_HEADERS = [
   "Pos.",
   "Beschreibung",
   "Kategorie",
-  "Menge",
+  "Geforderte Menge",
   "Einheit",
   "Intervall",
   "Einsätze/Jahr",
-  "Fläche m²",
-  "Arbeitsstunden",
-  "Einheitspreis €",
-  "Gesamtpreis €",
-  "MwSt %",
-  "Quellseite",
-  "Sicherheit %",
-  "Erkennung",
-  "Status",
+  "Fläche (m²)",
+  "Geforderte Arbeitsstunden",
+  "Seite",
+  "Sicherheitswert",
+  "Hinweis",
 ] as const;
+
+/** Spalten der eigenen Kalkulation. */
+export const CALCULATION_HEADERS = [
+  "Eigener Einheitspreis (€)",
+  "Eigene Arbeitskosten (€)",
+  "Materialkosten (€)",
+  "Gemeinkosten (€)",
+  "Gewinn (%)",
+  "Angebotspreis (€)",
+  "Kalkulationsstatus",
+] as const;
+
+export const EXPORT_HEADERS = [...TENDER_HEADERS, ...CALCULATION_HEADERS] as const;
 
 const num = (v: number | null, field: ReviewField, review: ReviewField[]): string =>
   review.includes(field) || v === null ? REVIEW_LABEL : String(v).replace(".", ",");
+
+const own = (v: number | null): string => (v === null ? "" : String(v).replace(".", ","));
 
 /** Baut die Exportzeilen (identisch für CSV, XLSX und PDF). */
 export function buildExportRows(items: LvNormalizedItem[]): string[][] {
   return items.map((item) => {
     const review = reviewFields(item);
+    const price = offerPrice(item);
     return [
       item.item_number || REVIEW_LABEL,
       item.description.trim() || REVIEW_LABEL,
@@ -100,13 +118,16 @@ export function buildExportRows(items: LvNormalizedItem[]): string[][] {
         : String(item.frequency.perYear),
       num(item.area_m2, "area_m2", review),
       num(item.working_hours, "area_m2", []),
-      num(item.unit_price, "unit_price", review),
-      num(item.total_price, "total_price", review),
-      item.vat_rate === null ? REVIEW_LABEL : String(item.vat_rate).replace(".", ","),
       item.source_page === null ? REVIEW_LABEL : String(item.source_page),
       String(Math.round(item.confidence_score * 100)),
-      item.source_method,
       review.length ? `${REVIEW_LABEL}: ${review.join(", ")}` : "geprüft",
+      hasOwnPrice(item) ? own(item.calculation.own_unit_price) : NO_OWN_PRICE_LABEL,
+      own(item.calculation.labor_cost),
+      own(item.calculation.material_cost),
+      own(item.calculation.overhead_cost),
+      own(item.calculation.profit_percent),
+      price === null ? NO_OWN_PRICE_LABEL : own(price),
+      CALC_STATUS_LABELS[calcStatus(item)],
     ];
   });
 }
