@@ -62,6 +62,7 @@ import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 
 import { effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
 import { mapsUrl, serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 
 type PlanShift = {
   key: string;
@@ -702,9 +703,9 @@ export function EinsatzKalender({
     return map;
   }, [entries]);
 
-  /** Soll-Stunden aus dem Vertrag: Woche = Wochenstunden, Monat = Wochenstunden × 4,33. */
+  /** Soll-Stunden aus dem Vertrag: Woche = Wochenstunden, Monat = Wochenstunden × 52/12. */
   const plannedFor = (emp: KalenderEmployee) =>
-    Number(emp.weekly_hours ?? 0) * (view === "week" ? 1 : 4.33);
+    Number(emp.weekly_hours ?? 0) * (view === "week" ? 1 : WEEKS_PER_MONTH);
 
   const dayEntries = day ? (byDay.get(day) ?? []) : [];
   const isAbsent = form.entryType === "absence";

@@ -27,7 +27,7 @@ import {
   taxNoteForTaxMode,
   vatRateForTaxMode,
 } from "@/lib/format";
-import { WEEKS_PER_MONTH, WEEKS_PER_MONTH_LABEL } from "@/lib/constants";
+import { STAIR_RATE_PER_FLOOR, WEEKS_PER_MONTH, WEEKS_PER_MONTH_LABEL } from "@/lib/constants";
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
@@ -162,7 +162,6 @@ function num(value: string): number {
 
 /** Monatsfaktor exakt aus 52 Wochen / 12 Monaten (siehe src/lib/constants.ts). */
 
-const STAIR_RATE_PER_FLOOR = 12.5;
 
 /** Hochgeladener Grundriss/Foto inkl. abgelesener Eckdaten. */
 type Attachment = {

@@ -17,8 +17,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 
-const WEEKS_PER_MONTH = 4.33;
+
 
 function round2(v: number) {
   return Math.round(v * 100) / 100;

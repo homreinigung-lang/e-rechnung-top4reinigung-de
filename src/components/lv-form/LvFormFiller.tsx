@@ -10,6 +10,7 @@ import {
   itemsFromRows,
   itemsFromText,
   mergeItemLists,
+  type LvImportItem,
 } from "@/lib/lv-form/import";
 import { supabase } from "@/integrations/supabase/client";
 import { buildLvPdf } from "@/lib/lv-pdf";

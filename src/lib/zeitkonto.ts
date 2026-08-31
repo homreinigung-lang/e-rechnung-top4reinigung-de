@@ -3,9 +3,9 @@
  * Korrekturen der Verwaltung. Mitarbeitende sehen das Zeitkonto nur lesend.
  */
 import { isAbsence, isEffective } from "@/lib/absence";
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 
-/** Durchschnittliche Wochen je Monat (branchenüblich). */
-export const WEEKS_PER_MONTH = 4.33;
+export { WEEKS_PER_MONTH } from "@/lib/constants";
 
 export type TimeEntryLike = {
   employee_id?: string | null;

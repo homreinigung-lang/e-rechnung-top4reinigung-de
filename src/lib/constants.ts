@@ -15,3 +15,6 @@ export const WORKDAYS_PER_YEAR = 250;
 
 /** Anzeigewert des Monatsfaktors (gerundet, nur für Texte). */
 export const WEEKS_PER_MONTH_LABEL = "4,33";
+
+/** Mindest-/Standardpreis je Etage Treppenhausreinigung (netto). */
+export const STAIR_RATE_PER_FLOOR = 12.5;
