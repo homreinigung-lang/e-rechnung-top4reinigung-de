@@ -526,9 +526,18 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
-    ensure(ctx, 30);
+    // Überschrift nie allein am Seitenende (keep-with-next mit dem 1. Eintrag).
+    const firstEntry = entries[0] ?? "";
+    const firstLines = wrap(
+      regular,
+      9.5,
+      firstEntry.replace(/^[-•*]\s*/, ""),
+      CONTENT_W - (/^[-•*]\s*/.test(firstEntry) ? 12 : 0),
+    );
+    ensure(ctx, 15 + firstLines.length * 12 + 6);
     text(ctx, "Leistungsbeschreibung", { y: ctx.y, size: 11, font: bold });
     ctx.y -= 15;
+
     for (const entry of entries) {
       const bullet = /^[-•*]\s*/.test(entry);
       const body = entry.replace(/^[-•*]\s*/, "");
