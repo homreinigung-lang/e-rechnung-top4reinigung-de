@@ -48,7 +48,10 @@ export default function LvFormFiller() {
   const analyzeFile = async (file: File) => {
     setLoading(true);
     setLastFile(file);
+    setTextPreview('');
+    setTextReason('Die Datei wird gerade gelesen …');
     const toastId = toast.loading('Die KI analysiert Ihr Leistungsverzeichnis…');
+
     const log: AnalysisStep[] = [];
     const diagnostic = (message: string, details?: unknown) => {
       if (details === undefined) console.info(`[LV-Import] ${message}`);
