@@ -63,6 +63,7 @@ import {
   offerPrice,
   summarizeOwnCalculation,
 } from '@/lib/lv-analyse/calculation';
+import { LvPositionenTabelle } from '@/components/lv-analyse/LvPositionenTabelle';
 import {
   buildCsv,
   buildPdfReport,
