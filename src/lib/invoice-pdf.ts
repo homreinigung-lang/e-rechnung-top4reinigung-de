@@ -1,4 +1,13 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import {
+  PDFDocument,
+  StandardFonts,
+  degrees,
+  rgb,
+  type PDFFont,
+  type PDFPage,
+  type RGB,
+} from "pdf-lib";
+
 
 /**
  * Serverseitig/bibliotheksbasierte PDF-Erzeugung (pdf-lib) – kein Browser-Druck.
