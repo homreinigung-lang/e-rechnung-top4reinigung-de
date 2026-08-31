@@ -104,6 +104,27 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_mail_throttle: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          scope: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          scope: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          scope?: string
+        }
+        Relationships: []
+      }
       bank_connections: {
         Row: {
           account_ids: string[]
