@@ -368,10 +368,13 @@ export default function LvFormFiller() {
           { label: 'Gesamt netto', value: grandTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) },
         ],
         positions,
-        vatRate: settings?.small_business ? 0 : 0,
-        taxNote: settings?.small_business
-          ? '§ 19 Abs. 1 UStG: Die Umsatzsteuer wird gemäß Kleinunternehmerregelung nicht ausgewiesen.'
-          : undefined,
+        vatRate: 0,
+        ...(settings?.small_business
+          ? {
+              taxNote:
+                '§ 19 Abs. 1 UStG: Die Umsatzsteuer wird gemäß Kleinunternehmerregelung nicht ausgewiesen.',
+            }
+          : {}),
       });
 
       await saveFile(
