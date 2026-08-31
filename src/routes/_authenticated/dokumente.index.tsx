@@ -583,30 +583,13 @@ function DokumenteListe() {
                     </DropdownMenu>
                     </div>
 
-                    {stornoChildren.length > 0 && (
-                      <ul className="mt-2 space-y-1 border-l-2 border-destructive/30 pl-4">
-                        {stornoChildren.map((s) => (
-                          <li key={s.id}>
-                            <Link
-                              to="/dokumente/$id"
-                              params={{ id: s.id }}
-                              className="flex flex-wrap items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                            >
-                              <span className="flex flex-wrap items-center gap-2">
-                                <Ban className="size-3.5 text-destructive" />
-                                <span className="font-medium">Stornorechnung {s.number}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDate(s.issue_date)}
-                                </span>
-                              </span>
-                              <span className="font-medium text-destructive">
-                                {formatMoney(Number(s.total))}
-                              </span>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    {cancelledByNumber ? (
+                      <p className="mt-1 pl-1 text-xs text-destructive">
+                        Storniert durch {cancelledByNumber}
+                        {cancelledReason ? ` · Grund: ${cancelledReason}` : ""}
+                      </p>
+                    ) : null}
+
                   </li>
 
                 );
