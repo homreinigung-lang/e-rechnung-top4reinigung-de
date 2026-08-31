@@ -89,6 +89,7 @@ const navGroups: readonly NavGroup[] = [
       { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
       { to: "/projekte", label: "Projekte", icon: FolderKanban },
       { to: "/lv-formular", label: "LV-Formular", icon: FileSignature },
+      { to: "/lv-analyse", label: "LV-Analyse", icon: FileSearch },
     ],
   },
   {
