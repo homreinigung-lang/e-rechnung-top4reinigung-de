@@ -127,6 +127,7 @@ export function normalizeItem(raw: RawItem, method: string): LvNormalizedItem {
 
   return {
     id: nextId(),
+    analysis_id: "",
     item_number: String(raw.item_number ?? "").trim(),
     description,
     category,
