@@ -655,25 +655,35 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     ctx.y = top - blockH - 6;
   }
 
-  // ---- Fußbereich (immer am unteren Seitenrand, nie überlappend) ----------
+  // ---- Fußbereich (auf jeder Seite, fest am unteren Rand, nie überlappend) --
 
   const footTop = M_Y + footH - 14;
-  ctx.page.drawLine({
-    start: { x: M_X, y: footTop + 6 },
-    end: { x: M_X + CONTENT_W, y: footTop + 6 },
-    thickness: 0.7,
-    color: COLOR_BORDER,
-  });
-  d.footer.forEach((col, i) => {
-    const x = M_X + i * (footColW + 12);
-    footHeadLines[i]!.forEach((line, li) => {
-      text(ctx, line, { x, y: footTop - 6 - li * 10, size: 8, font: bold, width: footColW });
+  for (const page of pdf.getPages()) {
+    ctx.page = page;
+    page.drawLine({
+      start: { x: M_X, y: footTop + 6 },
+      end: { x: M_X + CONTENT_W, y: footTop + 6 },
+      thickness: 0.7,
+      color: COLOR_BORDER,
     });
-    footColLines[i]!.forEach((line, li) => {
-      text(ctx, line, { x, y: footTop - 8 - footHeadH - li * 10, size: 7.5, color: COLOR_MUTED });
+    d.footer.forEach((col, i) => {
+      const x = M_X + i * (footColW + footGap);
+      footHeadLines[i]!.forEach((line, li) => {
+        text(ctx, line, { x, y: footTop - 6 - li * 10, size: 8, font: bold, width: footColW });
+      });
+      footColLines[i]!.forEach((line, li) => {
+        text(ctx, line, {
+          x,
+          y: footTop - 8 - footHeadH - li * 10,
+          size: 7.5,
+          color: COLOR_MUTED,
+          width: footColW,
+        });
+      });
     });
-  });
+  }
   ctx.y = M_Y;
+
 
 
 
