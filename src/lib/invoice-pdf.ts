@@ -704,7 +704,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     for (const page of pdf.getPages()) {
       page.drawText(label, {
         x: (PAGE_W - w * Math.cos(Math.PI / 6)) / 2,
-        y: PAGE_H / 2 - (w * Math.sin(Math.PI / 6)) / 2,
+        y: (PAGE_H - w * Math.sin(Math.PI / 6)) / 2,
         size,
         font: bold,
         color: rgb(0.86, 0.15, 0.15),
