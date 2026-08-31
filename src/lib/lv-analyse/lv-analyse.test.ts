@@ -25,7 +25,7 @@ import {
 import { summarizeCost } from "./aggregate";
 import { DOCUMENT_KIND_LABELS, type LvAnalysisResult, type LvNormalizedItem } from "./types";
 
-const emptyAi = { document_kind: "", items: [] as any[], totals: [] as any[] } as any;
+const emptyAi = { document_kind: "", items: [] as unknown[], totals: [] as unknown[] } as never;
 
 function file(name: string, content = "", type = ""): File {
   return new File([content], name, { type });
@@ -84,7 +84,7 @@ describe("2) Gescanntes PDF mit OCR", () => {
         },
       ],
       totals: [],
-    })) as any;
+    })) as never;
     const result = await analyseLvFile(
       file("scan.pdf", "", "application/pdf"),
       deps({
