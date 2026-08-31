@@ -456,10 +456,13 @@ function DokumenteListe() {
                 const due = isStorno ? null : dueInfo(d.due_date, d.status);
                 const level = Number(r["reminder_level"] ?? 0);
                 const deletable = !isLockedDocument(r);
+                const stornoChildren = stornoByOriginal.get(d.id) ?? [];
                 return (
-                  <li key={d.id} className="flex items-center gap-2 px-5 py-4 hover:bg-muted/60">
+                  <li key={d.id} className="px-5 py-4 hover:bg-muted/60">
+                    <div className="flex items-center gap-2">
                     <Link
                       to="/dokumente/$id"
+
                       params={{ id: d.id }}
                       className="flex flex-1 flex-wrap items-center justify-between gap-3"
                     >
