@@ -42,12 +42,18 @@ export async function finalizeDocument(id: string) {
   return data as unknown as { id: string; number: string };
 }
 
-/** Erstellt eine Stornorechnung mit eigener fortlaufender Nummer. */
-export async function createStorno(id: string): Promise<string> {
-  const { data, error } = await supabase.rpc("create_storno", { _id: id });
+/** Erstellt eine Stornorechnung mit eigener fortlaufender Nummer und Stornogrund. */
+export async function createStorno(id: string, reason: string): Promise<string> {
+  const grund = reason.trim();
+  if (grund.length < 3) throw new Error("Bitte geben Sie einen Stornogrund an.");
+  const { data, error } = await supabase.rpc("create_storno", {
+    _id: id,
+    _reason: grund,
+  } as never);
   if (error) throw error;
   return data as unknown as string;
 }
+
 
 /** Archiviert das finale PDF revisionssicher im privaten Speicher inkl. Prüfsumme. */
 export async function archiveDocumentPdf(
