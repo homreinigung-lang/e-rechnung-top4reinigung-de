@@ -284,16 +284,25 @@ export default function LvFormFiller() {
 
       {steps.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-gray-800">Analyse-Ergebnis</h3>
-            <button
-              type="button"
-              disabled={loading || !lastFile}
-              onClick={() => lastFile && void analyzeFile(lastFile)}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:text-gray-400"
-            >
-              Erneut analysieren
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowText((v) => !v)}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800"
+              >
+                {showText ? 'Textvorschau ausblenden' : 'Textvorschau anzeigen'}
+              </button>
+              <button
+                type="button"
+                disabled={loading || !lastFile}
+                onClick={() => lastFile && void analyzeFile(lastFile)}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+              >
+                Erneut analysieren
+              </button>
+            </div>
           </div>
           <ul className="space-y-1 text-sm">
             {steps.map((step, i) => (
@@ -311,14 +320,26 @@ export default function LvFormFiller() {
               </li>
             ))}
           </ul>
-          {textPreview && (
-            <details className="text-xs text-gray-600">
-              <summary className="cursor-pointer font-medium">Erkannten Text anzeigen</summary>
-              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded border border-gray-200 bg-white p-2">
-                {textPreview}
-              </pre>
-            </details>
+          {showText && (
+            <div className="text-xs text-gray-600">
+              <div className="mb-1 font-medium">
+                Erkannter Text
+                {textPreview
+                  ? ` (${textPreview.length.toLocaleString('de-DE')} Zeichen)`
+                  : ''}
+              </div>
+              {textPreview ? (
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded border border-gray-200 bg-white p-2 text-left font-mono text-[11px] leading-relaxed text-gray-800">
+                  {textPreview}
+                </pre>
+              ) : (
+                <p className="rounded border border-amber-200 bg-amber-50 p-2 text-amber-800">
+                  {textReason || 'Es wurde noch keine Datei analysiert.'}
+                </p>
+              )}
+            </div>
           )}
+
         </div>
       )}
 
