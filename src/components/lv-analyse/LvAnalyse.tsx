@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { ClientOnly } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
 import {
@@ -65,23 +66,11 @@ import {
   REVIEW_LABEL,
 } from '@/lib/lv-analyse/export';
 
-/** Zweisprachige Beschriftung: Deutsch (Fachsprache der Ausschreibung) + Arabisch. */
-function Bi({ de, ar }: { de: string; ar: string }) {
-  return (
-    <span className="inline-flex flex-col leading-tight">
-      <span>{de}</span>
-      <span className="text-[10px] text-muted-foreground" dir="rtl">
-        {ar}
-      </span>
-    </span>
-  );
-}
-
-const STATUS_STYLE: Record<LvAnalysisResult['status'], { label: string; ar: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  success: { label: 'Erfolgreich verarbeitet', ar: 'تمت المعالجة بنجاح', variant: 'default' },
-  partial: { label: 'Teilweise verarbeitet', ar: 'معالجة جزئية', variant: 'secondary' },
-  empty: { label: 'Keine Positionen gefunden', ar: 'لا توجد بنود', variant: 'outline' },
-  error: { label: 'Fehler', ar: 'خطأ', variant: 'destructive' },
+const STATUS_STYLE: Record<LvAnalysisResult['status'], { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  success: { label: 'Erfolgreich verarbeitet', variant: 'default' },
+  partial: { label: 'Teilweise verarbeitet', variant: 'secondary' },
+  empty: { label: 'Keine Positionen gefunden', variant: 'outline' },
+  error: { label: 'Fehler', variant: 'destructive' },
 };
 
 function StepIcon({ state }: { state: LvProcessStep['state'] }) {
@@ -92,6 +81,8 @@ function StepIcon({ state }: { state: LvProcessStep['state'] }) {
 }
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS) as LvItemCategory[];
+
+const LvFormFiller = lazy(() => import('@/components/lv-form/LvFormFiller'));
 
 export default function LvAnalyse() {
   const runText = useServerFn(analyseLvDocument);
@@ -215,7 +206,7 @@ export default function LvAnalyse() {
 
   const approveAll = () => {
     setItems((prev) => prev.map((i) => ({ ...i, approved: true })));
-    toast.success('Alle Positionen freigegeben', { description: 'تمت الموافقة على جميع البنود.' });
+    toast.success('Alle Positionen freigegeben');
   };
 
   const approvedCount = items.filter((i) => i.approved).length;
@@ -228,7 +219,7 @@ export default function LvAnalyse() {
     : !exportReady
       ? 'Export ist erst nach abgeschlossener oder teilweise abgeschlossener Analyse möglich.'
       : exportItems.length === 0
-        ? 'Bitte zuerst Positionen prüfen und freigeben – exportiert werden nur freigegebene Positionen.'
+        ? 'Bitte zuerst mindestens eine Position prüfen und freigeben. Exportiert werden nur freigegebene Positionen.'
         : `${exportItems.length} freigegebene Positionen werden exportiert.`;
 
   const runExport = async (kind: 'csv' | 'xlsx' | 'pdf') => {
@@ -241,7 +232,8 @@ export default function LvAnalyse() {
     }
     if (exportItems.length === 0) {
       toast.error('Keine freigegebenen Positionen', {
-        description: 'Bitte prüfen Sie die Positionen im Reiter „Positionen“ und geben Sie sie frei (Schaltfläche „Alle freigeben“).',
+        description:
+          'Bitte zuerst mindestens eine Position prüfen und freigeben. Exportiert werden nur freigegebene Positionen.',
       });
       return;
     }
@@ -279,7 +271,7 @@ export default function LvAnalyse() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileSearch className="size-4" />
-            <Bi de="Ausschreibung hochladen" ar="رفع كراسة الشروط" />
+            Ausschreibung hochladen
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -299,16 +291,20 @@ export default function LvAnalyse() {
               <Button asChild disabled={busy}>
                 <span className="cursor-pointer">
                   {busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
-                  Datei auswählen (PDF, XLSX, CSV, GAEB)
+                  Datei auswählen
                 </span>
               </Button>
             </label>
-            <span className="text-xs text-muted-foreground" dir="rtl">
-              الصيغ المدعومة: PDF، Excel، CSV، GAEB
+            <span className="text-xs text-muted-foreground">
+              Unterstützte Formate: PDF, XLSX, CSV, GAEB
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
+          <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Ergebnisse herunterladen
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport('xlsx')}>
               <FileSpreadsheet className="mr-1 size-4" /> XLSX-Export
             </Button>
@@ -318,14 +314,15 @@ export default function LvAnalyse() {
             <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport('pdf')}>
               <FileText className="mr-1 size-4" /> PDF-Bericht
             </Button>
-            {exporting && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-            <span className="text-xs text-muted-foreground">{exportHint}</span>
+              {exporting && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+            </div>
+            <p className="text-xs text-muted-foreground">{exportHint}</p>
           </div>
 
           {/* Verarbeitungsstatus – immer sichtbar, nie leer */}
           <div className="rounded-md border bg-muted/30 p-3">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Verarbeitungsstatus / حالة المعالجة
+              Verarbeitungsstatus
             </p>
             {steps.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -347,11 +344,8 @@ export default function LvAnalyse() {
           {result && (
             <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <p className="text-xs uppercase text-muted-foreground">Erkannter Dokumenttyp / نوع المستند</p>
+                <p className="text-xs uppercase text-muted-foreground">Dokumenttyp</p>
                 <p className="font-medium">{DOCUMENT_KIND_LABELS[result.kind].de}</p>
-                <p className="text-xs text-muted-foreground" dir="rtl">
-                  {DOCUMENT_KIND_LABELS[result.kind].ar}
-                </p>
                 <p className="text-xs text-muted-foreground">{result.kindReason}</p>
               </div>
               <div className="space-y-1">
@@ -360,6 +354,12 @@ export default function LvAnalyse() {
                 <p className="text-xs text-muted-foreground">
                   <strong>Empfohlene Maßnahme:</strong> {result.recommendedAction}
                 </p>
+                {result.kind === 'pricing_form' && (
+                  <p className="text-xs text-amber-700">
+                    Das Dokument enthält keine vollständige LV-Struktur. Preise, Intervalle und
+                    fehlende Felder müssen vor der Freigabe geprüft werden.
+                  </p>
+                )}
                 {result.rawText && (
                   <Button variant="ghost" size="sm" onClick={() => setShowText((v) => !v)}>
                     {showText ? 'Textvorschau ausblenden' : 'Textvorschau anzeigen'}
@@ -380,13 +380,14 @@ export default function LvAnalyse() {
       {/* Auswertung */}
       <Tabs defaultValue="items">
         <TabsList className="flex flex-wrap">
-          <TabsTrigger value="items">Positionen · البنود</TabsTrigger>
-          <TabsTrigger value="area">Flächen · المساحات</TabsTrigger>
-          <TabsTrigger value="hours">Arbeitsstunden · ساعات العمل</TabsTrigger>
-          <TabsTrigger value="cost">Kostenanalyse · التكاليف</TabsTrigger>
-          <TabsTrigger value="price">Preisempfehlung · التسعير</TabsTrigger>
-          <TabsTrigger value="missing">Fehlende Daten · نواقص</TabsTrigger>
-          <TabsTrigger value="log">Import-Protokoll · السجل</TabsTrigger>
+          <TabsTrigger value="items">Positionen</TabsTrigger>
+          <TabsTrigger value="area">Flächen</TabsTrigger>
+          <TabsTrigger value="hours">Arbeitsstunden</TabsTrigger>
+          <TabsTrigger value="cost">Kostenanalyse</TabsTrigger>
+          <TabsTrigger value="price">Preisempfehlung</TabsTrigger>
+          <TabsTrigger value="missing">Fehlende Daten</TabsTrigger>
+          <TabsTrigger value="log">Importprotokoll</TabsTrigger>
+          <TabsTrigger value="formular">LV-Formular</TabsTrigger>
         </TabsList>
 
         {/* 1) Positionen prüfen & freigeben */}
@@ -403,7 +404,7 @@ export default function LvAnalyse() {
                 <Plus className="mr-1 size-4" /> Position hinzufügen
               </Button>
               <Button size="sm" onClick={approveAll} disabled={items.length === 0}>
-                <CheckCircle2 className="mr-1 size-4" /> Alle freigeben
+                <CheckCircle2 className="mr-1 size-4" /> Alle Positionen freigeben
               </Button>
             </div>
           </div>
@@ -415,19 +416,19 @@ export default function LvAnalyse() {
               <Table className="text-xs">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-20">Pos.</TableHead>
+                    <TableHead className="w-20">Position</TableHead>
                     <TableHead className="min-w-56">Beschreibung</TableHead>
                     <TableHead className="w-40">Kategorie</TableHead>
                     <TableHead className="w-20 text-right">Menge</TableHead>
                     <TableHead className="w-20">Einheit</TableHead>
                     <TableHead className="w-32">Intervall</TableHead>
-                    <TableHead className="w-24 text-right">m²</TableHead>
-                    <TableHead className="w-20 text-right">Std.</TableHead>
-                    <TableHead className="w-24 text-right">EP €</TableHead>
-                    <TableHead className="w-24 text-right">GP €</TableHead>
-                    <TableHead className="w-16 text-right">MwSt</TableHead>
+                    <TableHead className="w-24 text-right">Fläche (m²)</TableHead>
+                    <TableHead className="w-24 text-right">Arbeitsstunden</TableHead>
+                    <TableHead className="w-28 text-right">Einheitspreis (€)</TableHead>
+                    <TableHead className="w-28 text-right">Gesamtpreis (€)</TableHead>
+                    <TableHead className="w-20 text-right">MwSt. (%)</TableHead>
                     <TableHead className="w-16 text-right">Seite</TableHead>
-                    <TableHead className="w-20 text-right">Sicherh.</TableHead>
+                    <TableHead className="w-24 text-right">Sicherheitswert</TableHead>
                     <TableHead className="w-24">Freigabe</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -492,7 +493,7 @@ export default function LvAnalyse() {
                           <Input
                             className="h-7 text-xs"
                             value={item.frequency.label}
-                            placeholder="z. B. 5x wöchentlich"
+                            placeholder="Nicht eindeutig erkannt – Prüfung erforderlich"
                             onChange={(e) =>
                               update(item.id, {
                                 frequency: { ...parseFrequency(e.target.value), label: e.target.value },
@@ -539,6 +540,8 @@ export default function LvAnalyse() {
                               size="sm"
                               variant={item.approved ? 'default' : 'outline'}
                               className="h-7 px-2"
+                              title="Position freigeben"
+                              aria-label="Position freigeben"
                               onClick={() => update(item.id, { approved: !item.approved })}
                             >
                               <CheckCircle2 className="size-3" />
@@ -565,10 +568,10 @@ export default function LvAnalyse() {
         {/* 2) Flächen */}
         <TabsContent value="area" className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-4">
-            <Kpi label="Gesamtfläche" ar="إجمالي المساحة" value={`${formatNumber(area.totalArea)} m²`} />
-            <Kpi label="Jahresfläche" ar="المساحة السنوية" value={`${formatNumber(area.annualArea)} m²`} />
-            <Kpi label="Positionen mit Fläche" ar="بنود بمساحة" value={String(area.itemsWithArea)} />
-            <Kpi label="Ohne Flächenangabe" ar="بدون مساحة" value={String(area.itemsWithoutArea)} />
+            <Kpi label="Gesamtfläche" value={`${formatNumber(area.totalArea)} m²`} />
+            <Kpi label="Jahresfläche" value={`${formatNumber(area.annualArea)} m²`} />
+            <Kpi label="Positionen mit Fläche" value={String(area.itemsWithArea)} />
+            <Kpi label="Ohne Flächenangabe" value={String(area.itemsWithoutArea)} />
           </div>
           <CategoryTable rows={categories} column="area_m2" />
         </TabsContent>
@@ -576,12 +579,11 @@ export default function LvAnalyse() {
         {/* 3) Arbeitsstunden */}
         <TabsContent value="hours" className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-4">
-            <Kpi label="Stunden je Einsatz" ar="ساعات لكل زيارة" value={formatNumber(hours.totalHours)} />
-            <Kpi label="Jahresstunden" ar="ساعات سنوية" value={formatNumber(hours.annualHours)} />
-            <Kpi label="Monatsstunden" ar="ساعات شهرية" value={formatNumber(hours.monthlyHours)} />
+            <Kpi label="Stunden je Einsatz" value={formatNumber(hours.totalHours)} />
+            <Kpi label="Jahresstunden" value={formatNumber(hours.annualHours)} />
+            <Kpi label="Monatsstunden" value={formatNumber(hours.monthlyHours)} />
             <Kpi
               label={`Geschätzt aus Fläche (${formatNumber(hours.performanceRate)} m²/Std.)`}
-              ar="تقدير من المساحة"
               value={formatNumber(hours.estimatedFromArea)}
             />
           </div>
@@ -591,16 +593,16 @@ export default function LvAnalyse() {
         {/* 4) Kostenanalyse */}
         <TabsContent value="cost" className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-4">
-            <Kpi label="Netto (Positionen)" ar="الصافي" value={formatMoney(cost.net)} />
-            <Kpi label={`MwSt ${formatNumber(cost.vatRate)} %`} ar="ضريبة" value={formatMoney(cost.vat)} />
-            <Kpi label="Brutto" ar="الإجمالي" value={formatMoney(cost.gross)} />
-            <Kpi label="Jahresnetto" ar="صافي سنوي" value={formatMoney(cost.annualNet)} />
+            <Kpi label="Netto (Positionen)" value={formatMoney(cost.net)} />
+            <Kpi label={`MwSt ${formatNumber(cost.vatRate)} %`} value={formatMoney(cost.vat)} />
+            <Kpi label="Brutto" value={formatMoney(cost.gross)} />
+            <Kpi label="Jahresnetto" value={formatMoney(cost.annualNet)} />
           </div>
 
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">
-                Summen aus dem Dokument (Preisblatt) · المبالغ الواردة في المستند
+                Summen aus dem Dokument (Preisblatt)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -637,7 +639,7 @@ export default function LvAnalyse() {
         <TabsContent value="price" className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Kalkulationsparameter · معايير التسعير</CardTitle>
+              <CardTitle className="text-sm">Kalkulationsparameter</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-4">
               <LabeledNumber
@@ -663,10 +665,10 @@ export default function LvAnalyse() {
             </CardContent>
           </Card>
           <div className="grid gap-3 sm:grid-cols-4">
-            <Kpi label="Kalkulierte Jahresstunden" ar="ساعات سنوية محسوبة" value={formatNumber(price.annualHours)} />
-            <Kpi label="Empfehlung Jahr netto" ar="السعر السنوي المقترح" value={formatMoney(price.recommendedAnnualNet)} />
-            <Kpi label="Empfehlung Monat netto" ar="السعر الشهري المقترح" value={formatMoney(price.recommendedMonthlyNet)} />
-            <Kpi label="Preis je m²" ar="سعر المتر" value={formatMoney(price.recommendedPerSqm)} />
+            <Kpi label="Kalkulierte Jahresstunden" value={formatNumber(price.annualHours)} />
+            <Kpi label="Empfehlung Jahr netto" value={formatMoney(price.recommendedAnnualNet)} />
+            <Kpi label="Empfehlung Monat netto" value={formatMoney(price.recommendedMonthlyNet)} />
+            <Kpi label="Preis je m²" value={formatMoney(price.recommendedPerSqm)} />
           </div>
           <p className="text-sm text-muted-foreground">
             {price.deltaPercent === null
@@ -681,7 +683,7 @@ export default function LvAnalyse() {
         <TabsContent value="missing" className="space-y-3">
           {issues.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Keine fehlenden Pflichtangaben. · لا توجد بيانات ناقصة.
+              Keine fehlenden Pflichtangaben.
             </p>
           ) : (
             <Table className="text-sm">
@@ -747,6 +749,18 @@ export default function LvAnalyse() {
             </Table>
           )}
         </TabsContent>
+        {/* 8) LV-Formular ausfüllen (zusammengeführt) */}
+        <TabsContent value="formular" className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Original-PDF der Ausschreibung hochladen, Positionen prüfen und erst nach Freigabe eine
+            ausgefüllte Kopie erzeugen.
+          </p>
+          <ClientOnly fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
+            <Suspense fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
+              <LvFormFiller />
+            </Suspense>
+          </ClientOnly>
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -768,20 +782,17 @@ function EmptyHint({ result }: { result: LvAnalysisResult | null }) {
           )}
         </>
       ) : (
-        <p>Noch keine Datei analysiert. · لم يتم تحليل أي ملف بعد.</p>
+        <p>Noch keine Datei analysiert.</p>
       )}
     </div>
   );
 }
 
-function Kpi({ label, ar, value }: { label: string; ar: string; value: string }) {
+function Kpi({ label, value }: { label: string; value: string }) {
   return (
     <Card>
       <CardContent className="p-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground" dir="rtl">
-          {ar}
-        </p>
         <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
       </CardContent>
     </Card>
@@ -812,7 +823,7 @@ function CategoryTable({
         {rows.map((row) => (
           <TableRow key={row.category}>
             <TableCell>
-              <Bi de={CATEGORY_LABELS[row.category].de} ar={CATEGORY_LABELS[row.category].ar} />
+              {CATEGORY_LABELS[row.category].de}
             </TableCell>
             <TableCell className="text-right tabular-nums">{row.items}</TableCell>
             <TableCell className="text-right tabular-nums">

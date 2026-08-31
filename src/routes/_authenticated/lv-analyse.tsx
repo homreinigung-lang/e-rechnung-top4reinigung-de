@@ -36,10 +36,6 @@ function LvAnalysePage() {
           den Dokumenttyp, extrahiert die Reinigungspositionen und zeigt Flächen, Stunden, Kosten
           sowie fehlende Angaben.
         </p>
-        <p className="text-sm text-muted-foreground" dir="rtl">
-          ارفع كراسة الشروط أو نموذج التسعير، وسيقوم النظام بتحديد نوع المستند واستخراج البنود
-          وعرض المساحات والساعات والتكاليف والنواقص.
-        </p>
       </header>
       <ClientOnly fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
         <Suspense fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
