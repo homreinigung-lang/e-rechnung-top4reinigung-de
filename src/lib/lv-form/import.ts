@@ -1,6 +1,12 @@
 import JSZip from "jszip";
 import { parseGermanNumber } from "./number";
 
+/** Zahl aus deutschem Text; nicht lesbare Werte ergeben 0 (nie geraten). */
+function toNumber(value: string): number {
+  const n = parseGermanNumber(value);
+  return typeof n === "number" && Number.isFinite(n) ? n : 0;
+}
+
 /**
  * Einlesen und Erkennen von Leistungsverzeichnissen aus PDF, TXT/CSV und Excel.
  * Läuft im Browser; PDF-Text wird mit pdfjs gelesen (kein Server nötig).
@@ -218,9 +224,9 @@ export function itemsFromRows(rows: string[][]): LvImportItem[] {
     items.push({
       item_number: itemNumber,
       description,
-      quantity: parseGermanNumber(at("quantity")),
+      quantity: toNumber(at("quantity")),
       unit: at("unit"),
-      unit_price: parseGermanNumber(at("unit_price")),
+      unit_price: toNumber(at("unit_price")),
     });
   }
   return items;
@@ -252,7 +258,7 @@ export function itemsFromText(text: string): LvImportItem[] {
       items.push({
         item_number: m[1] ?? "",
         description: (m[2] ?? "").trim(),
-        quantity: parseGermanNumber(m[3] ?? ""),
+        quantity: toNumber(m[3] ?? ""),
         unit: (m[4] ?? "").trim(),
         unit_price: 0,
       });
@@ -263,7 +269,7 @@ export function itemsFromText(text: string): LvImportItem[] {
       items.push({
         item_number: a[1] ?? "",
         description: (a[2] ?? "").trim(),
-        quantity: parseGermanNumber(a[4] ?? ""),
+        quantity: toNumber(a[4] ?? ""),
         unit: (a[3] ?? "").trim(),
         unit_price: 0,
       });
