@@ -30,7 +30,10 @@ export default function LvFormFiller() {
   const [projectTitle, setProjectTitle] = useState('Neues LV-Projekt');
   const [steps, setSteps] = useState<AnalysisStep[]>([]);
   const [textPreview, setTextPreview] = useState('');
+  const [textReason, setTextReason] = useState('');
+  const [showText, setShowText] = useState(false);
   const [lastFile, setLastFile] = useState<File | null>(null);
+
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<LvItem>({
