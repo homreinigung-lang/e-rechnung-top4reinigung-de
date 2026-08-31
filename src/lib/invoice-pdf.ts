@@ -698,19 +698,34 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
   ctx.y = M_Y;
 
-  // ---- Stempel/Wasserzeichen (z. B. "STORNIERT") auf jeder Seite ----------
+  // ---- Stempel/Wasserzeichen (z. B. "STORNO") auf jeder Seite ----------
   if (d.watermark) {
     const label = clean(d.watermark).toUpperCase();
-    const size = Math.min(72, (CONTENT_W * 1.15) / Math.max(1, widthOf(bold, 1, label)));
+    const size = Math.min(78, (CONTENT_W * 1.25) / Math.max(1, widthOf(bold, 1, label)));
     const w = widthOf(bold, size, label);
+    const h = size * 0.72;
+    const cx = PAGE_W / 2;
+    const cy = PAGE_H / 2;
     for (const page of pdf.getPages()) {
+      // Dezenter runder Stempel-Rahmen hinter dem Schrägstempel
+      page.drawEllipse({
+        x: cx,
+        y: cy,
+        xScale: Math.max(w / 2 + 18, h + 18),
+        yScale: Math.max(h + 14, w / 4 + 14),
+        color: rgb(1, 0.95, 0.95),
+        borderColor: rgb(0.86, 0.15, 0.15),
+        borderWidth: 2,
+        opacity: 0.18,
+        rotate: degrees(30),
+      });
       page.drawText(label, {
-        x: (PAGE_W - w * Math.cos(Math.PI / 6)) / 2,
-        y: (PAGE_H - w * Math.sin(Math.PI / 6)) / 2,
+        x: cx - (w * Math.cos(Math.PI / 6)) / 2,
+        y: cy - (h * Math.sin(Math.PI / 6)) / 2,
         size,
         font: bold,
         color: rgb(0.86, 0.15, 0.15),
-        opacity: 0.22,
+        opacity: 0.28,
         rotate: degrees(30),
       });
       if (d.watermarkNote) {
