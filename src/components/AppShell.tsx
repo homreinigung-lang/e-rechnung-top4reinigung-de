@@ -25,6 +25,7 @@ import {
   BarChart3,
   Calculator,
   Clock,
+  FileSearch,
   FileSignature,
   FileText,
   FolderKanban,
