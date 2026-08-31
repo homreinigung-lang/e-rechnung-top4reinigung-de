@@ -197,7 +197,7 @@ export function recommendPrice(
     overheadPercent: inputs.overheadPercent,
     profitPercent: inputs.profitPercent,
     recommendedAnnualNet: recommended,
-    recommendedMonthlyNet: round2(recommended / 12),
+    recommendedMonthlyNet: round2(recommended / MONTHS_PER_YEAR),
     recommendedPerSqm: area > 0 ? round2(recommended / area) : 0,
     documentAnnualNet,
     deltaPercent:
