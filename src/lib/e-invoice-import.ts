@@ -117,8 +117,9 @@ function parseUbl(doc: Document, xml: string): IncomingEInvoice {
   const taxTotal = pick(root, ["TaxTotal"]);
   const net = num(text(totals, ["TaxExclusiveAmount"]));
   const gross = num(text(totals, ["TaxInclusiveAmount"]));
-  const vat = num(text(taxTotal, ["TaxAmount"])) || Math.max(0, gross - net);
-  return {
+  // Fehlender Steuerbetrag darf nur abgeleitet werden, wenn Netto UND Brutto vorliegen.
+  const vat = num(text(taxTotal, ["TaxAmount"])) ?? (net !== null && gross !== null ? gross - net : null);
+  return validate({
     format: "XRechnung (UBL)",
     supplier:
       text(supplier, ["PartyLegalEntity", "RegistrationName"]) ||
@@ -129,10 +130,10 @@ function parseUbl(doc: Document, xml: string): IncomingEInvoice {
     currency: text(root, ["DocumentCurrencyCode"]) || "EUR",
     net_amount: net,
     vat_amount: vat,
-    gross_amount: gross || net + vat,
+    gross_amount: gross ?? (net !== null && vat !== null ? net + vat : null),
     notes: text(root, ["Note"]),
     xml,
-  };
+  });
 }
 
 function parseCii(doc: Document, xml: string): IncomingEInvoice {
@@ -146,8 +147,8 @@ function parseCii(doc: Document, xml: string): IncomingEInvoice {
   const sums = pick(settlement ?? root, ["SpecifiedTradeSettlementHeaderMonetarySummation"]);
   const net = num(text(sums, ["TaxBasisTotalAmount"]));
   const gross = num(text(sums, ["GrandTotalAmount"]));
-  const vat = num(text(sums, ["TaxTotalAmount"])) || Math.max(0, gross - net);
-  return {
+  const vat = num(text(sums, ["TaxTotalAmount"])) ?? (net !== null && gross !== null ? gross - net : null);
+  return validate({
     format: "ZUGFeRD/Factur-X (CII)",
     supplier: text(supplier, ["Name"]),
     supplier_vat_id: text(supplier, ["SpecifiedTaxRegistration", "ID"]),
@@ -159,11 +160,12 @@ function parseCii(doc: Document, xml: string): IncomingEInvoice {
     currency: text(settlement, ["InvoiceCurrencyCode"]) || "EUR",
     net_amount: net,
     vat_amount: vat,
-    gross_amount: gross || net + vat,
+    gross_amount: gross ?? (net !== null && vat !== null ? net + vat : null),
     notes: text(root, ["ExchangedDocument", "IncludedNote", "Content"]),
     xml,
-  };
+  });
 }
+
 
 /** Erkennt automatisch UBL oder CII. */
 export function parseEInvoiceXml(xml: string): IncomingEInvoice {
