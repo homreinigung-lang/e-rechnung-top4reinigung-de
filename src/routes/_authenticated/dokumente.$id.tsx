@@ -72,6 +72,14 @@ import {
   type ReminderKind,
 } from "@/lib/workflow";
 import { parseGermanDate } from "@/lib/format";
+import {
+  checkInvoiceDates,
+  formatPeriod,
+  periodForIssueDate,
+  syncMonthInText,
+} from "@/lib/invoice-period";
+import { findDuplicateInvoice } from "@/lib/invoice-duplicate";
+
 
 import { downloadBytes } from "@/lib/pdf";
 import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
@@ -287,6 +295,30 @@ function DokumentDetail() {
       // Nummern werden automatisch/fortlaufend vergeben und nie aus dem Formular übernommen.
       const number = String((data?.doc as { number?: string } | undefined)?.number ?? "").trim();
       if (!number) throw new Error("Beleg konnte nicht geladen werden.");
+
+      if (String(current?.["type"] ?? "") === "invoice") {
+        // 1. Rechnungsdatum darf nicht vor dem Leistungszeitraum liegen.
+        const check = checkInvoiceDates(
+          String(form["issue_date"] ?? ""),
+          String(form["service_period"] ?? ""),
+        );
+        if (check.level === "error") throw new Error(check.message);
+
+        // 2. Keine zweite Rechnung für denselben Kunden und Leistungsmonat.
+        if (String(form["status"] ?? "draft") !== "draft") {
+          const dup = await findDuplicateInvoice({
+            currentId: id,
+            customerId: (form["customer_id"] as string | null) || null,
+            servicePeriod: String(form["service_period"] ?? ""),
+          });
+          if (dup)
+            throw new Error(
+              `Für diesen Kunden existiert bereits die Rechnung ${dup.number} für den Leistungszeitraum ${dup.period}. Doppelte Abrechnung wurde verhindert.`,
+            );
+        }
+      }
+
+
 
       const payload = {
         ...form,
@@ -596,6 +628,11 @@ function DokumentDetail() {
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
   const introText = String(form["intro_text"] ?? "").trim();
+  // Datumsprüfung: Rechnungsdatum darf nicht vor der Leistung liegen (§ 14 UStG).
+  const dateCheck = isInvoice
+    ? checkInvoiceDates(String(form["issue_date"] ?? ""), String(form["service_period"] ?? ""))
+    : { level: "ok" as const, message: "" };
+
   const senderLine = [
     settings?.["company_name"] ?? "",
     settings?.["address_line"] ?? "",
@@ -613,9 +650,34 @@ function DokumentDetail() {
         if (value !== "paid") next["paid_at"] = null;
       }
       if (key === "paid_at" && value) next["status"] = "paid";
+      // Monats-Synchronisierung: Leistungszeitraum folgt automatisch dem
+      // Rechnungsdatum, solange noch kein Zeitraum gepflegt wurde.
+      if (key === "issue_date" && typeof value === "string" && doc.type === "invoice") {
+        const period = periodForIssueDate(value);
+        if (period && !String(next["service_period"] ?? "").trim()) {
+          next["service_period"] = formatPeriod(period);
+        }
+        const desc = String(next["service_description"] ?? "");
+        if (desc) next["service_description"] = syncMonthInText(desc, value);
+      }
       return next;
     });
   }
+
+  /** Übernimmt den Monat des Rechnungsdatums als Leistungszeitraum. */
+  function applyIssueMonth() {
+    const period = periodForIssueDate(String(form["issue_date"] ?? ""));
+    if (!period) return;
+    setForm((f) => ({
+      ...f,
+      service_period: formatPeriod(period),
+      service_description: syncMonthInText(
+        String(f["service_description"] ?? ""),
+        period.start,
+      ),
+    }));
+  }
+
 
   function pickCustomer(customerId: string) {
     const c = data!.customers.find((x) => x.id === customerId);
@@ -1457,7 +1519,26 @@ function DokumentDetail() {
               onChange={(v) => setField("service_period", v)}
               placeholder="Zeitraum im Kalender wählen"
             />
+            {isInvoice ? (
+              <>
+                <Button type="button" variant="ghost" size="sm" onClick={applyIssueMonth}>
+                  Monat des Rechnungsdatums übernehmen
+                </Button>
+                {dateCheck.message ? (
+                  <p
+                    className={
+                      dateCheck.level === "error"
+                        ? "text-xs text-destructive"
+                        : "text-xs text-amber-600 dark:text-amber-500"
+                    }
+                  >
+                    {dateCheck.message}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
           </div>
+
         </div>
 
         <div className="space-y-2">
