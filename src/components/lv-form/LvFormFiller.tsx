@@ -79,7 +79,19 @@ export default function LvFormFiller() {
         characters: doc.text.length,
         preview: doc.text.slice(0, 1000),
       });
-      setTextPreview(doc.text.slice(0, 1500));
+      // Exakt der Text, der auch für die Analyse verwendet wurde – ungekürzt,
+      // mit Zeilenumbrüchen und Seitenreihenfolge wie extrahiert.
+      const extracted = typeof doc.text === 'string' ? doc.text : '';
+      setTextPreview(extracted);
+      setTextReason(
+        extracted.length > 0
+          ? ''
+          : doc.kind === 'pdf'
+            ? 'Die PDF-Datei enthält keine auslesbare Textebene (vermutlich ein Scan). Es wurde daher OCR verwendet – der Text liegt nicht als Vorschau vor.'
+            : 'Die Datei enthält keinen auslesbaren Text.',
+      );
+      if (extracted.length > 0) setShowText(true);
+
 
       let found: LvImportItem[] = [];
       const methodCounts: Record<string, number> = {};
