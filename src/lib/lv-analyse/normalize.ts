@@ -181,8 +181,12 @@ export function dedupeItems(items: LvNormalizedItem[]): LvNormalizedItem[] {
   return [...map.values()];
 }
 
+/** Verlässlichkeit des Erkennungswegs: strukturierte Tabellen schlagen Freitextregeln. */
+const METHOD_WEIGHT: Record<string, number> = { manuell: 4, tabelle: 3, ki: 2, ocr: 1.5, regel: 0 };
+
 function density(item: LvNormalizedItem): number {
   return (
+    (METHOD_WEIGHT[item.source_method] ?? 0) +
     (item.quantity !== null ? 1 : 0) +
     (item.unit ? 1 : 0) +
     (item.unit_price !== null && item.unit_price > 0 ? 1 : 0) +

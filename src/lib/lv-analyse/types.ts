@@ -105,7 +105,7 @@ export type LvImportLogEntry = {
 
 export const DOCUMENT_KIND_LABELS: Record<LvDocumentKind, { de: string; ar: string }> = {
   detailed_lv: { de: "Detailliertes Leistungsverzeichnis", ar: "كشف خدمات تفصيلي" },
-  pricing_form: { de: "Preisblatt / Angebotsformular", ar: "نموذج تسعير" },
+  pricing_form: { de: "Preisblatt – teilweise strukturierte Daten", ar: "نموذج تسعير – بيانات جزئية" },
   cleaning_spec: { de: "Reinigungs-Leistungsbeschreibung", ar: "مواصفات تنظيف" },
   scanned_pdf: { de: "Gescanntes PDF (OCR)", ar: "ملف PDF ممسوح ضوئياً" },
   unsupported: { de: "Nicht unterstütztes Dokument", ar: "مستند غير مدعوم" },

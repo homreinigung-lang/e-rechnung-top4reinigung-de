@@ -14,7 +14,16 @@ import type { LvAnalysisResult, LvNormalizedItem, LvProcessStep, LvTotalLine } f
 
 type ServerCaller<TIn, TOut> = (args: { data: TIn }) => Promise<TOut>;
 
+export type ReadDocument = (file: File) => Promise<{
+  text: string;
+  rows: string[][];
+  hasTextLayer: boolean;
+  pageCount?: number;
+}>;
+
 export type AnalyseDeps = {
+  /** Ersetzbarer Datei-Leser (Tests / alternative Parser). */
+  readDocument?: ReadDocument;
   analyseText?: ServerCaller<{ text: string }, LvAnalyseResponse>;
   analyseScan?: ServerCaller<{ fileName: string; mimeType: string; base64: string }, LvAnalyseResponse>;
   onStep?: (step: LvProcessStep) => void;
@@ -27,6 +36,7 @@ export type AnalyseDeps = {
 export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise<LvAnalysisResult> {
   const analyseText = deps.analyseText ?? ((args) => analyseLvDocument(args));
   const analyseScan = deps.analyseScan ?? ((args) => analyseLvScan(args));
+  const readDocument: ReadDocument = deps.readDocument ?? ((f) => extractDocument(f));
   const steps: LvProcessStep[] = [];
   const push = (step: LvProcessStep) => {
     steps.push(step);
@@ -73,7 +83,7 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
       push({ state: gaeb.itemCount ? "ok" : "warn", label: `GAEB gelesen: ${gaeb.itemCount} Datensätze` });
     } else {
       push({ state: "ok", label: "Datei wird gelesen" });
-      const doc = await extractDocument(file);
+      const doc = await readDocument(file);
       text = doc.text;
       rows = doc.rows;
       hasTextLayer = doc.hasTextLayer;

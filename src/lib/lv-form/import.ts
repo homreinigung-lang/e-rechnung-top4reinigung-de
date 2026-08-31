@@ -234,10 +234,17 @@ export function itemsFromRows(rows: string[][]): LvImportItem[] {
       if (!cell) return;
       for (const pattern of HEAD_PATTERNS) {
         if (found[pattern.key] !== undefined) continue;
-        if (pattern.words.some((w) => cell === w || cell.startsWith(`${w} `) || cell.includes(w))) {
+        // Kurze Abkürzungen (z. B. "me", "ep", "nr") nur exakt vergleichen,
+        // sonst würde "Menge" fälschlich als Mengeneinheit erkannt.
+        if (
+          pattern.words.some((w) =>
+            w.length <= 3 ? cell === w : cell === w || cell.startsWith(`${w} `) || cell.includes(w),
+          )
+        ) {
           found[pattern.key] = c;
         }
       }
+
     });
     if (found.description !== undefined && (found.quantity !== undefined || found.item_number !== undefined)) {
       headerIndex = r;

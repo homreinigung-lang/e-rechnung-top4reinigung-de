@@ -8,6 +8,9 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  FileSpreadsheet,
+  FileText,
+  Download,
   Trash2,
   Upload,
   XCircle,
@@ -49,6 +52,18 @@ import {
   type LvProcessStep,
 } from '@/lib/lv-analyse/types';
 import { parseFrequency } from '@/lib/lv-analyse/normalize';
+import {
+  buildCsv,
+  buildPdfReport,
+  buildXlsx,
+  canExport,
+  downloadBlob,
+  exportBaseName,
+  needsReview,
+  reviewFields,
+  selectExportItems,
+  REVIEW_LABEL,
+} from '@/lib/lv-analyse/export';
 
 /** Zweisprachige Beschriftung: Deutsch (Fachsprache der Ausschreibung) + Arabisch. */
 function Bi({ de, ar }: { de: string; ar: string }) {
@@ -89,6 +104,7 @@ export default function LvAnalyse() {
   const [log, setLog] = useState<LvImportLogEntry[]>([]);
   const [priceInputs, setPriceInputs] = useState<PriceInputs>(DEFAULT_PRICE_INPUTS);
   const [showText, setShowText] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const loadLog = useCallback(async () => {
     const { data, error } = await supabase
@@ -203,6 +219,58 @@ export default function LvAnalyse() {
   };
 
   const approvedCount = items.filter((i) => i.approved).length;
+  const reviewCount = items.filter((i) => needsReview(i)).length;
+  const exportReady = canExport(result, items);
+  const exportItems = selectExportItems(items);
+  const exportDisabled = !exportReady || exportItems.length === 0 || exporting;
+  const exportHint = !result
+    ? 'Bitte zuerst eine Ausschreibung analysieren.'
+    : !exportReady
+      ? 'Export ist erst nach abgeschlossener oder teilweise abgeschlossener Analyse möglich.'
+      : exportItems.length === 0
+        ? 'Bitte zuerst Positionen prüfen und freigeben – exportiert werden nur freigegebene Positionen.'
+        : `${exportItems.length} freigegebene Positionen werden exportiert.`;
+
+  const runExport = async (kind: 'csv' | 'xlsx' | 'pdf') => {
+    if (!result) return;
+    if (!exportReady) {
+      toast.error('Export nicht möglich', {
+        description: 'Die Analyse ist noch nicht abgeschlossen. Bitte laden Sie zuerst ein auswertbares Dokument hoch.',
+      });
+      return;
+    }
+    if (exportItems.length === 0) {
+      toast.error('Keine freigegebenen Positionen', {
+        description: 'Bitte prüfen Sie die Positionen im Reiter „Positionen“ und geben Sie sie frei (Schaltfläche „Alle freigeben“).',
+      });
+      return;
+    }
+    setExporting(true);
+    try {
+      const base = exportBaseName(result);
+      if (kind === 'csv') {
+        downloadBlob(new Blob([buildCsv(exportItems, result)], { type: 'text/csv;charset=utf-8' }), `${base}.csv`);
+      } else if (kind === 'xlsx') {
+        downloadBlob(await buildXlsx(exportItems, result), `${base}.xlsx`);
+      } else {
+        const blob = await buildPdfReport(result, exportItems, {
+          totalArea: area.totalArea,
+          totalHours: hours.totalHours,
+          totalCost: cost.net,
+        });
+        downloadBlob(blob, `${base}.pdf`);
+      }
+      toast.success('Export erstellt', {
+        description: `${exportItems.length} freigegebene Positionen als ${kind.toUpperCase()} heruntergeladen.`,
+      });
+    } catch (error) {
+      toast.error('Export fehlgeschlagen', {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -238,6 +306,20 @@ export default function LvAnalyse() {
             <span className="text-xs text-muted-foreground" dir="rtl">
               الصيغ المدعومة: PDF، Excel، CSV، GAEB
             </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
+            <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport('xlsx')}>
+              <FileSpreadsheet className="mr-1 size-4" /> XLSX-Export
+            </Button>
+            <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport('csv')}>
+              <Download className="mr-1 size-4" /> CSV-Export
+            </Button>
+            <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport('pdf')}>
+              <FileText className="mr-1 size-4" /> PDF-Bericht
+            </Button>
+            {exporting && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+            <span className="text-xs text-muted-foreground">{exportHint}</span>
           </div>
 
           {/* Verarbeitungsstatus – immer sichtbar, nie leer */}
@@ -311,7 +393,10 @@ export default function LvAnalyse() {
         <TabsContent value="items" className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
-              {items.length} Positionen · {approvedCount} freigegeben · {issues.length} Hinweise
+              {items.length} Positionen · {approvedCount} freigegeben · {issues.length} Hinweise ·{' '}
+              <span className={reviewCount ? 'font-medium text-amber-700' : undefined}>
+                {reviewCount} × {REVIEW_LABEL}
+              </span>
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={addItem}>
@@ -350,6 +435,7 @@ export default function LvAnalyse() {
                   {items.map((item) => {
                     const itemIssues = issueMap.get(item.id) ?? [];
                     const hasError = itemIssues.some((i) => i.level === 'error');
+                    const review = reviewFields(item);
                     return (
                       <TableRow key={item.id} className={hasError ? 'bg-destructive/5' : undefined}>
                         <TableCell>
@@ -365,6 +451,11 @@ export default function LvAnalyse() {
                             value={item.description}
                             onChange={(e) => update(item.id, { description: e.target.value })}
                           />
+                          {review.length > 0 && (
+                            <p className="mt-0.5 text-[10px] text-amber-700">
+                              {REVIEW_LABEL}: {review.join(', ')}
+                            </p>
+                          )}
                         </TableCell>
                         <TableCell>
                           <select
@@ -432,7 +523,11 @@ export default function LvAnalyse() {
                         <TableCell>
                           <NumCell value={item.vat_rate} onChange={(v) => update(item.id, { vat_rate: v })} />
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{item.source_page ?? '–'}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {item.source_page ?? (
+                            <span className="text-[10px] text-amber-700">{REVIEW_LABEL}</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right tabular-nums">
                           <Badge variant={item.confidence_score >= 0.7 ? 'secondary' : 'outline'}>
                             {Math.round(item.confidence_score * 100)} %
