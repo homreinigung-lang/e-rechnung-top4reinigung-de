@@ -140,6 +140,25 @@ export function buildExportRows(items: LvNormalizedItem[]): string[][] {
   });
 }
 
+const GROUP_ROW: string[] = [
+  "Anforderungen aus der Ausschreibung",
+  ...Array(TENDER_HEADERS.length - 1).fill(""),
+  "Eigene Kalkulation",
+  ...Array(CALCULATION_HEADERS.length - 1).fill(""),
+];
+
+/** Summenzeilen ausschließlich aus den eigenen Kalkulationsdaten. */
+function ownSummaryRows(items: LvNormalizedItem[]): string[][] {
+  const s = summarizeOwnCalculation(items);
+  return [
+    [],
+    ["Eigene Kalkulation – Gesamtsumme"],
+    ["Kalkulierte Positionen", String(s.calculatedItems)],
+    ["Angebotssumme netto €", String(s.net).replace(".", ",")],
+    ["Jahressumme netto €", String(s.annualNet).replace(".", ",")],
+  ];
+}
+
 function csvCell(value: string): string {
   return /[";\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
@@ -161,8 +180,10 @@ export function buildCsv(items: LvNormalizedItem[], result?: LvAnalysisResult | 
       lines.push([]);
     }
   }
+  lines.push(GROUP_ROW);
   lines.push([...EXPORT_HEADERS]);
   lines.push(...buildExportRows(items));
+  lines.push(...ownSummaryRows(items));
   return `\uFEFF${lines.map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
 }
 
@@ -215,8 +236,10 @@ export async function buildXlsx(
     rows.push(["Status", result.statusMessage]);
     rows.push([]);
   }
+  rows.push(GROUP_ROW);
   rows.push([...EXPORT_HEADERS]);
   rows.push(...buildExportRows(items));
+  rows.push(...ownSummaryRows(items));
   if (result?.totals.length) {
     rows.push([]);
     rows.push(["Erkannte Summen", "Betrag €", "Quellseite"]);
