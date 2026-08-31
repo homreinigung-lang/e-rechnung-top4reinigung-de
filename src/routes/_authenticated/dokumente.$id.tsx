@@ -489,14 +489,18 @@ function DokumentDetail() {
   });
 
   const storno = useMutation({
-    mutationFn: () => createStorno(id),
+    mutationFn: (reason: string) => createStorno(id, reason),
     onSuccess: (newId) => {
+      setStornoOpen(false);
+      setStornoReason("");
       toast.success("Stornorechnung erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      navigate({ to: "/dokumente/$id", params: { id: newId } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const remove = useMutation({
     mutationFn: async () => {
