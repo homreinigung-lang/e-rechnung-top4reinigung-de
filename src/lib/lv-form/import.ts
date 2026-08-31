@@ -38,10 +38,10 @@ async function loadPdfjs() {
   const pdfjs = useLegacyBuild
     ? await import("pdfjs-dist/legacy/build/pdf.mjs")
     : await import("pdfjs-dist");
-  const worker = useLegacyBuild
-    ? await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url")
-    : await import("pdfjs-dist/build/pdf.worker.mjs?url");
-  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  if (!useLegacyBuild) {
+    const worker = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+    pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  }
   return pdfjs;
 }
 

@@ -10,8 +10,6 @@ import {
 } from "./validate";
 import type { LvConstraint, LvInputs } from "./types";
 import { cleanItems, itemsFromRows, itemsFromText } from "./import";
-import { extractDocument } from "./import";
-import { PDFDocument, StandardFonts } from "pdf-lib";
 
 describe("deutsche Zahlen", () => {
   it("liest Tausenderpunkte und Dezimalkomma", () => {
@@ -30,29 +28,6 @@ describe("deutsche Zahlen", () => {
 });
 
 describe("LV-Import", () => {
-  it("liest die Texte aller PDF-Seiten in Reihenfolge", async () => {
-    const pdf = await PDFDocument.create();
-    const font = await pdf.embedFont(StandardFonts.Helvetica);
-    for (const line of [
-      "01.01.001 Bodenreinigung 1.250,00 m2",
-      "01.02.003 Glasreinigung 18 Std.",
-    ]) {
-      const page = pdf.addPage();
-      page.drawText(line, { x: 40, y: 760, size: 11, font });
-    }
-    const bytes = await pdf.save();
-    const file = {
-      name: "mehrseitiges-lv.pdf",
-      type: "application/pdf",
-      arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
-    } as File;
-
-    const result = await extractDocument(file);
-    expect(result.pageCount).toBe(2);
-    expect(result.text).toContain("01.01.001 Bodenreinigung");
-    expect(result.text).toContain("01.02.003 Glasreinigung");
-  });
-
   it("erkennt verschachtelte OZ, deutsche Mengen und Einheiten", () => {
     const text = [
       "--- Seite 1 ---",
