@@ -65,6 +65,8 @@ type Ctx = {
   y: number;
   regular: PDFFont;
   bold: PDFFont;
+  /** Untere Satzspiegelgrenze (Seitenrand + reservierte Fußzeile). */
+  bottom: number;
 };
 
 /** Zeichen ersetzen, die in der WinAnsi-Kodierung fehlen. */
@@ -113,7 +115,7 @@ function newPage(ctx: Ctx) {
 
 /** Sorgt dafür, dass ein Block komplett auf eine Seite passt (page-break-inside: avoid). */
 function ensure(ctx: Ctx, height: number) {
-  if (ctx.y - height < M_Y) newPage(ctx);
+  if (ctx.y - height < ctx.bottom) newPage(ctx);
 }
 
 function text(
@@ -163,7 +165,24 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
 
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const ctx: Ctx = { pdf, page: pdf.addPage([PAGE_W, PAGE_H]), y: PAGE_H - M_Y, regular, bold };
+  const ctx: Ctx = {
+    pdf,
+    page: pdf.addPage([PAGE_W, PAGE_H]),
+    y: PAGE_H - M_Y,
+    regular,
+    bold,
+    bottom: M_Y,
+  };
+
+  // ---- Fußbereich vorab vermessen und als Satzspiegel-Reserve sperren -----
+  const footColW = (CONTENT_W - 24) / 3;
+  const footHeadLines = d.footer.map((col) => wrap(bold, 8, col.heading, footColW));
+  const footColLines = d.footer.map((col) =>
+    col.lines.filter(Boolean).flatMap((line) => wrap(regular, 7.5, line, footColW)),
+  );
+  const footHeadH = Math.max(...footHeadLines.map((l) => l.length)) * 10;
+  const footH = Math.max(...footColLines.map((l) => l.length)) * 10 + footHeadH + 16;
+  ctx.bottom = M_Y + footH + 12;
 
   // ---- Kopfbereich --------------------------------------------------------
   let logoImage: Awaited<ReturnType<PDFDocument["embedPng"]>> | null = null;
@@ -320,8 +339,13 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   const padY = 5;
   const rowSize = 9;
 
-  const headLines = headers.map((h, i) => wrap(bold, 7.5, h, colWidths[i]! - 2 * padX));
+  // Wichtig: Erst in Großbuchstaben wandeln, dann umbrechen – sonst wird die
+  // Breite zu klein berechnet und die Spaltenköpfe überlappen sich.
+  const headLines = headers.map((h, i) =>
+    wrap(bold, 7.5, h.toUpperCase(), colWidths[i]! - 2 * padX),
+  );
   const headH = Math.max(...headLines.map((l) => l.length)) * 9.5 + 2 * padY;
+
 
   const drawTableHead = () => {
     ensure(ctx, headH + 20);
@@ -337,7 +361,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     });
     headLines.forEach((lines, i) => {
       lines.forEach((line, li) => {
-        text(ctx, line.toUpperCase(), {
+        text(ctx, line, {
           x: colX[i]! + padX,
           y: top - padY - 8 - li * 9.5,
           width: colWidths[i]! - 2 * padX,
@@ -356,7 +380,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   /** Voll­breite Band-Zeile (Abschnittstitel oder Zwischensumme). */
   const drawBandRow = (label: string, value?: string, filled = true) => {
     const h = 20;
-    if (ctx.y - h < M_Y) {
+    if (ctx.y - h < ctx.bottom) {
       newPage(ctx);
       drawTableHead();
     }
@@ -411,7 +435,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     const rowH = Math.max(...cells.map((c) => c.length)) * 12 + 2 * padY;
 
     // Zeile nie über den Seitenumbruch zerschneiden – ggf. komplett umbrechen.
-    if (ctx.y - rowH < M_Y) {
+    if (ctx.y - rowH < ctx.bottom) {
       newPage(ctx);
       drawTableHead();
     }
@@ -490,7 +514,17 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   // ---- Summenblock (nie zerschnitten) ------------------------------------
   // Der Summenblock wird zusammen mit einem direkt folgenden Steuerhinweis
   // als eine Einheit behandelt (break-inside: avoid für den gesamten Abschluss).
-  const sumW = 210;
+  // Breite dynamisch: Beschriftung und Betrag dürfen sich nie überlappen.
+  const sumFont = (strong?: boolean) => (strong ? bold : regular);
+  const sumSize = (strong?: boolean) => (strong ? 10.5 : 9.5);
+  const neededSumW = d.summary.reduce((max, row) => {
+    const w =
+      widthOf(sumFont(row.strong), sumSize(row.strong), row.label) +
+      widthOf(sumFont(row.strong), sumSize(row.strong), row.value) +
+      18;
+    return Math.max(max, w);
+  }, 210);
+  const sumW = Math.min(neededSumW, CONTENT_W);
   const sumX = M_X + CONTENT_W - sumW;
   const sumH = d.summary.length * 14 + 6;
   const taxNoteLines = d.taxNote ? wrap(regular, 8.5, d.taxNote, CONTENT_W - 12) : [];
@@ -505,11 +539,23 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
         color: COLOR_BORDER,
       });
     }
-    text(ctx, row.label, {
+    const size = sumSize(row.strong);
+    const font = sumFont(row.strong);
+    const valueW = widthOf(font, size, row.value);
+    // Zu lange Beschriftungen (z. B. Rabattgrund) werden gekürzt statt überlappt.
+    let label = clean(row.label);
+    const labelMaxW = sumW - valueW - 12;
+    if (widthOf(font, size, label) > labelMaxW) {
+      while (label.length > 3 && widthOf(font, size, `${label}...`) > labelMaxW) {
+        label = label.slice(0, -1);
+      }
+      label = `${label.trimEnd()}...`;
+    }
+    text(ctx, label, {
       x: sumX,
       y: ctx.y,
-      size: row.strong ? 10.5 : 9.5,
-      font: row.strong ? bold : regular,
+      size,
+      font,
       color: row.strong ? COLOR_TEXT : COLOR_MUTED,
     });
     text(ctx, row.value, {
@@ -517,11 +563,12 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
       y: ctx.y,
       width: sumW,
       align: "right",
-      size: row.strong ? 10.5 : 9.5,
-      font: row.strong ? bold : regular,
+      size,
+      font,
     });
     ctx.y -= 14;
   }
+
   ctx.y -= 8;
 
   // ---- Steuerhinweis (Zeilen bereits oben umbrochen) ----------------------
@@ -549,26 +596,34 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     ctx.y -= lines.length * 12 + 8;
   }
 
+
   // ---- Zahlungshinweis + GiroCode ----------------------------------------
   if ((d.paymentLines && d.paymentLines.length > 0) || d.qrPayload) {
     const qrSize = d.qrPayload ? 68 : 0;
-    const payLines = d.paymentLines ?? [];
+    const boxW = d.qrPayload ? qrSize + 120 : 0;
+    const textW = CONTENT_W - boxW - (boxW > 0 ? 16 : 0);
+    const payLines = (d.paymentLines ?? []).flatMap((line, li, all) =>
+      wrap(regular, li === all.length - 1 ? 8 : 9.5, line, textW).map((l) => ({
+        text: l,
+        muted: li === all.length - 1,
+      })),
+    );
     const blockH = Math.max(payLines.length * 12 + 6, qrSize + 16);
-    ensure(ctx, blockH);
+    // Zahlungsblock und Fußbereich bilden eine Einheit – kein Umbruch dazwischen.
+    if (ctx.y - blockH < ctx.bottom) newPage(ctx);
     const top = ctx.y;
     payLines.forEach((line, li) => {
-      text(ctx, line, {
+      text(ctx, line.text, {
         x: M_X,
         y: top - li * 12,
-        size: li === payLines.length - 1 ? 8 : 9.5,
-        color: li === payLines.length - 1 ? COLOR_MUTED : COLOR_TEXT,
-        width: CONTENT_W - qrSize - 120,
+        size: line.muted ? 8 : 9.5,
+        color: line.muted ? COLOR_MUTED : COLOR_TEXT,
+        width: textW,
       });
     });
     if (d.qrPayload) {
       try {
         const image = await pdf.embedPng(await qrImageBytes(d.qrPayload, qrSize * 4));
-        const boxW = qrSize + 120;
         const boxX = M_X + CONTENT_W - boxW;
         const boxY = top + 10 - blockH;
         ctx.page.drawRectangle({
@@ -597,11 +652,9 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     ctx.y = top - blockH - 6;
   }
 
-  // ---- Fußbereich ---------------------------------------------------------
-  const footColW = (CONTENT_W - 24) / 3;
-  const footH = Math.max(...d.footer.map((c) => c.lines.length + 1)) * 10.5 + 14;
-  ensure(ctx, footH);
-  const footTop = ctx.y - 6;
+  // ---- Fußbereich (immer am unteren Seitenrand, nie überlappend) ----------
+
+  const footTop = M_Y + footH - 14;
   ctx.page.drawLine({
     start: { x: M_X, y: footTop + 6 },
     end: { x: M_X + CONTENT_W, y: footTop + 6 },
@@ -610,14 +663,17 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   });
   d.footer.forEach((col, i) => {
     const x = M_X + i * (footColW + 12);
-    text(ctx, col.heading, { x, y: footTop - 6, size: 8, font: bold });
-    col.lines.filter(Boolean).forEach((line, li) => {
-      wrap(regular, 7.5, line, footColW).forEach((l, lj) => {
-        text(ctx, l, { x, y: footTop - 17 - (li + lj) * 10, size: 7.5, color: COLOR_MUTED });
-      });
+    footHeadLines[i]!.forEach((line, li) => {
+      text(ctx, line, { x, y: footTop - 6 - li * 10, size: 8, font: bold, width: footColW });
+    });
+    footColLines[i]!.forEach((line, li) => {
+      text(ctx, line, { x, y: footTop - 8 - footHeadH - li * 10, size: 7.5, color: COLOR_MUTED });
     });
   });
-  ctx.y = footTop - footH;
+  ctx.y = M_Y;
+
+
+
 
   return pdf.save();
 }
