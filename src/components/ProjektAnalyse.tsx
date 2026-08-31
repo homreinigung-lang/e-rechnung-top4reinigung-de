@@ -31,8 +31,6 @@ type RoomRow = {
   floor_covering: string;
 };
 
-
-
 export type KalkulationSnapshot = {
   /** Bezeichnung der Reinigungsart */
   typeLabel: string;
