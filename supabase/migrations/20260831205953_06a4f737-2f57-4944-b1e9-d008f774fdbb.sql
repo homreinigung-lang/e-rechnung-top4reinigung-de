@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.plan_allows_reverse_charge(uuid) FROM anon, authenticated, public;
