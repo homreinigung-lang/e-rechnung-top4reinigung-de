@@ -3,9 +3,7 @@ import { ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
-const LvFormFiller = lazy(() =>
-  import("@/components/lv-form/LvFormFiller").then((m) => ({ default: m.LvFormFiller })),
-);
+const LvFormFiller = lazy(() => import("@/components/lv-form/LvFormFiller"));
 
 export const Route = createFileRoute("/_authenticated/lv-formular")({
   head: () => ({
