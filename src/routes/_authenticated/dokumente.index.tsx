@@ -336,6 +336,10 @@ function DokumenteListe() {
     .slice()
     .sort((a, b) => String(b.number).localeCompare(String(a.number), "de-DE"));
 
+  // Belegnummern-Nachschlagewerk: Stornobelege zeigen die Original-Rechnungsnummer.
+  const numberById = new Map(documents.map((d) => [d.id, String(d.number)]));
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
