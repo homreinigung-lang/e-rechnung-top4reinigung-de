@@ -1317,23 +1317,49 @@ function DokumentDetail() {
         {locked && isInvoice && !isStorno && !cancelledBy && (
           <Button
             variant="destructive"
-            onClick={() =>
-              setConfirmDialog({
-                title: "Stornorechnung erstellen",
-                description:
-                  "Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
-                confirmLabel: "Storno erstellen",
-                destructive: true,
-                action: () => storno.mutate(),
-              })
-            }
-
+            onClick={() => setStornoOpen(true)}
             disabled={storno.isPending}
           >
             <Ban className="size-4" /> Stornorechnung
           </Button>
         )}
       </div>
+
+      <Dialog open={stornoOpen} onOpenChange={(o) => !o && setStornoOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Stornorechnung erstellen</DialogTitle>
+            <DialogDescription>
+              Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen
+              erzeugt. Der Stornogrund wird revisionssicher gespeichert und auf dem Storno-Beleg
+              gedruckt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="storno-reason">Stornogrund (Pflichtangabe)</Label>
+            <Textarea
+              id="storno-reason"
+              value={stornoReason}
+              onChange={(e) => setStornoReason(e.target.value)}
+              placeholder="z. B. Falscher Leistungszeitraum, Kunde storniert, fehlerhafte Positionen …"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStornoOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => storno.mutate(stornoReason)}
+              disabled={storno.isPending || stornoReason.trim().length < 3}
+            >
+              Storno erstellen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {locked && lockedAt && (
         <div className="no-print flex flex-wrap items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
