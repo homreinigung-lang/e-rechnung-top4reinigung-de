@@ -692,9 +692,9 @@ function DokumentDetail() {
 
   const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
-  const bankName = String(settings?.["bank_name"] ?? "");
   const iban = String(settings?.["iban"] ?? "");
   const bic = String(settings?.["bic"] ?? "");
+
 
   const epc = isInvoice
     ? buildEpcPayload({
