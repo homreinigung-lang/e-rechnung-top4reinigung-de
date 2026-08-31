@@ -108,25 +108,33 @@ export type OwnCalculationSummary = {
   complete: boolean;
 };
 
-/** Gesamtsumme ausschließlich aus eigenen Kalkulationsdaten. */
+/**
+ * Gesamtsumme ausschließlich aus eigenen Kalkulationsdaten.
+ * `vatRate` stammt immer aus den Firmeneinstellungen – niemals aus dem
+ * hochgeladenen Ausschreibungsdokument.
+ */
 export function summarizeOwnCalculation(
   items: LvNormalizedItem[],
   vatRate = 19,
 ): OwnCalculationSummary {
   const calculated = items.filter(hasOwnPrice);
-  const net = round2(calculated.reduce((s, i) => s + (offerPrice(i) ?? 0), 0));
-  const annualNet = round2(
-    calculated.reduce((s, i) => s + (annualOfferPrice(i) ?? offerPrice(i) ?? 0), 0),
+  // Summe der bereits gerundeten Positionen: die Gesamtsumme entspricht exakt
+  // der Addition der sichtbaren Zeilen.
+  const netCents = calculated.reduce((s, i) => s + toCents(offerPrice(i) ?? 0), 0);
+  const annualCents = calculated.reduce(
+    (s, i) => s + toCents(annualOfferPrice(i) ?? offerPrice(i) ?? 0),
+    0,
   );
-  const vat = round2((net * vatRate) / 100);
+  const vatCents = Math.round((netCents * vatRate) / 100);
   return {
     calculatedItems: calculated.length,
     openItems: items.length - calculated.length,
-    net,
-    annualNet,
+    net: fromCents(netCents),
+    annualNet: fromCents(annualCents),
     vatRate,
-    vat,
-    gross: round2(net + vat),
+    vat: fromCents(vatCents),
+    gross: fromCents(netCents + vatCents),
     complete: items.length > 0 && calculated.length === items.length,
   };
+
 }
