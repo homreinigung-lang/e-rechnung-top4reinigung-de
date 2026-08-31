@@ -296,6 +296,30 @@ function DokumentDetail() {
       const number = String((data?.doc as { number?: string } | undefined)?.number ?? "").trim();
       if (!number) throw new Error("Beleg konnte nicht geladen werden.");
 
+      if (String(current?.["type"] ?? "") === "invoice") {
+        // 1. Rechnungsdatum darf nicht vor dem Leistungszeitraum liegen.
+        const check = checkInvoiceDates(
+          String(form["issue_date"] ?? ""),
+          String(form["service_period"] ?? ""),
+        );
+        if (check.level === "error") throw new Error(check.message);
+
+        // 2. Keine zweite Rechnung für denselben Kunden und Leistungsmonat.
+        if (String(form["status"] ?? "draft") !== "draft") {
+          const dup = await findDuplicateInvoice({
+            currentId: id,
+            customerId: (form["customer_id"] as string | null) || null,
+            servicePeriod: String(form["service_period"] ?? ""),
+          });
+          if (dup)
+            throw new Error(
+              `Für diesen Kunden existiert bereits die Rechnung ${dup.number} für den Leistungszeitraum ${dup.period}. Doppelte Abrechnung wurde verhindert.`,
+            );
+        }
+      }
+
+
+
       const payload = {
         ...form,
         number,
