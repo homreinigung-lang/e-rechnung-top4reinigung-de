@@ -177,9 +177,49 @@ export default function LvFormFiller() {
         />
         <label className="bg-blue-600 text-white px-4 py-2.5 rounded-lg cursor-pointer hover:bg-blue-700 transition font-medium shadow-sm">
           {loading ? 'KI analysiert...' : 'LV (PDF/TXT) hochladen & analysieren'}
-          <input type="file" accept=".pdf,.txt" onChange={handleFileUpload} className="hidden" />
+          <input
+            type="file"
+            accept=".pdf,.txt,.csv,.xlsx,.xlsm"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
         </label>
       </div>
+
+      {steps.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-800">Analyse-Ergebnis</h3>
+            <button
+              type="button"
+              disabled={loading || !lastFile}
+              onClick={() => lastFile && void analyzeFile(lastFile)}
+              className="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+            >
+              Erneut analysieren
+            </button>
+          </div>
+          <ul className="space-y-1 text-sm">
+            {steps.map((step, i) => (
+              <li
+                key={i}
+                className={step.state === 'ok' ? 'text-green-700' : 'text-amber-700'}
+              >
+                {step.state === 'ok' ? '✓' : '⚠'} {step.label}
+              </li>
+            ))}
+          </ul>
+          {textPreview && (
+            <details className="text-xs text-gray-600">
+              <summary className="cursor-pointer font-medium">Erkannten Text anzeigen</summary>
+              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded border border-gray-200 bg-white p-2">
+                {textPreview}
+              </pre>
+            </details>
+          )}
+        </div>
+      )}
+
 
       <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
