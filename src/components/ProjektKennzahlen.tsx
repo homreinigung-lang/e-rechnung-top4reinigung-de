@@ -6,8 +6,6 @@ import { formatMoney, formatNumber } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
 
-
-
 /** Auf zwei Nachkommastellen gerundet – vermeidet Fließkomma-Artefakte. */
 function round2(value: number) {
   return Math.round(value * 100) / 100;

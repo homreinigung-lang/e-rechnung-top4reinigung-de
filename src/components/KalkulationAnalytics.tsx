@@ -19,8 +19,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { WEEKS_PER_MONTH } from "@/lib/constants";
 
-
-
 function round2(v: number) {
   return Math.round(v * 100) / 100;
 }

@@ -162,7 +162,6 @@ function num(value: string): number {
 
 /** Monatsfaktor exakt aus 52 Wochen / 12 Monaten (siehe src/lib/constants.ts). */
 
-
 /** Hochgeladener Grundriss/Foto inkl. abgelesener Eckdaten. */
 type Attachment = {
   path: string;
@@ -1632,8 +1631,8 @@ function KalkulationPage() {
 
               {frequencyUnit === "week" && (
                 <p className="text-xs text-muted-foreground">
-                  Umrechnung auf den Monat mit 52 Wochen/Jahr (≈ {WEEKS_PER_MONTH_LABEL} Wochen je Monat):{" "}
-                  {formatNumber(num(frequency))} × {WEEKS_PER_MONTH_LABEL} ={" "}
+                  Umrechnung auf den Monat mit 52 Wochen/Jahr (≈ {WEEKS_PER_MONTH_LABEL} Wochen je
+                  Monat): {formatNumber(num(frequency))} × {WEEKS_PER_MONTH_LABEL} ={" "}
                   {formatNumber(visitsPerMonth)} Einsätze pro Monat.
                 </p>
               )}

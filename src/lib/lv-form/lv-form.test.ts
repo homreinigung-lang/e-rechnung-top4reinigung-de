@@ -55,9 +55,23 @@ describe("LV-Import", () => {
 
 describe("Zusammenführung mehrerer Erkennungswege", () => {
   it("behält die längste Liste und ergänzt fehlende Positionen ohne Dubletten", () => {
-    const a = [{ item_number: "1", description: "Unterhaltsreinigung", quantity: 1, unit: "m²", unit_price: 2 }];
+    const a = [
+      {
+        item_number: "1",
+        description: "Unterhaltsreinigung",
+        quantity: 1,
+        unit: "m²",
+        unit_price: 2,
+      },
+    ];
     const b = [
-      { item_number: "1", description: "Unterhaltsreinigung", quantity: 1, unit: "m²", unit_price: 2 },
+      {
+        item_number: "1",
+        description: "Unterhaltsreinigung",
+        quantity: 1,
+        unit: "m²",
+        unit_price: 2,
+      },
       { item_number: "2", description: "Glasreinigung", quantity: 3, unit: "Std.", unit_price: 38 },
     ];
     const merged = mergeItemLists([a, b, []]);
