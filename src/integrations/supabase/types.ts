@@ -987,6 +987,48 @@ export type Database = {
         }
         Relationships: []
       }
+      lv_import_logs: {
+        Row: {
+          created_at: string
+          document_kind: string
+          file_name: string
+          file_size: number
+          id: string
+          item_count: number
+          page_count: number
+          status: string
+          status_message: string
+          total_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_kind?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          item_count?: number
+          page_count?: number
+          status?: string
+          status_message?: string
+          total_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_kind?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          item_count?: number
+          page_count?: number
+          status?: string
+          status_message?: string
+          total_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       map_locations: {
         Row: {
           address_line: string
