@@ -179,6 +179,15 @@ function DokumenteListe() {
         .order("position");
 
       const number = draftPlaceholderNumber(src.type as "invoice" | "quote" | "order");
+      const issueDate = today();
+      const period = periodForIssueDate(issueDate);
+      const srcRecord = src as unknown as Record<string, unknown>;
+      const servicePeriod = period
+        ? formatPeriod(period)
+        : String(srcRecord["service_period"] ?? "");
+      const serviceDescription = period
+        ? syncMonthInText(String(srcRecord["service_description"] ?? ""), period.end)
+        : String(srcRecord["service_description"] ?? "");
       const {
         id: _i,
         created_at: _c,
@@ -191,16 +200,31 @@ function DokumenteListe() {
         is_storno: _st,
         cancels_document_id: _cd,
         cancelled_by_document_id: _cb,
+        storno_reason: _sr,
+        converted_document_id: _cv,
+        paid_at: _pa,
+        reminder_level: _rl,
+        last_reminder_at: _lr,
         retention_until: _ru,
         deleted_at: _dl,
         ...rest
       } = src as unknown as Record<string, unknown>;
       const { data: created, error: insErr } = await supabase
         .from("documents")
-        .insert({ ...rest, user_id: userId, number, status: "draft" } as never)
+        .insert({
+          ...rest,
+          user_id: userId,
+          number,
+          status: "draft",
+          issue_date: issueDate,
+          due_date: null,
+          service_period: servicePeriod,
+          service_description: serviceDescription,
+        } as never)
         .select("id")
         .single();
       if (insErr) throw insErr;
+
 
       if (srcItems && srcItems.length > 0) {
         await supabase.from("document_items").insert(
