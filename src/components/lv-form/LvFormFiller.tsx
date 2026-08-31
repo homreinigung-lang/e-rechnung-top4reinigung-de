@@ -416,22 +416,41 @@ export default function LvFormFiller() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-center border-b border-gray-200 pb-4">
+      <div className="flex flex-wrap gap-3 justify-between items-center border-b border-gray-200 pb-4">
         <input 
           type="text" 
           value={projectTitle} 
           onChange={(e) => setProjectTitle(e.target.value)}
           className="text-2xl font-bold border-b border-gray-300 pb-1 focus:outline-none bg-transparent"
         />
-        <label className="bg-blue-600 text-white px-4 py-2.5 rounded-lg cursor-pointer hover:bg-blue-700 transition font-medium shadow-sm">
-          {loading ? 'KI analysiert...' : 'LV (PDF/TXT) hochladen & analysieren'}
-          <input
-            type="file"
-            accept=".pdf,.txt,.csv,.xlsx,.xlsm"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
+        <div className="flex flex-wrap gap-2 items-center">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-lg hover:bg-emerald-700 transition font-medium shadow-sm disabled:opacity-60"
+          >
+            <FileDown className="size-4" />
+            {exporting ? 'PDF wird erstellt…' : 'PDF herunterladen'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex items-center gap-2 bg-gray-700 text-white px-4 py-2.5 rounded-lg hover:bg-gray-800 transition font-medium shadow-sm"
+          >
+            <Download className="size-4" />
+            Exportieren (CSV)
+          </button>
+          <label className="bg-blue-600 text-white px-4 py-2.5 rounded-lg cursor-pointer hover:bg-blue-700 transition font-medium shadow-sm inline-flex items-center gap-2">
+            {loading ? 'KI analysiert...' : 'LV hochladen & analysieren'}
+            <input
+              type="file"
+              accept=".pdf,.txt,.csv,.xlsx,.xlsm"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
 
       {steps.length > 0 && (
