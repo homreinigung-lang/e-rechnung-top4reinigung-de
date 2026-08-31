@@ -698,35 +698,60 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
   ctx.y = M_Y;
 
-  // ---- Stempel/Wasserzeichen (z. B. "STORNO") auf jeder Seite ----------
+  // ---- Runder Gruppen-Stempel (Ring + Text als EINE Einheit, 45°) -------
+  // Kreis und Schrift werden um denselben Mittelpunkt (Seitenmitte) gelegt
+  // und gemeinsam um 45° gedreht – sie bilden damit einen einzigen Stempel.
   if (d.watermark) {
     const label = clean(d.watermark).toUpperCase();
-    const size = Math.min(78, (CONTENT_W * 1.25) / Math.max(1, widthOf(bold, 1, label)));
+    const size = Math.min(64, 380 / Math.max(1, widthOf(bold, 1, label)));
     const w = widthOf(bold, size, label);
-    const h = size * 0.72;
+    const hh = size * 0.36; // halbe Glyphenhöhe (Grundlinie → optische Mitte)
     const cx = PAGE_W / 2;
     const cy = PAGE_H / 2;
+    // Rotationswinkel der ganzen Stempel-Gruppe
+    const theta = Math.PI / 4; // 45°
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    // Außenradius so, dass der Text mit komfortablem Abstand im Ring liegt
+    const r = Math.max(w, size) / 2 + 26;
+    const ringColor = rgb(0.86, 0.15, 0.15);
     for (const page of pdf.getPages()) {
-      // Dezenter runder Stempel-Rahmen hinter dem Schrägstempel
-      page.drawEllipse({
+      // 1) Hintergrund-Füllung des Stempels (sehr dezent)
+      page.drawCircle({
         x: cx,
         y: cy,
-        xScale: Math.max(w / 2 + 18, h + 18),
-        yScale: Math.max(h + 14, w / 4 + 14),
+        size: r,
         color: rgb(1, 0.95, 0.95),
-        borderColor: rgb(0.86, 0.15, 0.15),
-        borderWidth: 2,
-        opacity: 0.18,
-        rotate: degrees(30),
+        opacity: 0.08,
       });
+      // 2) Äußerer Ring (kräftig)
+      page.drawCircle({
+        x: cx,
+        y: cy,
+        size: r,
+        borderColor: ringColor,
+        borderWidth: 3,
+        opacity: 0.22,
+      });
+      // 3) Innerer Ring (fein) – klassischer Doppelring-Stempel
+      page.drawCircle({
+        x: cx,
+        y: cy,
+        size: r - 8,
+        borderColor: ringColor,
+        borderWidth: 1,
+        opacity: 0.2,
+      });
+      // 4) Text, exakt im Kreismittelpunkt zentriert und mit der Gruppe
+      //    um 45° gedreht (Rotation erfolgt um den Basispunkt des Textes).
       page.drawText(label, {
-        x: cx - (w * Math.cos(Math.PI / 6)) / 2,
-        y: cy - (h * Math.sin(Math.PI / 6)) / 2,
+        x: cx - (w / 2) * cos + hh * sin,
+        y: cy - (w / 2) * sin - hh * cos,
         size,
         font: bold,
-        color: rgb(0.86, 0.15, 0.15),
+        color: ringColor,
         opacity: 0.28,
-        rotate: degrees(30),
+        rotate: degrees(45),
       });
       if (d.watermarkNote) {
         const note = clean(d.watermarkNote);
