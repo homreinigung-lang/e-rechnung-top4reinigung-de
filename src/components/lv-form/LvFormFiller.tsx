@@ -93,24 +93,27 @@ export default function LvFormFiller() {
       if (extracted.length > 0) setShowText(true);
 
 
-      let found: LvImportItem[] = [];
       const methodCounts: Record<string, number> = {};
+      // Alle Erkennungswege werden ausgewertet und anschließend zusammengeführt,
+      // damit keine Position verloren geht.
+      const candidates: LvImportItem[][] = [];
 
       // 1) Tabellen (CSV/Excel): Spalten direkt erkennen – ohne KI, ohne Raten.
       if (doc.rows.length > 0) {
-        found = cleanItems(itemsFromRows(doc.rows));
-        methodCounts['tabellen'] = found.length;
-        diagnostic('Methode: Tabellen-/Spaltenerkennung', { rows: doc.rows.length, positions: found.length });
+        const rowsItems = cleanItems(itemsFromRows(doc.rows));
+        candidates.push(rowsItems);
+        methodCounts['tabellen'] = rowsItems.length;
+        diagnostic('Methode: Tabellen-/Spaltenerkennung', { rows: doc.rows.length, positions: rowsItems.length });
         log.push({
-          state: found.length ? 'ok' : 'warn',
-          label: found.length
-            ? `Tabellenspalten erkannt (${found.length} Positionen)`
+          state: rowsItems.length ? 'ok' : 'warn',
+          label: rowsItems.length
+            ? `Tabellenspalten erkannt (${rowsItems.length} Positionen)`
             : 'Tabellenspalten nicht eindeutig (0 Positionen)',
         });
       }
 
-      // 2) PDF/Text mit Textebene: KI-Analyse, danach regelbasierter Rückfall.
-      if (found.length === 0 && doc.hasTextLayer && doc.text.trim().length >= 20) {
+      // 2) PDF/Text mit Textebene: KI-Analyse und regelbasierte Erkennung parallel bewerten.
+      if (doc.hasTextLayer && doc.text.trim().length >= 20) {
         log.push({ state: 'ok', label: 'Methode: PDF-Textebene → KI-Analyse' });
         diagnostic('Sende extrahierten Text an KI', {
           characters: doc.text.length,
@@ -118,12 +121,13 @@ export default function LvFormFiller() {
         });
         try {
           const ai = await runAnalysis({ data: { pdfText: doc.text } });
-          found = cleanItems(Array.isArray(ai) ? ai : []);
-          methodCounts['ki'] = found.length;
-          diagnostic('KI-Analyse abgeschlossen', { positions: found.length });
+          const aiItems = cleanItems(Array.isArray(ai) ? ai : []);
+          candidates.push(aiItems);
+          methodCounts['ki'] = aiItems.length;
+          diagnostic('KI-Analyse abgeschlossen', { positions: aiItems.length });
           log.push({
-            state: found.length ? 'ok' : 'warn',
-            label: `KI-Analyse: ${found.length} Positionen`,
+            state: aiItems.length ? 'ok' : 'warn',
+            label: `KI-Analyse: ${aiItems.length} Positionen`,
           });
         } catch (aiError) {
           const reason = aiError instanceof Error ? aiError.message : String(aiError);
@@ -134,18 +138,20 @@ export default function LvFormFiller() {
             label: `KI-Analyse fehlgeschlagen. Grund: ${reason}`,
           });
         }
-        if (found.length === 0) {
-          found = cleanItems(itemsFromText(doc.text));
-          methodCounts['regelbasiert'] = found.length;
-          diagnostic('Methode: regelbasierter Fallback', { positions: found.length });
-          log.push({
-            state: found.length ? 'ok' : 'warn',
-            label: `Regelbasierter Fallback: ${found.length} Positionen`,
-          });
-        }
+
+        const ruleItems = cleanItems(itemsFromText(doc.text));
+        candidates.push(ruleItems);
+        methodCounts['regelbasiert'] = ruleItems.length;
+        diagnostic('Methode: regelbasierte Erkennung', { positions: ruleItems.length });
+        log.push({
+          state: ruleItems.length ? 'ok' : 'warn',
+          label: `Regelbasierte Erkennung: ${ruleItems.length} Positionen`,
+        });
       }
 
-      // 3) OCR auch bei unbrauchbarer/partieller Textebene versuchen.
+      let found = mergeCandidates(candidates);
+
+      // 3) OCR nur, wenn bisher gar nichts erkannt wurde.
       if (found.length === 0 && doc.kind === 'pdf') {
         log.push({
           state: 'warn',
@@ -179,6 +185,7 @@ export default function LvFormFiller() {
           });
         }
       }
+
 
       if (found.length === 0) {
         const attempted = Object.entries(methodCounts)
