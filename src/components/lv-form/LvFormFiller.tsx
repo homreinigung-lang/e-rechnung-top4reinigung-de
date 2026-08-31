@@ -81,7 +81,7 @@ export default function LvFormFiller() {
       // 1) Tabellen (CSV/Excel): Spalten direkt erkennen – ohne KI, ohne Raten.
       if (doc.rows.length > 0) {
         found = cleanItems(itemsFromRows(doc.rows));
-        methodCounts.tabellen = found.length;
+        methodCounts['tabellen'] = found.length;
         diagnostic('Methode: Tabellen-/Spaltenerkennung', { rows: doc.rows.length, positions: found.length });
         log.push({
           state: found.length ? 'ok' : 'warn',
@@ -101,7 +101,7 @@ export default function LvFormFiller() {
         try {
           const ai = await runAnalysis({ data: { pdfText: doc.text } });
           found = cleanItems(Array.isArray(ai) ? ai : []);
-          methodCounts.ki = found.length;
+          methodCounts['ki'] = found.length;
           diagnostic('KI-Analyse abgeschlossen', { positions: found.length });
           log.push({
             state: found.length ? 'ok' : 'warn',
@@ -109,7 +109,7 @@ export default function LvFormFiller() {
           });
         } catch (aiError) {
           const reason = aiError instanceof Error ? aiError.message : String(aiError);
-          methodCounts.ki = 0;
+          methodCounts['ki'] = 0;
           console.error('[LV-Import] KI-Analyse fehlgeschlagen', aiError);
           log.push({
             state: 'error',
@@ -118,7 +118,7 @@ export default function LvFormFiller() {
         }
         if (found.length === 0) {
           found = cleanItems(itemsFromText(doc.text));
-          methodCounts.regelbasiert = found.length;
+          methodCounts['regelbasiert'] = found.length;
           diagnostic('Methode: regelbasierter Fallback', { positions: found.length });
           log.push({
             state: found.length ? 'ok' : 'warn',
@@ -145,7 +145,7 @@ export default function LvFormFiller() {
             },
           });
           found = cleanItems(Array.isArray(ocr) ? ocr : []);
-          methodCounts.ocr = found.length;
+          methodCounts['ocr'] = found.length;
           diagnostic('OCR abgeschlossen', { positions: found.length });
           log.push({
             state: found.length ? 'ok' : 'warn',
@@ -153,7 +153,7 @@ export default function LvFormFiller() {
           });
         } catch (ocrError) {
           const reason = ocrError instanceof Error ? ocrError.message : String(ocrError);
-          methodCounts.ocr = 0;
+          methodCounts['ocr'] = 0;
           console.error('[LV-Import] OCR fehlgeschlagen', ocrError);
           log.push({
             state: 'error',
