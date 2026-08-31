@@ -930,7 +930,7 @@ function DokumentDetail() {
       ...(isStorno || cancelledBy || doc.status === "cancelled"
 
         ? {
-            watermark: "Storniert",
+            watermark: "STORNO",
             ...(stornoGrund || stornoNumber
               ? {
                   watermarkNote: [
