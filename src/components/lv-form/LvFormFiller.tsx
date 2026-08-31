@@ -211,6 +211,12 @@ export default function LvFormFiller() {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[LV-Import] Dokumentanalyse abgebrochen', err);
       setSteps([...log, { state: 'error', label: message }]);
+      setTextReason((prev) =>
+        prev === 'Die Datei wird gerade gelesen …' || !prev
+          ? `Textvorschau nicht verfügbar. Grund: ${message}`
+          : prev,
+      );
+
       toast.error('Analyse fehlgeschlagen', {
         id: toastId,
         description: `Beim Analysieren der Datei ist ein Fehler aufgetreten: ${message}. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support.`,
