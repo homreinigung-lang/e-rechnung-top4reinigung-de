@@ -613,9 +613,34 @@ function DokumentDetail() {
         if (value !== "paid") next["paid_at"] = null;
       }
       if (key === "paid_at" && value) next["status"] = "paid";
+      // Monats-Synchronisierung: Leistungszeitraum folgt automatisch dem
+      // Rechnungsdatum, solange noch kein Zeitraum gepflegt wurde.
+      if (key === "issue_date" && typeof value === "string" && doc.type === "invoice") {
+        const period = periodForIssueDate(value);
+        if (period && !String(next["service_period"] ?? "").trim()) {
+          next["service_period"] = formatPeriod(period);
+        }
+        const desc = String(next["service_description"] ?? "");
+        if (desc) next["service_description"] = syncMonthInText(desc, value);
+      }
       return next;
     });
   }
+
+  /** Übernimmt den Monat des Rechnungsdatums als Leistungszeitraum. */
+  function applyIssueMonth() {
+    const period = periodForIssueDate(String(form["issue_date"] ?? ""));
+    if (!period) return;
+    setForm((f) => ({
+      ...f,
+      service_period: formatPeriod(period),
+      service_description: syncMonthInText(
+        String(f["service_description"] ?? ""),
+        period.start,
+      ),
+    }));
+  }
+
 
   function pickCustomer(customerId: string) {
     const c = data!.customers.find((x) => x.id === customerId);
