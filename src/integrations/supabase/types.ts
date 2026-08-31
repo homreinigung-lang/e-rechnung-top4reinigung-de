@@ -735,6 +735,7 @@ export type Database = {
           service_description: string
           service_period: string
           status: Database["public"]["Enums"]["doc_status"]
+          storno_reason: string
           tax_mode: string
           total: number
           type: Database["public"]["Enums"]["doc_type"]
@@ -786,6 +787,7 @@ export type Database = {
           service_description?: string
           service_period?: string
           status?: Database["public"]["Enums"]["doc_status"]
+          storno_reason?: string
           tax_mode?: string
           total?: number
           type?: Database["public"]["Enums"]["doc_type"]
@@ -837,6 +839,7 @@ export type Database = {
           service_description?: string
           service_period?: string
           status?: Database["public"]["Enums"]["doc_status"]
+          storno_reason?: string
           tax_mode?: string
           total?: number
           type?: Database["public"]["Enums"]["doc_type"]
@@ -2096,7 +2099,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_storno: { Args: { _id: string }; Returns: string }
+      create_storno:
+        | { Args: { _id: string }; Returns: string }
+        | { Args: { _id: string; _reason?: string }; Returns: string }
       employee_self_update_allowed: {
         Args: {
           _active: boolean
@@ -2158,6 +2163,7 @@ export type Database = {
           service_description: string
           service_period: string
           status: Database["public"]["Enums"]["doc_status"]
+          storno_reason: string
           tax_mode: string
           total: number
           type: Database["public"]["Enums"]["doc_type"]
