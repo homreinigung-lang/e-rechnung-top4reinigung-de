@@ -357,13 +357,33 @@ function DokumenteListe() {
   // Stabile, lückenlose Standard-Sortierung nach Belegnummer (absteigend = neueste zuerst).
   // Die Nummern sind nullgestellt (z. B. RE-2026-0001), daher ist ein lexikalischer
   // Sort identisch mit einer numerischen Sortierung und bleibt über Jahre hinweg stabil.
-  const list = documents
+  const allOfTab = documents
     .filter((d) => d.type === tab)
     .slice()
     .sort((a, b) => String(b.number).localeCompare(String(a.number), "de-DE"));
 
   // Belegnummern-Nachschlagewerk: Stornobelege zeigen die Original-Rechnungsnummer.
   const numberById = new Map(documents.map((d) => [d.id, String(d.number)]));
+
+  // Stornobelege werden der Originalrechnung als Unterpunkt zugeordnet und
+  // erscheinen nicht als eigene Zeile in der Hauptliste.
+  const stornoByOriginal = new Map<string, (typeof allOfTab)[number][]>();
+  for (const d of allOfTab) {
+    const r = d as unknown as Record<string, unknown>;
+    const parent = r["is_storno"] ? String(r["cancels_document_id"] ?? "") : "";
+    if (!parent) continue;
+    const bucket = stornoByOriginal.get(parent) ?? [];
+    bucket.push(d);
+    stornoByOriginal.set(parent, bucket);
+  }
+  const parentIds = new Set(allOfTab.map((d) => d.id));
+  const list = allOfTab.filter((d) => {
+    const r = d as unknown as Record<string, unknown>;
+    if (!r["is_storno"]) return true;
+    // Verwaiste Stornobelege (Original nicht sichtbar) bleiben sichtbar.
+    return !parentIds.has(String(r["cancels_document_id"] ?? ""));
+  });
+
 
 
   return (
