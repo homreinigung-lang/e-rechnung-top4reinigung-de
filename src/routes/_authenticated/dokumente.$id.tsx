@@ -1892,7 +1892,22 @@ function DokumentDetail() {
       </fieldset>
 
       {/* Druckansicht – DIN 5008 */}
-      <article className="paper print-area mx-auto text-sm">
+      <article className="paper print-area relative mx-auto text-sm">
+        {/* Runder Storno-Stempel als Wasserzeichen auf dem Beleg (wie im PDF). */}
+        {(cancelledBy || isStorno) && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+            <div
+              className="flex size-64 rotate-[-25deg] items-center justify-center rounded-full border-[6px] border-destructive/60"
+              aria-hidden
+            >
+              <div className="flex size-[calc(100%-1rem)] items-center justify-center rounded-full border-2 border-destructive/60">
+                <span className="font-black uppercase tracking-widest text-3xl text-destructive/60 select-none">
+                  STORNO
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
         <div>
           <header className="flex items-start justify-between gap-6">
             <div className="flex items-start gap-4">
