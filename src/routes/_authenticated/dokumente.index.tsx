@@ -400,7 +400,14 @@ function DokumenteListe() {
             <ul className="divide-y">
               {list.map((d) => {
                 const r = d as unknown as Record<string, unknown>;
-                const due = dueInfo(d.due_date, d.status);
+                const isStorno = Boolean(r["is_storno"]);
+                const cancelsNumber = r["cancels_document_id"]
+                  ? (numberById.get(String(r["cancels_document_id"])) ?? "")
+                  : "";
+                const cancelledByNumber = r["cancelled_by_document_id"]
+                  ? (numberById.get(String(r["cancelled_by_document_id"])) ?? "")
+                  : "";
+                const due = isStorno ? null : dueInfo(d.due_date, d.status);
                 const level = Number(r["reminder_level"] ?? 0);
                 const deletable = !isLockedDocument(r);
                 return (
@@ -411,8 +418,20 @@ function DokumenteListe() {
                       className="flex flex-1 flex-wrap items-center justify-between gap-3"
                     >
                       <div>
-                        <div className="font-medium">
-                          {DOC_TYPE_LABEL[d.type]} {d.number}
+                        <div className="flex flex-wrap items-center gap-2 font-medium">
+                          <span>
+                            {isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[d.type]} {d.number}
+                          </span>
+                          {isStorno && cancelsNumber ? (
+                            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                              Storno zu {cancelsNumber}
+                            </span>
+                          ) : null}
+                          {!isStorno && cancelledByNumber ? (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                              Storniert durch {cancelledByNumber}
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
@@ -425,15 +444,16 @@ function DokumenteListe() {
                               </span>
                             </>
                           ) : null}
-                          {level > 0 ? ` · ${mahnLabel(level)}` : ""}
+                          {!isStorno && level > 0 ? ` · ${mahnLabel(level)}` : ""}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="font-medium">{formatMoney(Number(d.total))}</div>
                         <div className="text-xs text-muted-foreground">
-                          {STATUS_LABEL[d.status]}
+                          {isStorno ? "Storniert (Korrekturbeleg)" : STATUS_LABEL[d.status]}
                         </div>
                       </div>
+
                     </Link>
 
                     <DropdownMenu>
