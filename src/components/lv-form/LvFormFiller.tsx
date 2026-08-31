@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useServerFn } from '@tanstack/react-start';
+import { analyzeLvText } from '@/lib/lv-form.functions';
 
 interface LvItem {
   id?: string;
@@ -11,6 +12,7 @@ interface LvItem {
 }
 
 export default function LvFormFiller() {
+  const runAnalysis = useServerFn(analyzeLvText);
   const [items, setItems] = useState<LvItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [projectTitle, setProjectTitle] = useState('Neues LV-Projekt');
@@ -31,18 +33,12 @@ export default function LvFormFiller() {
     setLoading(true);
     try {
       const text = await file.text();
-
-      const { data, error } = await supabase.functions.invoke('analyze-lv-pdf', {
-        body: { pdfText: text },
-      });
-
-      if (error) throw error;
-
-      const parsedItems = typeof data === 'string' ? JSON.parse(data) : data;
-      setItems(parsedItems);
-    } catch (err: any) {
-      console.error('Fehler bei der Analyse:', err.message);
-      alert('Ein Fehler ist beim Analysieren der Datei aufgetreten.');
+      const parsedItems = await runAnalysis({ data: { pdfText: text } });
+      setItems(Array.isArray(parsedItems) ? parsedItems : []);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Fehler bei der Analyse:', message);
+      alert(`Ein Fehler ist beim Analysieren der Datei aufgetreten: ${message}`);
     } finally {
       setLoading(false);
     }
