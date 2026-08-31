@@ -226,6 +226,7 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
   push({ state: status === "error" ? "error" : status === "success" ? "ok" : "warn", label: statusMessage });
 
   return {
+    analysisId,
     fileName: file.name,
     fileSize: file.size,
     uploadedAt: base.uploadedAt,
