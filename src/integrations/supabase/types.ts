@@ -2305,6 +2305,10 @@ export type Database = {
         Args: { _auth_user_id: string }
         Returns: boolean
       }
+      plan_allows_reverse_charge: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       purge_entity: {
         Args: { _entity: string; _id: string }
         Returns: undefined
