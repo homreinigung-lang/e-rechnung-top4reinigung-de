@@ -175,8 +175,11 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   };
 
   // ---- Fußbereich vorab vermessen und als Satzspiegel-Reserve sperren -----
-  const footColW = (CONTENT_W - 24) / 3;
+  const footCols = Math.max(1, d.footer.length);
+  const footGap = 12;
+  const footColW = (CONTENT_W - footGap * (footCols - 1)) / footCols;
   const footHeadLines = d.footer.map((col) => wrap(bold, 8, col.heading, footColW));
+
   const footColLines = d.footer.map((col) =>
     col.lines.filter(Boolean).flatMap((line) => wrap(regular, 7.5, line, footColW)),
   );
