@@ -903,7 +903,10 @@ function DokumentDetail() {
 
     return {
       isInvoice,
-      title: `${DOC_TYPE_LABEL[doc.type]} ${number}`,
+      title: `${isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[doc.type]} ${number}`,
+      // Sichtbarer Stempel bei Stornobeleg und bei stornierter Originalrechnung.
+      ...(isStorno || cancelledBy ? { watermark: "Storniert" } : {}),
+
       ...(isInvoice
         ? {}
         : {
