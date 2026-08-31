@@ -309,6 +309,12 @@ export function itemsFromText(text: string): LvImportItem[] {
     // Mengen/Einheiten und umgebrochene Beschreibungen stehen in PDFs häufig in Folgezeilen.
     while (lookAhead < lines.length && lookAhead <= index + 8) {
       const next = lines[lookAhead] ?? "";
+      // Eine reine Mengenzeile wie „2.400,50 m²“ ist keine neue Position.
+      if (QUANTITY_UNIT_RE.test(next) || UNIT_QUANTITY_RE.test(next)) {
+        block.push(next);
+        lookAhead++;
+        break;
+      }
       if (POSITION_START_RE.test(next) || /^--- Seite \d+ ---$/i.test(next)) break;
       if (!isRepeatedFurniture(next)) block.push(next);
       lookAhead++;
