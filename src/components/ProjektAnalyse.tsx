@@ -15,8 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProjektUnterlagen } from "@/components/ProjektUnterlagen";
-import {
 import { WEEKS_PER_MONTH } from "@/lib/constants";
+import {
   DEFAULT_PERFORMANCE_RATES,
   hoursPerVisit,
   type PerformanceRate,
