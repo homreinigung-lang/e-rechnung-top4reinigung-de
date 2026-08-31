@@ -368,10 +368,13 @@ export default function LvFormFiller() {
           { label: 'Gesamt netto', value: grandTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) },
         ],
         positions,
-        vatRate: settings?.small_business ? 0 : 0,
-        taxNote: settings?.small_business
-          ? '§ 19 Abs. 1 UStG: Die Umsatzsteuer wird gemäß Kleinunternehmerregelung nicht ausgewiesen.'
-          : undefined,
+        vatRate: 0,
+        ...(settings?.small_business
+          ? {
+              taxNote:
+                '§ 19 Abs. 1 UStG: Die Umsatzsteuer wird gemäß Kleinunternehmerregelung nicht ausgewiesen.',
+            }
+          : {}),
       });
 
       await saveFile(
@@ -642,6 +645,36 @@ export default function LvFormFiller() {
             </tr>
           </tfoot>
         </table>
+        <div className="p-4 border-t border-gray-200 bg-gray-50/50 flex flex-wrap gap-3 justify-between items-center">
+          <button
+            type="button"
+            onClick={handleAddItem}
+            className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition font-medium shadow-sm"
+          >
+            <Plus className="size-4" />
+            Position hinzufügen
+          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={items.length === 0}
+              className="inline-flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition font-medium shadow-sm disabled:opacity-50"
+            >
+              <Download className="size-4" />
+              Exportieren (CSV)
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={exporting || items.length === 0}
+              className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition font-medium shadow-sm disabled:opacity-50"
+            >
+              <FileDown className="size-4" />
+              {exporting ? 'PDF wird erstellt…' : 'PDF herunterladen'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
