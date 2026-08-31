@@ -221,6 +221,9 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     kindReason = `Das Dokument enthält ausschließlich Summenwerte (${totals.length} Beträge) und wurde als Preisblatt eingestuft.`;
   }
 
+  // Kalkulationsfelder bleiben leer, keine Freigabe, feste Bindung an diese Analyse-ID.
+  items = stampAnalysis(items, analysisId);
+
   const issues = validateItems(items);
   const { status, statusMessage, recommendedAction } = describeStatus(kind, items.length, totals.length, issues.length);
   push({ state: status === "error" ? "error" : status === "success" ? "ok" : "warn", label: statusMessage });
