@@ -392,14 +392,17 @@ function DokumentDetail() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       const doc = data!.doc as Record<string, unknown>;
-      const { data: existing } = await supabase.from("documents").select("number, type");
-      const prefix = String(doc["number"] ?? "").replace(/\d+$/, "");
-      const max = (existing ?? [])
-        .filter((d) => d.number.startsWith(prefix))
-        .map((d) => parseInt(d.number.slice(prefix.length), 10))
-        .filter((n) => Number.isFinite(n))
-        .reduce((a, b) => Math.max(a, b), 0);
-      const nextNr = `${prefix}${String(max + 1).padStart(4, "0")}`;
+      // Entwurfsnummer (Platzhalter): die offizielle fortlaufende Nummer wird
+      // erst beim Festschreiben vergeben – so entstehen keine Lücken (§ 14 UStG).
+      const nextNr = draftPlaceholderNumber(String(doc["type"] ?? "invoice") as never);
+      // Kopie startet mit aktuellem Datum und passendem Leistungsmonat.
+      const issueDate = today();
+      const period = periodForIssueDate(issueDate);
+      const servicePeriod = period ? formatPeriod(period) : String(doc["service_period"] ?? "");
+      const serviceDescription = period
+        ? syncMonthInText(String(doc["service_description"] ?? ""), period.end)
+        : String(doc["service_description"] ?? "");
+
 
       const {
         id: _id,
