@@ -417,6 +417,11 @@ function DokumentDetail() {
         is_storno: _st,
         cancels_document_id: _cd,
         cancelled_by_document_id: _cb,
+        storno_reason: _sr,
+        converted_document_id: _cv,
+        paid_at: _pa,
+        reminder_level: _rl,
+        last_reminder_at: _lr,
         retention_until: _ru,
         deleted_at: _dl,
         ...rest
@@ -424,10 +429,20 @@ function DokumentDetail() {
 
       const { data: created, error } = await supabase
         .from("documents")
-        .insert({ ...rest, user_id: userId, number: nextNr, status: "draft" } as never)
+        .insert({
+          ...rest,
+          user_id: userId,
+          number: nextNr,
+          status: "draft",
+          issue_date: issueDate,
+          due_date: null,
+          service_period: servicePeriod,
+          service_description: serviceDescription,
+        } as never)
         .select("id")
         .single();
       if (error) throw error;
+
 
       if (items.length > 0) {
         await supabase.from("document_items").insert(
