@@ -63,6 +63,7 @@ import {
   offerPrice,
   summarizeOwnCalculation,
 } from '@/lib/lv-analyse/calculation';
+import { LvPositionenTabelle } from '@/components/lv-analyse/LvPositionenTabelle';
 import {
   buildCsv,
   buildPdfReport,
@@ -416,225 +417,21 @@ export default function LvAnalyse() {
 
         {/* 1) Positionen prüfen & freigeben */}
         <TabsContent value="items" className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
-              {items.length} Positionen · {approvedCount} freigegeben · {issues.length} Hinweise ·{' '}
-              <span className={reviewCount ? 'font-medium text-amber-700' : undefined}>
-                {reviewCount} × {REVIEW_LABEL}
-              </span>
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={addItem}>
-                <Plus className="mr-1 size-4" /> Position hinzufügen
-              </Button>
-              <Button size="sm" onClick={approveAll} disabled={items.length === 0}>
-                <CheckCircle2 className="mr-1 size-4" /> Alle Positionen freigeben
-              </Button>
-            </div>
-          </div>
-
-          {items.length === 0 ? (
-            <EmptyHint result={result} />
-          ) : (
-            <div className="overflow-x-auto rounded-md border">
-              <Table className="text-xs">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead colSpan={10} className="border-r bg-muted/60 text-center font-semibold">
-                      Anforderungen aus der Ausschreibung
-                    </TableHead>
-                    <TableHead colSpan={7} className="bg-primary/10 text-center font-semibold">
-                      Eigene Kalkulation
-                    </TableHead>
-                    <TableHead className="w-24" />
-                  </TableRow>
-                  <TableRow>
-                    <TableHead className="w-20">Pos.</TableHead>
-                    <TableHead className="min-w-56">Beschreibung</TableHead>
-                    <TableHead className="w-40">Kategorie</TableHead>
-                    <TableHead className="w-24 text-right">Geforderte Menge</TableHead>
-                    <TableHead className="w-20">Einheit</TableHead>
-                    <TableHead className="w-32">Intervall</TableHead>
-                    <TableHead className="w-24 text-right">Fläche (m²)</TableHead>
-                    <TableHead className="w-24 text-right">Geforderte Arbeitsstunden</TableHead>
-                    <TableHead className="w-16 text-right">Seite</TableHead>
-                    <TableHead className="w-24 border-r text-right">Sicherheitswert</TableHead>
-                    <TableHead className="w-28 text-right">Eigener Einheitspreis (€)</TableHead>
-                    <TableHead className="w-28 text-right">Eigene Arbeitskosten (€)</TableHead>
-                    <TableHead className="w-28 text-right">Materialkosten (€)</TableHead>
-                    <TableHead className="w-28 text-right">Gemeinkosten (€)</TableHead>
-                    <TableHead className="w-20 text-right">Gewinn (%)</TableHead>
-                    <TableHead className="w-28 text-right">Angebotspreis (€)</TableHead>
-                    <TableHead className="w-40">Kalkulationsstatus</TableHead>
-                    <TableHead className="w-24">Freigabe</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => {
-                    const itemIssues = issueMap.get(item.id) ?? [];
-                    const hasError = itemIssues.some((i) => i.level === 'error');
-                    const review = reviewFields(item);
-                    return (
-                      <TableRow key={item.id} className={hasError ? 'bg-destructive/5' : undefined}>
-                        <TableCell>
-                          <Input
-                            className="h-7 text-xs"
-                            value={item.item_number}
-                            onChange={(e) => update(item.id, { item_number: e.target.value })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            className="h-7 text-xs"
-                            value={item.description}
-                            onChange={(e) => update(item.id, { description: e.target.value })}
-                          />
-                          {review.length > 0 && (
-                            <p className="mt-0.5 text-[10px] text-amber-700">
-                              {REVIEW_LABEL}: {review.join(', ')}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <select
-                            className="h-7 w-full rounded-md border bg-background px-1 text-xs"
-                            value={item.category}
-                            onChange={(e) => update(item.id, { category: e.target.value as LvItemCategory })}
-                          >
-                            {CATEGORY_OPTIONS.map((c) => (
-                              <option key={c} value={c}>
-                                {CATEGORY_LABELS[c].de}
-                              </option>
-                            ))}
-                          </select>
-                        </TableCell>
-                        <TableCell>
-                          <NumCell value={item.quantity} onChange={(v) => update(item.id, { quantity: v })} />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            className="h-7 text-xs"
-                            value={item.unit}
-                            onChange={(e) => update(item.id, { unit: e.target.value })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            className="h-7 text-xs"
-                            value={item.frequency.label}
-                            placeholder="Nicht eindeutig erkannt – Prüfung erforderlich"
-                            onChange={(e) =>
-                              update(item.id, {
-                                frequency: { ...parseFrequency(e.target.value), label: e.target.value },
-                              })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell value={item.area_m2} onChange={(v) => update(item.id, { area_m2: v })} />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell value={item.working_hours} onChange={(v) => update(item.id, { working_hours: v })} />
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {item.source_page ?? (
-                            <span className="text-[10px] text-amber-700">{REVIEW_LABEL}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="border-r text-right tabular-nums">
-                          <Badge variant={item.confidence_score >= 0.7 ? 'secondary' : 'outline'}>
-                            {Math.round(item.confidence_score * 100)} %
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={item.calculation.own_unit_price}
-                            onChange={(v) => updateCalc(item, { own_unit_price: v })}
-                          />
-                          {!hasOwnPrice(item) && (
-                            <p className="mt-0.5 text-[10px] text-muted-foreground">{NO_OWN_PRICE_LABEL}</p>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={item.calculation.labor_cost}
-                            onChange={(v) => updateCalc(item, { labor_cost: v })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={item.calculation.material_cost}
-                            onChange={(v) => updateCalc(item, { material_cost: v })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={item.calculation.overhead_cost}
-                            onChange={(v) => updateCalc(item, { overhead_cost: v })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={item.calculation.profit_percent}
-                            onChange={(v) => updateCalc(item, { profit_percent: v })}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {offerPrice(item) === null ? (
-                            <span className="text-[10px] text-muted-foreground">{NO_OWN_PRICE_HINT}</span>
-                          ) : (
-                            formatMoney(offerPrice(item) ?? 0)
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              calcStatus(item) === 'released'
-                                ? 'default'
-                                : calcStatus(item) === 'calculated_review'
-                                  ? 'secondary'
-                                  : 'outline'
-                            }
-                          >
-                            {CALC_STATUS_LABELS[calcStatus(item)]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant={item.approved ? 'default' : 'outline'}
-                              className="h-7 px-2"
-                              title="Position freigeben"
-                              aria-label="Position freigeben"
-                              onClick={() => {
-                                if (!item.approved && !hasOwnPrice(item)) {
-                                  toast.error('Freigabe nicht möglich', { description: NO_OWN_PRICE_HINT });
-                                  return;
-                                }
-                                update(item.id, { approved: !item.approved });
-                              }}
-                            >
-                              <CheckCircle2 className="size-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2"
-                              onClick={() => setItems((prev) => prev.filter((i) => i.id !== item.id))}
-                            >
-                              <Trash2 className="size-3 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <LvPositionenTabelle
+            items={items}
+            issueCount={issues.length}
+            exporting={exporting}
+            exportHint={exportHint}
+            exportDisabled={exportDisabled}
+            onExport={(kind) => void runExport(kind)}
+            onUpdate={update}
+            onRemove={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}
+            onAdd={addItem}
+            onApproveAll={approveAll}
+            emptyState={<EmptyHint result={result} />}
+          />
         </TabsContent>
+
 
         {/* 2) Flächen */}
         <TabsContent value="area" className="space-y-3">
