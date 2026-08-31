@@ -1,22 +1,16 @@
-/** Deutsche Zahleneingabe/-ausgabe für den LV-Formular-Ausfüller (eigenständig). */
+/**
+ * Deutsche Zahleneingabe/-ausgabe für den LV-Formular-Ausfüller.
+ *
+ * Die Parser-Logik liegt zentral in `src/lib/format.ts` – hier gibt es nur noch
+ * dünne Anpassungen (leere Eingabe ergibt `null` statt 0).
+ */
+import { parseGermanNumber as parseGermanNumberCore } from "@/lib/format";
 
 /** "1.234,50" -> 1234.5 ; "220,5" -> 220.5 ; leer -> null */
 export function parseGermanNumber(input: string): number | null {
   const raw = (input ?? "").replace(/[^\d.,-]/g, "").trim();
   if (!raw) return null;
-  const lastComma = raw.lastIndexOf(",");
-  const lastDot = raw.lastIndexOf(".");
-  let normalized = raw;
-  if (lastComma >= 0 && lastDot >= 0) {
-    normalized =
-      lastComma > lastDot ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/,/g, "");
-  } else if (lastComma >= 0) {
-    normalized = raw.replace(/\./g, "").replace(",", ".");
-  } else if (/^-?\d{1,3}(?:\.\d{3})+$/.test(raw)) {
-    normalized = raw.replace(/\./g, "");
-  }
-  const value = Number(normalized);
-  return Number.isFinite(value) ? value : null;
+  return parseGermanNumberCore(raw);
 }
 
 /** Betrag in Cent aus deutscher Eingabe. */
