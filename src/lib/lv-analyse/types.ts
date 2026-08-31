@@ -28,9 +28,27 @@ export type LvFrequency = {
   perYear: number | null;
 };
 
+/** Eigene Kalkulationsdaten – ausschließlich manuell erfasst. */
+export type LvCalculation = {
+  /** Eigener Einheitspreis (€). null = „Noch kein eigener Preis eingetragen". */
+  own_unit_price: number | null;
+  /** Eigene Arbeitskosten (€) je Position. */
+  labor_cost: number | null;
+  /** Materialkosten (€) je Position. */
+  material_cost: number | null;
+  /** Gemeinkosten (€) je Position. */
+  overhead_cost: number | null;
+  /** Gewinnmarge in Prozent. */
+  profit_percent: number | null;
+};
+
+export type LvCalcStatus = "not_calculated" | "calculated_review" | "released";
+
 /** Eine normalisierte Position aus der Ausschreibung. */
 export type LvNormalizedItem = {
   id: string;
+  /** Verknüpfung mit der aktuellen Analyse/Dokument-ID. */
+  analysis_id: string;
   item_number: string;
   description: string;
   category: LvItemCategory;
