@@ -34,8 +34,13 @@ export type ExtractResult = {
 };
 
 async function loadPdfjs() {
-  const pdfjs = await import("pdfjs-dist");
-  const worker = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+  const useLegacyBuild = typeof DOMMatrix === "undefined";
+  const pdfjs = useLegacyBuild
+    ? await import("pdfjs-dist/legacy/build/pdf.mjs")
+    : await import("pdfjs-dist");
+  const worker = useLegacyBuild
+    ? await import("pdfjs-dist/legacy/build/pdf.worker.mjs?url")
+    : await import("pdfjs-dist/build/pdf.worker.mjs?url");
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
   return pdfjs;
 }
