@@ -66,6 +66,9 @@ export type PdfDocData = {
   paymentLines?: string[] | undefined;
   qrPayload?: string | null | undefined;
   footer: Array<{ heading: string; lines: string[] }>;
+  /** Diagonaler Stempel über dem gesamten Beleg, z. B. "Storniert". */
+  watermark?: string | undefined;
+
 };
 
 type Ctx = {
