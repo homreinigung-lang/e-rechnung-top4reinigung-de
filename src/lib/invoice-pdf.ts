@@ -361,8 +361,22 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   );
   const headH = Math.max(...headLines.map((l) => l.length)) * 9.5 + 2 * padY;
 
+  let tableStarted = false;
+
   const drawTableHead = () => {
-    ensure(ctx, headH + 20);
+    ensure(ctx, headH + 24);
+    if (tableStarted) {
+      // Fortsetzungshinweis auf Folgeseiten (Lesbarkeit + Nachvollziehbarkeit).
+      text(ctx, "Fortsetzung der Positionsliste", {
+        x: M_X,
+        y: ctx.y,
+        size: 8,
+        font: bold,
+        color: COLOR_MUTED,
+      });
+      ctx.y -= 12;
+    }
+    tableStarted = true;
     const top = ctx.y;
     ctx.page.drawRectangle({
       x: M_X,
@@ -391,13 +405,16 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
 
   const hasOptional = d.items.some((i) => i.optional);
 
+  const BAND_H = 20;
+
   /** Voll­breite Band-Zeile (Abschnittstitel oder Zwischensumme). */
-  const drawBandRow = (label: string, value?: string, filled = true) => {
-    const h = 20;
-    if (ctx.y - h < ctx.bottom) {
+  const drawBandRow = (label: string, value?: string, filled = true, keepWith = 0) => {
+    const h = BAND_H;
+    if (ctx.y - h - keepWith < ctx.bottom) {
       newPage(ctx);
       drawTableHead();
     }
+
     const top = ctx.y;
     ctx.page.drawRectangle({
       x: M_X,
