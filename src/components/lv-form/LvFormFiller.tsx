@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
-import { analyzeLvText } from '@/lib/lv-form.functions';
+import { analyzeLvText, analyzeLvScan } from '@/lib/lv-form.functions';
+import {
+  cleanItems,
+  extractDocument,
+  fileToBase64,
+  itemsFromRows,
+  itemsFromText,
+  type LvImportItem,
+} from '@/lib/lv-form/import';
 
 interface LvItem {
   id?: string;
@@ -12,12 +20,18 @@ interface LvItem {
   unit_price: number;
 }
 
+type AnalysisStep = { state: 'ok' | 'warn'; label: string };
+
 export default function LvFormFiller() {
   const runAnalysis = useServerFn(analyzeLvText);
+  const runScanAnalysis = useServerFn(analyzeLvScan);
   const [items, setItems] = useState<LvItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [projectTitle, setProjectTitle] = useState('Neues LV-Projekt');
-  
+  const [steps, setSteps] = useState<AnalysisStep[]>([]);
+  const [textPreview, setTextPreview] = useState('');
+  const [lastFile, setLastFile] = useState<File | null>(null);
+
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<LvItem>({
     item_number: '',
@@ -27,42 +41,86 @@ export default function LvFormFiller() {
     unit_price: 0
   });
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  /** Liest die Datei, versucht mehrere Erkennungswege und meldet das Ergebnis transparent. */
+  const analyzeFile = async (file: File) => {
     setLoading(true);
+    setLastFile(file);
     const toastId = toast.loading('Die KI analysiert Ihr Leistungsverzeichnis…');
+    const log: AnalysisStep[] = [];
     try {
-      const text = await file.text();
+      const doc = await extractDocument(file);
+      log.push({ state: 'ok', label: 'Datei gelesen' });
+      setTextPreview(doc.text.slice(0, 1500));
 
-      if (!text || text.trim().length < 20) {
-        toast.warning('Keine Textebene gefunden', {
+      let found: LvImportItem[] = [];
+
+      // 1) Tabellen (CSV/Excel): Spalten direkt erkennen – ohne KI, ohne Raten.
+      if (doc.rows.length > 0) {
+        found = cleanItems(itemsFromRows(doc.rows));
+        log.push({
+          state: found.length ? 'ok' : 'warn',
+          label: found.length ? 'Tabellenspalten erkannt' : 'Tabellenspalten nicht eindeutig',
+        });
+      }
+
+      // 2) PDF/Text mit Textebene: KI-Analyse, danach regelbasierter Rückfall.
+      if (found.length === 0 && doc.hasTextLayer && doc.text.trim().length >= 20) {
+        log.push({ state: 'ok', label: 'Text erkannt' });
+        try {
+          const ai = await runAnalysis({ data: { pdfText: doc.text } });
+          found = cleanItems(Array.isArray(ai) ? ai : []);
+        } catch (aiError) {
+          log.push({
+            state: 'warn',
+            label: `KI-Analyse nicht möglich (${aiError instanceof Error ? aiError.message : 'Fehler'})`,
+          });
+        }
+        if (found.length === 0) found = cleanItems(itemsFromText(doc.text));
+      }
+
+      // 3) Gescanntes PDF ohne Textebene: Texterkennung (OCR) über das KI-Modell.
+      if (found.length === 0 && !doc.hasTextLayer && doc.kind === 'pdf') {
+        log.push({ state: 'warn', label: 'Keine Textebene – Scan-Erkennung (OCR) wird versucht' });
+        try {
+          const ocr = await runScanAnalysis({
+            data: {
+              fileName: file.name,
+              mimeType: file.type || 'application/pdf',
+              base64: await fileToBase64(file),
+            },
+          });
+          found = cleanItems(Array.isArray(ocr) ? ocr : []);
+          if (found.length) log.push({ state: 'ok', label: 'Text per OCR erkannt' });
+        } catch (ocrError) {
+          log.push({
+            state: 'warn',
+            label: `OCR nicht möglich (${ocrError instanceof Error ? ocrError.message : 'Fehler'})`,
+          });
+        }
+      }
+
+      if (found.length === 0) {
+        log.push({ state: 'warn', label: 'LV-Struktur nicht eindeutig erkannt' });
+        setSteps(log);
+        toast.warning('LV-Struktur nicht eindeutig erkannt', {
           id: toastId,
-          description: 'Die Datei scheint ein reines Scan-Bild zu sein. Bitte laden Sie ein PDF mit Textebene oder eine TXT-Datei hoch.',
+          description:
+            'Die Datei wurde gelesen, aber die LV-Struktur konnte nicht eindeutig erkannt werden. Sie können die Analyse erneut starten oder die Positionen manuell erfassen.',
           duration: 8000,
         });
         return;
       }
 
-      const rawResponse = await runAnalysis({ data: { pdfText: text } });
-
-      const parsedItems = Array.isArray(rawResponse) ? rawResponse : [];
-      if (parsedItems.length === 0) {
-        toast.warning('Keine Positionen erkannt', {
-          id: toastId,
-          description: 'Die KI konnte in dieser Datei keine LV-Positionen finden. Bitte prüfen Sie, ob das Dokument ein gültiges Leistungsverzeichnis mit Textebene enthält.',
-          duration: 8000,
-        });
-        return;
-      }
-      setItems(parsedItems);
+      log.push({ state: 'ok', label: `${found.length} Positionen erkannt` });
+      setSteps(log);
+      setItems(found);
       toast.success('Analyse abgeschlossen', {
         id: toastId,
-        description: `${parsedItems.length} Positionen wurden erfolgreich erkannt und übernommen.`,
+        description: `${found.length} Positionen wurden erkannt und übernommen.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      setSteps([...log, { state: 'warn', label: `Analyse fehlgeschlagen: ${message}` }]);
       toast.error('Analyse fehlgeschlagen', {
         id: toastId,
         description: `Beim Analysieren der Datei ist ein Fehler aufgetreten: ${message}. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support.`,
@@ -70,9 +128,16 @@ export default function LvFormFiller() {
       });
     } finally {
       setLoading(false);
-      e.target.value = '';
     }
   };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    await analyzeFile(file);
+  };
+
 
   const handleDeleteItem = (index: number) => {
     const updatedItems = items.filter((_, i) => i !== index);
