@@ -27,6 +27,7 @@ import {
   taxNoteForTaxMode,
   vatRateForTaxMode,
 } from "@/lib/format";
+import { WEEKS_PER_MONTH, WEEKS_PER_MONTH_LABEL } from "@/lib/constants";
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
@@ -159,8 +160,8 @@ function num(value: string): number {
   return parsePositiveNumber(value);
 }
 
-/** 52 Wochen / 12 Monate */
-const WEEKS_PER_MONTH = 4.33;
+/** Monatsfaktor exakt aus 52 Wochen / 12 Monaten (siehe src/lib/constants.ts). */
+
 const STAIR_RATE_PER_FLOOR = 12.5;
 
 /** Hochgeladener Grundriss/Foto inkl. abgelesener Eckdaten. */
@@ -435,7 +436,7 @@ function KalkulationPage() {
     [attachments],
   );
 
-  /** Einsätze umgerechnet auf den Monat (Pro Woche × 4,33). */
+  /** Einsätze umgerechnet auf den Monat (pro Woche × 52/12). */
   const visitsPerMonth = useMemo(() => {
     const times = Math.max(1, num(frequency) || 1);
     return frequencyUnit === "week" ? times * WEEKS_PER_MONTH : times;
@@ -1162,7 +1163,7 @@ function KalkulationPage() {
       parts.push(
         `Turnus: ${formatNumber(num(frequency))} Einsätze ${
           frequencyUnit === "week"
-            ? `pro Woche (× 4,33 = ${formatNumber(visitsPerMonth)} pro Monat)`
+            ? `pro Woche (× ${WEEKS_PER_MONTH_LABEL} = ${formatNumber(visitsPerMonth)} pro Monat)`
             : "pro Monat"
         }`,
       );
@@ -1632,7 +1633,8 @@ function KalkulationPage() {
 
               {frequencyUnit === "week" && (
                 <p className="text-xs text-muted-foreground">
-                  Umrechnung auf den Monat mit 4,33 Wochen: {formatNumber(num(frequency))} × 4,33 ={" "}
+                  Umrechnung auf den Monat mit 52 Wochen/Jahr (≈ {WEEKS_PER_MONTH_LABEL} Wochen je Monat):{" "}
+                  {formatNumber(num(frequency))} × {WEEKS_PER_MONTH_LABEL} ={" "}
                   {formatNumber(visitsPerMonth)} Einsätze pro Monat.
                 </p>
               )}

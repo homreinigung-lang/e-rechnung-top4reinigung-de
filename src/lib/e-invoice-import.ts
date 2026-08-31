@@ -22,9 +22,16 @@ export type IncomingEInvoice = {
   xml: string;
 };
 
-function num(v: string | null | undefined): number {
-  const n = Number(String(v ?? "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+/**
+ * Liest einen Betrag. Fehlt der Wert oder ist er unlesbar, wird bewusst `null`
+ * zurückgegeben – niemals 0. Ein stiller 0-Wert würde eine falsche
+ * Rechnungssumme in die Buchhaltung übernehmen.
+ */
+function num(v: string | null | undefined): number | null {
+  const raw = String(v ?? "").trim();
+  if (!raw) return null;
+  const n = Number(raw.replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
 }
 
 function ymd(v: string): string {
@@ -33,6 +40,46 @@ function ymd(v: string): string {
   if (/^\d{8}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
   return "";
 }
+
+/**
+ * Prüft die Pflichtangaben nach § 14 UStG / EN 16931 und die rechnerische
+ * Stimmigkeit. Fehlende oder widersprüchliche Werte führen zu einem klaren
+ * Importfehler statt zu einem falschen Beleg.
+ */
+function validate(
+  invoice: Omit<IncomingEInvoice, "net_amount" | "vat_amount" | "gross_amount"> & {
+    net_amount: number | null;
+    vat_amount: number | null;
+    gross_amount: number | null;
+  },
+): IncomingEInvoice {
+  const missing: string[] = [];
+  if (!invoice.document_number) missing.push("Rechnungsnummer");
+  if (!invoice.issue_date) missing.push("Rechnungsdatum");
+  if (!invoice.supplier) missing.push("Rechnungssteller");
+  if (invoice.net_amount === null) missing.push("Nettobetrag");
+  if (invoice.vat_amount === null) missing.push("Umsatzsteuerbetrag");
+  if (invoice.gross_amount === null) missing.push("Bruttobetrag");
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Die E-Rechnung ist unvollständig und wurde nicht importiert. Fehlende Pflichtangaben: ${missing.join(", ")}.`,
+    );
+  }
+
+  const net = invoice.net_amount as number;
+  const vat = invoice.vat_amount as number;
+  const gross = invoice.gross_amount as number;
+
+  if (Math.abs(Math.round((net + vat) * 100) - Math.round(gross * 100)) > 1) {
+    throw new Error(
+      "Die Beträge der E-Rechnung sind rechnerisch nicht stimmig (Netto + Umsatzsteuer ≠ Brutto). Der Beleg wurde nicht importiert.",
+    );
+  }
+
+  return { ...invoice, net_amount: net, vat_amount: vat, gross_amount: gross };
+}
+
 
 /** Sucht ein Element unabhängig vom Namensraum, optional innerhalb eines Elternelements. */
 function pick(root: Element | Document, path: string[]): Element | null {
@@ -70,8 +117,9 @@ function parseUbl(doc: Document, xml: string): IncomingEInvoice {
   const taxTotal = pick(root, ["TaxTotal"]);
   const net = num(text(totals, ["TaxExclusiveAmount"]));
   const gross = num(text(totals, ["TaxInclusiveAmount"]));
-  const vat = num(text(taxTotal, ["TaxAmount"])) || Math.max(0, gross - net);
-  return {
+  // Fehlender Steuerbetrag darf nur abgeleitet werden, wenn Netto UND Brutto vorliegen.
+  const vat = num(text(taxTotal, ["TaxAmount"])) ?? (net !== null && gross !== null ? gross - net : null);
+  return validate({
     format: "XRechnung (UBL)",
     supplier:
       text(supplier, ["PartyLegalEntity", "RegistrationName"]) ||
@@ -82,10 +130,10 @@ function parseUbl(doc: Document, xml: string): IncomingEInvoice {
     currency: text(root, ["DocumentCurrencyCode"]) || "EUR",
     net_amount: net,
     vat_amount: vat,
-    gross_amount: gross || net + vat,
+    gross_amount: gross ?? (net !== null && vat !== null ? net + vat : null),
     notes: text(root, ["Note"]),
     xml,
-  };
+  });
 }
 
 function parseCii(doc: Document, xml: string): IncomingEInvoice {
@@ -99,8 +147,8 @@ function parseCii(doc: Document, xml: string): IncomingEInvoice {
   const sums = pick(settlement ?? root, ["SpecifiedTradeSettlementHeaderMonetarySummation"]);
   const net = num(text(sums, ["TaxBasisTotalAmount"]));
   const gross = num(text(sums, ["GrandTotalAmount"]));
-  const vat = num(text(sums, ["TaxTotalAmount"])) || Math.max(0, gross - net);
-  return {
+  const vat = num(text(sums, ["TaxTotalAmount"])) ?? (net !== null && gross !== null ? gross - net : null);
+  return validate({
     format: "ZUGFeRD/Factur-X (CII)",
     supplier: text(supplier, ["Name"]),
     supplier_vat_id: text(supplier, ["SpecifiedTaxRegistration", "ID"]),
@@ -112,11 +160,12 @@ function parseCii(doc: Document, xml: string): IncomingEInvoice {
     currency: text(settlement, ["InvoiceCurrencyCode"]) || "EUR",
     net_amount: net,
     vat_amount: vat,
-    gross_amount: gross || net + vat,
+    gross_amount: gross ?? (net !== null && vat !== null ? net + vat : null),
     notes: text(root, ["ExchangedDocument", "IncludedNote", "Content"]),
     xml,
-  };
+  });
 }
+
 
 /** Erkennt automatisch UBL oder CII. */
 export function parseEInvoiceXml(xml: string): IncomingEInvoice {

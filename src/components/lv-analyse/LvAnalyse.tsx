@@ -192,6 +192,24 @@ export default function LvAnalyse() {
     }
   };
 
+  // Der Steuersatz kommt ausschließlich aus den Firmeneinstellungen –
+  // niemals aus dem hochgeladenen Ausschreibungsdokument.
+  const [companyVatRate, setCompanyVatRate] = useState(19);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const { data } = await supabase
+        .from("company_settings")
+        .select("small_business")
+        .maybeSingle();
+      if (!active) return;
+      setCompanyVatRate(data?.small_business ? 0 : 19);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const issues = useMemo(() => validateItems(items), [items]);
   const issueMap = useMemo(() => issuesByItem(issues), [issues]);
   const categories = useMemo(() => aggregateByCategory(items), [items]);
@@ -200,7 +218,10 @@ export default function LvAnalyse() {
     () => summarizeHours(items, priceInputs.performanceRate),
     [items, priceInputs.performanceRate],
   );
-  const cost = useMemo(() => summarizeCost(items, result?.totals ?? []), [items, result]);
+  const cost = useMemo(
+    () => summarizeCost(items, result?.totals ?? [], companyVatRate),
+    [items, result, companyVatRate],
+  );
   const price = useMemo(() => recommendPrice(items, priceInputs), [items, priceInputs]);
 
   const update = (id: string, patch: Partial<LvNormalizedItem>) =>
@@ -521,6 +542,9 @@ export default function LvAnalyse() {
                 <Kpi label="Jahresnetto" value={formatMoney(ownSummary.annualNet)} />
               </div>
               <p className="text-sm text-muted-foreground">
+                {cost.documentVatRateHint !== null
+                  ? `Hinweis: Im Dokument ist ein abweichender Steuersatz von ${formatNumber(cost.documentVatRateHint)} % genannt. Gerechnet wird mit ${formatNumber(cost.vatRate)} % aus Ihren Firmeneinstellungen. `
+                  : ""}
                 {ownSummary.calculatedItems === 0
                   ? NO_OWN_PRICE_HINT
                   : `${ownSummary.calculatedItems} von ${items.length} Positionen kalkuliert. Die Gesamtsumme enthält ausschließlich eigene Preise.`}

@@ -205,7 +205,10 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     try {
       logoImage =
         d.logo.type === "png" ? await pdf.embedPng(d.logo.bytes) : await pdf.embedJpg(d.logo.bytes);
-    } catch {
+    } catch (e) {
+      // Das Logo ist optional – der Beleg wird ohne Logo erzeugt, der Fehler
+      // wird aber protokolliert, damit fehlerhafte Uploads auffallen.
+      console.warn("Firmenlogo konnte nicht in das PDF eingebettet werden:", e);
       logoImage = null;
     }
   }
@@ -691,8 +694,9 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
           width: qrSize,
           height: qrSize,
         });
-      } catch {
-        /* QR optional */
+      } catch (e) {
+        // GiroCode ist optional; die Rechnung bleibt ohne QR-Code gültig.
+        console.warn("GiroCode konnte nicht erzeugt werden:", e);
       }
     }
     ctx.y = top - blockH - 6;

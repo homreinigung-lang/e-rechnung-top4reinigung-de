@@ -7,10 +7,12 @@
  * - Alte Kalkulationen aus früheren Analysen werden NIE kopiert.
  * - Ohne eigenen Einheitspreis findet keine Berechnung statt.
  */
+import { fromCents, toCents } from "@/lib/kalkulation-engine";
 import type { LvCalcStatus, LvCalculation, LvNormalizedItem } from "./types";
 
 export const NO_OWN_PRICE_LABEL = "Noch kein eigener Preis eingetragen";
 export const NO_OWN_PRICE_HINT = "Bitte eigenen Einheitspreis eingeben.";
+
 
 export const CALC_STATUS_LABELS: Record<LvCalcStatus, string> = {
   not_calculated: "Noch nicht kalkuliert",
@@ -39,22 +41,25 @@ export function hasOwnPrice(item: LvNormalizedItem): boolean {
   return p !== null && Number.isFinite(p) && p > 0;
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
+/** Einheitliche Rundung über ganze Cent (identisch zur Grundkalkulation). */
+const round2 = (n: number) => fromCents(toCents(n));
 
 /**
  * Angebotspreis der Position. Ohne eigenen Einheitspreis: null (keine Berechnung).
  * Formel: (eigener EP × Menge + Lohn + Material + Gemeinkosten) × (1 + Gewinn %).
+ * Gerechnet wird in ganzen Cent, damit Positions- und Gesamtsummen exakt passen.
  */
 export function offerPrice(item: LvNormalizedItem): number | null {
   if (!hasOwnPrice(item)) return null;
   const qty = item.quantity !== null && item.quantity > 0 ? item.quantity : 1;
   const c = item.calculation;
-  const base =
-    (c.own_unit_price ?? 0) * qty +
-    (c.labor_cost ?? 0) +
-    (c.material_cost ?? 0) +
-    (c.overhead_cost ?? 0);
-  return round2(base * (1 + (c.profit_percent ?? 0) / 100));
+  const baseCents =
+    toCents((c.own_unit_price ?? 0) * qty) +
+    toCents(c.labor_cost ?? 0) +
+    toCents(c.material_cost ?? 0) +
+    toCents(c.overhead_cost ?? 0);
+  const withProfit = Math.round(baseCents * (1 + (c.profit_percent ?? 0) / 100));
+  return fromCents(withProfit);
 }
 
 /** Jahrespreis nur bei vorhandenem eigenen Preis und erkanntem Intervall. */
@@ -62,8 +67,9 @@ export function annualOfferPrice(item: LvNormalizedItem): number | null {
   const price = offerPrice(item);
   if (price === null) return null;
   const perYear = item.frequency.perYear;
-  return perYear === null ? null : round2(price * perYear);
+  return perYear === null ? null : fromCents(Math.round(toCents(price) * perYear));
 }
+
 
 export function calcStatus(item: LvNormalizedItem): LvCalcStatus {
   if (!hasOwnPrice(item)) return "not_calculated";
@@ -102,25 +108,33 @@ export type OwnCalculationSummary = {
   complete: boolean;
 };
 
-/** Gesamtsumme ausschließlich aus eigenen Kalkulationsdaten. */
+/**
+ * Gesamtsumme ausschließlich aus eigenen Kalkulationsdaten.
+ * `vatRate` stammt immer aus den Firmeneinstellungen – niemals aus dem
+ * hochgeladenen Ausschreibungsdokument.
+ */
 export function summarizeOwnCalculation(
   items: LvNormalizedItem[],
   vatRate = 19,
 ): OwnCalculationSummary {
   const calculated = items.filter(hasOwnPrice);
-  const net = round2(calculated.reduce((s, i) => s + (offerPrice(i) ?? 0), 0));
-  const annualNet = round2(
-    calculated.reduce((s, i) => s + (annualOfferPrice(i) ?? offerPrice(i) ?? 0), 0),
+  // Summe der bereits gerundeten Positionen: die Gesamtsumme entspricht exakt
+  // der Addition der sichtbaren Zeilen.
+  const netCents = calculated.reduce((s, i) => s + toCents(offerPrice(i) ?? 0), 0);
+  const annualCents = calculated.reduce(
+    (s, i) => s + toCents(annualOfferPrice(i) ?? offerPrice(i) ?? 0),
+    0,
   );
-  const vat = round2((net * vatRate) / 100);
+  const vatCents = Math.round((netCents * vatRate) / 100);
   return {
     calculatedItems: calculated.length,
     openItems: items.length - calculated.length,
-    net,
-    annualNet,
+    net: fromCents(netCents),
+    annualNet: fromCents(annualCents),
     vatRate,
-    vat,
-    gross: round2(net + vat),
+    vat: fromCents(vatCents),
+    gross: fromCents(netCents + vatCents),
     complete: items.length > 0 && calculated.length === items.length,
   };
+
 }

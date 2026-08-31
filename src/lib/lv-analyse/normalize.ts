@@ -1,3 +1,4 @@
+import { WEEKS_PER_YEAR, MONTHS_PER_YEAR, WORKDAYS_PER_YEAR } from "@/lib/constants";
 import { parseGermanNumber } from "@/lib/lv-form/number";
 import { emptyCalculation } from "./calculation";
 import type { LvFrequency, LvItemCategory, LvNormalizedItem, LvTotalLine } from "./types";
@@ -41,21 +42,21 @@ export function detectCategory(text: string): LvItemCategory {
 const FREQ_RULES: [RegExp, (m: RegExpExecArray) => number][] = [
   [
     /(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?woche|(\d+)\s*x\s*wöchentlich/i,
-    (m) => Number(m[1] ?? m[2]) * 52,
+    (m) => Number(m[1] ?? m[2]) * WEEKS_PER_YEAR,
   ],
   [
     /(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?monat|(\d+)\s*x\s*monatlich/i,
-    (m) => Number(m[1] ?? m[2]) * 12,
+    (m) => Number(m[1] ?? m[2]) * MONTHS_PER_YEAR,
   ],
   [/(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?jahr|(\d+)\s*x\s*jährlich/i, (m) => Number(m[1] ?? m[2])],
   [
     /(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?tag|(\d+)\s*x\s*täglich/i,
-    (m) => Number(m[1] ?? m[2]) * 250,
+    (m) => Number(m[1] ?? m[2]) * WORKDAYS_PER_YEAR,
   ],
-  [/arbeitstäglich|werktäglich|täglich/i, () => 250],
-  [/wöchentlich/i, () => 52],
-  [/14[-\s]?tägig|zweiwöchentlich|alle\s*2\s*wochen/i, () => 26],
-  [/monatlich/i, () => 12],
+  [/arbeitstäglich|werktäglich|täglich/i, () => WORKDAYS_PER_YEAR],
+  [/wöchentlich/i, () => WEEKS_PER_YEAR],
+  [/14[-\s]?tägig|zweiwöchentlich|alle\s*2\s*wochen/i, () => WEEKS_PER_YEAR / 2],
+  [/monatlich/i, () => MONTHS_PER_YEAR],
   [/vierteljährlich|quartalsweise/i, () => 4],
   [/halbjährlich/i, () => 2],
   [/jährlich/i, () => 1],

@@ -1,7 +1,9 @@
+import { MONTHS_PER_YEAR } from "@/lib/constants";
+import { fromCents, toCents } from "@/lib/kalkulation-engine";
 import { annualOfferPrice, hasOwnPrice, offerPrice } from "./calculation";
 import type { LvItemCategory, LvNormalizedItem, LvTotalLine } from "./types";
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
+const round2 = (n: number) => fromCents(toCents(n));
 
 export type CategoryAggregate = {
   category: LvItemCategory;
@@ -91,7 +93,7 @@ export function summarizeHours(
   return {
     totalHours: round2(totalHours),
     annualHours: round2(annualHours),
-    monthlyHours: round2(annualHours / 12),
+    monthlyHours: round2(annualHours / MONTHS_PER_YEAR),
     itemsWithHours: withHours.length,
     estimatedFromArea: round2(performanceRate > 0 ? areaWithoutHours / performanceRate : 0),
     performanceRate,
@@ -107,30 +109,47 @@ export type CostSummary = {
   pricedItems: number;
   unpricedItems: number;
   documentTotals: LvTotalLine[];
+  /**
+   * Abweichender Steuersatz aus dem hochgeladenen Dokument – nur als Hinweis,
+   * er fließt bewusst NICHT in die Berechnung ein.
+   */
+  documentVatRateHint: number | null;
 };
 
+/**
+ * Kostenübersicht der eigenen Kalkulation.
+ *
+ * `vatRate` kommt immer aus den Firmeneinstellungen (Inland 19 %,
+ * Reverse-Charge/Kleinunternehmer 0 %). Ein im Ausschreibungsdokument
+ * genannter Steuersatz wird nur noch als Hinweis zurückgegeben.
+ */
 export function summarizeCost(
   items: LvNormalizedItem[],
   totals: LvTotalLine[],
-  fallbackVatRate = 19,
+  vatRate = 19,
 ): CostSummary {
   // Ausschließlich eigene Kalkulationsdaten – Preise aus dem Dokument fließen nie ein.
   const priced = items.filter(hasOwnPrice);
-  const net = priced.reduce((s, i) => s + (offerPrice(i) ?? 0), 0);
-  const annualNet = priced.reduce((s, i) => s + (annualOfferPrice(i) ?? offerPrice(i) ?? 0), 0);
-  const vatRate = items.find((i) => i.vat_rate !== null)?.vat_rate ?? fallbackVatRate;
-  const vat = round2((net * vatRate) / 100);
+  const netCents = priced.reduce((s, i) => s + toCents(offerPrice(i) ?? 0), 0);
+  const annualCents = priced.reduce(
+    (s, i) => s + toCents(annualOfferPrice(i) ?? offerPrice(i) ?? 0),
+    0,
+  );
+  const vatCents = Math.round((netCents * vatRate) / 100);
+  const documentRate = items.find((i) => i.vat_rate !== null)?.vat_rate ?? null;
   return {
-    net: round2(net),
-    vat,
-    gross: round2(net + vat),
+    net: fromCents(netCents),
+    vat: fromCents(vatCents),
+    gross: fromCents(netCents + vatCents),
     vatRate,
-    annualNet: round2(annualNet),
+    annualNet: fromCents(annualCents),
     pricedItems: priced.length,
     unpricedItems: items.length - priced.length,
     documentTotals: totals,
+    documentVatRateHint: documentRate !== null && documentRate !== vatRate ? documentRate : null,
   };
 }
+
 
 export type PriceRecommendation = {
   hourlyRate: number;
@@ -178,7 +197,7 @@ export function recommendPrice(
     overheadPercent: inputs.overheadPercent,
     profitPercent: inputs.profitPercent,
     recommendedAnnualNet: recommended,
-    recommendedMonthlyNet: round2(recommended / 12),
+    recommendedMonthlyNet: round2(recommended / MONTHS_PER_YEAR),
     recommendedPerSqm: area > 0 ? round2(recommended / area) : 0,
     documentAnnualNet,
     deltaPercent:

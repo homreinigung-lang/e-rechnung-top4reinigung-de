@@ -104,6 +104,27 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_mail_throttle: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          scope: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          scope: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          scope?: string
+        }
+        Relationships: []
+      }
       bank_connections: {
         Row: {
           account_ids: string[]
@@ -536,6 +557,27 @@ export type Database = {
           user_id?: string
           vat_id?: string
           website_url?: string
+        }
+        Relationships: []
+      }
+      cron_tokens: {
+        Row: {
+          created_at: string
+          name: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          name: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          name?: string
+          token?: string
+          updated_at?: string
         }
         Relationships: []
       }
