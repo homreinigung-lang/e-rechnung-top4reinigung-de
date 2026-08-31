@@ -72,6 +72,14 @@ import {
   type ReminderKind,
 } from "@/lib/workflow";
 import { parseGermanDate } from "@/lib/format";
+import {
+  checkInvoiceDates,
+  formatPeriod,
+  periodForIssueDate,
+  syncMonthInText,
+} from "@/lib/invoice-period";
+import { findDuplicateInvoice } from "@/lib/invoice-duplicate";
+
 
 import { downloadBytes } from "@/lib/pdf";
 import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
