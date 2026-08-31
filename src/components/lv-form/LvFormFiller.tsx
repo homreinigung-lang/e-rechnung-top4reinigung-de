@@ -12,6 +12,7 @@ interface LvItem {
 }
 
 export default function LvFormFiller() {
+  const runAnalysis = useServerFn(analyzeLvText);
   const [items, setItems] = useState<LvItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [projectTitle, setProjectTitle] = useState('Neues LV-Projekt');
