@@ -41,8 +41,8 @@ export function reviewFields(item: LvNormalizedItem): ReviewField[] {
   if (!item.unit.trim()) out.add("unit");
   if (item.frequency.perYear === null) out.add("frequency");
   if (item.area_m2 === null) out.add("area_m2");
-  if (item.unit_price === null || item.unit_price <= 0) out.add("unit_price");
-  if (item.total_price === null || item.total_price <= 0) out.add("total_price");
+  if (!hasOwnPrice(item)) out.add("unit_price");
+  if (offerPrice(item) === null) out.add("total_price");
   if (item.source_method !== "manuell" && item.confidence_score < CONFIDENCE_THRESHOLD) {
     (["quantity", "unit", "frequency", "area_m2", "unit_price", "total_price"] as ReviewField[]).forEach((f) =>
       out.add(f),
@@ -300,8 +300,8 @@ export async function buildPdfReport(
     { title: "Intervall", w: 28 },
     { title: "m²", w: 20, align: "right" },
     { title: "Std.", w: 18, align: "right" },
-    { title: "EP €", w: 20, align: "right" },
-    { title: "GP €", w: 22, align: "right" },
+    { title: "Eigener EP €", w: 20, align: "right" },
+    { title: "Angebotspreis €", w: 22, align: "right" },
     { title: "Seite", w: 14, align: "right" },
     { title: "Sich. %", w: 16, align: "right" },
   ];
@@ -329,7 +329,7 @@ export async function buildPdfReport(
       y = 16;
       drawHead();
     }
-    const values = [row[0], row[1], row[3], row[4], row[5], row[7], row[8], row[9], row[10], row[12], row[13]];
+    const values = [row[0], row[1], row[3], row[4], row[5], row[7], row[8], row[12], row[17], row[9], row[10]];
     let x = marginX;
     values.forEach((raw, index) => {
       const col = cols[index]!;
