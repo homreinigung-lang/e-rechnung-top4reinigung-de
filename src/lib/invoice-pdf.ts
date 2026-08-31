@@ -754,7 +754,9 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
         const noteSize = 10;
         const noteW = widthOf(bold, noteSize, note);
         const noteX = Math.max(M_X, (PAGE_W - noteW) / 2);
-        const noteY = PAGE_H - M_Y - 18;
+        // Direkt ÜBER der Fußzeile platzieren (nie über dem Briefkopf):
+        // Fußzeilen-Trennlinie liegt bei footTop + 6, Box sitzt darüber.
+        const noteY = footTop + 14;
         const noteBoxH = 18;
         page.drawRectangle({
           x: M_X,
