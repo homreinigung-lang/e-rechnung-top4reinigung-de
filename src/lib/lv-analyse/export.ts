@@ -5,6 +5,14 @@
  * „Prüfung erforderlich“ gekennzeichnet.
  */
 import JSZip from "jszip";
+import {
+  CALC_STATUS_LABELS,
+  NO_OWN_PRICE_LABEL,
+  calcStatus,
+  hasOwnPrice,
+  offerPrice,
+  summarizeOwnCalculation,
+} from "./calculation";
 import { DOCUMENT_KIND_LABELS, type LvAnalysisResult, type LvNormalizedItem } from "./types";
 
 export const REVIEW_LABEL = "Prüfung erforderlich";
@@ -33,8 +41,8 @@ export function reviewFields(item: LvNormalizedItem): ReviewField[] {
   if (!item.unit.trim()) out.add("unit");
   if (item.frequency.perYear === null) out.add("frequency");
   if (item.area_m2 === null) out.add("area_m2");
-  if (item.unit_price === null || item.unit_price <= 0) out.add("unit_price");
-  if (item.total_price === null || item.total_price <= 0) out.add("total_price");
+  if (!hasOwnPrice(item)) out.add("unit_price");
+  if (offerPrice(item) === null) out.add("total_price");
   if (item.source_method !== "manuell" && item.confidence_score < CONFIDENCE_THRESHOLD) {
     (["quantity", "unit", "frequency", "area_m2", "unit_price", "total_price"] as ReviewField[]).forEach((f) =>
       out.add(f),
@@ -55,39 +63,57 @@ export function canExport(result: LvAnalysisResult | null, items: LvNormalizedIt
 }
 
 /**
- * Auswahl der zu exportierenden Positionen: freigegebene zuerst.
- * Gibt es keine Freigabe, wird bewusst nichts exportiert.
+ * Auswahl der zu exportierenden Positionen: ausschließlich freigegebene Positionen
+ * der aktuellen Analyse. Positionen früherer Uploads werden nie exportiert.
  */
-export function selectExportItems(items: LvNormalizedItem[]): LvNormalizedItem[] {
-  return items.filter((i) => i.approved);
+export function selectExportItems(
+  items: LvNormalizedItem[],
+  analysisId?: string | null,
+): LvNormalizedItem[] {
+  return items.filter(
+    (i) => i.approved && (!analysisId || i.analysis_id === analysisId) && hasOwnPrice(i),
+  );
 }
 
-export const EXPORT_HEADERS = [
+/** Spalten der Ausschreibung (geforderte Daten aus dem Dokument). */
+export const TENDER_HEADERS = [
   "Pos.",
   "Beschreibung",
   "Kategorie",
-  "Menge",
+  "Geforderte Menge",
   "Einheit",
   "Intervall",
   "Einsätze/Jahr",
-  "Fläche m²",
-  "Arbeitsstunden",
-  "Einheitspreis €",
-  "Gesamtpreis €",
-  "MwSt %",
-  "Quellseite",
-  "Sicherheit %",
-  "Erkennung",
-  "Status",
+  "Fläche (m²)",
+  "Geforderte Arbeitsstunden",
+  "Seite",
+  "Sicherheitswert",
+  "Hinweis",
 ] as const;
+
+/** Spalten der eigenen Kalkulation. */
+export const CALCULATION_HEADERS = [
+  "Eigener Einheitspreis (€)",
+  "Eigene Arbeitskosten (€)",
+  "Materialkosten (€)",
+  "Gemeinkosten (€)",
+  "Gewinn (%)",
+  "Angebotspreis (€)",
+  "Kalkulationsstatus",
+] as const;
+
+export const EXPORT_HEADERS = [...TENDER_HEADERS, ...CALCULATION_HEADERS] as const;
 
 const num = (v: number | null, field: ReviewField, review: ReviewField[]): string =>
   review.includes(field) || v === null ? REVIEW_LABEL : String(v).replace(".", ",");
+
+const own = (v: number | null): string => (v === null ? "" : String(v).replace(".", ","));
 
 /** Baut die Exportzeilen (identisch für CSV, XLSX und PDF). */
 export function buildExportRows(items: LvNormalizedItem[]): string[][] {
   return items.map((item) => {
     const review = reviewFields(item);
+    const price = offerPrice(item);
     return [
       item.item_number || REVIEW_LABEL,
       item.description.trim() || REVIEW_LABEL,
@@ -100,15 +126,37 @@ export function buildExportRows(items: LvNormalizedItem[]): string[][] {
         : String(item.frequency.perYear),
       num(item.area_m2, "area_m2", review),
       num(item.working_hours, "area_m2", []),
-      num(item.unit_price, "unit_price", review),
-      num(item.total_price, "total_price", review),
-      item.vat_rate === null ? REVIEW_LABEL : String(item.vat_rate).replace(".", ","),
       item.source_page === null ? REVIEW_LABEL : String(item.source_page),
       String(Math.round(item.confidence_score * 100)),
-      item.source_method,
       review.length ? `${REVIEW_LABEL}: ${review.join(", ")}` : "geprüft",
+      hasOwnPrice(item) ? own(item.calculation.own_unit_price) : NO_OWN_PRICE_LABEL,
+      own(item.calculation.labor_cost),
+      own(item.calculation.material_cost),
+      own(item.calculation.overhead_cost),
+      own(item.calculation.profit_percent),
+      price === null ? NO_OWN_PRICE_LABEL : own(price),
+      CALC_STATUS_LABELS[calcStatus(item)],
     ];
   });
+}
+
+const GROUP_ROW: string[] = [
+  "Anforderungen aus der Ausschreibung",
+  ...Array(TENDER_HEADERS.length - 1).fill(""),
+  "Eigene Kalkulation",
+  ...Array(CALCULATION_HEADERS.length - 1).fill(""),
+];
+
+/** Summenzeilen ausschließlich aus den eigenen Kalkulationsdaten. */
+function ownSummaryRows(items: LvNormalizedItem[]): string[][] {
+  const s = summarizeOwnCalculation(items);
+  return [
+    [],
+    ["Eigene Kalkulation – Gesamtsumme"],
+    ["Kalkulierte Positionen", String(s.calculatedItems)],
+    ["Angebotssumme netto €", String(s.net).replace(".", ",")],
+    ["Jahressumme netto €", String(s.annualNet).replace(".", ",")],
+  ];
 }
 
 function csvCell(value: string): string {
@@ -132,8 +180,10 @@ export function buildCsv(items: LvNormalizedItem[], result?: LvAnalysisResult | 
       lines.push([]);
     }
   }
+  lines.push(GROUP_ROW);
   lines.push([...EXPORT_HEADERS]);
   lines.push(...buildExportRows(items));
+  lines.push(...ownSummaryRows(items));
   return `\uFEFF${lines.map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
 }
 
@@ -186,8 +236,10 @@ export async function buildXlsx(
     rows.push(["Status", result.statusMessage]);
     rows.push([]);
   }
+  rows.push(GROUP_ROW);
   rows.push([...EXPORT_HEADERS]);
   rows.push(...buildExportRows(items));
+  rows.push(...ownSummaryRows(items));
   if (result?.totals.length) {
     rows.push([]);
     rows.push(["Erkannte Summen", "Betrag €", "Quellseite"]);
@@ -271,8 +323,8 @@ export async function buildPdfReport(
     { title: "Intervall", w: 28 },
     { title: "m²", w: 20, align: "right" },
     { title: "Std.", w: 18, align: "right" },
-    { title: "EP €", w: 20, align: "right" },
-    { title: "GP €", w: 22, align: "right" },
+    { title: "Eigener EP €", w: 20, align: "right" },
+    { title: "Angebotspreis €", w: 22, align: "right" },
     { title: "Seite", w: 14, align: "right" },
     { title: "Sich. %", w: 16, align: "right" },
   ];
@@ -300,7 +352,7 @@ export async function buildPdfReport(
       y = 16;
       drawHead();
     }
-    const values = [row[0], row[1], row[3], row[4], row[5], row[7], row[8], row[9], row[10], row[12], row[13]];
+    const values = [row[0], row[1], row[3], row[4], row[5], row[7], row[8], row[12], row[17], row[9], row[10]];
     let x = marginX;
     values.forEach((raw, index) => {
       const col = cols[index]!;

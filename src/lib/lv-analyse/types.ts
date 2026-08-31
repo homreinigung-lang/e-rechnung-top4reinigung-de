@@ -28,9 +28,27 @@ export type LvFrequency = {
   perYear: number | null;
 };
 
+/** Eigene Kalkulationsdaten – ausschließlich manuell erfasst. */
+export type LvCalculation = {
+  /** Eigener Einheitspreis (€). null = „Noch kein eigener Preis eingetragen". */
+  own_unit_price: number | null;
+  /** Eigene Arbeitskosten (€) je Position. */
+  labor_cost: number | null;
+  /** Materialkosten (€) je Position. */
+  material_cost: number | null;
+  /** Gemeinkosten (€) je Position. */
+  overhead_cost: number | null;
+  /** Gewinnmarge in Prozent. */
+  profit_percent: number | null;
+};
+
+export type LvCalcStatus = "not_calculated" | "calculated_review" | "released";
+
 /** Eine normalisierte Position aus der Ausschreibung. */
 export type LvNormalizedItem = {
   id: string;
+  /** Verknüpfung mit der aktuellen Analyse/Dokument-ID. */
+  analysis_id: string;
   item_number: string;
   description: string;
   category: LvItemCategory;
@@ -39,9 +57,13 @@ export type LvNormalizedItem = {
   frequency: LvFrequency;
   area_m2: number | null;
   working_hours: number | null;
+  /** Im Dokument genannter Einheitspreis (Ausschreibungsdatum) – NIE eigener Preis. */
   unit_price: number | null;
+  /** Im Dokument genannter Gesamtpreis – NIE eigener Preis. */
   total_price: number | null;
   vat_rate: number | null;
+  /** Eigene Kalkulation – ausschließlich manuell befüllt. */
+  calculation: LvCalculation;
   /** 1-basierte Seitenzahl bzw. Zeilennummer der Quelle. */
   source_page: number | null;
   /** 0–1. */
@@ -75,6 +97,8 @@ export type LvProcessStep = {
 };
 
 export type LvAnalysisResult = {
+  /** Eindeutige ID dieses Analyse-Durchlaufs. */
+  analysisId: string;
   fileName: string;
   fileSize: number;
   uploadedAt: string;

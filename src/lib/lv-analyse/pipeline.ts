@@ -9,6 +9,7 @@ import { analyseLvDocument, analyseLvScan, type LvAnalyseResponse } from "@/lib/
 import { classifyDocument, isGaebFile, isSupportedFile } from "./classify";
 import { parseGaeb } from "./gaeb";
 import { dedupeItems, extractTotals, normalizeItem, pageIndexForText, toNumberOrNull } from "./normalize";
+import { newAnalysisId, stampAnalysis } from "./calculation";
 import { validateItems } from "./validate";
 import type { LvAnalysisResult, LvNormalizedItem, LvProcessStep, LvTotalLine } from "./types";
 
@@ -43,7 +44,11 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     deps.onStep?.(step);
   };
 
+  // Jeder Upload erhält eine neue Analyse-ID; nichts wird aus früheren Analysen übernommen.
+  const analysisId = newAnalysisId();
+
   const base = {
+    analysisId,
     fileName: file.name,
     fileSize: file.size,
     uploadedAt: new Date().toISOString(),
@@ -216,11 +221,15 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     kindReason = `Das Dokument enthält ausschließlich Summenwerte (${totals.length} Beträge) und wurde als Preisblatt eingestuft.`;
   }
 
+  // Kalkulationsfelder bleiben leer, keine Freigabe, feste Bindung an diese Analyse-ID.
+  items = stampAnalysis(items, analysisId);
+
   const issues = validateItems(items);
   const { status, statusMessage, recommendedAction } = describeStatus(kind, items.length, totals.length, issues.length);
   push({ state: status === "error" ? "error" : status === "success" ? "ok" : "warn", label: statusMessage });
 
   return {
+    analysisId,
     fileName: file.name,
     fileSize: file.size,
     uploadedAt: base.uploadedAt,

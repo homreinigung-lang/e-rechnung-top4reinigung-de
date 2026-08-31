@@ -1,3 +1,4 @@
+import { annualOfferPrice, hasOwnPrice, offerPrice } from "./calculation";
 import type { LvItemCategory, LvNormalizedItem, LvTotalLine } from "./types";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -23,7 +24,7 @@ export function aggregateByCategory(items: LvNormalizedItem[]): CategoryAggregat
     entry.items += 1;
     entry.area_m2 += item.area_m2 ?? 0;
     entry.hours += item.working_hours ?? 0;
-    entry.total += item.total_price ?? 0;
+    entry.total += offerPrice(item) ?? 0;
     map.set(item.category, entry);
   }
   return [...map.values()]
@@ -99,9 +100,10 @@ export function summarizeCost(
   totals: LvTotalLine[],
   fallbackVatRate = 19,
 ): CostSummary {
-  const priced = items.filter((i) => (i.total_price ?? 0) > 0);
-  const net = priced.reduce((s, i) => s + (i.total_price ?? 0), 0);
-  const annualNet = priced.reduce((s, i) => s + (i.total_price ?? 0) * (i.frequency.perYear ?? 1), 0);
+  // Ausschließlich eigene Kalkulationsdaten – Preise aus dem Dokument fließen nie ein.
+  const priced = items.filter(hasOwnPrice);
+  const net = priced.reduce((s, i) => s + (offerPrice(i) ?? 0), 0);
+  const annualNet = priced.reduce((s, i) => s + (annualOfferPrice(i) ?? offerPrice(i) ?? 0), 0);
   const vatRate = items.find((i) => i.vat_rate !== null)?.vat_rate ?? fallbackVatRate;
   const vat = round2((net * vatRate) / 100);
   return {
@@ -151,7 +153,7 @@ export function recommendPrice(items: LvNormalizedItem[], inputs: PriceInputs): 
   const withOverhead = labor * (1 + inputs.overheadPercent / 100);
   const recommended = round2(withOverhead * (1 + inputs.profitPercent / 100));
   const area = summarizeArea(items).totalArea;
-  const documentAnnualNet = summarizeCost(items, []).annualNet;
+  const documentAnnualNet = summarizeCost(items, []).annualNet; // eigene Jahressumme
   return {
     hourlyRate: inputs.hourlyRate,
     annualHours,
