@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.enforce_plan_tax_mode() FROM anon, authenticated, public;
