@@ -44,7 +44,11 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     deps.onStep?.(step);
   };
 
+  // Jeder Upload erhält eine neue Analyse-ID; nichts wird aus früheren Analysen übernommen.
+  const analysisId = newAnalysisId();
+
   const base = {
+    analysisId,
     fileName: file.name,
     fileSize: file.size,
     uploadedAt: new Date().toISOString(),
