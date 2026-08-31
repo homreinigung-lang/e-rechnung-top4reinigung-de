@@ -7,10 +7,12 @@
  * - Alte Kalkulationen aus früheren Analysen werden NIE kopiert.
  * - Ohne eigenen Einheitspreis findet keine Berechnung statt.
  */
+import { fromCents, toCents } from "@/lib/kalkulation-engine";
 import type { LvCalcStatus, LvCalculation, LvNormalizedItem } from "./types";
 
 export const NO_OWN_PRICE_LABEL = "Noch kein eigener Preis eingetragen";
 export const NO_OWN_PRICE_HINT = "Bitte eigenen Einheitspreis eingeben.";
+
 
 export const CALC_STATUS_LABELS: Record<LvCalcStatus, string> = {
   not_calculated: "Noch nicht kalkuliert",
