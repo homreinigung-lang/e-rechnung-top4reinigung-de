@@ -4,8 +4,7 @@ import { BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-const WEEKS_PER_MONTH = 4.33;
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 
 /** Auf zwei Nachkommastellen gerundet – vermeidet Fließkomma-Artefakte. */
 function round2(value: number) {

@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProjektUnterlagen } from "@/components/ProjektUnterlagen";
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 import {
   DEFAULT_PERFORMANCE_RATES,
   hoursPerVisit,
@@ -29,8 +30,6 @@ type RoomRow = {
   usage_type: string;
   floor_covering: string;
 };
-
-const WEEKS_PER_MONTH = 4.33;
 
 export type KalkulationSnapshot = {
   /** Bezeichnung der Reinigungsart */

@@ -5,6 +5,7 @@
  * aus den Positionen des Leistungsverzeichnisses. Die Grundkalkulation ist nur
  * ein Zwischenschritt, der Positionen erzeugt – sie wird nie zusätzlich addiert.
  */
+import { STAIR_RATE_PER_FLOOR } from "@/lib/constants";
 
 export type CalcPosition = {
   description: string;
@@ -18,7 +19,7 @@ export const GLASS_HOURLY_RATE = 38;
 /** Realistische Leistung Glasreinigung in m² pro Stunde. */
 export const GLASS_SQM_PER_HOUR = 40;
 /** Mindestpreis je Etage Treppenhausreinigung (netto) – verhindert 0,00 €. */
-export const MIN_STAIR_RATE = 12.5;
+export const MIN_STAIR_RATE = STAIR_RATE_PER_FLOOR;
 
 /** Geldbeträge werden für Vergleiche und Summen immer als ganze Cent verarbeitet. */
 export function toCents(value: number): number {
@@ -237,15 +238,14 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     });
   }
 
-  const pct = Math.min(100, Math.max(0, input.discountPercent || 0));
-  if (pct > 0 && positions.length > 0) {
-    const sum = positionsTotal(positions);
-    positions.push({
-      description: `Rabatt ${round2(pct)} %${input.discountReason ? ` – ${input.discountReason}` : ""}`,
-      quantity: 1,
-      unit: "Pauschal",
-      unit_price: -round2((sum * pct) / 100),
+  // Rabatt läuft über die einzige Rabattlogik (Cent-Arithmetik, keine Doppelrundung).
+  if (positions.length > 0) {
+    const discount = buildDiscountPosition(positions, {
+      percent: input.discountPercent || 0,
+      amount: 0,
+      reason: input.discountReason ?? "",
     });
+    if (discount) positions.push(discount);
   }
 
   return positions;
@@ -260,16 +260,18 @@ export function buildDiscountPosition(
   positions: CalcPosition[],
   discount: { percent: number; amount: number; reason: string },
 ): CalcPosition | null {
-  const base = positionsTotal(positions);
+  // Durchgehend in ganzen Cent rechnen: nur eine einzige Rundung am Ende.
+  const baseCents = toCents(positionsTotal(positions));
   const pct = Math.min(100, Math.max(0, Number(discount.percent) || 0));
-  const fixed = Math.max(0, round2(Number(discount.amount) || 0));
-  const fromPercent = pct > 0 ? round2((base * pct) / 100) : 0;
-  const total = round2(fromPercent + fixed);
-  if (total <= 0) return null;
+  const fixedCents = Math.max(0, toCents(Number(discount.amount) || 0));
+  const percentCents = pct > 0 ? Math.round((baseCents * pct) / 100) : 0;
+  const totalCents = percentCents + fixedCents;
+  if (totalCents <= 0) return null;
+  const total = fromCents(totalCents);
 
   const parts: string[] = [];
   if (pct > 0) parts.push(`${round2(pct)} %`);
-  if (fixed > 0) parts.push(`Festbetrag ${round2(fixed)} €`);
+  if (fixedCents > 0) parts.push(`Festbetrag ${fromCents(fixedCents)} €`);
   const reason = discount.reason.trim();
 
   return {

@@ -9,6 +9,7 @@ import {
   fileToBase64,
   itemsFromRows,
   itemsFromText,
+  mergeItemLists,
   type LvImportItem,
 } from "@/lib/lv-form/import";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,31 +26,6 @@ interface LvItem {
 }
 
 type AnalysisStep = { state: "ok" | "warn" | "error"; label: string };
-
-/** Führt die Ergebnisse aller Erkennungswege zusammen, ohne Positionen zu verlieren. */
-function mergeCandidates(lists: LvImportItem[][]): LvImportItem[] {
-  const nonEmpty = lists.filter((l) => l.length > 0);
-  if (nonEmpty.length === 0) return [];
-  const sorted = [...nonEmpty].sort((a, b) => b.length - a.length);
-  const merged = [...(sorted[0] as LvImportItem[])];
-  const key = (it: LvImportItem) =>
-    `${String(it.item_number ?? "")
-      .trim()
-      .toLowerCase()}|${String(it.description ?? "")
-      .trim()
-      .toLowerCase()
-      .slice(0, 60)}`;
-  const seen = new Set(merged.map(key));
-  for (const list of sorted.slice(1)) {
-    for (const it of list) {
-      const k = key(it);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      merged.push(it);
-    }
-  }
-  return merged;
-}
 
 export default function LvFormFiller() {
   const runAnalysis = useServerFn(analyzeLvText);
@@ -179,7 +155,7 @@ export default function LvFormFiller() {
         });
       }
 
-      let found = mergeCandidates(candidates);
+      let found = mergeItemLists(candidates);
 
       // 3) OCR nur, wenn bisher gar nichts erkannt wurde.
       if (found.length === 0 && doc.kind === "pdf") {
