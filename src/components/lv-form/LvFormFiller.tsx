@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
+import { Download, FileDown, Plus } from 'lucide-react';
 import { analyzeLvText, analyzeLvScan } from '@/lib/lv-form.functions';
 import {
   cleanItems,
@@ -10,6 +11,9 @@ import {
   itemsFromText,
   type LvImportItem,
 } from '@/lib/lv-form/import';
+import { supabase } from '@/integrations/supabase/client';
+import { buildLvPdf } from '@/lib/lv-pdf';
+import { saveFile } from '@/lib/download';
 
 interface LvItem {
   id?: string;
