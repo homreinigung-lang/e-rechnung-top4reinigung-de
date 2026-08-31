@@ -91,7 +91,7 @@ describe("2) Gescanntes PDF mit OCR", () => {
 describe("3) XLSX-Datei", () => {
   it("liest Tabellenzeilen als Positionen", async () => {
     const rows = [
-      ["Pos", "Leistung", "Menge", "Einheit", "EP"],
+      ["Pos", "Leistungsbeschreibung", "Menge", "Einheit", "Einheitspreis"],
       ["1.1", "Unterhaltsreinigung Büro", "1.250,00", "m²", "0,85"],
       ["1.2", "Glasreinigung", "320,00", "m²", "2,50"],
       ["1.3", "Sanitärreinigung", "180,00", "m²", "1,20"],
