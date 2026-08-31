@@ -476,11 +476,8 @@ function DokumenteListe() {
                               Storno zu {cancelsNumber}
                             </span>
                           ) : null}
-                          {!isStorno && cancelledByNumber ? (
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                              Storniert durch {cancelledByNumber}
-                            </span>
-                          ) : null}
+                          {/* Storno-Hinweis erscheint nur einmal – als Unterzeile unten. */}
+
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
