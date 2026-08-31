@@ -117,11 +117,7 @@ describe("Plausibilitätsprüfung", () => {
   });
 
   it("blockiert fehlende Basiswerte", () => {
-    const warnings = validateLvForm(
-      EMPTY_LV_INPUTS,
-      deriveLvValues(EMPTY_LV_INPUTS),
-      [],
-    );
+    const warnings = validateLvForm(EMPTY_LV_INPUTS, deriveLvValues(EMPTY_LV_INPUTS), []);
     expect(hasBlockingWarnings(warnings)).toBe(true);
   });
 });

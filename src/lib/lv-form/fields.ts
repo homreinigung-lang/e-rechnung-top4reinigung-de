@@ -75,13 +75,9 @@ export const LV_FIELDS: LvFieldMeta[] = [
     kind: "input",
     unit: "€",
     decimals: 2,
-    keywords: [
-      ["stundenverrechnungssatz"],
-      ["verrechnungssatz", "stunde"],
-    ],
+    keywords: [["stundenverrechnungssatz"], ["verrechnungssatz", "stunde"]],
   },
   {
-
     key: "sonder_kontingent",
     label: "Fiktives Stundenkontingent (Sonderaufträge)",
     kind: "input",
@@ -117,10 +113,7 @@ export const LV_FIELDS: LvFieldMeta[] = [
     kind: "input",
     unit: "%",
     decimals: 2,
-    keywords: [
-      ["mehrwertsteuersatz"],
-      ["ust", "satz"],
-    ],
+    keywords: [["mehrwertsteuersatz"], ["ust", "satz"]],
   },
   {
     key: "mwst_betrag",

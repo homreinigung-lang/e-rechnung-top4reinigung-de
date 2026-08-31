@@ -42,7 +42,6 @@ import {
   MIN_STAIR_RATE,
 } from "@/lib/kalkulation-engine";
 
-
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
 import { ProjektKennzahlen } from "@/components/ProjektKennzahlen";
@@ -193,8 +192,6 @@ const KALK_SECTION = "Kalkulation";
 /** Bereich für Positionen, die aus der KI-/Grundriss-Analyse übernommen wurden. */
 const KI_SECTION = "KI-Analyse";
 
-
-
 function KalkulationPage() {
   const navigate = useNavigate();
 
@@ -240,7 +237,6 @@ function KalkulationPage() {
       active = false;
     };
   }, []);
-
 
   const [note, setNote] = useState(() => {
     const parts: string[] = [];
@@ -318,7 +314,6 @@ function KalkulationPage() {
         if (detectedFloors > 0) setFloors(dec(detectedFloors));
       }
       if (res.note.trim()) setNote((prev) => (prev.trim() ? `${prev}\n${res.note}` : res.note));
-      
 
       const rate = num(hourlyRate) || res.hourly_rate;
       const cleaned = normalizeItems(res.items, {
@@ -468,7 +463,6 @@ function KalkulationPage() {
     [stairs, floors, stairRate, hasLift, liftRate, stairVisitsPerMonth],
   );
 
-
   const pct = Math.min(100, Math.max(0, num(discountPercent)));
 
   /**
@@ -606,7 +600,6 @@ function KalkulationPage() {
     setConfirmed(false);
   }, [note, discountReason, selected.value, taxMode, lvItems]);
 
-
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
     if (mode === "hours") return num(hours) * visitsPerMonth;
@@ -642,7 +635,6 @@ function KalkulationPage() {
     [mode, area, analysisTotals, suggested, monthlyHours],
   );
 
-
   /** Herkunftsbereich einer LV-Zeile (Fallback: „Kalkulation"). */
   const sectionOf = (i: AiItem) => (i.section || "").trim() || KALK_SECTION;
 
@@ -662,17 +654,21 @@ function KalkulationPage() {
    * `replaceAll` verwirft zusätzlich alle Zeilen anderer Herkunft.
    */
   function writeSource(section: string, items: AiItem[], replaceAll: boolean) {
-    setLvItems((prev) => (replaceAll ? items : [...prev.filter((i) => sectionOf(i) !== section), ...items]));
+    setLvItems((prev) =>
+      replaceAll ? items : [...prev.filter((i) => sectionOf(i) !== section), ...items],
+    );
     const kept = replaceAll ? 0 : lvItems.filter((i) => sectionOf(i) !== section).length;
     toast.success(
-      `Bereich „${section}“ übernommen – netto ${formatMoney(positionsTotal(
-        items.map((i) => ({
-          description: i.description,
-          quantity: num(i.quantity),
-          unit: i.unit,
-          unit_price: parseGermanNumber(i.unit_price),
-        })),
-      ))}` + (kept > 0 ? ` · ${kept} Position(en) anderer Herkunft bleiben erhalten.` : ""),
+      `Bereich „${section}“ übernommen – netto ${formatMoney(
+        positionsTotal(
+          items.map((i) => ({
+            description: i.description,
+            quantity: num(i.quantity),
+            unit: i.unit,
+            unit_price: parseGermanNumber(i.unit_price),
+          })),
+        ),
+      )}` + (kept > 0 ? ` · ${kept} Position(en) anderer Herkunft bleiben erhalten.` : ""),
     );
   }
 
@@ -692,9 +688,7 @@ function KalkulationPage() {
       label,
       items,
       foreignCount: foreign.length,
-      foreignTotal: positionsTotal(
-        lvPositions.filter((p) => p.section !== section),
-      ),
+      foreignTotal: positionsTotal(lvPositions.filter((p) => p.section !== section)),
     });
   }
 
@@ -725,11 +719,7 @@ function KalkulationPage() {
       toast.error("Bitte zuerst die markierten Plausibilitätshinweise prüfen.");
       return;
     }
-    applySource(
-      KALK_SECTION,
-      "Grundkalkulation",
-      toAiItems(stagedPositions, KALK_SECTION, "calc"),
-    );
+    applySource(KALK_SECTION, "Grundkalkulation", toAiItems(stagedPositions, KALK_SECTION, "calc"));
   }
 
   /** Übernimmt ausschließlich die Positionen der KI-/Grundriss-Analyse. */
@@ -771,7 +761,6 @@ function KalkulationPage() {
     netTotal: lvTotal,
     confirmed,
   };
-
 
   // ---- Speichern / Laden ---------------------------------------------------
   const { data: savedCalcs = [] } = useQuery({
@@ -1072,7 +1061,6 @@ function KalkulationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.projekt, lvImported]);
 
-
   /** Leistungsverzeichnis als abgabefertiges PDF exportieren. */
   const exportLv = useMutation({
     mutationFn: async () => {
@@ -1125,7 +1113,6 @@ function KalkulationPage() {
         positions,
         vatRate,
         ...(taxNote ? { taxNote } : {}),
-
       });
       await saveFile(
         new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }),
@@ -1183,7 +1170,6 @@ function KalkulationPage() {
         parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
       }
 
-
       if (note.trim()) parts.push(note.trim());
 
       const { error: itemError } = await supabase.from("document_items").insert(
@@ -1228,7 +1214,6 @@ function KalkulationPage() {
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
-
 
       return quoteId;
     },
@@ -1469,8 +1454,6 @@ function KalkulationPage() {
             </CardContent>
           </Card>
 
-
-
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1563,7 +1546,6 @@ function KalkulationPage() {
               )}
 
               {mode === "hours" ? (
-
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Stunden</Label>
@@ -1613,7 +1595,6 @@ function KalkulationPage() {
                   </div>
                 </div>
               ) : null}
-
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
@@ -2231,7 +2212,6 @@ function KalkulationPage() {
                   </div>
                 )}
 
-
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={applyCalculation}>
                     <Calculator className="size-4" /> Grundkalkulation für Angebot übernehmen
@@ -2284,7 +2264,6 @@ function KalkulationPage() {
                     „Grundriss") oder fügen Sie eine Position manuell hinzu.
                   </p>
                 ) : (
-
                   <div className="space-y-2">
                     <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
                       <span>Leistung</span>
@@ -2341,7 +2320,6 @@ function KalkulationPage() {
                     </p>
                   </div>
                 )}
-
               </CardContent>
             </Card>
 
@@ -2439,10 +2417,10 @@ function KalkulationPage() {
                     <span>{formatMoney(suggested)}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Quelle: Grundkalkulation (primär für Ausschreibungen/LV). Über
-                    „Grundkalkulation für Angebot übernehmen“ werden diese Werte als Positionen in
-                    das Leistungsverzeichnis geschrieben. Maßgeblich für Angebot und PDF ist immer
-                    die Summe der LV-Positionen.
+                    Quelle: Grundkalkulation (primär für Ausschreibungen/LV). Über „Grundkalkulation
+                    für Angebot übernehmen“ werden diese Werte als Positionen in das
+                    Leistungsverzeichnis geschrieben. Maßgeblich für Angebot und PDF ist immer die
+                    Summe der LV-Positionen.
                   </p>
                 </div>
 
@@ -2470,7 +2448,6 @@ function KalkulationPage() {
                     LV-Positionen – ohne stille Ausgleichsposition.
                   </p>
                 </div>
-
 
                 {warnings.length > 0 && (
                   <div className="flex gap-2 rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
@@ -2528,8 +2505,7 @@ function KalkulationPage() {
               type="button"
               variant="outline"
               onClick={() => {
-                if (pendingApply)
-                  writeSource(pendingApply.section, pendingApply.items, true);
+                if (pendingApply) writeSource(pendingApply.section, pendingApply.items, true);
                 setPendingApply(null);
               }}
             >
@@ -2537,8 +2513,7 @@ function KalkulationPage() {
             </Button>
             <AlertDialogAction
               onClick={() => {
-                if (pendingApply)
-                  writeSource(pendingApply.section, pendingApply.items, false);
+                if (pendingApply) writeSource(pendingApply.section, pendingApply.items, false);
                 setPendingApply(null);
               }}
             >
@@ -2548,6 +2523,5 @@ function KalkulationPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-
   );
 }

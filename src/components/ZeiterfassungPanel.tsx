@@ -141,7 +141,6 @@ function monthEndDate(monthValue: string) {
   return `${monthValue}-${String(day).padStart(2, "0")}`;
 }
 
-
 export function Zeiterfassung() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();

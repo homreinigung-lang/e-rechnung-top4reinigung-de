@@ -125,8 +125,8 @@ export function BewertungDialog({
 
             {locked ? (
               <p className="text-xs text-muted-foreground">
-                Ihre Bewertung ist freigegeben und öffentlich sichtbar. Für Änderungen wenden Sie sich
-                bitte an den Support.
+                Ihre Bewertung ist freigegeben und öffentlich sichtbar. Für Änderungen wenden Sie
+                sich bitte an den Support.
               </p>
             ) : null}
           </div>

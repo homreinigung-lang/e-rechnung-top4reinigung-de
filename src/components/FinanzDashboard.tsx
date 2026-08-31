@@ -136,7 +136,6 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
   const income = pick(upcoming?.income ?? []);
   const outgo = pick(upcoming?.outgo ?? []);
 
-
   return (
     <section aria-label="Finanz-Dashboard" className="space-y-4">
       <div>

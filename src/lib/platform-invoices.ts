@@ -136,7 +136,10 @@ export function useCreatePlatformInvoice() {
         grossCents,
         payment,
       });
-      await saveFile(new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), `${number}.pdf`);
+      await saveFile(
+        new Blob([new Uint8Array(bytes)], { type: "application/pdf" }),
+        `${number}.pdf`,
+      );
 
       return { number };
     },

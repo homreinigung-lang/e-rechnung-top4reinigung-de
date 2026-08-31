@@ -31,7 +31,6 @@ export const PLATFORM_PAYMENT_FALLBACK: PlatformPayment = {
   city: "",
 };
 
-
 function merge(row: Partial<PlatformPayment> | null): PlatformPayment {
   const out = { ...PLATFORM_PAYMENT_FALLBACK };
   if (!row) return out;

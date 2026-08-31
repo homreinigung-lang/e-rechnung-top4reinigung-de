@@ -3,11 +3,7 @@ import { formatCents, formatGermanNumber } from "./number";
 import type { LvDerived, LvFieldKey, LvInputs, LvMarker } from "./types";
 
 /** Anzeigewert einer Kennzahl (ohne Einheit) in deutscher Schreibweise. */
-export function fieldValueText(
-  key: LvFieldKey,
-  inputs: LvInputs,
-  derived: LvDerived,
-): string {
+export function fieldValueText(key: LvFieldKey, inputs: LvInputs, derived: LvDerived): string {
   switch (key) {
     case "unterhalt_pauschale_monat":
       return formatCents(inputs.unterhalt_pauschale_monat);

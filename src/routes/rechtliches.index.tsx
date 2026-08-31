@@ -57,7 +57,6 @@ const items = [
   },
 ] as const;
 
-
 function LegalIndex() {
   return (
     <div>

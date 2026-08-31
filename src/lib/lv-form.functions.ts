@@ -85,16 +85,22 @@ async function runLvExtraction(userContent: unknown): Promise<LvFormItem[]> {
   if (!res.ok) {
     let detail = "";
     try {
-      const body = (await res.json()) as { message?: string; error?: { message?: string } | string };
-      detail = body.message ?? (typeof body.error === "string" ? body.error : body.error?.message) ?? "";
+      const body = (await res.json()) as {
+        message?: string;
+        error?: { message?: string } | string;
+      };
+      detail =
+        body.message ?? (typeof body.error === "string" ? body.error : body.error?.message) ?? "";
     } catch {
       detail = await res.text().catch(() => "");
     }
     const reason = detail.trim() ? `: ${detail.trim()}` : "";
-    if (res.status === 429) throw new Error(`KI-Limit erreicht. Bitte später erneut versuchen${reason}`);
+    if (res.status === 429)
+      throw new Error(`KI-Limit erreicht. Bitte später erneut versuchen${reason}`);
     if (res.status === 402) throw new Error(`KI-Guthaben aufgebraucht${reason}`);
     if (res.status === 401) throw new Error(`KI-Dienst ist nicht korrekt konfiguriert${reason}`);
-    if (res.status === 403) throw new Error(`KI-Analyse ist für diesen Arbeitsbereich gesperrt${reason}`);
+    if (res.status === 403)
+      throw new Error(`KI-Analyse ist für diesen Arbeitsbereich gesperrt${reason}`);
     throw new Error(`KI-Analyse fehlgeschlagen (${res.status})${reason}`);
   }
 
@@ -135,11 +141,10 @@ export const analyzeLvText = createServerFn({ method: "POST" })
     return { pdfText: text };
   })
   .handler(async ({ data }) => {
-    const chunks = data.pdfText.length <= 45_000
-      ? [data.pdfText]
-      : data.pdfText
-          .split(/(?=--- Seite \d+ ---)/)
-          .reduce<string[]>((parts, page) => {
+    const chunks =
+      data.pdfText.length <= 45_000
+        ? [data.pdfText]
+        : data.pdfText.split(/(?=--- Seite \d+ ---)/).reduce<string[]>((parts, page) => {
             const last = parts.at(-1);
             if (last !== undefined && last.length + page.length <= 45_000) {
               parts[parts.length - 1] = `${last}\n${page}`;

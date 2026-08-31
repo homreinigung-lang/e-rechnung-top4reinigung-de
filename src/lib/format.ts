@@ -30,7 +30,7 @@ export function parseGermanNumber(value: string | number | null | undefined): nu
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   let raw = String(value ?? "")
     .replace(/[\s\u00a0€]/g, "")
-    .replace(/[^0-9,.\-]/g, "");
+    .replace(/[^0-9,.-]/g, "");
   if (!raw) return 0;
 
   const lastComma = raw.lastIndexOf(",");
@@ -54,7 +54,6 @@ export function parseGermanNumber(value: string | number | null | undefined): nu
 export function parsePositiveNumber(value: string | number | null | undefined): number {
   return Math.max(0, parseGermanNumber(value));
 }
-
 
 const DE_DATE = new Intl.DateTimeFormat(DE_LOCALE, {
   calendar: "gregory",

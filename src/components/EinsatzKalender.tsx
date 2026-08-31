@@ -492,7 +492,6 @@ export function EinsatzKalender({
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   /** Schnellzuweisung: Mitarbeiter per Drag & Drop auf einen Tag legen. */
   const quickAssign = useMutation({
     mutationFn: async ({ employeeId, workDate }: { employeeId: string; workDate: string }) => {

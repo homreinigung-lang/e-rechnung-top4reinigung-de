@@ -53,7 +53,6 @@ export type LvPdfData = {
   taxNote?: string;
 };
 
-
 function clean(value: string): string {
   return (value ?? "")
     .replace(/\u202f|\u2009|\u2007/g, "\u00a0")
@@ -294,7 +293,6 @@ export async function buildLvPdf(data: LvPdfData): Promise<Uint8Array> {
       y -= 10;
     }
   }
-
 
   // ---- Fuß ----------------------------------------------------------------
   const footerLines = [

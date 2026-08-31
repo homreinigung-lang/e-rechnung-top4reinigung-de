@@ -28,7 +28,12 @@ export function aggregateByCategory(items: LvNormalizedItem[]): CategoryAggregat
     map.set(item.category, entry);
   }
   return [...map.values()]
-    .map((e) => ({ ...e, area_m2: round2(e.area_m2), hours: round2(e.hours), total: round2(e.total) }))
+    .map((e) => ({
+      ...e,
+      area_m2: round2(e.area_m2),
+      hours: round2(e.hours),
+      total: round2(e.total),
+    }))
     .sort((a, b) => b.total - a.total || b.items - a.items);
 }
 
@@ -44,7 +49,10 @@ export type AreaSummary = {
 export function summarizeArea(items: LvNormalizedItem[]): AreaSummary {
   const withArea = items.filter((i) => (i.area_m2 ?? 0) > 0);
   const totalArea = withArea.reduce((s, i) => s + (i.area_m2 ?? 0), 0);
-  const annualArea = withArea.reduce((s, i) => s + (i.area_m2 ?? 0) * (i.frequency.perYear ?? 0), 0);
+  const annualArea = withArea.reduce(
+    (s, i) => s + (i.area_m2 ?? 0) * (i.frequency.perYear ?? 0),
+    0,
+  );
   return {
     totalArea: round2(totalArea),
     itemsWithArea: withArea.length,
@@ -67,10 +75,16 @@ export type HoursSummary = {
 /** Standard-Leistungswert Unterhaltsreinigung: 250 m² pro Stunde. */
 export const DEFAULT_PERFORMANCE_RATE = 250;
 
-export function summarizeHours(items: LvNormalizedItem[], performanceRate = DEFAULT_PERFORMANCE_RATE): HoursSummary {
+export function summarizeHours(
+  items: LvNormalizedItem[],
+  performanceRate = DEFAULT_PERFORMANCE_RATE,
+): HoursSummary {
   const withHours = items.filter((i) => (i.working_hours ?? 0) > 0);
   const totalHours = withHours.reduce((s, i) => s + (i.working_hours ?? 0), 0);
-  const annualHours = withHours.reduce((s, i) => s + (i.working_hours ?? 0) * (i.frequency.perYear ?? 1), 0);
+  const annualHours = withHours.reduce(
+    (s, i) => s + (i.working_hours ?? 0) * (i.frequency.perYear ?? 1),
+    0,
+  );
   const areaWithoutHours = items
     .filter((i) => (i.working_hours ?? 0) <= 0 && (i.area_m2 ?? 0) > 0)
     .reduce((s, i) => s + (i.area_m2 ?? 0) * (i.frequency.perYear ?? 1), 0);
@@ -146,7 +160,10 @@ export const DEFAULT_PRICE_INPUTS: PriceInputs = {
 };
 
 /** Bottom-up Preisempfehlung: Stunden × Stundensatz + Gemeinkosten + Gewinn. */
-export function recommendPrice(items: LvNormalizedItem[], inputs: PriceInputs): PriceRecommendation {
+export function recommendPrice(
+  items: LvNormalizedItem[],
+  inputs: PriceInputs,
+): PriceRecommendation {
   const hours = summarizeHours(items, inputs.performanceRate);
   const annualHours = round2(hours.annualHours + hours.estimatedFromArea);
   const labor = annualHours * inputs.hourlyRate;
@@ -165,6 +182,8 @@ export function recommendPrice(items: LvNormalizedItem[], inputs: PriceInputs): 
     recommendedPerSqm: area > 0 ? round2(recommended / area) : 0,
     documentAnnualNet,
     deltaPercent:
-      documentAnnualNet > 0 ? round2(((documentAnnualNet - recommended) / recommended) * 100) : null,
+      documentAnnualNet > 0
+        ? round2(((documentAnnualNet - recommended) / recommended) * 100)
+        : null,
   };
 }

@@ -455,7 +455,6 @@ function ProjektDetail() {
                 ✓ Datei geladen{items.length > 0 ? ` · ${items.length} Positionen erkannt` : ""}
               </span>
             )}
-
           </div>
         </div>
 
@@ -518,7 +517,6 @@ function ProjektDetail() {
                   projekt: project.id,
                 }}
               >
-
                 <Calculator className="size-4" /> In Kalkulation übernehmen
               </Link>
             </Button>
@@ -671,7 +669,6 @@ function ProjektDetail() {
           />
         </section>
       )}
-
 
       {/* Objekt-Mappe: operative Vertrags- und Einsatzdaten */}
       <section className="surface space-y-4 p-5">

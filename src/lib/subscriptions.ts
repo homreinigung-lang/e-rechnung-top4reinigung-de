@@ -18,7 +18,6 @@ export type Subscription = {
   postal_code?: string;
 };
 
-
 export const PLANS = ["basis", "pro", "enterprise"] as const;
 export const STATUS = ["active", "trial", "inactive"] as const;
 

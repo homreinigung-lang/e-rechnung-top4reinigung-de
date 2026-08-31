@@ -183,7 +183,12 @@ export async function extractDocument(file: File): Promise<ExtractResult> {
   if (name.endsWith(".csv") || name.endsWith(".txt") || file.type.startsWith("text/")) {
     const text = await file.text();
     const rows = name.endsWith(".csv") ? splitCsv(text) : [];
-    return { kind: rows.length ? "table" : "text", rows, text, hasTextLayer: text.trim().length > 0 };
+    return {
+      kind: rows.length ? "table" : "text",
+      rows,
+      text,
+      hasTextLayer: text.trim().length > 0,
+    };
   }
 
   const pdf = await readPdfText(file);
@@ -244,9 +249,11 @@ export function itemsFromRows(rows: string[][]): LvImportItem[] {
           found[pattern.key] = c;
         }
       }
-
     });
-    if (found.description !== undefined && (found.quantity !== undefined || found.item_number !== undefined)) {
+    if (
+      found.description !== undefined &&
+      (found.quantity !== undefined || found.item_number !== undefined)
+    ) {
       headerIndex = r;
       map = found;
       break;
@@ -276,8 +283,7 @@ export function itemsFromRows(rows: string[][]): LvImportItem[] {
 }
 
 const POSITION_NUMBER = String.raw`\d{1,4}(?:[.\-]\d{1,4}){0,5}`;
-const UNIT_WORDS =
-  String.raw`m²|m2|qm|m³|m3|lfdm|lfm|stück|stk\.?|std\.?|stunden?|pauschal(?:e)?|psch\.?|monat(?:e)?|mon\.?|jahre?|kg|ltr\.?|liter|etage(?:n)?|pos\.?|einh\.?|h|m`;
+const UNIT_WORDS = String.raw`m²|m2|qm|m³|m3|lfdm|lfm|stück|stk\.?|std\.?|stunden?|pauschal(?:e)?|psch\.?|monat(?:e)?|mon\.?|jahre?|kg|ltr\.?|liter|etage(?:n)?|pos\.?|einh\.?|h|m`;
 
 const POSITION_START_RE = new RegExp(String.raw`^\s*(${POSITION_NUMBER})[.)]?\s+(.*)$`, "i");
 const QUANTITY_UNIT_RE = new RegExp(
@@ -332,7 +338,10 @@ export function itemsFromText(text: string): LvImportItem[] {
       lookAhead++;
     }
 
-    const joined = block.join(" ").replace(/\s*\|\s*/g, " | ").trim();
+    const joined = block
+      .join(" ")
+      .replace(/\s*\|\s*/g, " | ")
+      .trim();
     const quantityUnit = QUANTITY_UNIT_RE.exec(joined);
     const unitQuantity = quantityUnit ? null : UNIT_QUANTITY_RE.exec(joined);
     const quantity = quantityUnit?.[1] ?? unitQuantity?.[2] ?? "";

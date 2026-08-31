@@ -54,7 +54,6 @@ export async function createStorno(id: string, reason: string): Promise<string> 
   return data as unknown as string;
 }
 
-
 /** Archiviert das finale PDF revisionssicher im privaten Speicher inkl. Prüfsumme. */
 export async function archiveDocumentPdf(
   doc: { id: string; number: string },

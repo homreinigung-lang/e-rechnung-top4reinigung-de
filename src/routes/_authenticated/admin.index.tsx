@@ -19,7 +19,6 @@ import { formatDate } from "@/lib/format";
 import { PlatformRechnungDialog } from "@/components/PlatformRechnungDialog";
 import { BewertungenModeration } from "@/components/BewertungenModeration";
 
-
 /** Laufzeitende um n Monate verlängern (ab heute, falls bereits abgelaufen). */
 function extendDate(current: string | null, months: number): string {
   const base = current ? new Date(`${current}T00:00:00`) : new Date();
@@ -239,7 +238,6 @@ function AbonnementsPage() {
                   Freischalten
                 </Button>
                 <PlatformRechnungDialog subscription={row} />
-
               </div>
 
               {row.status === "trial" ? (

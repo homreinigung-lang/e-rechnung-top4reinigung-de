@@ -95,7 +95,6 @@ function WeekQuickFill({
   );
 }
 
-
 type Employee = {
   id: string;
   name: string;
@@ -349,7 +348,6 @@ export function Arbeitsplanung() {
       ...d,
       [key(e, p)]: Array.from({ length: 7 }, () => ({ ...EMPTY_DAY_TIME })),
     }));
-
 
   const dirtyKeys = React.useMemo(
     () =>

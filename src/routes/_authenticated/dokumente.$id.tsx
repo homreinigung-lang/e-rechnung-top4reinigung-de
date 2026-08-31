@@ -80,7 +80,6 @@ import {
 } from "@/lib/invoice-period";
 import { findDuplicateInvoice } from "@/lib/invoice-duplicate";
 
-
 import { downloadBytes } from "@/lib/pdf";
 import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
 import {
@@ -337,8 +336,6 @@ function DokumentDetail() {
         }
       }
 
-
-
       const payload = {
         ...form,
         number,
@@ -422,7 +419,6 @@ function DokumentDetail() {
         ? syncMonthInText(String(doc["service_description"] ?? ""), period.end)
         : String(doc["service_description"] ?? "");
 
-
       const {
         id: _id,
         created_at: _c,
@@ -461,7 +457,6 @@ function DokumentDetail() {
         .select("id")
         .single();
       if (error) throw error;
-
 
       if (items.length > 0) {
         await supabase.from("document_items").insert(
@@ -519,7 +514,6 @@ function DokumentDetail() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
 
   const remove = useMutation({
     mutationFn: async () => {
@@ -718,13 +712,9 @@ function DokumentDetail() {
     setForm((f) => ({
       ...f,
       service_period: formatPeriod(period),
-      service_description: syncMonthInText(
-        String(f["service_description"] ?? ""),
-        period.start,
-      ),
+      service_description: syncMonthInText(String(f["service_description"] ?? ""), period.start),
     }));
   }
-
 
   function pickCustomer(customerId: string) {
     const c = data!.customers.find((x) => x.id === customerId);
@@ -803,7 +793,6 @@ function DokumentDetail() {
 
   const iban = String(settings?.["iban"] ?? "");
   const bic = String(settings?.["bic"] ?? "");
-
 
   const epc = isInvoice
     ? buildEpcPayload({
@@ -928,7 +917,6 @@ function DokumentDetail() {
       title: `${isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[doc.type]} ${number}`,
       // Sichtbarer Stempel bei Stornobeleg und bei stornierter Originalrechnung.
       ...(isStorno || cancelledBy || doc.status === "cancelled"
-
         ? {
             watermark: "STORNO",
             ...(stornoGrund || stornoNumber
@@ -1406,7 +1394,6 @@ function DokumentDetail() {
         </DialogContent>
       </Dialog>
 
-
       {locked && lockedAt && (
         <div className="no-print flex flex-wrap items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
           <ShieldCheck className="mt-0.5 size-5 text-primary" />
@@ -1533,7 +1520,6 @@ function DokumentDetail() {
                 ? "Vorschau-/Testnummer. Die endgültige, fortlaufende Nummer wird erst beim Festschreiben bzw. Versenden vergeben – so entstehen keine Lücken (§ 14 UStG / GoBD)."
                 : "Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle Änderung ist nicht möglich."}
             </p>
-
           </div>
           <div className="space-y-2">
             <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
@@ -1638,7 +1624,6 @@ function DokumentDetail() {
               </>
             ) : null}
           </div>
-
         </div>
 
         <div className="space-y-2">
@@ -2189,7 +2174,6 @@ function DokumentDetail() {
                 </div>
 
                 <GiroCode payload={epc} size={84} />
-
               </div>
             ) : (
               <div className="mt-4 space-y-2 text-sm">

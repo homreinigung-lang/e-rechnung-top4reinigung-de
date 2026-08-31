@@ -122,7 +122,11 @@ const RESPONSE_FORMAT = {
 
 function num(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  const n = Number(String(value ?? "").replace(/\./g, "").replace(",", "."));
+  const n = Number(
+    String(value ?? "")
+      .replace(/\./g, "")
+      .replace(",", "."),
+  );
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -147,16 +151,22 @@ async function callGateway(userContent: unknown): Promise<LvAnalyseResponse> {
   if (!res.ok) {
     let detail = "";
     try {
-      const body = (await res.json()) as { message?: string; error?: { message?: string } | string };
-      detail = body.message ?? (typeof body.error === "string" ? body.error : body.error?.message) ?? "";
+      const body = (await res.json()) as {
+        message?: string;
+        error?: { message?: string } | string;
+      };
+      detail =
+        body.message ?? (typeof body.error === "string" ? body.error : body.error?.message) ?? "";
     } catch {
       detail = await res.text().catch(() => "");
     }
     const reason = detail.trim() ? `: ${detail.trim()}` : "";
-    if (res.status === 429) throw new Error(`KI-Limit erreicht. Bitte in einigen Minuten erneut versuchen${reason}`);
+    if (res.status === 429)
+      throw new Error(`KI-Limit erreicht. Bitte in einigen Minuten erneut versuchen${reason}`);
     if (res.status === 402) throw new Error(`KI-Guthaben aufgebraucht${reason}`);
     if (res.status === 401) throw new Error(`KI-Dienst ist nicht korrekt konfiguriert${reason}`);
-    if (res.status === 403) throw new Error(`KI-Analyse ist für diesen Arbeitsbereich gesperrt${reason}`);
+    if (res.status === 403)
+      throw new Error(`KI-Analyse ist für diesen Arbeitsbereich gesperrt${reason}`);
     throw new Error(`KI-Analyse fehlgeschlagen (${res.status})${reason}`);
   }
 
@@ -174,8 +184,12 @@ async function callGateway(userContent: unknown): Promise<LvAnalyseResponse> {
     );
   }
 
-  const items = Array.isArray(parsed["items"]) ? (parsed["items"] as Record<string, unknown>[]) : [];
-  const totals = Array.isArray(parsed["totals"]) ? (parsed["totals"] as Record<string, unknown>[]) : [];
+  const items = Array.isArray(parsed["items"])
+    ? (parsed["items"] as Record<string, unknown>[])
+    : [];
+  const totals = Array.isArray(parsed["totals"])
+    ? (parsed["totals"] as Record<string, unknown>[])
+    : [];
 
   return {
     document_kind: String(parsed["document_kind"] ?? "").trim(),
@@ -214,7 +228,8 @@ function chunkText(text: string, size = 45_000): string[] {
     if (last !== undefined && last.length + page.length <= size) {
       parts[parts.length - 1] = `${last}\n${page}`;
     } else if (page.length > size) {
-      for (let offset = 0; offset < page.length; offset += size) parts.push(page.slice(offset, offset + size));
+      for (let offset = 0; offset < page.length; offset += size)
+        parts.push(page.slice(offset, offset + size));
     } else {
       parts.push(page);
     }
@@ -239,7 +254,8 @@ export const analyseLvDocument = createServerFn({ method: "POST" })
       const result = await callGateway(
         `Textabschnitt ${i + 1} von ${chunks.length}. Analysiere ausschließlich diesen Abschnitt:\n\n${chunk}`,
       );
-      if (!merged.document_kind && result.document_kind) merged.document_kind = result.document_kind;
+      if (!merged.document_kind && result.document_kind)
+        merged.document_kind = result.document_kind;
       if (!merged.summary && result.summary) merged.summary = result.summary;
       merged.items.push(...result.items);
       merged.totals.push(...result.totals);
@@ -253,7 +269,8 @@ export const analyseLvScan = createServerFn({ method: "POST" })
   .inputValidator((input: { fileName: string; mimeType: string; base64: string }) => {
     const base64 = String(input?.base64 ?? "");
     if (!base64) throw new Error("Die Datei konnte nicht gelesen werden.");
-    if (base64.length > 20_000_000) throw new Error("Die Datei ist zu groß für die Texterkennung (max. ca. 15 MB).");
+    if (base64.length > 20_000_000)
+      throw new Error("Die Datei ist zu groß für die Texterkennung (max. ca. 15 MB).");
     return {
       fileName: String(input?.fileName ?? "dokument.pdf"),
       mimeType: String(input?.mimeType || "application/pdf"),

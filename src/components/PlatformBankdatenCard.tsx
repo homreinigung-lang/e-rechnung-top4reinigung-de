@@ -124,7 +124,6 @@ export function PlatformBankdatenCard() {
             {field("address_line", "Straße und Hausnummer", "Musterstraße 1")}
             {field("postal_code", "PLZ", "66111")}
             {field("city", "Ort", "Saarbrücken")}
-
           </div>
 
           <div className="space-y-1.5">

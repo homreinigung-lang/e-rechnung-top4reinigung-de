@@ -50,7 +50,10 @@ export function offerPrice(item: LvNormalizedItem): number | null {
   const qty = item.quantity !== null && item.quantity > 0 ? item.quantity : 1;
   const c = item.calculation;
   const base =
-    (c.own_unit_price ?? 0) * qty + (c.labor_cost ?? 0) + (c.material_cost ?? 0) + (c.overhead_cost ?? 0);
+    (c.own_unit_price ?? 0) * qty +
+    (c.labor_cost ?? 0) +
+    (c.material_cost ?? 0) +
+    (c.overhead_cost ?? 0);
   return round2(base * (1 + (c.profit_percent ?? 0) / 100));
 }
 
@@ -78,7 +81,10 @@ export function stampAnalysis(items: LvNormalizedItem[], analysisId: string): Lv
 }
 
 /** Nur Positionen der aktuellen Analyse – niemals Positionen früherer Uploads. */
-export function itemsOfAnalysis(items: LvNormalizedItem[], analysisId: string | null): LvNormalizedItem[] {
+export function itemsOfAnalysis(
+  items: LvNormalizedItem[],
+  analysisId: string | null,
+): LvNormalizedItem[] {
   if (!analysisId) return [];
   return items.filter((i) => i.analysis_id === analysisId);
 }
@@ -97,7 +103,10 @@ export type OwnCalculationSummary = {
 };
 
 /** Gesamtsumme ausschließlich aus eigenen Kalkulationsdaten. */
-export function summarizeOwnCalculation(items: LvNormalizedItem[], vatRate = 19): OwnCalculationSummary {
+export function summarizeOwnCalculation(
+  items: LvNormalizedItem[],
+  vatRate = 19,
+): OwnCalculationSummary {
   const calculated = items.filter(hasOwnPrice);
   const net = round2(calculated.reduce((s, i) => s + (offerPrice(i) ?? 0), 0));
   const annualNet = round2(

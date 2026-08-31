@@ -5,11 +5,7 @@
 
 /** Erkannter Dokumenttyp. */
 export type LvDocumentKind =
-  | "detailed_lv"
-  | "pricing_form"
-  | "cleaning_spec"
-  | "scanned_pdf"
-  | "unsupported";
+  "detailed_lv" | "pricing_form" | "cleaning_spec" | "scanned_pdf" | "unsupported";
 
 export type LvItemCategory =
   | "unterhaltsreinigung"
@@ -129,7 +125,10 @@ export type LvImportLogEntry = {
 
 export const DOCUMENT_KIND_LABELS: Record<LvDocumentKind, { de: string; ar: string }> = {
   detailed_lv: { de: "Detailliertes Leistungsverzeichnis", ar: "كشف خدمات تفصيلي" },
-  pricing_form: { de: "Preisblatt – teilweise strukturierte Daten", ar: "نموذج تسعير – بيانات جزئية" },
+  pricing_form: {
+    de: "Preisblatt – teilweise strukturierte Daten",
+    ar: "نموذج تسعير – بيانات جزئية",
+  },
   cleaning_spec: { de: "Reinigungs-Leistungsbeschreibung", ar: "مواصفات تنظيف" },
   scanned_pdf: { de: "Gescanntes PDF (OCR)", ar: "ملف PDF ممسوح ضوئياً" },
   unsupported: { de: "Nicht unterstütztes Dokument", ar: "مستند غير مدعوم" },
