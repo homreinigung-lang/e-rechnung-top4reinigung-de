@@ -444,17 +444,6 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   const section = { current: "none" as "none" | "regular" | "optional" };
 
   d.items.forEach((item, index) => {
-    if (hasOptional) {
-      const wanted = item.optional ? "optional" : "regular";
-      if (wanted !== section.current) {
-        if (section.current === "regular" && d.regularSubtotal) {
-          drawBandRow("Monatlicher Festpreis (netto)", d.regularSubtotal, false);
-        }
-        drawBandRow(wanted === "regular" ? "Regelmäßige Leistungen" : "Optionale Zusatzleistungen");
-        section.current = wanted;
-      }
-    }
-
     const cells = [
       [String(index + 1)],
       wrap(regular, rowSize, item.description, colWidths[1]! - 2 * padX),
@@ -465,11 +454,29 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     ];
     const rowH = Math.max(...cells.map((c) => c.length)) * 12 + 2 * padY;
 
+    if (hasOptional) {
+      const wanted = item.optional ? "optional" : "regular";
+      if (wanted !== section.current) {
+        if (section.current === "regular" && d.regularSubtotal) {
+          drawBandRow("Monatlicher Festpreis (netto)", d.regularSubtotal, false);
+        }
+        // Abschnittstitel bleibt mit der ersten Position zusammen (keep-with-next).
+        drawBandRow(
+          wanted === "regular" ? "Regelmäßige Leistungen" : "Optionale Zusatzleistungen",
+          undefined,
+          true,
+          rowH,
+        );
+        section.current = wanted;
+      }
+    }
+
     // Zeile nie über den Seitenumbruch zerschneiden – ggf. komplett umbrechen.
     if (ctx.y - rowH < ctx.bottom) {
       newPage(ctx);
       drawTableHead();
     }
+
 
     const top = ctx.y;
     ctx.page.drawRectangle({
