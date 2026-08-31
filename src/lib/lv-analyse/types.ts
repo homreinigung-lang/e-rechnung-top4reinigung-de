@@ -57,9 +57,13 @@ export type LvNormalizedItem = {
   frequency: LvFrequency;
   area_m2: number | null;
   working_hours: number | null;
+  /** Im Dokument genannter Einheitspreis (Ausschreibungsdatum) – NIE eigener Preis. */
   unit_price: number | null;
+  /** Im Dokument genannter Gesamtpreis – NIE eigener Preis. */
   total_price: number | null;
   vat_rate: number | null;
+  /** Eigene Kalkulation – ausschließlich manuell befüllt. */
+  calculation: LvCalculation;
   /** 1-basierte Seitenzahl bzw. Zeilennummer der Quelle. */
   source_page: number | null;
   /** 0–1. */
@@ -93,6 +97,8 @@ export type LvProcessStep = {
 };
 
 export type LvAnalysisResult = {
+  /** Eindeutige ID dieses Analyse-Durchlaufs. */
+  analysisId: string;
   fileName: string;
   fileSize: number;
   uploadedAt: string;
