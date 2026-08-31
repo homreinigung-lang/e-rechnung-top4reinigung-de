@@ -408,5 +408,5 @@ export function downloadBlob(blob: Blob, fileName: string): void {
 
 export function exportBaseName(result: LvAnalysisResult | null): string {
   const raw = (result?.fileName ?? "lv-analyse").replace(/\.[^.]+$/, "");
-  return `LV-Analyse_${raw.replace(/[^\w\-]+/g, "_").slice(0, 60)}`;
+  return `LV-Analyse_${raw.replace(/[^\w-]+/g, "_").slice(0, 60)}`;
 }

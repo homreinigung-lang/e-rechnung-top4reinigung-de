@@ -15,7 +15,7 @@ const TOTAL_WORDS =
   /(gesamt|summe|angebotssumme|endsumme|nettosumme|bruttosumme|jahrespreis|monatspreis|zwischensumme|preisblatt|angebotspreis)/i;
 const SPEC_WORDS =
   /(leistungsbeschreibung|reinigungsanweisung|qualität|hygiene|raumgruppe|reinigungsintervall|objektbeschreibung|arbeitsanweisung)/i;
-const POSITION_LINE = /^\s*(\d{1,3}(?:[.\-]\d{1,4}){0,4})\s+\S/;
+const POSITION_LINE = /^\s*(\d{1,3}(?:[.-]\d{1,4}){0,4})\s+\S/;
 
 export type ClassifyInput = {
   fileName: string;

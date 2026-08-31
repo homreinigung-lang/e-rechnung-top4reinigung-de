@@ -25,7 +25,7 @@ export function parseDeNumber(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   const raw = String(value ?? "")
     .replace(/[\s\u00a0€]/g, "")
-    .replace(/[^0-9,.\-]/g, "");
+    .replace(/[^0-9,.-]/g, "");
   if (!raw) return 0;
   const lastComma = raw.lastIndexOf(",");
   const lastDot = raw.lastIndexOf(".");
