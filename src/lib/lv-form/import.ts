@@ -391,3 +391,31 @@ export async function fileToBase64(file: File): Promise<string> {
   }
   return btoa(binary);
 }
+
+/**
+ * Führt die Ergebnisse mehrerer Erkennungswege (Tabelle, KI, Regelwerk) zusammen,
+ * ohne Positionen zu verlieren. Gemeinsame Quelle für LV-Formular und LV-Analyse.
+ */
+export function mergeItemLists(lists: LvImportItem[][]): LvImportItem[] {
+  const nonEmpty = lists.filter((l) => l.length > 0);
+  if (nonEmpty.length === 0) return [];
+  const sorted = [...nonEmpty].sort((a, b) => b.length - a.length);
+  const merged = [...(sorted[0] as LvImportItem[])];
+  const key = (it: LvImportItem) =>
+    `${String(it.item_number ?? "")
+      .trim()
+      .toLowerCase()}|${String(it.description ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 60)}`;
+  const seen = new Set(merged.map(key));
+  for (const list of sorted.slice(1)) {
+    for (const it of list) {
+      const k = key(it);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      merged.push(it);
+    }
+  }
+  return merged;
+}
