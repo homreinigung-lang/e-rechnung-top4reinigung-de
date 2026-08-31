@@ -1,15 +1,36 @@
-import { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, FileText, Loader2, Plus, Search, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatMoney, formatNumber } from '@/lib/format';
-import { CATEGORY_LABELS, type LvItemCategory, type LvNormalizedItem } from '@/lib/lv-analyse/types';
-import { parseFrequency } from '@/lib/lv-analyse/normalize';
+import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatMoney, formatNumber } from "@/lib/format";
+import {
+  CATEGORY_LABELS,
+  type LvItemCategory,
+  type LvNormalizedItem,
+} from "@/lib/lv-analyse/types";
+import { parseFrequency } from "@/lib/lv-analyse/normalize";
 import {
   CALC_STATUS_LABELS,
   NO_OWN_PRICE_HINT,
@@ -18,40 +39,40 @@ import {
   hasOwnPrice,
   offerPrice,
   summarizeOwnCalculation,
-} from '@/lib/lv-analyse/calculation';
-import { REVIEW_LABEL, needsReview, reviewFields } from '@/lib/lv-analyse/export';
+} from "@/lib/lv-analyse/calculation";
+import { REVIEW_LABEL, needsReview, reviewFields } from "@/lib/lv-analyse/export";
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS) as LvItemCategory[];
-const EMPTY = '—';
+const EMPTY = "—";
 
 /** Vollständige Spaltenreihenfolge – wird niemals dynamisch ausgeblendet. */
 const COLUMNS = [
-  'Pos.',
-  'Beschreibung',
-  'Kategorie',
-  'Geforderte Menge',
-  'Einheit',
-  'Intervall',
-  'Fläche (m²)',
-  'Geforderte Arbeitsstunden',
-  'Eigener Einheitspreis (€)',
-  'Gesamtpreis (€)',
-  'Jahrespreis (€)',
-  'MwSt. (%)',
-  'Seite',
-  'Sicherheitswert',
-  'Kalkulationsstatus',
-  'Freigabe',
-  'Aktionen',
+  "Pos.",
+  "Beschreibung",
+  "Kategorie",
+  "Geforderte Menge",
+  "Einheit",
+  "Intervall",
+  "Fläche (m²)",
+  "Geforderte Arbeitsstunden",
+  "Eigener Einheitspreis (€)",
+  "Gesamtpreis (€)",
+  "Jahrespreis (€)",
+  "MwSt. (%)",
+  "Seite",
+  "Sicherheitswert",
+  "Kalkulationsstatus",
+  "Freigabe",
+  "Aktionen",
 ] as const;
 
-type Filter = 'alle' | 'offen' | 'pruefung' | 'freigegeben';
+type Filter = "alle" | "offen" | "pruefung" | "freigegeben";
 
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'alle', label: 'Alle' },
-  { key: 'offen', label: 'Offen' },
-  { key: 'pruefung', label: 'Prüfung erforderlich' },
-  { key: 'freigegeben', label: 'Freigegeben' },
+  { key: "alle", label: "Alle" },
+  { key: "offen", label: "Offen" },
+  { key: "pruefung", label: "Prüfung erforderlich" },
+  { key: "freigegeben", label: "Freigegeben" },
 ];
 
 function ReviewMark({ show }: { show: boolean }) {
@@ -67,16 +88,22 @@ function Placeholder() {
   return <span className="text-muted-foreground">{EMPTY}</span>;
 }
 
-function NumCell({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+function NumCell({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
   return (
     <Input
       className="h-7 text-right text-xs tabular-nums"
-      value={value === null ? '' : String(value).replace('.', ',')}
+      value={value === null ? "" : String(value).replace(".", ",")}
       placeholder={EMPTY}
       onChange={(e) => {
         const raw = e.target.value.trim();
         if (!raw) return onChange(null);
-        const n = Number(raw.replace(/\./g, '').replace(',', '.'));
+        const n = Number(raw.replace(/\./g, "").replace(",", "."));
         onChange(Number.isFinite(n) ? n : null);
       }}
     />
@@ -89,7 +116,7 @@ type Props = {
   exporting: boolean;
   exportHint: string;
   exportDisabled: boolean;
-  onExport: (kind: 'csv' | 'xlsx' | 'pdf') => void;
+  onExport: (kind: "csv" | "xlsx" | "pdf") => void;
   onUpdate: (id: string, patch: Partial<LvNormalizedItem>) => void;
   onRemove: (id: string) => void;
   onAdd: () => void;
@@ -114,8 +141,8 @@ export function LvPositionenTabelle({
   onApproveAll,
   emptyState,
 }: Props) {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<Filter>('alle');
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("alle");
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const approvedCount = items.filter((i) => i.approved).length;
@@ -124,12 +151,18 @@ export function LvPositionenTabelle({
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((item) => {
-      if (filter === 'freigegeben' && !item.approved) return false;
-      if (filter === 'offen' && (item.approved || hasOwnPrice(item))) return false;
-      if (filter === 'pruefung' && !needsReview(item)) return false;
+      if (filter === "freigegeben" && !item.approved) return false;
+      if (filter === "offen" && (item.approved || hasOwnPrice(item))) return false;
+      if (filter === "pruefung" && !needsReview(item)) return false;
       if (!q) return true;
-      return [item.item_number, item.description, CATEGORY_LABELS[item.category].de, item.unit, item.frequency.label]
-        .join(' ')
+      return [
+        item.item_number,
+        item.description,
+        CATEGORY_LABELS[item.category].de,
+        item.unit,
+        item.frequency.label,
+      ]
+        .join(" ")
         .toLowerCase()
         .includes(q);
     });
@@ -138,12 +171,12 @@ export function LvPositionenTabelle({
   const approvedPriced = useMemo(() => items.filter((i) => i.approved && hasOwnPrice(i)), [items]);
   const summary = useMemo(() => summarizeOwnCalculation(approvedPriced), [approvedPriced]);
 
-  const updateCalc = (item: LvNormalizedItem, patch: Partial<LvNormalizedItem['calculation']>) =>
+  const updateCalc = (item: LvNormalizedItem, patch: Partial<LvNormalizedItem["calculation"]>) =>
     onUpdate(item.id, { calculation: { ...item.calculation, ...patch } });
 
   const toggleApprove = (item: LvNormalizedItem) => {
     if (!item.approved && !hasOwnPrice(item)) {
-      toast.error('Freigabe nicht möglich', { description: NO_OWN_PRICE_HINT });
+      toast.error("Freigabe nicht möglich", { description: NO_OWN_PRICE_HINT });
       return;
     }
     onUpdate(item.id, { approved: !item.approved });
@@ -156,8 +189,12 @@ export function LvPositionenTabelle({
       {/* Kopfbereich */}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium">{items.length} Positionen extrahiert</span>
-        <span className="text-sm text-muted-foreground">{approvedCount} Positionen freigegeben</span>
-        <span className={`text-sm ${warningCount ? 'font-medium text-amber-700' : 'text-muted-foreground'}`}>
+        <span className="text-sm text-muted-foreground">
+          {approvedCount} Positionen freigegeben
+        </span>
+        <span
+          className={`text-sm ${warningCount ? "font-medium text-amber-700" : "text-muted-foreground"}`}
+        >
           {issueCount} Hinweise zur Prüfung
         </span>
         <div className="ml-auto flex flex-wrap gap-2">
@@ -186,7 +223,7 @@ export function LvPositionenTabelle({
             type="button"
             onClick={() => setFilter(f.key)}
             className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
-              filter === f.key ? 'border-foreground/40 bg-muted font-medium' : 'hover:bg-muted/60'
+              filter === f.key ? "border-foreground/40 bg-muted font-medium" : "hover:bg-muted/60"
             }`}
           >
             {f.label}
@@ -240,7 +277,7 @@ export function LvPositionenTabelle({
                             className="mt-0.5 text-[10px] underline underline-offset-2"
                             onClick={() => setDetailId(detailId === item.id ? null : item.id)}
                           >
-                            {detailId === item.id ? 'Details ausblenden' : 'Details'}
+                            {detailId === item.id ? "Details ausblenden" : "Details"}
                           </button>
                         </div>
                       </TableCell>
@@ -248,7 +285,9 @@ export function LvPositionenTabelle({
                         <select
                           className="h-7 w-full rounded-md border bg-background px-1 text-xs"
                           value={item.category}
-                          onChange={(e) => onUpdate(item.id, { category: e.target.value as LvItemCategory })}
+                          onChange={(e) =>
+                            onUpdate(item.id, { category: e.target.value as LvItemCategory })
+                          }
                         >
                           {CATEGORY_OPTIONS.map((c) => (
                             <option key={c} value={c}>
@@ -258,7 +297,10 @@ export function LvPositionenTabelle({
                         </select>
                       </TableCell>
                       <TableCell className="w-28">
-                        <NumCell value={item.quantity} onChange={(v) => onUpdate(item.id, { quantity: v })} />
+                        <NumCell
+                          value={item.quantity}
+                          onChange={(v) => onUpdate(item.id, { quantity: v })}
+                        />
                         <ReviewMark show={item.quantity === null} />
                       </TableCell>
                       <TableCell className="w-24">
@@ -277,17 +319,26 @@ export function LvPositionenTabelle({
                           placeholder={EMPTY}
                           onChange={(e) =>
                             onUpdate(item.id, {
-                              frequency: { ...parseFrequency(e.target.value), label: e.target.value },
+                              frequency: {
+                                ...parseFrequency(e.target.value),
+                                label: e.target.value,
+                              },
                             })
                           }
                         />
                         <ReviewMark show={item.frequency.perYear === null} />
                       </TableCell>
                       <TableCell className="w-28">
-                        <NumCell value={item.area_m2} onChange={(v) => onUpdate(item.id, { area_m2: v })} />
+                        <NumCell
+                          value={item.area_m2}
+                          onChange={(v) => onUpdate(item.id, { area_m2: v })}
+                        />
                       </TableCell>
                       <TableCell className="w-32">
-                        <NumCell value={item.working_hours} onChange={(v) => onUpdate(item.id, { working_hours: v })} />
+                        <NumCell
+                          value={item.working_hours}
+                          onChange={(v) => onUpdate(item.id, { working_hours: v })}
+                        />
                       </TableCell>
                       <TableCell className="w-32">
                         <NumCell
@@ -309,18 +360,18 @@ export function LvPositionenTabelle({
                         {item.source_page === null ? <Placeholder /> : item.source_page}
                       </TableCell>
                       <TableCell className="w-24 text-right">
-                        <Badge variant={item.confidence_score >= 0.7 ? 'secondary' : 'outline'}>
+                        <Badge variant={item.confidence_score >= 0.7 ? "secondary" : "outline"}>
                           {Math.round(item.confidence_score * 100)} %
                         </Badge>
                       </TableCell>
                       <TableCell className="w-44">
                         <Badge
                           variant={
-                            calcStatus(item) === 'released'
-                              ? 'default'
-                              : calcStatus(item) === 'calculated_review'
-                                ? 'secondary'
-                                : 'outline'
+                            calcStatus(item) === "released"
+                              ? "default"
+                              : calcStatus(item) === "calculated_review"
+                                ? "secondary"
+                                : "outline"
                           }
                         >
                           {CALC_STATUS_LABELS[calcStatus(item)]}
@@ -329,7 +380,7 @@ export function LvPositionenTabelle({
                       <TableCell className="w-24">
                         <Button
                           size="sm"
-                          variant={item.approved ? 'default' : 'outline'}
+                          variant={item.approved ? "default" : "outline"}
                           className="h-7 px-2"
                           title="Position freigeben"
                           aria-label="Position freigeben"
@@ -355,7 +406,10 @@ export function LvPositionenTabelle({
                 })}
                 {visible.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={COLUMNS.length} className="py-6 text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={COLUMNS.length}
+                      className="py-6 text-center text-muted-foreground"
+                    >
                       Keine Position passt zu Suche und Filter.
                     </TableCell>
                   </TableRow>
@@ -370,31 +424,40 @@ export function LvPositionenTabelle({
               const total = offerPrice(item);
               const annual = annualOfferPrice(item);
               const rows: [string, React.ReactNode][] = [
-                ['Pos.', item.item_number || <Placeholder />],
-                ['Kategorie', CATEGORY_LABELS[item.category].de],
-                ['Geforderte Menge', item.quantity === null ? <Placeholder /> : formatNumber(item.quantity)],
-                ['Einheit', item.unit || <Placeholder />],
-                ['Intervall', item.frequency.label || <Placeholder />],
-                ['Fläche (m²)', item.area_m2 === null ? <Placeholder /> : formatNumber(item.area_m2)],
+                ["Pos.", item.item_number || <Placeholder />],
+                ["Kategorie", CATEGORY_LABELS[item.category].de],
                 [
-                  'Geforderte Arbeitsstunden',
+                  "Geforderte Menge",
+                  item.quantity === null ? <Placeholder /> : formatNumber(item.quantity),
+                ],
+                ["Einheit", item.unit || <Placeholder />],
+                ["Intervall", item.frequency.label || <Placeholder />],
+                [
+                  "Fläche (m²)",
+                  item.area_m2 === null ? <Placeholder /> : formatNumber(item.area_m2),
+                ],
+                [
+                  "Geforderte Arbeitsstunden",
                   item.working_hours === null ? <Placeholder /> : formatNumber(item.working_hours),
                 ],
                 [
-                  'Eigener Einheitspreis (€)',
+                  "Eigener Einheitspreis (€)",
                   item.calculation.own_unit_price === null ? (
                     <Placeholder />
                   ) : (
                     formatMoney(item.calculation.own_unit_price)
                   ),
                 ],
-                ['Gesamtpreis (€)', total === null ? <Placeholder /> : formatMoney(total)],
-                ['Jahrespreis (€)', annual === null ? <Placeholder /> : formatMoney(annual)],
-                ['MwSt. (%)', item.vat_rate === null ? <Placeholder /> : formatNumber(item.vat_rate)],
-                ['Seite', item.source_page === null ? <Placeholder /> : item.source_page],
-                ['Sicherheitswert', `${Math.round(item.confidence_score * 100)} %`],
-                ['Kalkulationsstatus', CALC_STATUS_LABELS[calcStatus(item)]],
-                ['Freigabe', item.approved ? 'Freigegeben' : 'Nicht freigegeben'],
+                ["Gesamtpreis (€)", total === null ? <Placeholder /> : formatMoney(total)],
+                ["Jahrespreis (€)", annual === null ? <Placeholder /> : formatMoney(annual)],
+                [
+                  "MwSt. (%)",
+                  item.vat_rate === null ? <Placeholder /> : formatNumber(item.vat_rate),
+                ],
+                ["Seite", item.source_page === null ? <Placeholder /> : item.source_page],
+                ["Sicherheitswert", `${Math.round(item.confidence_score * 100)} %`],
+                ["Kalkulationsstatus", CALC_STATUS_LABELS[calcStatus(item)]],
+                ["Freigabe", item.approved ? "Freigegeben" : "Nicht freigegeben"],
               ];
               return (
                 <Card key={item.id}>
@@ -418,7 +481,7 @@ export function LvPositionenTabelle({
                       />
                       <Button
                         size="sm"
-                        variant={item.approved ? 'default' : 'outline'}
+                        variant={item.approved ? "default" : "outline"}
                         onClick={() => toggleApprove(item)}
                       >
                         <CheckCircle2 className="mr-1 size-3" /> Freigabe
@@ -447,12 +510,12 @@ export function LvPositionenTabelle({
                 </p>
                 <p className="whitespace-pre-wrap break-words">{detail.description || EMPTY}</p>
                 <p className="text-xs text-muted-foreground">
-                  Analyse-ID: {detail.analysis_id || EMPTY} · Quelle: {detail.source_method || EMPTY} · Seite:{' '}
-                  {detail.source_page ?? EMPTY}
+                  Analyse-ID: {detail.analysis_id || EMPTY} · Quelle:{" "}
+                  {detail.source_method || EMPTY} · Seite: {detail.source_page ?? EMPTY}
                 </p>
                 {reviewFields(detail).length > 0 && (
                   <p className="text-xs text-amber-700">
-                    {REVIEW_LABEL}: {reviewFields(detail).join(', ')}
+                    {REVIEW_LABEL}: {reviewFields(detail).join(", ")}
                   </p>
                 )}
               </CardContent>
@@ -462,29 +525,50 @@ export function LvPositionenTabelle({
           {/* Fußbereich */}
           <div className="space-y-3 rounded-md border bg-muted/20 p-3">
             {approvedPriced.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Noch keine Position wurde freigegeben.</p>
+              <p className="text-sm text-muted-foreground">
+                Noch keine Position wurde freigegeben.
+              </p>
             ) : summary.net === 0 ? (
-              <p className="text-sm text-amber-700">Keine Berechnung möglich – bitte fehlende Daten ergänzen.</p>
+              <p className="text-sm text-amber-700">
+                Keine Berechnung möglich – bitte fehlende Daten ergänzen.
+              </p>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 <p className="text-sm">
-                  Gesamtsumme der freigegebenen Positionen:{' '}
+                  Gesamtsumme der freigegebenen Positionen:{" "}
                   <span className="font-semibold tabular-nums">{formatMoney(summary.net)}</span>
                 </p>
                 <p className="text-sm">
-                  Jahressumme der freigegebenen Positionen:{' '}
-                  <span className="font-semibold tabular-nums">{formatMoney(summary.annualNet)}</span>
+                  Jahressumme der freigegebenen Positionen:{" "}
+                  <span className="font-semibold tabular-nums">
+                    {formatMoney(summary.annualNet)}
+                  </span>
                 </p>
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => onExport('xlsx')}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={exportDisabled}
+                onClick={() => onExport("xlsx")}
+              >
                 <FileSpreadsheet className="mr-1 size-4" /> XLSX-Export
               </Button>
-              <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => onExport('csv')}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={exportDisabled}
+                onClick={() => onExport("csv")}
+              >
                 <Download className="mr-1 size-4" /> CSV-Export
               </Button>
-              <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => onExport('pdf')}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={exportDisabled}
+                onClick={() => onExport("pdf")}
+              >
                 <FileText className="mr-1 size-4" /> PDF-Bericht
               </Button>
               {exporting && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
