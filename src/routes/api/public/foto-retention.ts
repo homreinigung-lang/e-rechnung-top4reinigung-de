@@ -7,17 +7,44 @@ import { createFileRoute } from "@tanstack/react-router";
  * Firmeneinstellungen hinterlegte Frist sind, werden aus dem privaten Speicher
  * und aus dem Arbeitszeit-Eintrag entfernt. Rechnungen, Angebote, Vorlagen und
  * das GoBD-Archiv bleiben davon vollständig unberührt.
+ *
+ * Zugriffsschutz: ausschließlich über den geheimen Header `x-cron-secret`.
+ * Gültig sind die Umgebungsvariable CRON_SECRET (manueller Aufruf) sowie der
+ * in `public.cron_tokens` hinterlegte Auftragsschlüssel (Zeitplan). Der
+ * öffentliche Browser-Schlüssel wird bewusst NICHT mehr akzeptiert.
  */
+
+/** Zeitkonstanter Vergleich – verhindert Rückschlüsse über die Antwortzeit. */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length || a.length === 0) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export const Route = createFileRoute("/api/public/foto-retention")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apikey = request.headers.get("apikey");
-        if (!apikey || apikey !== process.env["SUPABASE_PUBLISHABLE_KEY"]) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+        const presented = request.headers.get("x-cron-secret") ?? "";
+        if (presented.length < 16) return new Response("Unauthorized", { status: 401 });
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+        const envSecret = process.env["CRON_SECRET"] ?? "";
+        let authorized = envSecret.length > 0 && safeEqual(presented, envSecret);
+
+        if (!authorized) {
+          const { data: tokenRow } = await supabaseAdmin
+            .from("cron_tokens")
+            .select("token")
+            .eq("name", "foto-retention")
+            .maybeSingle();
+          const dbToken = (tokenRow as { token?: string } | null)?.token ?? "";
+          authorized = dbToken.length > 0 && safeEqual(presented, dbToken);
+        }
+
+        if (!authorized) return new Response("Unauthorized", { status: 401 });
 
         const { data: settings, error: settingsError } = await supabaseAdmin
           .from("company_settings")
