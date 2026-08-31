@@ -367,24 +367,20 @@ function DokumenteListe() {
   // Belegnummern-Nachschlagewerk: Stornobelege zeigen die Original-Rechnungsnummer.
   const numberById = new Map(documents.map((d) => [d.id, String(d.number)]));
 
-  // Stornobelege werden der Originalrechnung als Unterpunkt zugeordnet und
-  // erscheinen nicht als eigene Zeile in der Hauptliste.
-  const stornoByOriginal = new Map<string, (typeof allOfTab)[number][]>();
-  for (const d of allOfTab) {
-    const r = d as unknown as Record<string, unknown>;
-    const parent = r["is_storno"] ? String(r["cancels_document_id"] ?? "") : "";
-    if (!parent) continue;
-    const bucket = stornoByOriginal.get(parent) ?? [];
-    bucket.push(d);
-    stornoByOriginal.set(parent, bucket);
-  }
-  const parentIds = new Set(allOfTab.map((d) => d.id));
-  const list = allOfTab.filter((d) => {
-    const r = d as unknown as Record<string, unknown>;
-    if (!r["is_storno"]) return true;
-    // Verwaiste Stornobelege (Original nicht sichtbar) bleiben sichtbar.
-    return !parentIds.has(String(r["cancels_document_id"] ?? ""));
-  });
+  // Stornogrund je Stornobeleg – wird an der Originalrechnung angezeigt.
+  const stornoReasonById = new Map(
+    documents.map((d) => [
+      d.id,
+      String((d as unknown as Record<string, unknown>)["storno_reason"] ?? "").trim(),
+    ]),
+  );
+
+  // Stornobelege erscheinen nie als eigene Zeile: Die Liste zeigt ausschließlich
+  // die Originalrechnung, sichtbar markiert mit Stornohinweis.
+  const list = allOfTab.filter(
+    (d) => !(d as unknown as Record<string, unknown>)["is_storno"],
+  );
+
 
 
 
