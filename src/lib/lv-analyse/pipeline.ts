@@ -9,6 +9,7 @@ import { analyseLvDocument, analyseLvScan, type LvAnalyseResponse } from "@/lib/
 import { classifyDocument, isGaebFile, isSupportedFile } from "./classify";
 import { parseGaeb } from "./gaeb";
 import { dedupeItems, extractTotals, normalizeItem, pageIndexForText, toNumberOrNull } from "./normalize";
+import { newAnalysisId, stampAnalysis } from "./calculation";
 import { validateItems } from "./validate";
 import type { LvAnalysisResult, LvNormalizedItem, LvProcessStep, LvTotalLine } from "./types";
 

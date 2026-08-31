@@ -1,4 +1,5 @@
 import { parseGermanNumber } from "@/lib/lv-form/number";
+import { emptyCalculation } from "./calculation";
 import type {
   LvFrequency,
   LvItemCategory,
@@ -139,6 +140,7 @@ export function normalizeItem(raw: RawItem, method: string): LvNormalizedItem {
     unit_price: unitPrice,
     total_price: total,
     vat_rate: toNumberOrNull(raw.vat_rate),
+    calculation: emptyCalculation(),
     source_page: page !== null && page > 0 ? Math.round(page) : null,
     confidence_score: Math.round(confidence * 100) / 100,
     source_method: method,
