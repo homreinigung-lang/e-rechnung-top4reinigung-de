@@ -710,20 +710,32 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
         size,
         font: bold,
         color: rgb(0.86, 0.15, 0.15),
-        opacity: 0.16,
+        opacity: 0.22,
         rotate: degrees(30),
       });
       if (d.watermarkNote) {
         const note = clean(d.watermarkNote);
         const noteSize = 10;
         const noteW = widthOf(bold, noteSize, note);
+        const noteX = Math.max(M_X, (PAGE_W - noteW) / 2);
+        const noteY = PAGE_H - M_Y - 18;
+        const noteBoxH = 18;
+        page.drawRectangle({
+          x: M_X,
+          y: noteY - 4,
+          width: CONTENT_W,
+          height: noteBoxH,
+          color: rgb(1, 0.95, 0.95),
+          borderColor: rgb(0.86, 0.15, 0.15),
+          borderWidth: 0.7,
+          opacity: 0.85,
+        });
         page.drawText(note, {
-          x: Math.max(20, (PAGE_W - noteW) / 2),
-          y: PAGE_H / 2 - size * 0.9,
+          x: noteX,
+          y: noteY,
           size: noteSize,
           font: bold,
           color: rgb(0.86, 0.15, 0.15),
-          opacity: 0.55,
         });
       }
     }
