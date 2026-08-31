@@ -257,7 +257,7 @@ function describeStatus(
           : "Preisblatt erkannt, es konnten jedoch keine Beträge gelesen werden.",
       recommendedAction:
         totalCount > 0
-          ? "Die Summen finden Sie im Reiter „Kostenanalyse". Positionen bei Bedarf manuell ergänzen."
+          ? "Die Summen finden Sie im Reiter „Kostenanalyse“. Positionen bei Bedarf manuell ergänzen."
           : "Bitte Beträge manuell erfassen oder eine besser lesbare Fassung hochladen.",
     };
   }
@@ -281,7 +281,7 @@ function describeStatus(
     return {
       status: "partial",
       statusMessage: `${itemCount} Positionen extrahiert – ${issueCount} Hinweise zur Prüfung.`,
-      recommendedAction: "Reiter „Fehlende Daten" öffnen und die markierten Felder ergänzen, dann Positionen freigeben.",
+      recommendedAction: "Reiter „Fehlende Daten“ öffnen und die markierten Felder ergänzen, dann Positionen freigeben.",
     };
   }
   return {

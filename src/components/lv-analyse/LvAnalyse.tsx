@@ -669,7 +669,7 @@ function EmptyHint({ result }: { result: LvAnalysisResult | null }) {
           <p className="font-medium text-foreground">{result.statusMessage}</p>
           <p className="mt-1">{result.recommendedAction}</p>
           {result.kind === 'pricing_form' && (
-            <p className="mt-1">Die erkannten Beträge stehen im Reiter „Kostenanalyse".</p>
+            <p className="mt-1">Die erkannten Beträge stehen im Reiter „Kostenanalyse“.</p>
           )}
         </>
       ) : (
