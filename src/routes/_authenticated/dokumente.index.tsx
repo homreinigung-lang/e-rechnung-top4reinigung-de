@@ -451,10 +451,13 @@ function DokumenteListe() {
                 const cancelledByNumber = r["cancelled_by_document_id"]
                   ? (numberById.get(String(r["cancelled_by_document_id"])) ?? "")
                   : "";
+                const cancelledReason = r["cancelled_by_document_id"]
+                  ? (stornoReasonById.get(String(r["cancelled_by_document_id"])) ?? "")
+                  : "";
                 const due = isStorno ? null : dueInfo(d.due_date, d.status);
                 const level = Number(r["reminder_level"] ?? 0);
                 const deletable = !isLockedDocument(r);
-                const stornoChildren = stornoByOriginal.get(d.id) ?? [];
+
                 return (
                   <li key={d.id} className="px-5 py-4 hover:bg-muted/60">
                     <div className="flex items-center gap-2">
