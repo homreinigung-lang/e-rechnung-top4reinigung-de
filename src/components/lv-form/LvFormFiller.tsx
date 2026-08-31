@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
+import { Download, FileDown, Plus } from 'lucide-react';
 import { analyzeLvText, analyzeLvScan } from '@/lib/lv-form.functions';
 import {
   cleanItems,
@@ -10,6 +11,9 @@ import {
   itemsFromText,
   type LvImportItem,
 } from '@/lib/lv-form/import';
+import { supabase } from '@/integrations/supabase/client';
+import { buildLvPdf } from '@/lib/lv-pdf';
+import { saveFile } from '@/lib/download';
 
 interface LvItem {
   id?: string;
@@ -289,24 +293,164 @@ export default function LvFormFiller() {
 
   const grandTotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
 
+  /** Fügt eine leere Position am Ende der Tabelle hinzu. */
+  const handleAddItem = () => {
+    const nextNumber = String(items.length + 1);
+    setItems([
+      ...items,
+      {
+        item_number: nextNumber,
+        description: '',
+        quantity: 0,
+        unit: '',
+        unit_price: 0,
+      },
+    ]);
+    setEditingIndex(items.length);
+    setEditForm({
+      item_number: nextNumber,
+      description: '',
+      quantity: 0,
+      unit: '',
+      unit_price: 0,
+    });
+    toast.success('Position hinzugefügt', {
+      description: 'Eine neue leere Position wurde am Ende eingefügt.',
+    });
+  };
+
+  const [exporting, setExporting] = useState(false);
+
+  /** Exportiert das ausgefüllte LV als versandfertiges PDF. */
+  const handleDownloadPdf = async () => {
+    if (items.length === 0) {
+      toast.warning('Keine Positionen', {
+        description: 'Bitte fügen Sie zuerst Positionen hinzu, bevor Sie exportieren.',
+      });
+      return;
+    }
+    setExporting(true);
+    const toastId = toast.loading('PDF wird erstellt…');
+    try {
+      const { data: settings } = await supabase
+        .from('company_settings')
+        .select(
+          'company_name, owner_name, address_line, postal_code, city, email, phone, vat_id, tax_number, iban, bic, bank_name, small_business',
+        )
+        .maybeSingle();
+
+      const positions = items.map((it) => ({
+        oz: it.item_number || '',
+        description: it.description || '',
+        quantity: it.quantity,
+        unit: it.unit || '',
+        unitPrice: it.unit_price,
+      }));
+
+      const bytes = await buildLvPdf({
+        title: projectTitle.trim() || 'Leistungsverzeichnis',
+        company: {
+          name: settings?.company_name || 'Unternehmen',
+          ownerName: settings?.owner_name ?? '',
+          addressLine: settings?.address_line ?? '',
+          postalCode: settings?.postal_code ?? '',
+          city: settings?.city ?? '',
+          email: settings?.email ?? '',
+          phone: settings?.phone ?? '',
+          vatId: settings?.vat_id ?? '',
+          taxNumber: settings?.tax_number ?? '',
+          iban: settings?.iban ?? '',
+          bic: settings?.bic ?? '',
+          bankName: settings?.bank_name ?? '',
+        },
+        meta: [
+          { label: 'Positionen', value: String(items.length) },
+          { label: 'Gesamt netto', value: grandTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) },
+        ],
+        positions,
+        vatRate: settings?.small_business ? 0 : 0,
+        taxNote: settings?.small_business
+          ? '§ 19 Abs. 1 UStG: Die Umsatzsteuer wird gemäß Kleinunternehmerregelung nicht ausgewiesen.'
+          : undefined,
+      });
+
+      await saveFile(
+        new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/pdf' }),
+        `${projectTitle.trim() || 'Leistungsverzeichnis'}.pdf`,
+      );
+      toast.success('PDF erstellt', {
+        id: toastId,
+        description: 'Das Leistungsverzeichnis wurde als PDF exportiert.',
+      });
+    } catch (e) {
+      toast.error('PDF-Export fehlgeschlagen', {
+        id: toastId,
+        description: e instanceof Error ? e.message : undefined,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  /** Exportiert das LV als CSV (UTF-8 mit BOM, Semikolon). */
+  const handleExportCsv = () => {
+    if (items.length === 0) {
+      toast.warning('Keine Positionen', {
+        description: 'Bitte fügen Sie zuerst Positionen hinzu, bevor Sie exportieren.',
+      });
+      return;
+    }
+    const header = ['OZ / Pos.', 'Beschreibung', 'Menge', 'Einheit', 'Einheitspreis (EUR)', 'Gesamtpreis (EUR)'];
+    const rows = items.map((it) => [
+      it.item_number,
+      `"${(it.description || '').replace(/"/g, '""')}"`,
+      String(it.quantity).replace('.', ','),
+      it.unit,
+      String(it.unit_price).replace('.', ','),
+      String((it.quantity * it.unit_price).toFixed(2)).replace('.', ','),
+    ]);
+    const csv = [header, ...rows].map((r) => r.join(';')).join('\r\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    void saveFile(blob, `${projectTitle.trim() || 'Leistungsverzeichnis'}.csv`);
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-center border-b border-gray-200 pb-4">
+      <div className="flex flex-wrap gap-3 justify-between items-center border-b border-gray-200 pb-4">
         <input 
           type="text" 
           value={projectTitle} 
           onChange={(e) => setProjectTitle(e.target.value)}
           className="text-2xl font-bold border-b border-gray-300 pb-1 focus:outline-none bg-transparent"
         />
-        <label className="bg-blue-600 text-white px-4 py-2.5 rounded-lg cursor-pointer hover:bg-blue-700 transition font-medium shadow-sm">
-          {loading ? 'KI analysiert...' : 'LV (PDF/TXT) hochladen & analysieren'}
-          <input
-            type="file"
-            accept=".pdf,.txt,.csv,.xlsx,.xlsm"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
+        <div className="flex flex-wrap gap-2 items-center">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-lg hover:bg-emerald-700 transition font-medium shadow-sm disabled:opacity-60"
+          >
+            <FileDown className="size-4" />
+            {exporting ? 'PDF wird erstellt…' : 'PDF herunterladen'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex items-center gap-2 bg-gray-700 text-white px-4 py-2.5 rounded-lg hover:bg-gray-800 transition font-medium shadow-sm"
+          >
+            <Download className="size-4" />
+            Exportieren (CSV)
+          </button>
+          <label className="bg-blue-600 text-white px-4 py-2.5 rounded-lg cursor-pointer hover:bg-blue-700 transition font-medium shadow-sm inline-flex items-center gap-2">
+            {loading ? 'KI analysiert...' : 'LV hochladen & analysieren'}
+            <input
+              type="file"
+              accept=".pdf,.txt,.csv,.xlsx,.xlsm"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
 
       {steps.length > 0 && (
