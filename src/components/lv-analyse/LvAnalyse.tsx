@@ -435,6 +435,7 @@ export default function LvAnalyse() {
                   {items.map((item) => {
                     const itemIssues = issueMap.get(item.id) ?? [];
                     const hasError = itemIssues.some((i) => i.level === 'error');
+                    const review = reviewFields(item);
                     return (
                       <TableRow key={item.id} className={hasError ? 'bg-destructive/5' : undefined}>
                         <TableCell>
@@ -450,6 +451,11 @@ export default function LvAnalyse() {
                             value={item.description}
                             onChange={(e) => update(item.id, { description: e.target.value })}
                           />
+                          {review.length > 0 && (
+                            <p className="mt-0.5 text-[10px] text-amber-700">
+                              {REVIEW_LABEL}: {review.join(', ')}
+                            </p>
+                          )}
                         </TableCell>
                         <TableCell>
                           <select
@@ -517,7 +523,11 @@ export default function LvAnalyse() {
                         <TableCell>
                           <NumCell value={item.vat_rate} onChange={(v) => update(item.id, { vat_rate: v })} />
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{item.source_page ?? '–'}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {item.source_page ?? (
+                            <span className="text-[10px] text-amber-700">{REVIEW_LABEL}</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right tabular-nums">
                           <Badge variant={item.confidence_score >= 0.7 ? 'secondary' : 'outline'}>
                             {Math.round(item.confidence_score * 100)} %
