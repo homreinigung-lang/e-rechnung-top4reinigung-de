@@ -1407,6 +1407,30 @@ function DokumentDetail() {
       </Dialog>
 
 
+      {(cancelledBy || isStorno) && (
+        <div className="relative overflow-hidden rounded-lg border-2 border-destructive bg-destructive/10 p-5">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="rotate-[-18deg] rounded-md border-4 border-destructive/40 px-6 py-1 text-4xl font-black uppercase tracking-widest text-destructive/40 select-none">
+              Storniert
+            </span>
+          </div>
+          <div className="relative flex flex-wrap items-center gap-3">
+            <Ban className="size-8 text-destructive" />
+            <div className="space-y-1">
+              <p className="text-lg font-bold text-destructive">
+                {isStorno ? "Stornorechnung" : "Diese Rechnung wurde storniert"}
+              </p>
+              <p className="text-sm text-destructive/90">
+                {isStorno
+                  ? `Storniert die Rechnung ${stornoNumber || "–"}`
+                  : `Storniert durch ${stornoNumber || "eine Stornorechnung"}`}
+                {stornoGrund ? ` · Stornogrund: ${stornoGrund}` : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {locked && lockedAt && (
         <div className="no-print flex flex-wrap items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
           <ShieldCheck className="mt-0.5 size-5 text-primary" />
