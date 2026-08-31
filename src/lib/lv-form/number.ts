@@ -4,8 +4,18 @@
 export function parseGermanNumber(input: string): number | null {
   const raw = (input ?? "").replace(/[^\d.,-]/g, "").trim();
   if (!raw) return null;
-  const hasComma = raw.includes(",");
-  const normalized = hasComma ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/,/g, "");
+  const lastComma = raw.lastIndexOf(",");
+  const lastDot = raw.lastIndexOf(".");
+  let normalized = raw;
+  if (lastComma >= 0 && lastDot >= 0) {
+    normalized = lastComma > lastDot
+      ? raw.replace(/\./g, "").replace(",", ".")
+      : raw.replace(/,/g, "");
+  } else if (lastComma >= 0) {
+    normalized = raw.replace(/\./g, "").replace(",", ".");
+  } else if (/^-?\d{1,3}(?:\.\d{3})+$/.test(raw)) {
+    normalized = raw.replace(/\./g, "");
+  }
   const value = Number(normalized);
   return Number.isFinite(value) ? value : null;
 }

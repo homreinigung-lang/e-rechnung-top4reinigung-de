@@ -9,11 +9,13 @@ import {
   validateLvForm,
 } from "./validate";
 import type { LvConstraint, LvInputs } from "./types";
+import { cleanItems, itemsFromRows, itemsFromText } from "./import";
 
 describe("deutsche Zahlen", () => {
   it("liest Tausenderpunkte und Dezimalkomma", () => {
     expect(parseGermanNumber("1.234,50")).toBe(1234.5);
     expect(parseGermanNumber("220,5")).toBe(220.5);
+    expect(parseGermanNumber("1.250")).toBe(1250);
     expect(parseGermanNumber("")).toBeNull();
   });
 
@@ -22,6 +24,41 @@ describe("deutsche Zahlen", () => {
     expect(parseGermanCents("0,07")).toBe(7);
     expect(formatCents(294525)).toBe("2.945,25");
     expect(formatGermanNumber(220.5)).toBe("220,50");
+  });
+});
+
+describe("LV-Import", () => {
+  it("erkennt verschachtelte OZ, deutsche Mengen und Einheiten", () => {
+    const text = [
+      "--- Seite 1 ---",
+      "01.01.001 Unterhaltsreinigung Büroflächen 1.250,00 m²",
+      "1.2.3 Glasreinigung innen und außen 18 Std.",
+      "01.2 Verbrauchsmaterial 1 pauschal",
+    ].join("\n");
+    const items = itemsFromText(text);
+    expect(items).toHaveLength(3);
+    expect(items[0]).toMatchObject({ item_number: "01.01.001", quantity: 1250, unit: "m²" });
+    expect(items[1]).toMatchObject({ item_number: "1.2.3", quantity: 18, unit: "Std" });
+  });
+
+  it("erhält mehrzeilige Beschreibungen bis zur Menge", () => {
+    const items = itemsFromText(
+      "01.01 Reinigung der Büroflächen\ninklusive Mobiliar und Papierkörbe\n2.400,50 m²\n01.02 Treppenhausreinigung 12 Monat",
+    );
+    expect(items).toHaveLength(2);
+    expect(items[0]?.description).toContain("inklusive Mobiliar");
+    expect(items[0]?.quantity).toBe(2400.5);
+  });
+
+  it("erkennt deutsche Tabellenspalten und entfernt Dubletten", () => {
+    const rows = [
+      ["OZ", "Kurzbeschreibung", "Menge", "Einheit", "Einheitspreis"],
+      ["01.01", "Bodenreinigung", "1.250,00", "m²", "2,50"],
+      ["01.01", "Bodenreinigung", "1.250,00", "m²", "2,50"],
+    ];
+    const items = cleanItems(itemsFromRows(rows));
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ quantity: 1250, unit_price: 2.5 });
   });
 });
 
