@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { ClientOnly } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
 import {
@@ -80,6 +81,8 @@ function StepIcon({ state }: { state: LvProcessStep['state'] }) {
 }
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS) as LvItemCategory[];
+
+const LvFormFiller = lazy(() => import('@/components/lv-form/LvFormFiller'));
 
 export default function LvAnalyse() {
   const runText = useServerFn(analyseLvDocument);
@@ -297,7 +300,11 @@ export default function LvAnalyse() {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-3">
+          <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Ergebnisse herunterladen
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport('xlsx')}>
               <FileSpreadsheet className="mr-1 size-4" /> XLSX-Export
             </Button>
@@ -307,8 +314,9 @@ export default function LvAnalyse() {
             <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport('pdf')}>
               <FileText className="mr-1 size-4" /> PDF-Bericht
             </Button>
-            {exporting && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-            <span className="text-xs text-muted-foreground">{exportHint}</span>
+              {exporting && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+            </div>
+            <p className="text-xs text-muted-foreground">{exportHint}</p>
           </div>
 
           {/* Verarbeitungsstatus – immer sichtbar, nie leer */}
@@ -346,6 +354,12 @@ export default function LvAnalyse() {
                 <p className="text-xs text-muted-foreground">
                   <strong>Empfohlene Maßnahme:</strong> {result.recommendedAction}
                 </p>
+                {result.kind === 'pricing_form' && (
+                  <p className="text-xs text-amber-700">
+                    Das Dokument enthält keine vollständige LV-Struktur. Preise, Intervalle und
+                    fehlende Felder müssen vor der Freigabe geprüft werden.
+                  </p>
+                )}
                 {result.rawText && (
                   <Button variant="ghost" size="sm" onClick={() => setShowText((v) => !v)}>
                     {showText ? 'Textvorschau ausblenden' : 'Textvorschau anzeigen'}
@@ -526,6 +540,8 @@ export default function LvAnalyse() {
                               size="sm"
                               variant={item.approved ? 'default' : 'outline'}
                               className="h-7 px-2"
+                              title="Position freigeben"
+                              aria-label="Position freigeben"
                               onClick={() => update(item.id, { approved: !item.approved })}
                             >
                               <CheckCircle2 className="size-3" />
@@ -732,6 +748,18 @@ export default function LvAnalyse() {
               </TableBody>
             </Table>
           )}
+        </TabsContent>
+        {/* 8) LV-Formular ausfüllen (zusammengeführt) */}
+        <TabsContent value="formular" className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Original-PDF der Ausschreibung hochladen, Positionen prüfen und erst nach Freigabe eine
+            ausgefüllte Kopie erzeugen.
+          </p>
+          <ClientOnly fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
+            <Suspense fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
+              <LvFormFiller />
+            </Suspense>
+          </ClientOnly>
         </TabsContent>
       </Tabs>
     </div>
