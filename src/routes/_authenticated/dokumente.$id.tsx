@@ -881,13 +881,14 @@ function DokumentDetail() {
           ]
             .filter(Boolean)
             .join("\n\n"),
+      // Bankdaten stehen bereits im Fußbereich – hier nicht wiederholen.
       paymentLines: isInvoice
         ? [
             `Zahlüberweisung in ${paymentTermsDays} Tagen`,
             "Vielen Dank für die gute Zusammenarbeit.",
-            `${bankName} · IBAN ${iban} · BIC ${bic}`,
           ]
         : [`Zahlüberweisung in ${paymentTermsDays} Tagen`],
+
       qrPayload: epc,
       footer: [
         {
@@ -1989,12 +1990,10 @@ function DokumentDetail() {
                 <div className="space-y-0.5 text-sm">
                   <p>Zahlüberweisung in {paymentTermsDays} Tagen</p>
                   <p>Vielen Dank für die gute Zusammenarbeit.</p>
-                  <p className="pt-1 text-xs text-muted-foreground">
-                    {bankName} · IBAN {iban} · BIC {bic}
-                  </p>
                 </div>
 
                 <GiroCode payload={epc} size={84} />
+
               </div>
             ) : (
               <div className="mt-4 space-y-2 text-sm">
