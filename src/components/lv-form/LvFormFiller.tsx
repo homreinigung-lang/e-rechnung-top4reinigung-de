@@ -33,14 +33,24 @@ export default function LvFormFiller() {
     setLoading(true);
     try {
       const text = await file.text();
-      const parsedItems = await runAnalysis({ data: { pdfText: text } });
-      setItems(Array.isArray(parsedItems) ? parsedItems : []);
+      console.log('[LV-Analyse] Datei gelesen, Zeichen:', text.length);
+      const rawResponse = await runAnalysis({ data: { pdfText: text } });
+      console.log('[LV-Analyse] Roh-Antwort:', rawResponse);
+
+      const parsedItems = Array.isArray(rawResponse) ? rawResponse : [];
+      if (parsedItems.length === 0) {
+        console.warn('[LV-Analyse] Keine Positionen in der Antwort gefunden.');
+        alert('Die KI konnte in dieser Datei keine LV-Positionen erkennen. Bitte prüfen Sie, ob das Dokument eine Textebene enthält (kein reines Scan-Bild).');
+        return;
+      }
+      setItems(parsedItems);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error('Fehler bei der Analyse:', message);
+      console.error('[LV-Analyse] Fehler:', message, err);
       alert(`Ein Fehler ist beim Analysieren der Datei aufgetreten: ${message}`);
     } finally {
       setLoading(false);
+      e.target.value = '';
     }
   };
 
