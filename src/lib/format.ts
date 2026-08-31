@@ -55,7 +55,6 @@ export function parsePositiveNumber(value: string | number | null | undefined): 
   return Math.max(0, parseGermanNumber(value));
 }
 
-
 const DE_DATE = new Intl.DateTimeFormat(DE_LOCALE, {
   calendar: "gregory",
   numberingSystem: "latn",

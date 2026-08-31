@@ -48,9 +48,7 @@ export function parseServicePeriod(text: string | null | undefined): Period | nu
 
   const monthMatch = new RegExp(`(${MONTHS.join("|")})\\s+(\\d{4})`, "i").exec(raw);
   if (monthMatch) {
-    const monthIndex = MONTHS.findIndex(
-      (m) => m.toLowerCase() === monthMatch[1]!.toLowerCase(),
-    );
+    const monthIndex = MONTHS.findIndex((m) => m.toLowerCase() === monthMatch[1]!.toLowerCase());
     const year = Number(monthMatch[2]);
     return monthPeriod(year, monthIndex + 1);
   }

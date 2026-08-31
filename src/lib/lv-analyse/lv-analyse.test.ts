@@ -190,7 +190,13 @@ describe("5) Preisblatt ohne vollständige LV-Struktur", () => {
 describe("6) Fehlende Preise", () => {
   it("erfindet keine Preise und markiert sie mit „Prüfung erforderlich“", () => {
     const item = normalizeItem(
-      { item_number: "1", description: "Unterhaltsreinigung Büro", quantity: "100", unit: "m²", frequency: "wöchentlich" },
+      {
+        item_number: "1",
+        description: "Unterhaltsreinigung Büro",
+        quantity: "100",
+        unit: "m²",
+        frequency: "wöchentlich",
+      },
       "tabelle",
     );
     expect(item.unit_price).toBeNull();
@@ -206,7 +212,14 @@ describe("6) Fehlende Preise", () => {
 describe("7) Fehlende Flächen", () => {
   it("lässt die Fläche leer und meldet Prüfbedarf", () => {
     const item = normalizeItem(
-      { item_number: "2", description: "Winterdienst Zuwegung", quantity: "12", unit: "Stk", unit_price: "45,00", frequency: "monatlich" },
+      {
+        item_number: "2",
+        description: "Winterdienst Zuwegung",
+        quantity: "12",
+        unit: "Stk",
+        unit_price: "45,00",
+        frequency: "monatlich",
+      },
       "tabelle",
     );
     expect(item.area_m2).toBeNull();
@@ -238,7 +251,16 @@ describe("8) Download nach abgeschlossener Analyse", () => {
 
   const item = {
     ...normalizeItem(
-      { item_number: "1", description: "Unterhaltsreinigung Büro", quantity: "100", unit: "m²", unit_price: "0,90", frequency: "5x wöchentlich", source_page: 1, confidence_score: 0.9 },
+      {
+        item_number: "1",
+        description: "Unterhaltsreinigung Büro",
+        quantity: "100",
+        unit: "m²",
+        unit_price: "0,90",
+        frequency: "5x wöchentlich",
+        source_page: 1,
+        confidence_score: 0.9,
+      },
       "tabelle",
     ),
     analysis_id: "analyse-1",
@@ -274,7 +296,6 @@ describe("8) Download nach abgeschlossener Analyse", () => {
     expect([head[0], head[1]]).toEqual([0x50, 0x4b]); // ZIP/OOXML-Signatur
   });
 });
-
 
 // ---------------------------------------------------------------------------
 // Trennung Ausschreibungsdaten / Kalkulationsdaten

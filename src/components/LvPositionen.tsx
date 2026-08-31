@@ -216,13 +216,9 @@ export function LvPositionen({ items, onPatch, onAdd, onRemove }: Props) {
                         {posLabel(it)}
                       </td>
                       <td className="max-w-[22rem] py-1.5 pr-3">
-                        <div className="truncate font-medium">
-                          {it.title || "Ohne Bezeichnung"}
-                        </div>
+                        <div className="truncate font-medium">{it.title || "Ohne Bezeichnung"}</div>
                         {it.section && (
-                          <div className="truncate text-xs text-muted-foreground">
-                            {it.section}
-                          </div>
+                          <div className="truncate text-xs text-muted-foreground">{it.section}</div>
                         )}
                       </td>
                       <td className="py-1.5 pr-3 text-right tabular-nums">
@@ -383,9 +379,7 @@ function LvDetail({
     { label: "Beschreibung", ok: Boolean(item.title.trim() || item.description.trim()) },
     { label: "Preis / Einheit", ok: priceValue > 0 },
   ];
-  const completion = Math.round(
-    (required.filter((r) => r.ok).length / required.length) * 100,
-  );
+  const completion = Math.round((required.filter((r) => r.ok).length / required.length) * 100);
 
   return (
     <div
@@ -630,4 +624,3 @@ function LvDetail({
     </div>
   );
 }
-

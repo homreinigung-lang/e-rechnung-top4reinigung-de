@@ -5,10 +5,20 @@ import {
   itemsFromRows,
   itemsFromText,
 } from "@/lib/lv-form/import";
-import { analyseLvDocument, analyseLvScan, type LvAnalyseResponse } from "@/lib/lv-analyse.functions";
+import {
+  analyseLvDocument,
+  analyseLvScan,
+  type LvAnalyseResponse,
+} from "@/lib/lv-analyse.functions";
 import { classifyDocument, isGaebFile, isSupportedFile } from "./classify";
 import { parseGaeb } from "./gaeb";
-import { dedupeItems, extractTotals, normalizeItem, pageIndexForText, toNumberOrNull } from "./normalize";
+import {
+  dedupeItems,
+  extractTotals,
+  normalizeItem,
+  pageIndexForText,
+  toNumberOrNull,
+} from "./normalize";
 import { newAnalysisId, stampAnalysis } from "./calculation";
 import { validateItems } from "./validate";
 import type { LvAnalysisResult, LvNormalizedItem, LvProcessStep, LvTotalLine } from "./types";
@@ -26,7 +36,10 @@ export type AnalyseDeps = {
   /** Ersetzbarer Datei-Leser (Tests / alternative Parser). */
   readDocument?: ReadDocument;
   analyseText?: ServerCaller<{ text: string }, LvAnalyseResponse>;
-  analyseScan?: ServerCaller<{ fileName: string; mimeType: string; base64: string }, LvAnalyseResponse>;
+  analyseScan?: ServerCaller<
+    { fileName: string; mimeType: string; base64: string },
+    LvAnalyseResponse
+  >;
   onStep?: (step: LvProcessStep) => void;
 };
 
@@ -67,7 +80,8 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
       kindReason: `„${file.name}" hat ein nicht unterstütztes Format.`,
       status: "error",
       statusMessage: "Das Dateiformat kann nicht verarbeitet werden.",
-      recommendedAction: "Bitte laden Sie die Ausschreibung als PDF, XLSX, CSV oder GAEB (X8x/D8x) hoch.",
+      recommendedAction:
+        "Bitte laden Sie die Ausschreibung als PDF, XLSX, CSV oder GAEB (X8x/D8x) hoch.",
       steps,
     };
   }
@@ -85,7 +99,10 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
       rows = gaeb.rows;
       hasTextLayer = gaeb.text.trim().length > 0;
       pageCount = 1;
-      push({ state: gaeb.itemCount ? "ok" : "warn", label: `GAEB gelesen: ${gaeb.itemCount} Datensätze` });
+      push({
+        state: gaeb.itemCount ? "ok" : "warn",
+        label: `GAEB gelesen: ${gaeb.itemCount} Datensätze`,
+      });
     } else {
       push({ state: "ok", label: "Datei wird gelesen" });
       const doc = await readDocument(file);
@@ -121,8 +138,12 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
 
   // 1) Tabellenspalten (CSV/Excel/GAEB) – ohne KI.
   if (rows.length > 1) {
-    const tableItems = cleanItems(itemsFromRows(rows)).map((i, index) =>
-      normalizeItem({ ...i, source_page: 1, confidence_score: 0.8, quantity: i.quantity, unit: i.unit }, "tabelle") as LvNormalizedItem & { _i?: number },
+    const tableItems = cleanItems(itemsFromRows(rows)).map(
+      (i, index) =>
+        normalizeItem(
+          { ...i, source_page: 1, confidence_score: 0.8, quantity: i.quantity, unit: i.unit },
+          "tabelle",
+        ) as LvNormalizedItem & { _i?: number },
     );
     candidates.push(...tableItems);
     push({
@@ -146,10 +167,17 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
       if (ai.totals.length) {
         totals = [
           ...totals,
-          ...ai.totals.map((t) => ({ label: t.label, amount: t.amount, source_page: t.source_page || null })),
+          ...ai.totals.map((t) => ({
+            label: t.label,
+            amount: t.amount,
+            source_page: t.source_page || null,
+          })),
         ];
       }
-      push({ state: aiItems.length ? "ok" : "warn", label: `KI-Analyse: ${aiItems.length} Positionen` });
+      push({
+        state: aiItems.length ? "ok" : "warn",
+        label: `KI-Analyse: ${aiItems.length} Positionen`,
+      });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       push({ state: "error", label: `KI-Analyse fehlgeschlagen: ${reason}` });
@@ -160,7 +188,10 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
       normalizeItem({ ...i, source_page: pageIndexForText(text, i.description) }, "regel"),
     );
     candidates.push(...ruleItems);
-    push({ state: ruleItems.length ? "ok" : "warn", label: `Regelbasierte Erkennung: ${ruleItems.length} Positionen` });
+    push({
+      state: ruleItems.length ? "ok" : "warn",
+      label: `Regelbasierte Erkennung: ${ruleItems.length} Positionen`,
+    });
   }
 
   let items = dedupeItems(candidates);
@@ -170,14 +201,22 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     push({ state: "warn", label: "Keine Positionen aus der Textebene – OCR wird gestartet" });
     try {
       const ocr = await analyseScan({
-        data: { fileName: file.name, mimeType: file.type || "application/pdf", base64: await fileToBase64(file) },
+        data: {
+          fileName: file.name,
+          mimeType: file.type || "application/pdf",
+          base64: await fileToBase64(file),
+        },
       });
       aiKind = aiKind || ocr.document_kind;
       items = dedupeItems(ocr.items.map((i) => normalizeItem(i, "ocr")));
       if (ocr.totals.length) {
         totals = [
           ...totals,
-          ...ocr.totals.map((t) => ({ label: t.label, amount: t.amount, source_page: t.source_page || null })),
+          ...ocr.totals.map((t) => ({
+            label: t.label,
+            amount: t.amount,
+            source_page: t.source_page || null,
+          })),
         ];
       }
       hasTextLayer = hasTextLayer || items.length > 0 || ocr.totals.length > 0;
@@ -197,7 +236,8 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     hasTextLayer,
     itemCount: items.length,
     totalCount: totals.length,
-    structuredItemCount: items.filter((i) => i.quantity !== null && i.quantity > 0 && i.unit.trim()).length,
+    structuredItemCount: items.filter((i) => i.quantity !== null && i.quantity > 0 && i.unit.trim())
+      .length,
   });
 
   // Die KI-Einstufung darf die Heuristik überstimmen, wenn sie plausibel ist.
@@ -208,7 +248,9 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     ["detailed_lv", "pricing_form", "cleaning_spec", "unsupported"].includes(aiKind) &&
     !(kind === "scanned_pdf")
   ) {
-    const structured = items.filter((i) => i.quantity !== null && i.quantity > 0 && i.unit.trim()).length;
+    const structured = items.filter(
+      (i) => i.quantity !== null && i.quantity > 0 && i.unit.trim(),
+    ).length;
     if (aiKind === "detailed_lv" && structured < 3) {
       // KI meldet LV, es fehlt aber die vollständige LV-Struktur: Heuristik behalten.
     } else if (aiKind !== kind) {
@@ -225,8 +267,16 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
   items = stampAnalysis(items, analysisId);
 
   const issues = validateItems(items);
-  const { status, statusMessage, recommendedAction } = describeStatus(kind, items.length, totals.length, issues.length);
-  push({ state: status === "error" ? "error" : status === "success" ? "ok" : "warn", label: statusMessage });
+  const { status, statusMessage, recommendedAction } = describeStatus(
+    kind,
+    items.length,
+    totals.length,
+    issues.length,
+  );
+  push({
+    state: status === "error" ? "error" : status === "success" ? "ok" : "warn",
+    label: statusMessage,
+  });
 
   return {
     analysisId,
@@ -266,7 +316,8 @@ function describeStatus(
     return {
       status: "error",
       statusMessage: "Dokument nicht verwertbar.",
-      recommendedAction: "Bitte ein Leistungsverzeichnis oder Preisblatt als PDF, XLSX, CSV oder GAEB hochladen.",
+      recommendedAction:
+        "Bitte ein Leistungsverzeichnis oder Preisblatt als PDF, XLSX, CSV oder GAEB hochladen.",
     };
   }
   if (kind === "pricing_form" && itemCount === 0) {
@@ -285,7 +336,8 @@ function describeStatus(
   if (kind === "cleaning_spec" && itemCount === 0) {
     return {
       status: "partial",
-      statusMessage: "Reinigungs-Leistungsbeschreibung erkannt – keine kalkulierbaren Positionen enthalten.",
+      statusMessage:
+        "Reinigungs-Leistungsbeschreibung erkannt – keine kalkulierbaren Positionen enthalten.",
       recommendedAction:
         "Positionen aus der Beschreibung manuell anlegen oder das zugehörige Preisblatt/LV zusätzlich hochladen.",
     };
@@ -310,7 +362,8 @@ function describeStatus(
     return {
       status: "partial",
       statusMessage: `${itemCount} Positionen extrahiert – ${issueCount} Hinweise zur Prüfung.`,
-      recommendedAction: "Reiter „Fehlende Daten“ öffnen und die markierten Felder ergänzen, dann Positionen freigeben.",
+      recommendedAction:
+        "Reiter „Fehlende Daten“ öffnen und die markierten Felder ergänzen, dann Positionen freigeben.",
     };
   }
   return {

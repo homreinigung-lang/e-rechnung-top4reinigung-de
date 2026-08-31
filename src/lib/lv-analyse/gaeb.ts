@@ -31,7 +31,10 @@ export function parseGaeb(content: string): GaebResult {
     for (const block of blocks) {
       const number = tag(block, "RNoPart") || tag(block, "RNoFull") || tag(block, "ID");
       const description =
-        tag(block, "OutlTxt") || tag(block, "DetailTxt") || tag(block, "Description") || tag(block, "TextComplete");
+        tag(block, "OutlTxt") ||
+        tag(block, "DetailTxt") ||
+        tag(block, "Description") ||
+        tag(block, "TextComplete");
       const qty = tag(block, "Qty");
       const unit = tag(block, "QU");
       const price = tag(block, "UP") || tag(block, "UPComp");
@@ -49,7 +52,14 @@ export function parseGaeb(content: string): GaebResult {
     const cleaned = line.replace(/\s{2,}/g, " | ").trim();
     lines.push(cleaned);
     const parts = cleaned.split(" | ").map((p) => p.trim());
-    if (parts.length >= 3) rows.push([parts[0] ?? "", parts.slice(1, -2).join(" "), parts.at(-2) ?? "", parts.at(-1) ?? "", ""]);
+    if (parts.length >= 3)
+      rows.push([
+        parts[0] ?? "",
+        parts.slice(1, -2).join(" "),
+        parts.at(-2) ?? "",
+        parts.at(-1) ?? "",
+        "",
+      ]);
   }
   return { text: lines.join("\n"), rows, itemCount: Math.max(0, rows.length - 1) };
 }

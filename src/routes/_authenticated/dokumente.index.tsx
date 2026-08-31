@@ -51,7 +51,6 @@ import {
 import {
   ArrowRightLeft,
   BadgeEuro,
-
   BellRing,
   Check,
   ClipboardCheck,
@@ -228,7 +227,6 @@ function DokumenteListe() {
         .single();
       if (insErr) throw insErr;
 
-
       if (srcItems && srcItems.length > 0) {
         await supabase.from("document_items").insert(
           srcItems.map((i, index) => ({
@@ -376,12 +374,7 @@ function DokumenteListe() {
 
   // Stornobelege erscheinen nie als eigene Zeile: Die Liste zeigt ausschließlich
   // die Originalrechnung, sichtbar markiert mit Stornohinweis.
-  const list = allOfTab.filter(
-    (d) => !(d as unknown as Record<string, unknown>)["is_storno"],
-  );
-
-
-
+  const list = allOfTab.filter((d) => !(d as unknown as Record<string, unknown>)["is_storno"]);
 
   return (
     <div className="space-y-6">
@@ -460,126 +453,129 @@ function DokumenteListe() {
                 return (
                   <li key={d.id} className="px-5 py-4 hover:bg-muted/60">
                     <div className="flex items-center gap-2">
-                    <Link
-                      to="/dokumente/$id"
+                      <Link
+                        to="/dokumente/$id"
 
-                      params={{ id: d.id }}
-                      className="flex flex-1 flex-wrap items-center justify-between gap-3"
-                    >
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2 font-medium">
-                          <span>
-                            {isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[d.type]} {d.number}
-                          </span>
-                          {isStorno && cancelsNumber ? (
-                            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-                              Storno zu {cancelsNumber}
+                        params={{ id: d.id }}
+                        className="flex flex-1 flex-wrap items-center justify-between gap-3"
+                      >
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2 font-medium">
+                            <span>
+                              {isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[d.type]} {d.number}
                             </span>
-                          ) : null}
-                          {/* Storno-Hinweis erscheint nur einmal – als Unterzeile unten. */}
-
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
-                          {formatDate(d.issue_date)}
-                          {due ? (
-                            <>
-                              {" · "}
-                              <span className={due.overdue ? "font-medium text-destructive" : ""}>
-                                {due.label}
+                            {isStorno && cancelsNumber ? (
+                              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                                Storno zu {cancelsNumber}
                               </span>
-                            </>
-                          ) : null}
-                          {!isStorno && level > 0 ? ` · ${mahnLabel(level)}` : ""}
+                            ) : null}
+                            {/* Storno-Hinweis erscheint nur einmal – als Unterzeile unten. */}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
+                            {formatDate(d.issue_date)}
+                            {due ? (
+                              <>
+                                {" · "}
+                                <span className={due.overdue ? "font-medium text-destructive" : ""}>
+                                  {due.label}
+                                </span>
+                              </>
+                            ) : null}
+                            {!isStorno && level > 0 ? ` · ${mahnLabel(level)}` : ""}
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">{formatMoney(Number(d.total))}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {isStorno ? "Storniert (Korrekturbeleg)" : STATUS_LABEL[d.status]}
+                        <div className="text-right">
+                          <div className="font-medium">{formatMoney(Number(d.total))}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {isStorno ? "Storniert (Korrekturbeleg)" : STATUS_LABEL[d.status]}
+                          </div>
                         </div>
-                      </div>
+                      </Link>
 
-                    </Link>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" title="Aktionen">
+                            <MoreVertical className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {d.type === "invoice" &&
+                            d.status !== "paid" &&
+                            d.status !== "cancelled" &&
+                            d.status !== "draft" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (confirm("Freundliche Zahlungserinnerung jetzt senden?")) {
+                                      reminder.mutate({ docId: d.id, kind: "erinnerung" });
+                                    }
+                                  }}
+                                  disabled={reminder.isPending}
+                                >
+                                  <BellRing className="mr-2 size-4" /> Zahlungserinnerung
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (
+                                      confirm("Offizielle Mahnung jetzt senden? [Jetzt senden]")
+                                    ) {
+                                      reminder.mutate({ docId: d.id, kind: "mahnung" });
+                                    }
+                                  }}
+                                  disabled={reminder.isPending || !mahnungAllowed(d.due_date)}
+                                >
+                                  <Gavel className="mr-2 size-4" /> Mahnung senden
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" title="Aktionen">
-                          <MoreVertical className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        {d.type === "invoice" &&
-                          d.status !== "paid" &&
-                          d.status !== "cancelled" &&
-                          d.status !== "draft" && (
-                            <>
+                          {/* Zahlungsstatus ist von der GoBD-Sperre ausgenommen – jederzeit möglich. */}
+                          {d.type === "invoice" &&
+                            d.status !== "paid" &&
+                            d.status !== "cancelled" && (
                               <DropdownMenuItem
                                 onClick={() => {
-                                  if (confirm("Freundliche Zahlungserinnerung jetzt senden?")) {
-                                    reminder.mutate({ docId: d.id, kind: "erinnerung" });
-                                  }
+                                  setPayTarget({
+                                    id: d.id,
+                                    label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
+                                  });
+                                  setPayDate(formatDate(today()));
                                 }}
-                                disabled={reminder.isPending}
+                                disabled={markPaid.isPending}
                               >
-                                <BellRing className="mr-2 size-4" /> Zahlungserinnerung
+                                <BadgeEuro className="mr-2 size-4 text-primary" /> Als bezahlt
+                                markieren
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  if (confirm("Offizielle Mahnung jetzt senden? [Jetzt senden]")) {
-                                    reminder.mutate({ docId: d.id, kind: "mahnung" });
-                                  }
-                                }}
-                                disabled={reminder.isPending || !mahnungAllowed(d.due_date)}
-                              >
-                                <Gavel className="mr-2 size-4" /> Mahnung senden
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
+                            )}
 
-                        {/* Zahlungsstatus ist von der GoBD-Sperre ausgenommen – jederzeit möglich. */}
-                        {d.type === "invoice" && d.status !== "paid" && d.status !== "cancelled" && (
+                          <DropdownMenuItem onClick={() => duplicate.mutate(d.id)}>
+                            <Copy className="mr-2 size-4" /> Duplizieren
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
+                            className={deletable ? "text-destructive" : "text-muted-foreground"}
+                            title={
+                              deletable
+                                ? "Entwurf löschen"
+                                : "Löschen rechtlich nicht zulässig – bitte stornieren"
+                            }
                             onClick={() => {
-                              setPayTarget({
+                              if (!deletable) {
+                                toast.error(deleteBlockedMessage(r), { duration: 9000 });
+                                return;
+                              }
+                              setDeleteTarget({
                                 id: d.id,
                                 label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
                               });
-                              setPayDate(formatDate(today()));
                             }}
-                            disabled={markPaid.isPending}
                           >
-                            <BadgeEuro className="mr-2 size-4 text-primary" /> Als bezahlt markieren
+                            <Trash2 className="mr-2 size-4" /> Löschen
                           </DropdownMenuItem>
-                        )}
-
-                        <DropdownMenuItem onClick={() => duplicate.mutate(d.id)}>
-                          <Copy className="mr-2 size-4" /> Duplizieren
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className={deletable ? "text-destructive" : "text-muted-foreground"}
-                          title={
-                            deletable
-                              ? "Entwurf löschen"
-                              : "Löschen rechtlich nicht zulässig – bitte stornieren"
-                          }
-                          onClick={() => {
-                            if (!deletable) {
-                              toast.error(deleteBlockedMessage(r), { duration: 9000 });
-                              return;
-                            }
-                            setDeleteTarget({
-                              id: d.id,
-                              label: `${DOC_TYPE_LABEL[d.type]} ${d.number}`,
-                            });
-                          }}
-                        >
-                          <Trash2 className="mr-2 size-4" /> Löschen
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     {cancelledByNumber ? (
@@ -588,9 +584,7 @@ function DokumenteListe() {
                         {cancelledReason ? ` · Grund: ${cancelledReason}` : ""}
                       </p>
                     ) : null}
-
                   </li>
-
                 );
               })}
             </ul>
@@ -840,9 +834,7 @@ function AngebotsTabelle({
                             >
                               <Check className="mr-2 size-4" /> Angebot annehmen
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => decline(d.id, `Angebot ${d.number}`)}
-                            >
+                            <DropdownMenuItem onClick={() => decline(d.id, `Angebot ${d.number}`)}>
                               <X className="mr-2 size-4" /> Angebot ablehnen
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />

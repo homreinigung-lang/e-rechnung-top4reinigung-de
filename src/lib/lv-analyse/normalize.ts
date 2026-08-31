@@ -1,11 +1,6 @@
 import { parseGermanNumber } from "@/lib/lv-form/number";
 import { emptyCalculation } from "./calculation";
-import type {
-  LvFrequency,
-  LvItemCategory,
-  LvNormalizedItem,
-  LvTotalLine,
-} from "./types";
+import type { LvFrequency, LvItemCategory, LvNormalizedItem, LvTotalLine } from "./types";
 
 let counter = 0;
 function nextId(): string {
@@ -24,9 +19,18 @@ const CATEGORY_RULES: [LvItemCategory, RegExp][] = [
   ["glasreinigung", /(glas|fenster|rahmen|verglasung|jalousie)/i],
   ["grundreinigung", /(grundreinigung|intensivreinigung|erstreinigung|bauendreinigung)/i],
   ["winterdienst", /(winterdienst|schnee|streu)/i],
-  ["verbrauchsmaterial", /(verbrauchsmaterial|papierhandt|seife|toilettenpapier|hygieneartikel|spender)/i],
-  ["sonderreinigung", /(sonderreinigung|bedarfsreinigung|sonderleistung|teppich|polster|treppenhaus.*sonder)/i],
-  ["unterhaltsreinigung", /(unterhaltsreinigung|unterhalt|laufende reinigung|büroreinigung|sanitärreinigung)/i],
+  [
+    "verbrauchsmaterial",
+    /(verbrauchsmaterial|papierhandt|seife|toilettenpapier|hygieneartikel|spender)/i,
+  ],
+  [
+    "sonderreinigung",
+    /(sonderreinigung|bedarfsreinigung|sonderleistung|teppich|polster|treppenhaus.*sonder)/i,
+  ],
+  [
+    "unterhaltsreinigung",
+    /(unterhaltsreinigung|unterhalt|laufende reinigung|büroreinigung|sanitärreinigung)/i,
+  ],
 ];
 
 export function detectCategory(text: string): LvItemCategory {
@@ -35,10 +39,19 @@ export function detectCategory(text: string): LvItemCategory {
 }
 
 const FREQ_RULES: [RegExp, (m: RegExpExecArray) => number][] = [
-  [/(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?woche|(\d+)\s*x\s*wöchentlich/i, (m) => Number(m[1] ?? m[2]) * 52],
-  [/(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?monat|(\d+)\s*x\s*monatlich/i, (m) => Number(m[1] ?? m[2]) * 12],
+  [
+    /(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?woche|(\d+)\s*x\s*wöchentlich/i,
+    (m) => Number(m[1] ?? m[2]) * 52,
+  ],
+  [
+    /(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?monat|(\d+)\s*x\s*monatlich/i,
+    (m) => Number(m[1] ?? m[2]) * 12,
+  ],
   [/(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?jahr|(\d+)\s*x\s*jährlich/i, (m) => Number(m[1] ?? m[2])],
-  [/(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?tag|(\d+)\s*x\s*täglich/i, (m) => Number(m[1] ?? m[2]) * 250],
+  [
+    /(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?tag|(\d+)\s*x\s*täglich/i,
+    (m) => Number(m[1] ?? m[2]) * 250,
+  ],
   [/arbeitstäglich|werktäglich|täglich/i, () => 250],
   [/wöchentlich/i, () => 52],
   [/14[-\s]?tägig|zweiwöchentlich|alle\s*2\s*wochen/i, () => 26],
@@ -112,9 +125,12 @@ export function normalizeItem(raw: RawItem, method: string): LvNormalizedItem {
   const area = toNumberOrNull(raw.area_m2) ?? detectArea(description, quantity, unit);
   const hours = toNumberOrNull(raw.working_hours) ?? detectHours(description, quantity, unit);
   const total =
-    totalRaw ?? (quantity !== null && unitPrice !== null ? Math.round(quantity * unitPrice * 100) / 100 : null);
+    totalRaw ??
+    (quantity !== null && unitPrice !== null ? Math.round(quantity * unitPrice * 100) / 100 : null);
 
-  const categoryRaw = String(raw.category ?? "").trim().toLowerCase();
+  const categoryRaw = String(raw.category ?? "")
+    .trim()
+    .toLowerCase();
   const category: LvItemCategory =
     categoryRaw && categoryRaw in CATEGORY_KEYS
       ? (categoryRaw as LvItemCategory)
@@ -122,7 +138,9 @@ export function normalizeItem(raw: RawItem, method: string): LvNormalizedItem {
 
   const explicit = toNumberOrNull(raw.confidence_score);
   const confidence =
-    explicit !== null && explicit >= 0 && explicit <= 1 ? explicit : scoreConfidence(description, quantity, unit, unitPrice);
+    explicit !== null && explicit >= 0 && explicit <= 1
+      ? explicit
+      : scoreConfidence(description, quantity, unit, unitPrice);
 
   const page = toNumberOrNull(raw.source_page);
 
@@ -217,7 +235,10 @@ export function extractTotals(text: string): LvTotalLine[] {
     if (!m) continue;
     const amount = toNumberOrNull((m[3] ?? "").replace(/[€\sEUR]/gi, ""));
     if (amount === null) continue;
-    const label = (m[1] ?? "").replace(/[|:]+$/, "").replace(/\s+/g, " ").trim();
+    const label = (m[1] ?? "")
+      .replace(/[|:]+$/, "")
+      .replace(/\s+/g, " ")
+      .trim();
     if (!label) continue;
     out.push({ label, amount, source_page: page });
   }

@@ -15,7 +15,11 @@ export function validateLvForm(
   const warnings: LvWarning[] = [];
 
   const minMonth = constraints.find((c) => c.kind === "min_hours_month");
-  if (minMonth && inputs.unterhalt_stunden_monat > 0 && inputs.unterhalt_stunden_monat < minMonth.value) {
+  if (
+    minMonth &&
+    inputs.unterhalt_stunden_monat > 0 &&
+    inputs.unterhalt_stunden_monat < minMonth.value
+  ) {
     warnings.push({
       level: "hard",
       message: `Die angesetzten ${formatGermanNumber(inputs.unterhalt_stunden_monat)} Std./Monat liegen unter dem geforderten Mindestumfang von ${formatGermanNumber(minMonth.value)} Std./Monat.`,

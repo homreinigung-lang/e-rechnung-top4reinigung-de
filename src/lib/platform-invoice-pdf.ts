@@ -1,5 +1,9 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { PLATFORM_PAYMENT_FALLBACK, formatIban, type PlatformPayment } from "@/lib/platform-payment";
+import {
+  PLATFORM_PAYMENT_FALLBACK,
+  formatIban,
+  type PlatformPayment,
+} from "@/lib/platform-payment";
 import { euro } from "@/lib/admin";
 import { formatDate } from "@/lib/format";
 import { cleanPdfText } from "@/lib/pdf-text";

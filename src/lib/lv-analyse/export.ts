@@ -21,13 +21,7 @@ export const REVIEW_LABEL = "Prüfung erforderlich";
 export const CONFIDENCE_THRESHOLD = 0.5;
 
 export type ReviewField =
-  | "description"
-  | "quantity"
-  | "unit"
-  | "frequency"
-  | "area_m2"
-  | "unit_price"
-  | "total_price";
+  "description" | "quantity" | "unit" | "frequency" | "area_m2" | "unit_price" | "total_price";
 
 /**
  * Liefert alle Felder einer Position, die leer oder unsicher sind.
@@ -44,9 +38,9 @@ export function reviewFields(item: LvNormalizedItem): ReviewField[] {
   if (!hasOwnPrice(item)) out.add("unit_price");
   if (offerPrice(item) === null) out.add("total_price");
   if (item.source_method !== "manuell" && item.confidence_score < CONFIDENCE_THRESHOLD) {
-    (["quantity", "unit", "frequency", "area_m2", "unit_price", "total_price"] as ReviewField[]).forEach((f) =>
-      out.add(f),
-    );
+    (
+      ["quantity", "unit", "frequency", "area_m2", "unit_price", "total_price"] as ReviewField[]
+    ).forEach((f) => out.add(f));
   }
   return [...out];
 }
@@ -175,7 +169,11 @@ export function buildCsv(items: LvNormalizedItem[], result?: LvAnalysisResult | 
       lines.push(["Erkannte Summen"]);
       lines.push(["Bezeichnung", "Betrag €", "Quellseite"]);
       for (const t of result.totals) {
-        lines.push([t.label, String(t.amount).replace(".", ","), t.source_page === null ? REVIEW_LABEL : String(t.source_page)]);
+        lines.push([
+          t.label,
+          String(t.amount).replace(".", ","),
+          t.source_page === null ? REVIEW_LABEL : String(t.source_page),
+        ]);
       }
       lines.push([]);
     }
@@ -244,7 +242,11 @@ export async function buildXlsx(
     rows.push([]);
     rows.push(["Erkannte Summen", "Betrag €", "Quellseite"]);
     for (const t of result.totals) {
-      rows.push([t.label, String(t.amount).replace(".", ","), t.source_page === null ? REVIEW_LABEL : String(t.source_page)]);
+      rows.push([
+        t.label,
+        String(t.amount).replace(".", ","),
+        t.source_page === null ? REVIEW_LABEL : String(t.source_page),
+      ]);
     }
   }
 
@@ -311,7 +313,11 @@ export async function buildPdfReport(
   );
   y += 4.5;
   doc.setTextColor(150, 60, 0);
-  doc.text(`Hinweis: Mit „${REVIEW_LABEL}“ gekennzeichnete Felder wurden nicht sicher erkannt.`, marginX, y);
+  doc.text(
+    `Hinweis: Mit „${REVIEW_LABEL}“ gekennzeichnete Felder wurden nicht sicher erkannt.`,
+    marginX,
+    y,
+  );
   doc.setTextColor(0, 0, 0);
   y += 7;
 
@@ -334,7 +340,9 @@ export async function buildPdfReport(
     doc.setFontSize(8);
     let x = marginX;
     for (const col of cols) {
-      doc.text(col.title, col.align === "right" ? x + col.w - 2 : x, y, { align: col.align ?? "left" });
+      doc.text(col.title, col.align === "right" ? x + col.w - 2 : x, y, {
+        align: col.align ?? "left",
+      });
       x += col.w;
     }
     y += 2;
@@ -352,7 +360,19 @@ export async function buildPdfReport(
       y = 16;
       drawHead();
     }
-    const values = [row[0], row[1], row[3], row[4], row[5], row[7], row[8], row[12], row[17], row[9], row[10]];
+    const values = [
+      row[0],
+      row[1],
+      row[3],
+      row[4],
+      row[5],
+      row[7],
+      row[8],
+      row[12],
+      row[17],
+      row[9],
+      row[10],
+    ];
     let x = marginX;
     values.forEach((raw, index) => {
       const col = cols[index]!;
@@ -360,7 +380,9 @@ export async function buildPdfReport(
       const short = value === REVIEW_LABEL ? "prüfen" : value;
       const text = doc.splitTextToSize(short, col.w - 3)[0] ?? "";
       if (value === REVIEW_LABEL) doc.setTextColor(190, 60, 0);
-      doc.text(String(text), col.align === "right" ? x + col.w - 2 : x, y, { align: col.align ?? "left" });
+      doc.text(String(text), col.align === "right" ? x + col.w - 2 : x, y, {
+        align: col.align ?? "left",
+      });
       doc.setTextColor(0, 0, 0);
       x += col.w;
     });
@@ -383,10 +405,19 @@ export async function buildPdfReport(
         y = 16;
       }
       doc.text(`${total.label}`, marginX, y);
-      doc.text(`${total.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`, marginX + 120, y, {
-        align: "right",
-      });
-      doc.text(total.source_page === null ? REVIEW_LABEL : `Seite ${total.source_page}`, marginX + 130, y);
+      doc.text(
+        `${total.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`,
+        marginX + 120,
+        y,
+        {
+          align: "right",
+        },
+      );
+      doc.text(
+        total.source_page === null ? REVIEW_LABEL : `Seite ${total.source_page}`,
+        marginX + 130,
+        y,
+      );
       y += 4.4;
     }
   }

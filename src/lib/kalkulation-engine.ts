@@ -122,7 +122,6 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
   return warnings;
 }
 
-
 export type ConsolidatedInput = {
   typeValue: string;
   typeLabel: string;
@@ -218,7 +217,6 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     }
   }
 
-
   for (const extra of input.extras) {
     if (extra.price > 0) {
       positions.push({
@@ -281,7 +279,6 @@ export function buildDiscountPosition(
     unit_price: -total,
   };
 }
-
 
 /**
  * Bereinigt KI-Positionen: sinnvolle Preise statt 0,00 €, saubere Rundung,

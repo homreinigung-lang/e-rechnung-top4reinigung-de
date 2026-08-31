@@ -52,7 +52,8 @@ export function classifyDocument(input: ClassifyInput): ClassifyOutput {
     if (/\.pdf$/i.test(fileName)) {
       return {
         kind: "scanned_pdf",
-        reason: "Das PDF enthält keine auswertbare Textebene – es wurde als Scan eingestuft und per OCR verarbeitet.",
+        reason:
+          "Das PDF enthält keine auswertbare Textebene – es wurde als Scan eingestuft und per OCR verarbeitet.",
       };
     }
     return {

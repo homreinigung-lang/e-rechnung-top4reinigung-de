@@ -8,7 +8,6 @@ import {
   type RGB,
 } from "pdf-lib";
 
-
 /**
  * Serverseitig/bibliotheksbasierte PDF-Erzeugung (pdf-lib) – kein Browser-Druck.
  * Dadurch entfallen automatische Kopf-/Fußzeilen des Browsers (Titel, URL, Datum).
@@ -70,7 +69,6 @@ export type PdfDocData = {
   watermark?: string | undefined;
   /** Begründung unter dem Stempel, z. B. der offizielle Stornogrund. */
   watermarkNote?: string | undefined;
-
 };
 
 type Ctx = {
@@ -363,7 +361,6 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   );
   const headH = Math.max(...headLines.map((l) => l.length)) * 9.5 + 2 * padY;
 
-
   const drawTableHead = () => {
     ensure(ctx, headH + 20);
     const top = ctx.y;
@@ -613,7 +610,6 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     ctx.y -= lines.length * 12 + 8;
   }
 
-
   // ---- Zahlungshinweis + GiroCode ----------------------------------------
   if ((d.paymentLines && d.paymentLines.length > 0) || d.qrPayload) {
     const qrSize = d.qrPayload ? 68 : 0;
@@ -782,5 +778,4 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
 
   return pdf.save();
-
 }
