@@ -190,6 +190,9 @@ function DokumentDetail() {
     action: () => void;
   } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
+  const [stornoOpen, setStornoOpen] = useState(false);
+  const [stornoReason, setStornoReason] = useState("");
+
   const [payDate, setPayDate] = useState<string>("");
 
   useEffect(() => {
