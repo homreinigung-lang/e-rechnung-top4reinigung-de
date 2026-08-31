@@ -107,30 +107,47 @@ export type CostSummary = {
   pricedItems: number;
   unpricedItems: number;
   documentTotals: LvTotalLine[];
+  /**
+   * Abweichender Steuersatz aus dem hochgeladenen Dokument – nur als Hinweis,
+   * er fließt bewusst NICHT in die Berechnung ein.
+   */
+  documentVatRateHint: number | null;
 };
 
+/**
+ * Kostenübersicht der eigenen Kalkulation.
+ *
+ * `vatRate` kommt immer aus den Firmeneinstellungen (Inland 19 %,
+ * Reverse-Charge/Kleinunternehmer 0 %). Ein im Ausschreibungsdokument
+ * genannter Steuersatz wird nur noch als Hinweis zurückgegeben.
+ */
 export function summarizeCost(
   items: LvNormalizedItem[],
   totals: LvTotalLine[],
-  fallbackVatRate = 19,
+  vatRate = 19,
 ): CostSummary {
   // Ausschließlich eigene Kalkulationsdaten – Preise aus dem Dokument fließen nie ein.
   const priced = items.filter(hasOwnPrice);
-  const net = priced.reduce((s, i) => s + (offerPrice(i) ?? 0), 0);
-  const annualNet = priced.reduce((s, i) => s + (annualOfferPrice(i) ?? offerPrice(i) ?? 0), 0);
-  const vatRate = items.find((i) => i.vat_rate !== null)?.vat_rate ?? fallbackVatRate;
-  const vat = round2((net * vatRate) / 100);
+  const netCents = priced.reduce((s, i) => s + toCents(offerPrice(i) ?? 0), 0);
+  const annualCents = priced.reduce(
+    (s, i) => s + toCents(annualOfferPrice(i) ?? offerPrice(i) ?? 0),
+    0,
+  );
+  const vatCents = Math.round((netCents * vatRate) / 100);
+  const documentRate = items.find((i) => i.vat_rate !== null)?.vat_rate ?? null;
   return {
-    net: round2(net),
-    vat,
-    gross: round2(net + vat),
+    net: fromCents(netCents),
+    vat: fromCents(vatCents),
+    gross: fromCents(netCents + vatCents),
     vatRate,
-    annualNet: round2(annualNet),
+    annualNet: fromCents(annualCents),
     pricedItems: priced.length,
     unpricedItems: items.length - priced.length,
     documentTotals: totals,
+    documentVatRateHint: documentRate !== null && documentRate !== vatRate ? documentRate : null,
   };
 }
+
 
 export type PriceRecommendation = {
   hourlyRate: number;
