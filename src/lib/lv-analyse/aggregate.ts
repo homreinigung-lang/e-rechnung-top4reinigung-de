@@ -1,7 +1,9 @@
+import { MONTHS_PER_YEAR } from "@/lib/constants";
+import { fromCents, toCents } from "@/lib/kalkulation-engine";
 import { annualOfferPrice, hasOwnPrice, offerPrice } from "./calculation";
 import type { LvItemCategory, LvNormalizedItem, LvTotalLine } from "./types";
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
+const round2 = (n: number) => fromCents(toCents(n));
 
 export type CategoryAggregate = {
   category: LvItemCategory;
@@ -91,7 +93,7 @@ export function summarizeHours(
   return {
     totalHours: round2(totalHours),
     annualHours: round2(annualHours),
-    monthlyHours: round2(annualHours / 12),
+    monthlyHours: round2(annualHours / MONTHS_PER_YEAR),
     itemsWithHours: withHours.length,
     estimatedFromArea: round2(performanceRate > 0 ? areaWithoutHours / performanceRate : 0),
     performanceRate,
