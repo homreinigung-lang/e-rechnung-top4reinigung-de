@@ -596,6 +596,11 @@ function DokumentDetail() {
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
   const introText = String(form["intro_text"] ?? "").trim();
+  // Datumsprüfung: Rechnungsdatum darf nicht vor der Leistung liegen (§ 14 UStG).
+  const dateCheck = isInvoice
+    ? checkInvoiceDates(String(form["issue_date"] ?? ""), String(form["service_period"] ?? ""))
+    : { level: "ok" as const, message: "" };
+
   const senderLine = [
     settings?.["company_name"] ?? "",
     settings?.["address_line"] ?? "",
