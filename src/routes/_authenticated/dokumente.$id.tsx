@@ -52,7 +52,7 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
-import { ensureOfficialNumber, isDraftPlaceholder } from "@/lib/doc-number";
+import { draftPlaceholderNumber, ensureOfficialNumber, isDraftPlaceholder } from "@/lib/doc-number";
 import {
   deleteBlockedMessage,
   describeGobdError,
@@ -190,6 +190,9 @@ function DokumentDetail() {
     action: () => void;
   } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
+  const [stornoOpen, setStornoOpen] = useState(false);
+  const [stornoReason, setStornoReason] = useState("");
+
   const [payDate, setPayDate] = useState<string>("");
 
   useEffect(() => {
@@ -392,14 +395,17 @@ function DokumentDetail() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       const doc = data!.doc as Record<string, unknown>;
-      const { data: existing } = await supabase.from("documents").select("number, type");
-      const prefix = String(doc["number"] ?? "").replace(/\d+$/, "");
-      const max = (existing ?? [])
-        .filter((d) => d.number.startsWith(prefix))
-        .map((d) => parseInt(d.number.slice(prefix.length), 10))
-        .filter((n) => Number.isFinite(n))
-        .reduce((a, b) => Math.max(a, b), 0);
-      const nextNr = `${prefix}${String(max + 1).padStart(4, "0")}`;
+      // Entwurfsnummer (Platzhalter): die offizielle fortlaufende Nummer wird
+      // erst beim Festschreiben vergeben – so entstehen keine Lücken (§ 14 UStG).
+      const nextNr = draftPlaceholderNumber(String(doc["type"] ?? "invoice") as never);
+      // Kopie startet mit aktuellem Datum und passendem Leistungsmonat.
+      const issueDate = today();
+      const period = periodForIssueDate(issueDate);
+      const servicePeriod = period ? formatPeriod(period) : String(doc["service_period"] ?? "");
+      const serviceDescription = period
+        ? syncMonthInText(String(doc["service_description"] ?? ""), period.end)
+        : String(doc["service_description"] ?? "");
+
 
       const {
         id: _id,
@@ -414,6 +420,11 @@ function DokumentDetail() {
         is_storno: _st,
         cancels_document_id: _cd,
         cancelled_by_document_id: _cb,
+        storno_reason: _sr,
+        converted_document_id: _cv,
+        paid_at: _pa,
+        reminder_level: _rl,
+        last_reminder_at: _lr,
         retention_until: _ru,
         deleted_at: _dl,
         ...rest
@@ -421,10 +432,20 @@ function DokumentDetail() {
 
       const { data: created, error } = await supabase
         .from("documents")
-        .insert({ ...rest, user_id: userId, number: nextNr, status: "draft" } as never)
+        .insert({
+          ...rest,
+          user_id: userId,
+          number: nextNr,
+          status: "draft",
+          issue_date: issueDate,
+          due_date: null,
+          service_period: servicePeriod,
+          service_description: serviceDescription,
+        } as never)
         .select("id")
         .single();
       if (error) throw error;
+
 
       if (items.length > 0) {
         await supabase.from("document_items").insert(
@@ -471,14 +492,18 @@ function DokumentDetail() {
   });
 
   const storno = useMutation({
-    mutationFn: () => createStorno(id),
+    mutationFn: (reason: string) => createStorno(id, reason),
     onSuccess: (newId) => {
+      setStornoOpen(false);
+      setStornoReason("");
       toast.success("Stornorechnung erstellt");
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      navigate({ to: "/dokumente/$id", params: { id: newId } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const remove = useMutation({
     mutationFn: async () => {
@@ -1292,23 +1317,49 @@ function DokumentDetail() {
         {locked && isInvoice && !isStorno && !cancelledBy && (
           <Button
             variant="destructive"
-            onClick={() =>
-              setConfirmDialog({
-                title: "Stornorechnung erstellen",
-                description:
-                  "Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen erzeugt.",
-                confirmLabel: "Storno erstellen",
-                destructive: true,
-                action: () => storno.mutate(),
-              })
-            }
-
+            onClick={() => setStornoOpen(true)}
             disabled={storno.isPending}
           >
             <Ban className="size-4" /> Stornorechnung
           </Button>
         )}
       </div>
+
+      <Dialog open={stornoOpen} onOpenChange={(o) => !o && setStornoOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Stornorechnung erstellen</DialogTitle>
+            <DialogDescription>
+              Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen
+              erzeugt. Der Stornogrund wird revisionssicher gespeichert und auf dem Storno-Beleg
+              gedruckt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="storno-reason">Stornogrund (Pflichtangabe)</Label>
+            <Textarea
+              id="storno-reason"
+              value={stornoReason}
+              onChange={(e) => setStornoReason(e.target.value)}
+              placeholder="z. B. Falscher Leistungszeitraum, Kunde storniert, fehlerhafte Positionen …"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStornoOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => storno.mutate(stornoReason)}
+              disabled={storno.isPending || stornoReason.trim().length < 3}
+            >
+              Storno erstellen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {locked && lockedAt && (
         <div className="no-print flex flex-wrap items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">

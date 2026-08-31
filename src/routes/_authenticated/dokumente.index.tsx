@@ -33,6 +33,8 @@ import {
   today,
   addDays,
 } from "@/lib/format";
+import { formatPeriod, periodForIssueDate, syncMonthInText } from "@/lib/invoice-period";
+
 import {
   completeQuote,
   convertQuoteToOrder,
@@ -179,6 +181,15 @@ function DokumenteListe() {
         .order("position");
 
       const number = draftPlaceholderNumber(src.type as "invoice" | "quote" | "order");
+      const issueDate = today();
+      const period = periodForIssueDate(issueDate);
+      const srcRecord = src as unknown as Record<string, unknown>;
+      const servicePeriod = period
+        ? formatPeriod(period)
+        : String(srcRecord["service_period"] ?? "");
+      const serviceDescription = period
+        ? syncMonthInText(String(srcRecord["service_description"] ?? ""), period.end)
+        : String(srcRecord["service_description"] ?? "");
       const {
         id: _i,
         created_at: _c,
@@ -191,16 +202,31 @@ function DokumenteListe() {
         is_storno: _st,
         cancels_document_id: _cd,
         cancelled_by_document_id: _cb,
+        storno_reason: _sr,
+        converted_document_id: _cv,
+        paid_at: _pa,
+        reminder_level: _rl,
+        last_reminder_at: _lr,
         retention_until: _ru,
         deleted_at: _dl,
         ...rest
       } = src as unknown as Record<string, unknown>;
       const { data: created, error: insErr } = await supabase
         .from("documents")
-        .insert({ ...rest, user_id: userId, number, status: "draft" } as never)
+        .insert({
+          ...rest,
+          user_id: userId,
+          number,
+          status: "draft",
+          issue_date: issueDate,
+          due_date: null,
+          service_period: servicePeriod,
+          service_description: serviceDescription,
+        } as never)
         .select("id")
         .single();
       if (insErr) throw insErr;
+
 
       if (srcItems && srcItems.length > 0) {
         await supabase.from("document_items").insert(
@@ -336,6 +362,10 @@ function DokumenteListe() {
     .slice()
     .sort((a, b) => String(b.number).localeCompare(String(a.number), "de-DE"));
 
+  // Belegnummern-Nachschlagewerk: Stornobelege zeigen die Original-Rechnungsnummer.
+  const numberById = new Map(documents.map((d) => [d.id, String(d.number)]));
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -396,7 +426,14 @@ function DokumenteListe() {
             <ul className="divide-y">
               {list.map((d) => {
                 const r = d as unknown as Record<string, unknown>;
-                const due = dueInfo(d.due_date, d.status);
+                const isStorno = Boolean(r["is_storno"]);
+                const cancelsNumber = r["cancels_document_id"]
+                  ? (numberById.get(String(r["cancels_document_id"])) ?? "")
+                  : "";
+                const cancelledByNumber = r["cancelled_by_document_id"]
+                  ? (numberById.get(String(r["cancelled_by_document_id"])) ?? "")
+                  : "";
+                const due = isStorno ? null : dueInfo(d.due_date, d.status);
                 const level = Number(r["reminder_level"] ?? 0);
                 const deletable = !isLockedDocument(r);
                 return (
@@ -407,8 +444,20 @@ function DokumenteListe() {
                       className="flex flex-1 flex-wrap items-center justify-between gap-3"
                     >
                       <div>
-                        <div className="font-medium">
-                          {DOC_TYPE_LABEL[d.type]} {d.number}
+                        <div className="flex flex-wrap items-center gap-2 font-medium">
+                          <span>
+                            {isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[d.type]} {d.number}
+                          </span>
+                          {isStorno && cancelsNumber ? (
+                            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                              Storno zu {cancelsNumber}
+                            </span>
+                          ) : null}
+                          {!isStorno && cancelledByNumber ? (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                              Storniert durch {cancelledByNumber}
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
@@ -421,15 +470,16 @@ function DokumenteListe() {
                               </span>
                             </>
                           ) : null}
-                          {level > 0 ? ` · ${mahnLabel(level)}` : ""}
+                          {!isStorno && level > 0 ? ` · ${mahnLabel(level)}` : ""}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="font-medium">{formatMoney(Number(d.total))}</div>
                         <div className="text-xs text-muted-foreground">
-                          {STATUS_LABEL[d.status]}
+                          {isStorno ? "Storniert (Korrekturbeleg)" : STATUS_LABEL[d.status]}
                         </div>
                       </div>
+
                     </Link>
 
                     <DropdownMenu>
