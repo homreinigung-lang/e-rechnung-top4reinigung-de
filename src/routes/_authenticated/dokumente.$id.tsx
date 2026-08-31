@@ -927,7 +927,8 @@ function DokumentDetail() {
       isInvoice,
       title: `${isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[doc.type]} ${number}`,
       // Sichtbarer Stempel bei Stornobeleg und bei stornierter Originalrechnung.
-      ...(isStorno || cancelledBy
+      ...(isStorno || cancelledBy || doc.status === "cancelled"
+
         ? {
             watermark: "Storniert",
             ...(stornoGrund || stornoNumber
