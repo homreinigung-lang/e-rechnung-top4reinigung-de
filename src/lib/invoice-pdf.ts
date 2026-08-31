@@ -68,6 +68,8 @@ export type PdfDocData = {
   footer: Array<{ heading: string; lines: string[] }>;
   /** Diagonaler Stempel über dem gesamten Beleg, z. B. "Storniert". */
   watermark?: string | undefined;
+  /** Begründung unter dem Stempel, z. B. der offizielle Stornogrund. */
+  watermarkNote?: string | undefined;
 
 };
 
@@ -711,6 +713,19 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
         opacity: 0.16,
         rotate: degrees(30),
       });
+      if (d.watermarkNote) {
+        const note = clean(d.watermarkNote);
+        const noteSize = 10;
+        const noteW = widthOf(bold, noteSize, note);
+        page.drawText(note, {
+          x: Math.max(20, (PAGE_W - noteW) / 2),
+          y: PAGE_H / 2 - size * 0.9,
+          size: noteSize,
+          font: bold,
+          color: rgb(0.86, 0.15, 0.15),
+          opacity: 0.55,
+        });
+      }
     }
   }
 

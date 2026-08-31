@@ -170,8 +170,24 @@ function DokumentDetail() {
         supabase.from("customers").select("*").order("company", { ascending: true }),
       ]);
       if (doc.error) throw doc.error;
+      // Zugehöriger Storno-/Originalbeleg: Nummer und Stornogrund für Hinweis und PDF.
+      const rec = doc.data as unknown as Record<string, unknown>;
+      const relatedId =
+        (rec["cancelled_by_document_id"] as string | null) ??
+        (rec["cancels_document_id"] as string | null) ??
+        null;
+      const related = relatedId
+        ? (
+            await supabase
+              .from("documents")
+              .select("id, number, storno_reason, is_storno")
+              .eq("id", relatedId)
+              .maybeSingle()
+          ).data
+        : null;
       return {
         doc: doc.data,
+        related,
         items: (items.data ?? []) as Item[],
         settings: settings.data,
         customers: customers.data ?? [],
@@ -642,6 +658,12 @@ function DokumentDetail() {
   const locked = Boolean(lockedAt);
   const isStorno = Boolean(docRecord["is_storno"]);
   const cancelledBy = (docRecord["cancelled_by_document_id"] as string | null) ?? null;
+  const relatedDoc = (data as { related?: Record<string, unknown> | null }).related ?? null;
+  // Stornogrund steht am Stornobeleg – für die Originalrechnung wird er dort gelesen.
+  const stornoGrund = String(
+    (isStorno ? docRecord["storno_reason"] : relatedDoc?.["storno_reason"]) ?? "",
+  ).trim();
+  const stornoNumber = String(relatedDoc?.["number"] ?? "").trim();
   const settings = data.settings as Record<string, string | number | null> | null;
   const isInvoice = doc.type === "invoice";
   const isOrder = doc.type === "order";
@@ -905,7 +927,27 @@ function DokumentDetail() {
       isInvoice,
       title: `${isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[doc.type]} ${number}`,
       // Sichtbarer Stempel bei Stornobeleg und bei stornierter Originalrechnung.
-      ...(isStorno || cancelledBy ? { watermark: "Storniert" } : {}),
+      ...(isStorno || cancelledBy
+        ? {
+            watermark: "Storniert",
+            ...(stornoGrund || stornoNumber
+              ? {
+                  watermarkNote: [
+                    isStorno
+                      ? stornoNumber
+                        ? `Storno zu ${stornoNumber}`
+                        : ""
+                      : stornoNumber
+                        ? `Storniert durch ${stornoNumber}`
+                        : "",
+                    stornoGrund ? `Grund: ${stornoGrund}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
+                }
+              : {}),
+          }
+        : {}),
 
       ...(isInvoice
         ? {}
@@ -1390,8 +1432,11 @@ function DokumentDetail() {
               {docRecord["pdf_sha256"]
                 ? ` · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
                 : ""}
-              {cancelledBy ? " · Diese Rechnung wurde storniert." : ""}
-              {isStorno ? " · Stornorechnung" : ""}
+              {cancelledBy
+                ? ` · Diese Rechnung wurde storniert${stornoNumber ? ` durch ${stornoNumber}` : ""}.`
+                : ""}
+              {isStorno ? ` · Stornorechnung${stornoNumber ? ` zu ${stornoNumber}` : ""}` : ""}
+              {stornoGrund ? ` · Stornogrund: ${stornoGrund}` : ""}
             </p>
             <p className="font-medium text-destructive">
               Löschen und Überschreiben sind für diesen Beleg gesperrt. Korrekturen ausschließlich

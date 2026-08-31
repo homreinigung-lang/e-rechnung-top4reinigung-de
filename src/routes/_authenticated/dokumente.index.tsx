@@ -51,7 +51,6 @@ import {
 import {
   ArrowRightLeft,
   BadgeEuro,
-  Ban,
 
   BellRing,
   Check,
@@ -367,24 +366,20 @@ function DokumenteListe() {
   // Belegnummern-Nachschlagewerk: Stornobelege zeigen die Original-Rechnungsnummer.
   const numberById = new Map(documents.map((d) => [d.id, String(d.number)]));
 
-  // Stornobelege werden der Originalrechnung als Unterpunkt zugeordnet und
-  // erscheinen nicht als eigene Zeile in der Hauptliste.
-  const stornoByOriginal = new Map<string, (typeof allOfTab)[number][]>();
-  for (const d of allOfTab) {
-    const r = d as unknown as Record<string, unknown>;
-    const parent = r["is_storno"] ? String(r["cancels_document_id"] ?? "") : "";
-    if (!parent) continue;
-    const bucket = stornoByOriginal.get(parent) ?? [];
-    bucket.push(d);
-    stornoByOriginal.set(parent, bucket);
-  }
-  const parentIds = new Set(allOfTab.map((d) => d.id));
-  const list = allOfTab.filter((d) => {
-    const r = d as unknown as Record<string, unknown>;
-    if (!r["is_storno"]) return true;
-    // Verwaiste Stornobelege (Original nicht sichtbar) bleiben sichtbar.
-    return !parentIds.has(String(r["cancels_document_id"] ?? ""));
-  });
+  // Stornogrund je Stornobeleg – wird an der Originalrechnung angezeigt.
+  const stornoReasonById = new Map(
+    documents.map((d) => [
+      d.id,
+      String((d as unknown as Record<string, unknown>)["storno_reason"] ?? "").trim(),
+    ]),
+  );
+
+  // Stornobelege erscheinen nie als eigene Zeile: Die Liste zeigt ausschließlich
+  // die Originalrechnung, sichtbar markiert mit Stornohinweis.
+  const list = allOfTab.filter(
+    (d) => !(d as unknown as Record<string, unknown>)["is_storno"],
+  );
+
 
 
 
@@ -455,10 +450,13 @@ function DokumenteListe() {
                 const cancelledByNumber = r["cancelled_by_document_id"]
                   ? (numberById.get(String(r["cancelled_by_document_id"])) ?? "")
                   : "";
+                const cancelledReason = r["cancelled_by_document_id"]
+                  ? (stornoReasonById.get(String(r["cancelled_by_document_id"])) ?? "")
+                  : "";
                 const due = isStorno ? null : dueInfo(d.due_date, d.status);
                 const level = Number(r["reminder_level"] ?? 0);
                 const deletable = !isLockedDocument(r);
-                const stornoChildren = stornoByOriginal.get(d.id) ?? [];
+
                 return (
                   <li key={d.id} className="px-5 py-4 hover:bg-muted/60">
                     <div className="flex items-center gap-2">
@@ -587,30 +585,13 @@ function DokumenteListe() {
                     </DropdownMenu>
                     </div>
 
-                    {stornoChildren.length > 0 && (
-                      <ul className="mt-2 space-y-1 border-l-2 border-destructive/30 pl-4">
-                        {stornoChildren.map((s) => (
-                          <li key={s.id}>
-                            <Link
-                              to="/dokumente/$id"
-                              params={{ id: s.id }}
-                              className="flex flex-wrap items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                            >
-                              <span className="flex flex-wrap items-center gap-2">
-                                <Ban className="size-3.5 text-destructive" />
-                                <span className="font-medium">Stornorechnung {s.number}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDate(s.issue_date)}
-                                </span>
-                              </span>
-                              <span className="font-medium text-destructive">
-                                {formatMoney(Number(s.total))}
-                              </span>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    {cancelledByNumber ? (
+                      <p className="mt-1 pl-1 text-xs text-destructive">
+                        Storniert durch {cancelledByNumber}
+                        {cancelledReason ? ` · Grund: ${cancelledReason}` : ""}
+                      </p>
+                    ) : null}
+
                   </li>
 
                 );
