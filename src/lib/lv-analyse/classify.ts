@@ -26,6 +26,8 @@ export type ClassifyInput = {
   itemCount: number;
   /** Zahl der erkannten reinen Summenzeilen. */
   totalCount: number;
+  /** Positionen mit vollständiger LV-Struktur (Menge + Einheit vorhanden). */
+  structuredItemCount?: number;
 };
 
 export type ClassifyOutput = { kind: LvDocumentKind; reason: string };
@@ -36,6 +38,7 @@ export type ClassifyOutput = { kind: LvDocumentKind; reason: string };
  */
 export function classifyDocument(input: ClassifyInput): ClassifyOutput {
   const { fileName, text, rows, hasTextLayer, itemCount, totalCount } = input;
+  const structuredItemCount = input.structuredItemCount ?? itemCount;
 
   if (!isSupportedFile(fileName)) {
     return {
@@ -64,18 +67,19 @@ export function classifyDocument(input: ClassifyInput): ClassifyOutput {
   const totalLines = lines.filter((l) => TOTAL_WORDS.test(l) && MONEY_LINE.test(l)).length;
   const specHits = lines.filter((l) => SPEC_WORDS.test(l)).length;
 
-  if (itemCount >= 3 && (positionLines >= 3 || rows.length >= 4)) {
+  if (itemCount >= 3 && structuredItemCount >= 3 && (positionLines >= 3 || rows.length >= 4)) {
     return {
       kind: "detailed_lv",
-      reason: `Strukturierte Positionsliste erkannt (${itemCount} Positionen, ${positionLines} nummerierte Zeilen).`,
+      reason: `Vollständige LV-Struktur erkannt (${structuredItemCount} Positionen mit Menge und Einheit).`,
     };
   }
 
-  // Reines Preisblatt: kaum/keine Positionen, aber Summen und Beträge.
-  if (itemCount < 3 && (totalCount > 0 || totalLines > 0) && moneyLines >= 1) {
+  // Preisblatt: überwiegend Preis-/Jahresbeträge ohne vollständige LV-Tabelle.
+  if (structuredItemCount < 3 && (totalCount > 0 || totalLines > 0 || moneyLines >= 1)) {
     return {
       kind: "pricing_form",
-      reason: `Das Dokument enthält überwiegend Summen- und Preisfelder (${totalCount || totalLines} Summenzeilen) statt Einzelpositionen.`,
+      reason:
+        "Das Dokument enthält überwiegend Preisangaben bzw. Jahresbeträge und keine vollständige LV-Tabelle mit Positionen, Flächen, Mengen und Einheiten.",
     };
   }
 
@@ -88,8 +92,8 @@ export function classifyDocument(input: ClassifyInput): ClassifyOutput {
 
   if (itemCount > 0) {
     return {
-      kind: "detailed_lv",
-      reason: `Es wurden ${itemCount} Positionen erkannt, die Struktur ist jedoch nicht vollständig eindeutig.`,
+      kind: structuredItemCount >= 3 ? "detailed_lv" : "pricing_form",
+      reason: `Es wurden ${itemCount} Positionen erkannt, davon ${structuredItemCount} mit vollständiger Struktur (Menge und Einheit).`,
     };
   }
 

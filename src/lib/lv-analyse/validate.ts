@@ -14,7 +14,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         itemId: item.id,
         field: "description",
         level: "error",
-        message: `${name}: Leistungstext fehlt.`,
+        message: `Beschreibung für Position ${name} fehlt.`,
         hint: "Beschreibung aus dem Original ergänzen.",
       });
     }
@@ -23,7 +23,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         itemId: item.id,
         field: "quantity",
         level: "error",
-        message: `${name}: Menge fehlt oder ist 0.`,
+        message: `Menge für Position ${name} fehlt.`,
         hint: "Menge (z. B. m², Stück, Stunden) aus der Ausschreibung nachtragen.",
       });
     }
@@ -32,7 +32,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         itemId: item.id,
         field: "unit",
         level: "error",
-        message: `${name}: Einheit fehlt.`,
+        message: `Einheit für Position ${name} fehlt.`,
         hint: "Einheit ergänzen (m², Stk, Std, Monat, pauschal).",
       });
     }
@@ -41,8 +41,8 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         itemId: item.id,
         field: "frequency",
         level: "warning",
-        message: `${name}: Reinigungsintervall nicht erkannt.`,
-        hint: "Intervall angeben (z. B. 5x wöchentlich), sonst ist keine Jahreskalkulation möglich.",
+        message: `Reinigungsintervall für Position ${name} wurde nicht eindeutig erkannt.`,
+        hint: "Intervall manuell ergänzen, sofern es aus der Ausschreibung eindeutig hervorgeht.",
       });
     }
     if (item.unit_price === null || item.unit_price <= 0) {
@@ -50,7 +50,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         itemId: item.id,
         field: "unit_price",
         level: "warning",
-        message: `${name}: Einheitspreis fehlt.`,
+        message: `Einheitspreis für Position ${name} fehlt.`,
         hint: "Preis aus der eigenen Kalkulation eintragen, bevor das Angebot abgegeben wird.",
       });
     }
@@ -59,7 +59,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         itemId: item.id,
         field: "description",
         level: "warning",
-        message: `${name}: geringe Erkennungssicherheit (${Math.round(item.confidence_score * 100)} %).`,
+        message: `Position ${name}: geringe Erkennungssicherheit (${Math.round(item.confidence_score * 100)} %).`,
         hint: "Position gegen die Quellseite prüfen.",
       });
     }

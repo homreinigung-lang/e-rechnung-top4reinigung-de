@@ -192,6 +192,7 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     hasTextLayer,
     itemCount: items.length,
     totalCount: totals.length,
+    structuredItemCount: items.filter((i) => i.quantity !== null && i.quantity > 0 && i.unit.trim()).length,
   });
 
   // Die KI-Einstufung darf die Heuristik überstimmen, wenn sie plausibel ist.
@@ -202,8 +203,9 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     ["detailed_lv", "pricing_form", "cleaning_spec", "unsupported"].includes(aiKind) &&
     !(kind === "scanned_pdf")
   ) {
-    if (aiKind === "detailed_lv" && items.length === 0) {
-      // KI meldet LV, es gibt aber keine Positionen: Heuristik behalten.
+    const structured = items.filter((i) => i.quantity !== null && i.quantity > 0 && i.unit.trim()).length;
+    if (aiKind === "detailed_lv" && structured < 3) {
+      // KI meldet LV, es fehlt aber die vollständige LV-Struktur: Heuristik behalten.
     } else if (aiKind !== kind) {
       kind = aiKind as typeof kind;
       kindReason = `${classification.reason} KI-Einstufung: ${aiKind}.`;
@@ -285,6 +287,14 @@ function describeStatus(
       statusMessage: "Es konnten keine Positionen extrahiert werden.",
       recommendedAction:
         "Analyse erneut starten, eine textbasierte Fassung (kein Foto-Scan) verwenden oder Positionen manuell erfassen.",
+    };
+  }
+  if (kind === "pricing_form" && itemCount > 0) {
+    return {
+      status: "partial",
+      statusMessage: `${itemCount} Positionen extrahiert – ${issueCount} Hinweise zur Prüfung.`,
+      recommendedAction:
+        "Das Dokument enthält keine vollständige LV-Struktur. Preise, Intervalle und fehlende Felder müssen vor der Freigabe geprüft werden.",
     };
   }
   if (issueCount > 0) {
