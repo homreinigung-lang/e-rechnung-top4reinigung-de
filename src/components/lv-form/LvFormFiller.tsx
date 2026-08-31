@@ -50,6 +50,7 @@ export default function LvFormFiller() {
       alert(`Ein Fehler ist beim Analysieren der Datei aufgetreten: ${message}`);
     } finally {
       setLoading(false);
+      e.target.value = '';
     }
   };
 
