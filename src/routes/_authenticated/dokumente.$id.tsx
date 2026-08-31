@@ -1519,7 +1519,26 @@ function DokumentDetail() {
               onChange={(v) => setField("service_period", v)}
               placeholder="Zeitraum im Kalender wählen"
             />
+            {isInvoice ? (
+              <>
+                <Button type="button" variant="ghost" size="sm" onClick={applyIssueMonth}>
+                  Monat des Rechnungsdatums übernehmen
+                </Button>
+                {dateCheck.message ? (
+                  <p
+                    className={
+                      dateCheck.level === "error"
+                        ? "text-xs text-destructive"
+                        : "text-xs text-amber-600 dark:text-amber-500"
+                    }
+                  >
+                    {dateCheck.message}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
           </div>
+
         </div>
 
         <div className="space-y-2">
