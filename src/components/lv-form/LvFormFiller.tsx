@@ -20,7 +20,7 @@ interface LvItem {
   unit_price: number;
 }
 
-type AnalysisStep = { state: 'ok' | 'warn'; label: string };
+type AnalysisStep = { state: 'ok' | 'warn' | 'error'; label: string };
 
 export default function LvFormFiller() {
   const runAnalysis = useServerFn(analyzeLvText);
@@ -47,40 +47,95 @@ export default function LvFormFiller() {
     setLastFile(file);
     const toastId = toast.loading('Die KI analysiert Ihr Leistungsverzeichnis…');
     const log: AnalysisStep[] = [];
+    const diagnostic = (message: string, details?: unknown) => {
+      if (details === undefined) console.info(`[LV-Import] ${message}`);
+      else console.info(`[LV-Import] ${message}`, details);
+    };
     try {
+      diagnostic('Datei empfangen', {
+        name: file.name,
+        type: file.type || 'unbekannt',
+        sizeBytes: file.size,
+      });
       const doc = await extractDocument(file);
-      log.push({ state: 'ok', label: 'Datei gelesen' });
+      log.push({
+        state: 'ok',
+        label: `Datei gelesen (${file.type || 'unbekannter Typ'}, ${file.size.toLocaleString('de-DE')} Bytes)`,
+      });
+      log.push({
+        state: doc.text.length ? 'ok' : 'warn',
+        label: `${doc.text.length.toLocaleString('de-DE')} Zeichen extrahiert${doc.pageCount ? ` (${doc.pageCount} PDF-Seiten)` : ''}`,
+      });
+      diagnostic('Dokument extrahiert', {
+        kind: doc.kind,
+        hasTextLayer: doc.hasTextLayer,
+        pageCount: doc.pageCount ?? null,
+        characters: doc.text.length,
+        preview: doc.text.slice(0, 1000),
+      });
       setTextPreview(doc.text.slice(0, 1500));
 
       let found: LvImportItem[] = [];
+      const methodCounts: Record<string, number> = {};
 
       // 1) Tabellen (CSV/Excel): Spalten direkt erkennen – ohne KI, ohne Raten.
       if (doc.rows.length > 0) {
         found = cleanItems(itemsFromRows(doc.rows));
+        methodCounts['tabellen'] = found.length;
+        diagnostic('Methode: Tabellen-/Spaltenerkennung', { rows: doc.rows.length, positions: found.length });
         log.push({
           state: found.length ? 'ok' : 'warn',
-          label: found.length ? 'Tabellenspalten erkannt' : 'Tabellenspalten nicht eindeutig',
+          label: found.length
+            ? `Tabellenspalten erkannt (${found.length} Positionen)`
+            : 'Tabellenspalten nicht eindeutig (0 Positionen)',
         });
       }
 
       // 2) PDF/Text mit Textebene: KI-Analyse, danach regelbasierter Rückfall.
       if (found.length === 0 && doc.hasTextLayer && doc.text.trim().length >= 20) {
-        log.push({ state: 'ok', label: 'Text erkannt' });
+        log.push({ state: 'ok', label: 'Methode: PDF-Textebene → KI-Analyse' });
+        diagnostic('Sende extrahierten Text an KI', {
+          characters: doc.text.length,
+          preview: doc.text.slice(0, 1000),
+        });
         try {
           const ai = await runAnalysis({ data: { pdfText: doc.text } });
           found = cleanItems(Array.isArray(ai) ? ai : []);
-        } catch (aiError) {
+          methodCounts['ki'] = found.length;
+          diagnostic('KI-Analyse abgeschlossen', { positions: found.length });
           log.push({
-            state: 'warn',
-            label: `KI-Analyse nicht möglich (${aiError instanceof Error ? aiError.message : 'Fehler'})`,
+            state: found.length ? 'ok' : 'warn',
+            label: `KI-Analyse: ${found.length} Positionen`,
+          });
+        } catch (aiError) {
+          const reason = aiError instanceof Error ? aiError.message : String(aiError);
+          methodCounts['ki'] = 0;
+          console.error('[LV-Import] KI-Analyse fehlgeschlagen', aiError);
+          log.push({
+            state: 'error',
+            label: `KI-Analyse fehlgeschlagen. Grund: ${reason}`,
           });
         }
-        if (found.length === 0) found = cleanItems(itemsFromText(doc.text));
+        if (found.length === 0) {
+          found = cleanItems(itemsFromText(doc.text));
+          methodCounts['regelbasiert'] = found.length;
+          diagnostic('Methode: regelbasierter Fallback', { positions: found.length });
+          log.push({
+            state: found.length ? 'ok' : 'warn',
+            label: `Regelbasierter Fallback: ${found.length} Positionen`,
+          });
+        }
       }
 
-      // 3) Gescanntes PDF ohne Textebene: Texterkennung (OCR) über das KI-Modell.
-      if (found.length === 0 && !doc.hasTextLayer && doc.kind === 'pdf') {
-        log.push({ state: 'warn', label: 'Keine Textebene – Scan-Erkennung (OCR) wird versucht' });
+      // 3) OCR auch bei unbrauchbarer/partieller Textebene versuchen.
+      if (found.length === 0 && doc.kind === 'pdf') {
+        log.push({
+          state: 'warn',
+          label: doc.hasTextLayer
+            ? 'Textebene ergab keine Positionen – OCR wird versucht'
+            : 'Keine brauchbare Textebene – OCR wird versucht',
+        });
+        diagnostic('Methode: OCR', { reason: doc.hasTextLayer ? 'Textebene ohne Positionen' : 'keine Textebene' });
         try {
           const ocr = await runScanAnalysis({
             data: {
@@ -90,17 +145,32 @@ export default function LvFormFiller() {
             },
           });
           found = cleanItems(Array.isArray(ocr) ? ocr : []);
-          if (found.length) log.push({ state: 'ok', label: 'Text per OCR erkannt' });
-        } catch (ocrError) {
+          methodCounts['ocr'] = found.length;
+          diagnostic('OCR abgeschlossen', { positions: found.length });
           log.push({
-            state: 'warn',
-            label: `OCR nicht möglich (${ocrError instanceof Error ? ocrError.message : 'Fehler'})`,
+            state: found.length ? 'ok' : 'warn',
+            label: `OCR: ${found.length} Positionen`,
+          });
+        } catch (ocrError) {
+          const reason = ocrError instanceof Error ? ocrError.message : String(ocrError);
+          methodCounts['ocr'] = 0;
+          console.error('[LV-Import] OCR fehlgeschlagen', ocrError);
+          log.push({
+            state: 'error',
+            label: `OCR fehlgeschlagen. Grund: ${reason}`,
           });
         }
       }
 
       if (found.length === 0) {
-        log.push({ state: 'warn', label: 'LV-Struktur nicht eindeutig erkannt' });
+        const attempted = Object.entries(methodCounts)
+          .map(([method, count]) => `${method}: ${count}`)
+          .join(', ');
+        const reason = doc.text.trim().length === 0
+          ? 'Die Datei enthält keine extrahierbare Textebene und OCR lieferte keine Positionen.'
+          : `Keine Methode lieferte eine Position (${attempted || 'keine Erkennungsmethode anwendbar'}).`;
+        diagnostic('Finale Positionsliste ist leer', { reason, methodCounts });
+        log.push({ state: 'warn', label: `Keine eindeutige LV-Struktur erkannt. Grund: ${reason}` });
         setSteps(log);
         toast.warning('LV-Struktur nicht eindeutig erkannt', {
           id: toastId,
@@ -112,6 +182,7 @@ export default function LvFormFiller() {
       }
 
       log.push({ state: 'ok', label: `${found.length} Positionen erkannt` });
+      diagnostic('Finale Positionsliste', { positions: found.length, methodCounts });
       setSteps(log);
       setItems(found);
       toast.success('Analyse abgeschlossen', {
@@ -120,7 +191,8 @@ export default function LvFormFiller() {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setSteps([...log, { state: 'warn', label: `Analyse fehlgeschlagen: ${message}` }]);
+      console.error('[LV-Import] Dokumentanalyse abgebrochen', err);
+      setSteps([...log, { state: 'error', label: message }]);
       toast.error('Analyse fehlgeschlagen', {
         id: toastId,
         description: `Beim Analysieren der Datei ist ein Fehler aufgetreten: ${message}. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support.`,
@@ -203,9 +275,15 @@ export default function LvFormFiller() {
             {steps.map((step, i) => (
               <li
                 key={i}
-                className={step.state === 'ok' ? 'text-green-700' : 'text-amber-700'}
+                className={
+                  step.state === 'ok'
+                    ? 'text-green-700'
+                    : step.state === 'error'
+                      ? 'text-red-700'
+                      : 'text-amber-700'
+                }
               >
-                {step.state === 'ok' ? '✓' : '⚠'} {step.label}
+                {step.state === 'ok' ? '✓' : step.state === 'error' ? '✗' : '⚠'} {step.label}
               </li>
             ))}
           </ul>

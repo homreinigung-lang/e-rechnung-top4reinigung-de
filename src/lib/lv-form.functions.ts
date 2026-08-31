@@ -82,23 +82,39 @@ async function runLvExtraction(userContent: unknown): Promise<LvFormItem[]> {
     }),
   });
 
-  if (res.status === 429) throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
-  if (res.status === 402) throw new Error("KI-Guthaben aufgebraucht.");
-  if (!res.ok) throw new Error(`Analyse fehlgeschlagen (${res.status}).`);
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const body = (await res.json()) as { message?: string; error?: { message?: string } | string };
+      detail = body.message ?? (typeof body.error === "string" ? body.error : body.error?.message) ?? "";
+    } catch {
+      detail = await res.text().catch(() => "");
+    }
+    const reason = detail.trim() ? `: ${detail.trim()}` : "";
+    if (res.status === 429) throw new Error(`KI-Limit erreicht. Bitte später erneut versuchen${reason}`);
+    if (res.status === 402) throw new Error(`KI-Guthaben aufgebraucht${reason}`);
+    if (res.status === 401) throw new Error(`KI-Dienst ist nicht korrekt konfiguriert${reason}`);
+    if (res.status === 403) throw new Error(`KI-Analyse ist für diesen Arbeitsbereich gesperrt${reason}`);
+    throw new Error(`KI-Analyse fehlgeschlagen (${res.status})${reason}`);
+  }
 
   const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const raw = json.choices?.[0]?.message?.content ?? "";
   const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return [];
+  if (!match) throw new Error("Die KI-Antwort enthielt kein auswertbares JSON.");
 
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(match[0]) as Record<string, unknown>;
-  } catch {
-    return [];
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Die KI-Antwort konnte nicht als JSON gelesen werden: ${reason}`);
   }
 
-  const items = Array.isArray(parsed["items"]) ? (parsed["items"] as Record<string, unknown>[]) : [];
+  if (!Array.isArray(parsed["items"])) {
+    throw new Error('Die KI-Antwort enthält kein Feld "items".');
+  }
+  const items = parsed["items"] as Record<string, unknown>[];
   return items
     .map((i): LvFormItem => ({
       item_number: String(i["item_number"] ?? "").trim(),
@@ -114,13 +130,40 @@ async function runLvExtraction(userContent: unknown): Promise<LvFormItem[]> {
 export const analyzeLvText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { pdfText: string }) => {
-    const text = String(input?.pdfText ?? "").slice(0, 120_000);
+    const text = String(input?.pdfText ?? "").slice(0, 400_000);
     if (!text.trim()) throw new Error("Die Datei enthält keinen lesbaren Text.");
     return { pdfText: text };
   })
-  .handler(async ({ data }) =>
-    runLvExtraction(`Extrahiere alle LV-Positionen aus diesem Text:\n\n${data.pdfText}`),
-  );
+  .handler(async ({ data }) => {
+    const chunks = data.pdfText.length <= 45_000
+      ? [data.pdfText]
+      : data.pdfText
+          .split(/(?=--- Seite \d+ ---)/)
+          .reduce<string[]>((parts, page) => {
+            const last = parts.at(-1);
+            if (last !== undefined && last.length + page.length <= 45_000) {
+              parts[parts.length - 1] = `${last}\n${page}`;
+            } else if (page.length > 45_000) {
+              for (let offset = 0; offset < page.length; offset += 45_000) {
+                parts.push(page.slice(offset, offset + 45_000));
+              }
+            } else {
+              parts.push(page);
+            }
+            return parts;
+          }, []);
+
+    const extracted: LvFormItem[] = [];
+    for (let index = 0; index < chunks.length; index++) {
+      const chunk = chunks[index];
+      if (!chunk?.trim()) continue;
+      const result = await runLvExtraction(
+        `Textabschnitt ${index + 1} von ${chunks.length}. Extrahiere alle LV-Positionen nur aus diesem Text:\n\n${chunk}`,
+      );
+      extracted.push(...result);
+    }
+    return extracted;
+  });
 
 /**
  * Analysiert ein gescanntes PDF (ohne Textebene) direkt als Dokument –

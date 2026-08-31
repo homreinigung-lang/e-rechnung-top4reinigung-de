@@ -29,47 +29,77 @@ export type ExtractResult = {
   rows: string[][];
   /** PDF mit brauchbarer Textebene? */
   hasTextLayer: boolean;
+  /** Zahl der tatsächlich verarbeiteten PDF-Seiten. */
+  pageCount?: number;
 };
 
 async function loadPdfjs() {
-  const pdfjs = await import("pdfjs-dist");
-  const worker = await import("pdfjs-dist/build/pdf.worker.mjs?url");
-  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  const useLegacyBuild = typeof DOMMatrix === "undefined";
+  const pdfjs = useLegacyBuild
+    ? await import("pdfjs-dist/legacy/build/pdf.mjs")
+    : await import("pdfjs-dist");
+  if (!useLegacyBuild) {
+    const worker = await import("pdfjs-dist/build/pdf.worker.mjs?url");
+    pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  }
   return pdfjs;
 }
 
 /** Liest den Text eines PDFs zeilenweise (Positionen bleiben in einer Zeile). */
-async function readPdfText(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const pdfjs = await loadPdfjs();
-  const doc = await pdfjs.getDocument({ data: bytes.slice() }).promise;
-  const out: string[] = [];
-  const maxPages = Math.min(doc.numPages, 60);
-  for (let p = 1; p <= maxPages; p++) {
-    const page = await doc.getPage(p);
-    const content = await page.getTextContent();
-    const pieces = content.items
-      .map((raw) => {
-        const item = raw as { str?: string; transform?: number[] };
-        const t = item.transform ?? [];
-        return { text: String(item.str ?? ""), x: Number(t[4] ?? 0), y: Number(t[5] ?? 0) };
-      })
-      .filter((piece) => piece.text.trim().length > 0);
+async function readPdfText(file: File): Promise<{ text: string; pageCount: number }> {
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const pdfjs = await loadPdfjs();
+    const doc = await pdfjs.getDocument({ data: bytes.slice() }).promise;
+    const out: string[] = [];
 
-    const lines: { y: number; parts: { x: number; text: string }[] }[] = [];
-    for (const piece of pieces) {
-      const line = lines.find((l) => Math.abs(l.y - piece.y) <= 2.5);
-      if (line) line.parts.push(piece);
-      else lines.push({ y: piece.y, parts: [piece] });
+    // Jede Seite verarbeiten. Die frühere 60-Seiten-Grenze ließ lange LVs unvollständig.
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const content = await page.getTextContent();
+      const pieces = content.items
+        .map((raw) => {
+          const item = raw as { str?: string; transform?: number[]; width?: number };
+          const t = item.transform ?? [];
+          return {
+            text: String(item.str ?? "").trim(),
+            x: Number(t[4] ?? 0),
+            y: Number(t[5] ?? 0),
+            width: Math.max(0, Number(item.width ?? 0)),
+          };
+        })
+        .filter((piece) => piece.text.length > 0);
+
+      const lines: { y: number; parts: typeof pieces }[] = [];
+      for (const piece of pieces) {
+        let line = lines.find((candidate) => Math.abs(candidate.y - piece.y) <= 2.5);
+        if (!line) {
+          line = { y: piece.y, parts: [] };
+          lines.push(line);
+        }
+        line.parts.push(piece);
+      }
+      lines.sort((a, b) => b.y - a.y);
+      out.push(`--- Seite ${p} ---`);
+      for (const line of lines) {
+        line.parts.sort((a, b) => a.x - b.x);
+        let rendered = "";
+        let previousEnd = 0;
+        for (const part of line.parts) {
+          const gap = rendered ? part.x - previousEnd : 0;
+          // Große horizontale Abstände als Spaltengrenze erhalten; das hilft KI und Fallback.
+          rendered += `${gap > 16 ? " | " : rendered ? " " : ""}${part.text}`;
+          previousEnd = Math.max(previousEnd, part.x + part.width);
+        }
+        if (rendered.trim()) out.push(rendered.replace(/[ \t]+/g, " ").trim());
+      }
+      out.push("");
     }
-    lines.sort((a, b) => b.y - a.y);
-    for (const line of lines) {
-      line.parts.sort((a, b) => a.x - b.x);
-      out.push(line.parts.map((p) => p.text).join(" ").replace(/\s+/g, " ").trim());
-    }
-    out.push("");
+    return { text: out.join("\n").trim(), pageCount: doc.numPages };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`PDF-Textextraktion fehlgeschlagen. Grund: ${reason}`);
   }
-  return out.join("\n").trim();
 }
 
 /** Trennt eine CSV-Zeile an ; , oder Tab (das häufigste Trennzeichen gewinnt). */
@@ -156,8 +186,14 @@ export async function extractDocument(file: File): Promise<ExtractResult> {
     return { kind: rows.length ? "table" : "text", rows, text, hasTextLayer: text.trim().length > 0 };
   }
 
-  const text = await readPdfText(file);
-  return { kind: "pdf", rows: [], text, hasTextLayer: text.replace(/\s/g, "").length >= 60 };
+  const pdf = await readPdfText(file);
+  return {
+    kind: "pdf",
+    rows: [],
+    text: pdf.text,
+    hasTextLayer: pdf.text.replace(/--- Seite \d+ ---|\s/g, "").length >= 60,
+    pageCount: pdf.pageCount,
+  };
 }
 
 const HEAD_PATTERNS: { key: keyof LvImportItem; words: string[] }[] = [
@@ -232,8 +268,30 @@ export function itemsFromRows(rows: string[][]): LvImportItem[] {
   return items;
 }
 
+const POSITION_NUMBER = String.raw`\d{1,4}(?:[.\-]\d{1,4}){0,5}`;
 const UNIT_WORDS =
-  "m²|m2|qm|m³|m3|lfm|lfdm|m|stk|stück|st|psch|pausch|pauschal|std|h|monat|mon|jahr|kg|l|ltr|pos|einh";
+  String.raw`m²|m2|qm|m³|m3|lfdm|lfm|stück|stk\.?|std\.?|stunden?|pauschal(?:e)?|psch\.?|monat(?:e)?|mon\.?|jahre?|kg|ltr\.?|liter|etage(?:n)?|pos\.?|einh\.?|h|m`;
+
+const POSITION_START_RE = new RegExp(String.raw`^\s*(${POSITION_NUMBER})[.)]?\s+(.*)$`, "i");
+const QUANTITY_UNIT_RE = new RegExp(
+  String.raw`(?:^|[|\s])([+-]?(?:\d{1,3}(?:[.\s]\d{3})+|\d+)(?:,\d+|\.\d{1,2})?)\s*(${UNIT_WORDS})(?=$|[|\s,;])`,
+  "i",
+);
+const UNIT_QUANTITY_RE = new RegExp(
+  String.raw`(?:^|[|\s])(${UNIT_WORDS})\s+([+-]?(?:\d{1,3}(?:[.\s]\d{3})+|\d+)(?:,\d+|\.\d{1,2})?)(?=$|[|\s,;])`,
+  "i",
+);
+
+function isRepeatedFurniture(line: string): boolean {
+  const normalized = line.toLowerCase();
+  return (
+    /^--- seite \d+ ---$/.test(normalized) ||
+    /^(seite|page)\s+\d+(\s+von\s+\d+)?$/.test(normalized) ||
+    /^(leistungsverzeichnis|ausschreibung|positionsnummer|oz\s+beschreibung|menge\s+einheit)/.test(
+      normalized,
+    )
+  );
+}
 
 /**
  * Regelbasierte Erkennung direkt aus PDF-Text: „01.0010  Reinigung …  1.250,00  m²".
@@ -241,39 +299,53 @@ const UNIT_WORDS =
  */
 export function itemsFromText(text: string): LvImportItem[] {
   const items: LvImportItem[] = [];
-  const lineRe = new RegExp(
-    String.raw`^\s*(\d{1,3}(?:[.\-]\d{1,4}){0,3}|\d{1,4})[.)]?\s+(.{4,200}?)\s+([\d.]+,\d+|\d+)\s*(${UNIT_WORDS})\b`,
-    "i",
-  );
-  const altRe = new RegExp(
-    String.raw`^\s*(\d{1,3}(?:[.\-]\d{1,4}){0,3}|\d{1,4})[.)]?\s+(.{4,200}?)\s+(${UNIT_WORDS})\s+([\d.]+,\d+|\d+)\b`,
-    "i",
-  );
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .filter(Boolean);
 
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(/\s+/g, " ").trim();
-    if (line.length < 8) continue;
-    const m = lineRe.exec(line);
-    if (m) {
-      items.push({
-        item_number: m[1] ?? "",
-        description: (m[2] ?? "").trim(),
-        quantity: toNumber(m[3] ?? ""),
-        unit: (m[4] ?? "").trim(),
-        unit_price: 0,
-      });
-      continue;
+  for (let index = 0; index < lines.length; index++) {
+    const firstLine = lines[index] ?? "";
+    const start = POSITION_START_RE.exec(firstLine);
+    if (!start || isRepeatedFurniture(firstLine)) continue;
+
+    const block = [start[2] ?? ""];
+    let lookAhead = index + 1;
+    // Mengen/Einheiten und umgebrochene Beschreibungen stehen in PDFs häufig in Folgezeilen.
+    while (lookAhead < lines.length && lookAhead <= index + 8) {
+      const next = lines[lookAhead] ?? "";
+      // Eine reine Mengenzeile wie „2.400,50 m²“ ist keine neue Position.
+      if (QUANTITY_UNIT_RE.test(next) || UNIT_QUANTITY_RE.test(next)) {
+        block.push(next);
+        lookAhead++;
+        break;
+      }
+      if (POSITION_START_RE.test(next) || /^--- Seite \d+ ---$/i.test(next)) break;
+      if (!isRepeatedFurniture(next)) block.push(next);
+      lookAhead++;
     }
-    const a = altRe.exec(line);
-    if (a) {
-      items.push({
-        item_number: a[1] ?? "",
-        description: (a[2] ?? "").trim(),
-        quantity: toNumber(a[4] ?? ""),
-        unit: (a[3] ?? "").trim(),
-        unit_price: 0,
-      });
-    }
+
+    const joined = block.join(" ").replace(/\s*\|\s*/g, " | ").trim();
+    const quantityUnit = QUANTITY_UNIT_RE.exec(joined);
+    const unitQuantity = quantityUnit ? null : UNIT_QUANTITY_RE.exec(joined);
+    const quantity = quantityUnit?.[1] ?? unitQuantity?.[2] ?? "";
+    const unit = quantityUnit?.[2] ?? unitQuantity?.[1] ?? "";
+    if (!quantity || !unit) continue;
+
+    const matchIndex = quantityUnit?.index ?? unitQuantity?.index ?? joined.length;
+    const description = joined
+      .slice(0, matchIndex)
+      .replace(/\s*\|\s*$/, "")
+      .trim();
+    if (description.length < 3 || /^(summe|gesamt|übertrag)$/i.test(description)) continue;
+
+    items.push({
+      item_number: start[1] ?? "",
+      description,
+      quantity: toNumber(quantity),
+      unit: unit.replace(/\.$/, "").trim(),
+      unit_price: 0,
+    });
   }
   return items;
 }
