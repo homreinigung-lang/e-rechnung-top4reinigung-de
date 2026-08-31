@@ -51,6 +51,8 @@ import {
 import {
   ArrowRightLeft,
   BadgeEuro,
+  Ban,
+
   BellRing,
   Check,
   ClipboardCheck,
@@ -357,13 +359,33 @@ function DokumenteListe() {
   // Stabile, lückenlose Standard-Sortierung nach Belegnummer (absteigend = neueste zuerst).
   // Die Nummern sind nullgestellt (z. B. RE-2026-0001), daher ist ein lexikalischer
   // Sort identisch mit einer numerischen Sortierung und bleibt über Jahre hinweg stabil.
-  const list = documents
+  const allOfTab = documents
     .filter((d) => d.type === tab)
     .slice()
     .sort((a, b) => String(b.number).localeCompare(String(a.number), "de-DE"));
 
   // Belegnummern-Nachschlagewerk: Stornobelege zeigen die Original-Rechnungsnummer.
   const numberById = new Map(documents.map((d) => [d.id, String(d.number)]));
+
+  // Stornobelege werden der Originalrechnung als Unterpunkt zugeordnet und
+  // erscheinen nicht als eigene Zeile in der Hauptliste.
+  const stornoByOriginal = new Map<string, (typeof allOfTab)[number][]>();
+  for (const d of allOfTab) {
+    const r = d as unknown as Record<string, unknown>;
+    const parent = r["is_storno"] ? String(r["cancels_document_id"] ?? "") : "";
+    if (!parent) continue;
+    const bucket = stornoByOriginal.get(parent) ?? [];
+    bucket.push(d);
+    stornoByOriginal.set(parent, bucket);
+  }
+  const parentIds = new Set(allOfTab.map((d) => d.id));
+  const list = allOfTab.filter((d) => {
+    const r = d as unknown as Record<string, unknown>;
+    if (!r["is_storno"]) return true;
+    // Verwaiste Stornobelege (Original nicht sichtbar) bleiben sichtbar.
+    return !parentIds.has(String(r["cancels_document_id"] ?? ""));
+  });
+
 
 
   return (
@@ -436,10 +458,13 @@ function DokumenteListe() {
                 const due = isStorno ? null : dueInfo(d.due_date, d.status);
                 const level = Number(r["reminder_level"] ?? 0);
                 const deletable = !isLockedDocument(r);
+                const stornoChildren = stornoByOriginal.get(d.id) ?? [];
                 return (
-                  <li key={d.id} className="flex items-center gap-2 px-5 py-4 hover:bg-muted/60">
+                  <li key={d.id} className="px-5 py-4 hover:bg-muted/60">
+                    <div className="flex items-center gap-2">
                     <Link
                       to="/dokumente/$id"
+
                       params={{ id: d.id }}
                       className="flex flex-1 flex-wrap items-center justify-between gap-3"
                     >
@@ -560,7 +585,34 @@ function DokumenteListe() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
+
+                    {stornoChildren.length > 0 && (
+                      <ul className="mt-2 space-y-1 border-l-2 border-destructive/30 pl-4">
+                        {stornoChildren.map((s) => (
+                          <li key={s.id}>
+                            <Link
+                              to="/dokumente/$id"
+                              params={{ id: s.id }}
+                              className="flex flex-wrap items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                            >
+                              <span className="flex flex-wrap items-center gap-2">
+                                <Ban className="size-3.5 text-destructive" />
+                                <span className="font-medium">Stornorechnung {s.number}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDate(s.issue_date)}
+                                </span>
+                              </span>
+                              <span className="font-medium text-destructive">
+                                {formatMoney(Number(s.total))}
+                              </span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
+
                 );
               })}
             </ul>

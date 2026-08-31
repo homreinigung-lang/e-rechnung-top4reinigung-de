@@ -1,4 +1,13 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import {
+  PDFDocument,
+  StandardFonts,
+  degrees,
+  rgb,
+  type PDFFont,
+  type PDFPage,
+  type RGB,
+} from "pdf-lib";
+
 
 /**
  * Serverseitig/bibliotheksbasierte PDF-Erzeugung (pdf-lib) – kein Browser-Druck.
@@ -57,6 +66,9 @@ export type PdfDocData = {
   paymentLines?: string[] | undefined;
   qrPayload?: string | null | undefined;
   footer: Array<{ heading: string; lines: string[] }>;
+  /** Diagonaler Stempel über dem gesamten Beleg, z. B. "Storniert". */
+  watermark?: string | undefined;
+
 };
 
 type Ctx = {
@@ -684,9 +696,24 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   }
   ctx.y = M_Y;
 
-
-
-
+  // ---- Stempel/Wasserzeichen (z. B. "STORNIERT") auf jeder Seite ----------
+  if (d.watermark) {
+    const label = clean(d.watermark).toUpperCase();
+    const size = Math.min(72, (CONTENT_W * 1.15) / Math.max(1, widthOf(bold, 1, label)));
+    const w = widthOf(bold, size, label);
+    for (const page of pdf.getPages()) {
+      page.drawText(label, {
+        x: (PAGE_W - w * Math.cos(Math.PI / 6)) / 2,
+        y: (PAGE_H - w * Math.sin(Math.PI / 6)) / 2,
+        size,
+        font: bold,
+        color: rgb(0.86, 0.15, 0.15),
+        opacity: 0.16,
+        rotate: degrees(30),
+      });
+    }
+  }
 
   return pdf.save();
+
 }
