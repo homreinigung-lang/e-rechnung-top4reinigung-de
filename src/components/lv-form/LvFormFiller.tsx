@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
+import { toast } from 'sonner';
 import { analyzeLvText } from '@/lib/lv-form.functions';
 
 interface LvItem {
@@ -31,23 +32,42 @@ export default function LvFormFiller() {
     if (!file) return;
 
     setLoading(true);
+    const toastId = toast.loading('Die KI analysiert Ihr Leistungsverzeichnis…');
     try {
       const text = await file.text();
-      console.log('[LV-Analyse] Datei gelesen, Zeichen:', text.length);
+
+      if (!text || text.trim().length < 20) {
+        toast.warning('Keine Textebene gefunden', {
+          id: toastId,
+          description: 'Die Datei scheint ein reines Scan-Bild zu sein. Bitte laden Sie ein PDF mit Textebene oder eine TXT-Datei hoch.',
+          duration: 8000,
+        });
+        return;
+      }
+
       const rawResponse = await runAnalysis({ data: { pdfText: text } });
-      console.log('[LV-Analyse] Roh-Antwort:', rawResponse);
 
       const parsedItems = Array.isArray(rawResponse) ? rawResponse : [];
       if (parsedItems.length === 0) {
-        console.warn('[LV-Analyse] Keine Positionen in der Antwort gefunden.');
-        alert('Die KI konnte in dieser Datei keine LV-Positionen erkennen. Bitte prüfen Sie, ob das Dokument eine Textebene enthält (kein reines Scan-Bild).');
+        toast.warning('Keine Positionen erkannt', {
+          id: toastId,
+          description: 'Die KI konnte in dieser Datei keine LV-Positionen finden. Bitte prüfen Sie, ob das Dokument ein gültiges Leistungsverzeichnis mit Textebene enthält.',
+          duration: 8000,
+        });
         return;
       }
       setItems(parsedItems);
+      toast.success('Analyse abgeschlossen', {
+        id: toastId,
+        description: `${parsedItems.length} Positionen wurden erfolgreich erkannt und übernommen.`,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[LV-Analyse] Fehler:', message, err);
-      alert(`Ein Fehler ist beim Analysieren der Datei aufgetreten: ${message}`);
+      toast.error('Analyse fehlgeschlagen', {
+        id: toastId,
+        description: `Beim Analysieren der Datei ist ein Fehler aufgetreten: ${message}. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support.`,
+        duration: 8000,
+      });
     } finally {
       setLoading(false);
       e.target.value = '';
@@ -57,6 +77,9 @@ export default function LvFormFiller() {
   const handleDeleteItem = (index: number) => {
     const updatedItems = items.filter((_, i) => i !== index);
     setItems(updatedItems);
+    toast.success('Position gelöscht', {
+      description: 'Die Position wurde aus dem Leistungsverzeichnis entfernt.',
+    });
   };
 
   const handleStartEdit = (index: number) => {
@@ -71,6 +94,9 @@ export default function LvFormFiller() {
     updatedItems[index] = editForm;
     setItems(updatedItems);
     setEditingIndex(null);
+    toast.success('Änderungen gespeichert', {
+      description: `Position ${editForm.item_number || index + 1} wurde aktualisiert.`,
+    });
   };
 
   const grandTotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
