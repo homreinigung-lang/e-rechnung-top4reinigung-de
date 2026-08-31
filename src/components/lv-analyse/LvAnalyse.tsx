@@ -54,6 +54,16 @@ import {
 } from '@/lib/lv-analyse/types';
 import { parseFrequency } from '@/lib/lv-analyse/normalize';
 import {
+  CALC_STATUS_LABELS,
+  NO_OWN_PRICE_HINT,
+  NO_OWN_PRICE_LABEL,
+  calcStatus,
+  emptyCalculation,
+  hasOwnPrice,
+  offerPrice,
+  summarizeOwnCalculation,
+} from '@/lib/lv-analyse/calculation';
+import {
   buildCsv,
   buildPdfReport,
   buildXlsx,
@@ -126,6 +136,7 @@ export default function LvAnalyse() {
     setSteps([{ state: 'running', label: `„${file.name}" wird verarbeitet …` }]);
     setResult(null);
     setItems([]);
+    setPriceInputs(DEFAULT_PRICE_INPUTS);
     const toastId = toast.loading('Ausschreibung wird analysiert …');
     try {
       const analysis = await analyseLvFile(file, {
@@ -186,6 +197,7 @@ export default function LvAnalyse() {
       ...prev,
       {
         id: `manual-${Date.now()}-${prev.length}`,
+        analysis_id: result?.analysisId ?? '',
         item_number: String(prev.length + 1),
         description: '',
         category: 'unterhaltsreinigung',
@@ -200,19 +212,28 @@ export default function LvAnalyse() {
         source_page: null,
         confidence_score: 1,
         source_method: 'manuell',
-        approved: true,
+        calculation: emptyCalculation(),
+        approved: false,
       },
     ]);
 
   const approveAll = () => {
-    setItems((prev) => prev.map((i) => ({ ...i, approved: true })));
-    toast.success('Alle Positionen freigegeben');
+    const open = items.filter((i) => !hasOwnPrice(i)).length;
+    setItems((prev) => prev.map((i) => (hasOwnPrice(i) ? { ...i, approved: true } : i)));
+    if (open > 0) {
+      toast.warning('Kalkulierte Positionen freigegeben', {
+        description: `${open} Positionen ohne eigenen Einheitspreis bleiben offen. ${NO_OWN_PRICE_HINT}`,
+      });
+    } else {
+      toast.success('Alle Positionen freigegeben');
+    }
   };
 
   const approvedCount = items.filter((i) => i.approved).length;
   const reviewCount = items.filter((i) => needsReview(i)).length;
   const exportReady = canExport(result, items);
-  const exportItems = selectExportItems(items);
+  const exportItems = selectExportItems(items, result?.analysisId ?? null);
+  const ownSummary = useMemo(() => summarizeOwnCalculation(items), [items]);
   const exportDisabled = !exportReady || exportItems.length === 0 || exporting;
   const exportHint = !result
     ? 'Bitte zuerst eine Ausschreibung analysieren.'
@@ -221,6 +242,9 @@ export default function LvAnalyse() {
       : exportItems.length === 0
         ? 'Bitte zuerst mindestens eine Position prüfen und freigeben. Exportiert werden nur freigegebene Positionen.'
         : `${exportItems.length} freigegebene Positionen werden exportiert.`;
+
+  const updateCalc = (item: LvNormalizedItem, patch: Partial<LvNormalizedItem['calculation']>) =>
+    update(item.id, { calculation: { ...item.calculation, ...patch } });
 
   const runExport = async (kind: 'csv' | 'xlsx' | 'pdf') => {
     if (!result) return;
@@ -416,19 +440,32 @@ export default function LvAnalyse() {
               <Table className="text-xs">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-20">Position</TableHead>
+                    <TableHead colSpan={10} className="border-r bg-muted/60 text-center font-semibold">
+                      Anforderungen aus der Ausschreibung
+                    </TableHead>
+                    <TableHead colSpan={7} className="bg-primary/10 text-center font-semibold">
+                      Eigene Kalkulation
+                    </TableHead>
+                    <TableHead className="w-24" />
+                  </TableRow>
+                  <TableRow>
+                    <TableHead className="w-20">Pos.</TableHead>
                     <TableHead className="min-w-56">Beschreibung</TableHead>
                     <TableHead className="w-40">Kategorie</TableHead>
-                    <TableHead className="w-20 text-right">Menge</TableHead>
+                    <TableHead className="w-24 text-right">Geforderte Menge</TableHead>
                     <TableHead className="w-20">Einheit</TableHead>
                     <TableHead className="w-32">Intervall</TableHead>
                     <TableHead className="w-24 text-right">Fläche (m²)</TableHead>
-                    <TableHead className="w-24 text-right">Arbeitsstunden</TableHead>
-                    <TableHead className="w-28 text-right">Einheitspreis (€)</TableHead>
-                    <TableHead className="w-28 text-right">Gesamtpreis (€)</TableHead>
-                    <TableHead className="w-20 text-right">MwSt. (%)</TableHead>
+                    <TableHead className="w-24 text-right">Geforderte Arbeitsstunden</TableHead>
                     <TableHead className="w-16 text-right">Seite</TableHead>
-                    <TableHead className="w-24 text-right">Sicherheitswert</TableHead>
+                    <TableHead className="w-24 border-r text-right">Sicherheitswert</TableHead>
+                    <TableHead className="w-28 text-right">Eigener Einheitspreis (€)</TableHead>
+                    <TableHead className="w-28 text-right">Eigene Arbeitskosten (€)</TableHead>
+                    <TableHead className="w-28 text-right">Materialkosten (€)</TableHead>
+                    <TableHead className="w-28 text-right">Gemeinkosten (€)</TableHead>
+                    <TableHead className="w-20 text-right">Gewinn (%)</TableHead>
+                    <TableHead className="w-28 text-right">Angebotspreis (€)</TableHead>
+                    <TableHead className="w-40">Kalkulationsstatus</TableHead>
                     <TableHead className="w-24">Freigabe</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -472,15 +509,7 @@ export default function LvAnalyse() {
                           </select>
                         </TableCell>
                         <TableCell>
-                          <NumCell
-                            value={item.quantity}
-                            onChange={(v) =>
-                              update(item.id, {
-                                quantity: v,
-                                total_price: v !== null && item.unit_price !== null ? round2(v * item.unit_price) : item.total_price,
-                              })
-                            }
-                          />
+                          <NumCell value={item.quantity} onChange={(v) => update(item.id, { quantity: v })} />
                         </TableCell>
                         <TableCell>
                           <Input
@@ -507,31 +536,67 @@ export default function LvAnalyse() {
                         <TableCell>
                           <NumCell value={item.working_hours} onChange={(v) => update(item.id, { working_hours: v })} />
                         </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={item.unit_price}
-                            onChange={(v) =>
-                              update(item.id, {
-                                unit_price: v,
-                                total_price: v !== null && item.quantity !== null ? round2(v * item.quantity) : item.total_price,
-                              })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell value={item.total_price} onChange={(v) => update(item.id, { total_price: v })} />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell value={item.vat_rate} onChange={(v) => update(item.id, { vat_rate: v })} />
-                        </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {item.source_page ?? (
                             <span className="text-[10px] text-amber-700">{REVIEW_LABEL}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="border-r text-right tabular-nums">
                           <Badge variant={item.confidence_score >= 0.7 ? 'secondary' : 'outline'}>
                             {Math.round(item.confidence_score * 100)} %
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <NumCell
+                            value={item.calculation.own_unit_price}
+                            onChange={(v) => updateCalc(item, { own_unit_price: v })}
+                          />
+                          {!hasOwnPrice(item) && (
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">{NO_OWN_PRICE_LABEL}</p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <NumCell
+                            value={item.calculation.labor_cost}
+                            onChange={(v) => updateCalc(item, { labor_cost: v })}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <NumCell
+                            value={item.calculation.material_cost}
+                            onChange={(v) => updateCalc(item, { material_cost: v })}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <NumCell
+                            value={item.calculation.overhead_cost}
+                            onChange={(v) => updateCalc(item, { overhead_cost: v })}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <NumCell
+                            value={item.calculation.profit_percent}
+                            onChange={(v) => updateCalc(item, { profit_percent: v })}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {offerPrice(item) === null ? (
+                            <span className="text-[10px] text-muted-foreground">{NO_OWN_PRICE_HINT}</span>
+                          ) : (
+                            formatMoney(offerPrice(item) ?? 0)
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              calcStatus(item) === 'released'
+                                ? 'default'
+                                : calcStatus(item) === 'calculated_review'
+                                  ? 'secondary'
+                                  : 'outline'
+                            }
+                          >
+                            {CALC_STATUS_LABELS[calcStatus(item)]}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -542,7 +607,13 @@ export default function LvAnalyse() {
                               className="h-7 px-2"
                               title="Position freigeben"
                               aria-label="Position freigeben"
-                              onClick={() => update(item.id, { approved: !item.approved })}
+                              onClick={() => {
+                                if (!item.approved && !hasOwnPrice(item)) {
+                                  toast.error('Freigabe nicht möglich', { description: NO_OWN_PRICE_HINT });
+                                  return;
+                                }
+                                update(item.id, { approved: !item.approved });
+                              }}
                             >
                               <CheckCircle2 className="size-3" />
                             </Button>
@@ -592,17 +663,41 @@ export default function LvAnalyse() {
 
         {/* 4) Kostenanalyse */}
         <TabsContent value="cost" className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-4">
-            <Kpi label="Netto (Positionen)" value={formatMoney(cost.net)} />
-            <Kpi label={`MwSt ${formatNumber(cost.vatRate)} %`} value={formatMoney(cost.vat)} />
-            <Kpi label="Brutto" value={formatMoney(cost.gross)} />
-            <Kpi label="Jahresnetto" value={formatMoney(cost.annualNet)} />
-          </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">A. Anforderungen aus der Ausschreibung</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-4">
+              <Kpi label="Positionen" value={String(items.length)} />
+              <Kpi label="Gesamtfläche" value={`${formatNumber(area.totalArea)} m²`} />
+              <Kpi label="Geforderte Stunden" value={formatNumber(hours.totalHours)} />
+              <Kpi label="Ohne eigenen Preis" value={String(ownSummary.openItems)} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">B. Eigene Kalkulation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-4">
+                <Kpi label="Angebotssumme netto" value={formatMoney(ownSummary.net)} />
+                <Kpi label={`MwSt ${formatNumber(cost.vatRate)} %`} value={formatMoney(cost.vat)} />
+                <Kpi label="Brutto" value={formatMoney(cost.gross)} />
+                <Kpi label="Jahresnetto" value={formatMoney(ownSummary.annualNet)} />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {ownSummary.calculatedItems === 0
+                  ? NO_OWN_PRICE_HINT
+                  : `${ownSummary.calculatedItems} von ${items.length} Positionen kalkuliert. Die Gesamtsumme enthält ausschließlich eigene Preise.`}
+              </p>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">
-                Summen aus dem Dokument (Preisblatt)
+                Summen aus dem Dokument (Preisblatt) – nur zur Information
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -672,10 +767,10 @@ export default function LvAnalyse() {
           </div>
           <p className="text-sm text-muted-foreground">
             {price.deltaPercent === null
-              ? 'Im Dokument sind keine Preise hinterlegt – die Empfehlung basiert vollständig auf der eigenen Kalkulation.'
-              : `Die im Dokument enthaltenen Preise liegen ${formatNumber(price.deltaPercent)} % ${
+              ? 'Es wurden noch keine eigenen Preise eingetragen – die Empfehlung basiert vollständig auf den Kalkulationsparametern.'
+              : `Die eigene Positionskalkulation liegt ${formatNumber(price.deltaPercent)} % ${
                   price.deltaPercent >= 0 ? 'über' : 'unter'
-                } der eigenen Kalkulation (${formatMoney(price.documentAnnualNet)} pro Jahr).`}
+                } der Preisempfehlung (${formatMoney(price.documentAnnualNet)} pro Jahr).`}
           </p>
         </TabsContent>
 
