@@ -289,12 +289,17 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .from("documents")
     .update({
       converted_document_id: created.id,
-      ...(target === "order" ? { status: "accepted" } : {}),
+      // Angebote gelten mit der Umwandlung als angenommen.
+      ...(src.type === "quote" ? { status: "accepted" } : {}),
     } as never)
     .eq("id", sourceId);
 
   await logAudit(
-    target === "order" ? "quote_converted_order" : "order_converted_invoice",
+    target === "order"
+      ? "quote_converted_order"
+      : src.type === "quote"
+        ? "quote_converted_invoice"
+        : "order_converted_invoice",
     { id: sourceId, number: sourceNumber },
     { target, number },
   );
@@ -305,6 +310,12 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
 export async function convertQuoteToOrder(quoteId: string): Promise<string> {
   return convertDocument(quoteId, "order");
 }
+
+/** Angebot direkt in eine Rechnung (Entwurf) umwandeln – einmalige Dienstleistung. */
+export async function convertQuoteToInvoice(quoteId: string): Promise<string> {
+  return convertDocument(quoteId, "invoice");
+}
+
 
 /** Auftragsbestätigung in eine Rechnung (Entwurf) umwandeln. */
 export async function convertOrderToInvoice(orderId: string): Promise<string> {
