@@ -70,6 +70,8 @@ async function performAction(token: string, aktion: string): Promise<Response> {
         subject: "Ihr Zugang wurde freigeschaltet",
         text: body.text,
         html: body.html,
+        // Reine Info-Mail ohne Zugangs-Link: Bestätigungskopie an die Firmen-Adresse.
+        companyEmail: mail.OWNER_EMAIL,
       });
     } catch (e) {
       console.error("Willkommens-E-Mail fehlgeschlagen:", e);
@@ -88,6 +90,8 @@ async function performAction(token: string, aktion: string): Promise<Response> {
       subject: "Ihre Registrierung wurde abgelehnt",
       text: body.text,
       html: body.html,
+      // Reine Info-Mail: Bestätigungskopie an die Firmen-Adresse.
+      companyEmail: mail.OWNER_EMAIL,
     });
   } catch (e) {
     console.error("Ablehnungs-E-Mail fehlgeschlagen:", e);
