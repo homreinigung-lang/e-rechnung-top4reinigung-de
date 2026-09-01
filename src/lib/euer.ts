@@ -50,10 +50,19 @@ export function aggregateExpensesByCategory(expenses: EuerExpense[]): ExpenseCat
   return [...map.values()].sort((a, b) => b.net - a.net);
 }
 
-/** Entwürfe zählen nicht als Betriebseinnahme; Stornorechnungen mindern den Umsatz. */
+/**
+ * Nur tatsächlich gültige Rechnungen zählen als Betriebseinnahme –
+ * identisch zur Belegliste: keine Entwürfe, keine stornierten Rechnungen
+ * und keine Stornorechnungen (is_storno).
+ */
 export function isEuerIncome(doc: EuerDoc): boolean {
   const status = String(doc["status"] ?? "");
-  return doc["type"] === "invoice" && status !== "draft";
+  return (
+    doc["type"] === "invoice" &&
+    status !== "draft" &&
+    status !== "cancelled" &&
+    !doc["is_storno"]
+  );
 }
 
 /** Zeitraum-Filter auf Basis eines ISO-Datums (YYYY-MM-DD), inklusive Grenzen. */

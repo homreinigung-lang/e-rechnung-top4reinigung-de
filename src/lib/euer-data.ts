@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 /** Spalten, die für Auswertungen benötigt werden. */
 export const EUER_DOCUMENT_COLUMNS =
-  "id, type, number, status, issue_date, due_date, reminder_level, total, net_total, vat_amount, customer_name, customer_company";
+  "id, type, number, status, issue_date, due_date, reminder_level, total, net_total, vat_amount, customer_name, customer_company, is_storno";
 export const EUER_EXPENSE_COLUMNS =
   "id, expense_date, category, net_amount, vat_amount, gross_amount, supplier, document_number";
 

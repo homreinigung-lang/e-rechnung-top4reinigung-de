@@ -204,7 +204,14 @@ function AdminDashboard() {
 
   const docs = data?.docs ?? [];
   const expenses = data?.expenses ?? [];
-  const invoices = docs.filter((d) => d.type === "invoice" && d.status !== "cancelled");
+  // Wie in der Belegliste: Stornorechnungen (is_storno) tauchen weder im
+  // Zähler noch in Summen auf; stornierte Originale zählen nicht als Umsatz.
+  const invoices = docs.filter(
+    (d) =>
+      d.type === "invoice" &&
+      d.status !== "cancelled" &&
+      !(d as unknown as Record<string, unknown>)["is_storno"],
+  );
   const openTotal = invoices
     .filter((d) => d.status !== "paid")
     .reduce((sum, d) => sum + Number(d.total), 0);
