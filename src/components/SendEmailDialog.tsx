@@ -36,12 +36,19 @@ export function SendEmailDialog({
   onOpenChange,
   defaults,
   printAreaSelector = ".print-area",
+  buildPdfBytes,
   onSent,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaults: SendEmailDefaults;
   printAreaSelector?: string;
+  /**
+   * Bevorzugte PDF-Erzeugung (pdf-lib, A4 mit festen Rändern und
+   * Seitenumbruch-Regeln). Nur wenn sie fehlt, wird als Notlösung ein
+   * Screenshot der Druckansicht verwendet.
+   */
+  buildPdfBytes?: () => Promise<Uint8Array>;
   onSent?: () => void | Promise<void>;
 }) {
   const [to, setTo] = useState(defaults.to);
