@@ -203,12 +203,14 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .single();
   if (error) throw error;
 
-  const expected = target === "order" ? "quote" : "order";
-  if (src.type !== expected) {
+  // Angebot → Auftragsbestätigung, Auftragsbestätigung → Rechnung und
+  // (für einmalige Dienstleistungen) Angebot → Rechnung direkt.
+  const allowed = target === "order" ? ["quote"] : ["order", "quote"];
+  if (!allowed.includes(String(src.type))) {
     throw new Error(
       target === "order"
         ? "Nur Angebote können in eine Auftragsbestätigung umgewandelt werden."
-        : "Nur Auftragsbestätigungen können in eine Rechnung umgewandelt werden.",
+        : "Nur Angebote und Auftragsbestätigungen können in eine Rechnung umgewandelt werden.",
     );
   }
   const converted = (src as unknown as Record<string, unknown>)["converted_document_id"];
