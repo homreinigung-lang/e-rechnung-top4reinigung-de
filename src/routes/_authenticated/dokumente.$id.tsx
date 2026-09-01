@@ -2229,6 +2229,7 @@ function DokumentDetail() {
           companyName: String(settings?.["company_name"] ?? ""),
           companyEmail: String(settings?.["email"] ?? ""),
         }}
+        buildPdfBytes={async () => buildDocumentPdfBytes(await buildPdfData())}
         onSent={async () => {
           // Versand-Status verbindlich in der Datenbank setzen (auch für Angebote),
           // damit der Beleg in der Übersicht als "Versendet" erscheint.
