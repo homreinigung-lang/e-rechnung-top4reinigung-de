@@ -593,13 +593,17 @@ function AdminDashboard() {
         <div className="border-b px-5 py-4">
           <h2 className="font-semibold">Zuletzt erstellt</h2>
         </div>
-        {docs.length === 0 ? (
+        {docs.filter((d) => !(d as unknown as Record<string, unknown>)["is_storno"]).length ===
+        0 ? (
           <p className="px-5 py-10 text-center text-sm text-muted-foreground">
             Noch keine Dokumente vorhanden.
           </p>
         ) : (
           <ul className="divide-y">
-            {docs.slice(0, 8).map((d) => (
+            {docs
+              .filter((d) => !(d as unknown as Record<string, unknown>)["is_storno"])
+              .slice(0, 8)
+              .map((d) => (
               <li key={d.id}>
                 <Link
                   to="/dokumente/$id"
