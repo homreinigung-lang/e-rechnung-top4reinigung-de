@@ -742,10 +742,14 @@ interface AngebotsTabelleProps {
   };
   decline: (id: string, label: string) => void;
   convert: { mutate: (id: string) => void; isPending: boolean };
+  /** Angebot bzw. Auftragsbestätigung direkt in eine Rechnung umwandeln. */
+  toInvoice: { mutate: (id: string) => void; isPending: boolean };
   complete: { mutate: (id: string) => void; isPending: boolean };
   duplicate: { mutate: (id: string) => void };
   remove: { mutate: (id: string) => void };
   isLocked: (r: Record<string, unknown>) => boolean;
+  /** Nachschlagewerk für den erzeugten Folgebeleg (Nummer + Typ). */
+  followUp: (id: string) => { id: string; number: string; type: string } | null;
   /** Öffnet den gemeinsamen Lösch-Bestätigungsdialog (deleteTarget) aus DokumenteListe. */
   onDelete: (id: string, label: string) => void;
 }
