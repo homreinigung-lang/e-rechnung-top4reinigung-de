@@ -86,6 +86,9 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .select("*")
         .eq("user_id", access.user_id)
         .eq("type", "invoice")
+        // Wie in der Belegliste: keine Papierkorb-Belege, keine Stornorechnungen.
+        .is("deleted_at", null)
+        .eq("is_storno", false)
         .gte("issue_date", data.from)
         .lte("issue_date", data.to)
         .order("issue_date"),
