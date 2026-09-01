@@ -240,7 +240,7 @@ function chunkText(text: string, size = 45_000): string[] {
 /** Analysiert Ausschreibungstext (PDF-Textebene, CSV, Excel, GAEB). */
 export const analyseLvDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { text: string }) => {
+  .validator((input: { text: string }) => {
     const text = String(input?.text ?? "").slice(0, 400_000);
     if (!text.trim()) throw new Error("Die Datei enthält keinen lesbaren Text.");
     return { text };
@@ -266,7 +266,7 @@ export const analyseLvDocument = createServerFn({ method: "POST" })
 /** OCR-Analyse gescannter PDFs – die Texterkennung übernimmt das multimodale Modell. */
 export const analyseLvScan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { fileName: string; mimeType: string; base64: string }) => {
+  .validator((input: { fileName: string; mimeType: string; base64: string }) => {
     const base64 = String(input?.base64 ?? "");
     if (!base64) throw new Error("Die Datei konnte nicht gelesen werden.");
     if (base64.length > 20_000_000)
