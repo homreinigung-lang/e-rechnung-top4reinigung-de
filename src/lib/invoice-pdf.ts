@@ -741,7 +741,8 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
         });
       });
     });
-  }
+  });
+
   ctx.y = M_Y;
 
   // ---- Runder Gruppen-Stempel (Ring + Text als EINE Einheit, 45°) -------
