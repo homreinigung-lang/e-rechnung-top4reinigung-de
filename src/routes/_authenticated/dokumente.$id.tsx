@@ -451,6 +451,53 @@ function DokumentDetail() {
       }),
   });
 
+  // Entwurf automatisch sichern: Arbeit geht beim Schließen des Browsers nicht verloren.
+  useEffect(() => {
+    if (!data) return;
+    const current = data.doc as unknown as Record<string, unknown>;
+    if (isLockedDocument(current)) return;
+    if (Object.keys(form).length === 0) return;
+    const snapshot = JSON.stringify({ form, items });
+    if (!savedSnapshotRef.current) {
+      savedSnapshotRef.current = snapshot;
+      return;
+    }
+    if (savedSnapshotRef.current === snapshot) return;
+    const timer = setTimeout(() => {
+      void persistRef
+        .current()
+        .then(() => {
+          savedSnapshotRef.current = snapshot;
+          setAutoSavedAt(
+            new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+          );
+        })
+        .catch(() => {
+          /* Fehler zeigt der manuelle Speichern-Button */
+        });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [form, items, data]);
+
+  // Bearbeitungsmodus merken, damit man an derselben Stelle weiterarbeitet.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `doc-edit:${id}`;
+    if (bearbeiten) {
+      window.localStorage.setItem(key, "1");
+      return;
+    }
+    if (window.localStorage.getItem(key) === "1") setEditMode(true);
+  }, [id, bearbeiten]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `doc-edit:${id}`;
+    if (editMode) window.localStorage.setItem(key, "1");
+    else window.localStorage.removeItem(key);
+  }, [id, editMode]);
+
+
   const duplicate = useMutation({
     mutationFn: async () => {
       const { data: auth } = await supabase.auth.getUser();
