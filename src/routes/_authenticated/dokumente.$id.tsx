@@ -2082,22 +2082,6 @@ function DokumentDetail() {
 
         {!isInvoice && (
           <div className="space-y-2">
-            <Label htmlFor="title">Titel (optional)</Label>
-            <Input
-              id="title"
-              value={String(form["title"] ?? "")}
-              onChange={(e) => setField("title", e.target.value)}
-              placeholder="z. B. Grundreinigung – Komplett Haus"
-            />
-            <p className="text-xs text-muted-foreground">
-              Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
-              bisher automatisch erzeugt.
-            </p>
-          </div>
-        )}
-
-        {!isInvoice && (
-          <div className="space-y-2">
             <Label htmlFor="service_description">
               Detaillierte Leistungsbeschreibung (optional)
             </Label>
