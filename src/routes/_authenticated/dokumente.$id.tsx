@@ -233,8 +233,14 @@ function DokumentDetail() {
   const savedSnapshotRef = useRef<string>("");
   const [autoSavedAt, setAutoSavedAt] = useState<string>("");
 
+  // Schutz gegen Überschreiben: die Eingabefelder gehören allein dem lokalen
+  // State. Server-Daten werden nur beim ersten Laden dieses Belegs übernommen –
+  // Refetches nach Autosave/Hintergrund-Mutationen füllen die Felder nie nach.
+  const initializedIdRef = useRef<string>("");
   useEffect(() => {
     if (!data) return;
+    if (initializedIdRef.current === id) return;
+    initializedIdRef.current = id;
     const d = data.doc as Record<string, unknown>;
     setForm({
       number: String(d["number"] ?? ""),
@@ -275,7 +281,7 @@ function DokumentDetail() {
       })),
     );
     savedSnapshotRef.current = "";
-  }, [data]);
+  }, [data, id]);
 
 
   const { canReverseCharge, isLoading: planLoading } = useCanReverseCharge();
@@ -454,9 +460,17 @@ function DokumentDetail() {
   // Entwurf automatisch sichern – schonend: erst nach einer Schreibpause (Debounce)
   // oder geräuschlos beim Verlassen der Seite. Kein Speichern mitten beim Tippen.
   const AUTOSAVE_DELAY_MS = 4000;
+  // Zugriff auf die jeweils aktuellen Server-Daten, ohne sie als Dependency
+  // in den Debounce-Effect zu ziehen (kein Timer-Neustart durch Refetches).
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  // Verweis auf den aktuellen Flush, damit die Unload-Listener nur einmal
+  // gemountet werden müssen und trotzdem stets die neueste Fassung sichern.
+  const flushRef = useRef<() => void>(() => {});
   useEffect(() => {
-    if (!data) return;
-    const current = data.doc as unknown as Record<string, unknown>;
+    const serverData = dataRef.current;
+    if (!serverData) return;
+    const current = serverData.doc as unknown as Record<string, unknown>;
     if (isLockedDocument(current)) return;
     if (Object.keys(form).length === 0) return;
     const snapshot = JSON.stringify({ form, items });
@@ -466,6 +480,8 @@ function DokumentDetail() {
     }
     if (savedSnapshotRef.current === snapshot) return;
 
+    // Vollkommen geräuschlose Hintergrund-Speicherung: kein Ladezustand,
+    // kein Overlay, kein erneutes Befüllen der Eingabefelder.
     const flush = () => {
       if (savedSnapshotRef.current === snapshot) return;
       void persistRef
@@ -480,24 +496,29 @@ function DokumentDetail() {
           /* Fehler zeigt der manuelle Speichern-Button */
         });
     };
-
+    flushRef.current = flush;
     const timer = setTimeout(flush, AUTOSAVE_DELAY_MS);
-    // Beim Schließen/Verlassen der Seite, Tab-Wechsel oder vor dem Entladen sofort sichern.
-    const onPageHide = () => flush();
+    return () => clearTimeout(timer);
+  }, [form, items]);
+
+  // Unload-Listener genau einmal pro Beleg registrieren (Mount/Unmount) –
+  // sie greifen über flushRef immer auf den neuesten Flush zu.
+  useEffect(() => {
+    const onPageHide = () => flushRef.current();
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") flush();
+      if (document.visibilityState === "hidden") flushRef.current();
     };
-    const onBeforeUnload = () => flush();
+    const onBeforeUnload = () => flushRef.current();
     window.addEventListener("pagehide", onPageHide);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
-      clearTimeout(timer);
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [form, items, data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Bearbeitungsmodus merken, damit man an derselben Stelle weiterarbeitet.
   useEffect(() => {
