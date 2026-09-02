@@ -281,7 +281,7 @@ function DokumentDetail() {
       })),
     );
     savedSnapshotRef.current = "";
-  }, [data]);
+  }, [data, id]);
 
 
   const { canReverseCharge, isLoading: planLoading } = useCanReverseCharge();
