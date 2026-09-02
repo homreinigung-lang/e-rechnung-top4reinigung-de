@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Mail, Paperclip } from "lucide-react";
-import { elementToPdfBytes, mergePdfs } from "@/lib/pdf";
+import { mergePdfs } from "@/lib/pdf";
 import { useServerFn } from "@tanstack/react-start";
 import { sendInvoiceEmail } from "@/lib/email.functions";
 import { buildEmailHtml } from "@/lib/signature";
@@ -35,20 +35,18 @@ export function SendEmailDialog({
   open,
   onOpenChange,
   defaults,
-  printAreaSelector = ".print-area",
   buildPdfBytes,
   onSent,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaults: SendEmailDefaults;
-  printAreaSelector?: string;
   /**
-   * Bevorzugte PDF-Erzeugung (pdf-lib, A4 mit festen Rändern und
-   * Seitenumbruch-Regeln). Nur wenn sie fehlt, wird als Notlösung ein
-   * Screenshot der Druckansicht verwendet.
+   * Einzige PDF-Quelle: identische Erzeugung wie Vorschau und Download
+   * (pdf-lib, A4, feste Ränder, gleiche Seitenumbruch-Regeln).
+   * Es gibt bewusst KEINEN zweiten Render-Pfad für den E-Mail-Versand.
    */
-  buildPdfBytes?: () => Promise<Uint8Array>;
+  buildPdfBytes: () => Promise<Uint8Array>;
   onSent?: () => void | Promise<void>;
 }) {
   const [to, setTo] = useState(defaults.to);
@@ -68,16 +66,9 @@ export function SendEmailDialog({
   }, [open]);
 
   async function buildPdf() {
-    let invoice: Uint8Array;
-    if (buildPdfBytes) {
-      // Identische Engine wie „PDF herunterladen“/Druck: A4, feste Ränder,
-      // saubere Seitenumbrüche (keine zerschnittenen Summenblöcke).
-      invoice = await buildPdfBytes();
-    } else {
-      const element = document.querySelector(printAreaSelector);
-      if (!(element instanceof HTMLElement)) throw new Error("Druckansicht nicht gefunden");
-      invoice = await elementToPdfBytes(element);
-    }
+    // Identische Engine wie Vorschau und „PDF herunterladen“: A4, feste Ränder,
+    // gleiche Seitenumbrüche, gleiche Kopf-/Fußzeilen.
+    const invoice: Uint8Array = await buildPdfBytes();
     if (attachment && merge) {
       const extra = new Uint8Array(await attachment.arrayBuffer());
       return mergePdfs([invoice, extra]);
