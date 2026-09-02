@@ -42,6 +42,7 @@ import {
   CANCELLATION_TERMS,
   ORDER_INTRO,
   INVOICE_INTRO,
+  QUOTE_INTRO_PRIVAT,
   orderHeadline,
   quoteIntro,
   deriveServiceName,
@@ -251,6 +252,7 @@ function DokumentDetail() {
       service_period: String(d["service_period"] ?? ""),
       tax_mode: String(d["tax_mode"] ?? "eu_reverse_charge"),
       customer_id: (d["customer_id"] as string) ?? null,
+      customer_type: String(d["customer_type"] ?? "firma"),
       customer_number: String(d["customer_number"] ?? ""),
 
       customer_name: String(d["customer_name"] ?? ""),
@@ -288,6 +290,8 @@ function DokumentDetail() {
   const isSmallBusiness = Boolean(
     (data?.settings as Record<string, unknown> | null | undefined)?.["small_business"],
   );
+  // Kundentyp: Privatkunden ohne Firmen-/Steuerfelder.
+  const isPrivat = String(form["customer_type"] ?? "firma") === "privat";
   // Bestandsschutz: Belege, die bereits als Reverse-Charge gespeichert wurden,
   // dürfen nie automatisch auf 19 % Inland umgestellt werden.
   const storedTaxMode = String(
@@ -883,6 +887,7 @@ function DokumentDetail() {
     setForm((f) => ({
       ...f,
       customer_id: c.id,
+      customer_type: c.company?.trim() ? "firma" : "privat",
       customer_number: (c as { customer_number?: string }).customer_number ?? "",
 
       customer_name: c.name,
@@ -1047,7 +1052,7 @@ function DokumentDetail() {
         label: isInvoice ? "Fällig am" : "Gültig bis",
         value: formatDate(String(form["due_date"])),
       });
-    if (form["order_number"])
+    if (!isPrivat && form["order_number"])
       meta.push({ label: "Bestellnummer", value: String(form["order_number"]) });
     // Referenz auf den Quellbeleg (Angebot bzw. Auftragsbestätigung) – § 14 UStG.
     if (sourceDoc) {
@@ -1137,17 +1142,18 @@ function DokumentDetail() {
       contactPhone: settings?.["phone"] ? String(settings["phone"]) : undefined,
       senderLine,
       customer: [
-        String(form["customer_company"] ?? ""),
+        ...(isPrivat ? [] : [String(form["customer_company"] ?? "")]),
         String(form["customer_name"] ?? ""),
         String(form["customer_address_line"] ?? ""),
         `${String(form["customer_postal_code"] ?? "")} ${String(form["customer_city"] ?? "")}`.trim(),
         String(form["customer_country"] ?? ""),
       ],
-      customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
+      customerVatId:
+        !isPrivat && form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
       introText: isInvoice
         ? introText || INVOICE_INTRO
-        : `${isOrder ? ORDER_INTRO : quoteIntro(companyName)}${
+        : `${isOrder ? ORDER_INTRO : isPrivat ? QUOTE_INTRO_PRIVAT : quoteIntro(companyName)}${
             introText ? `\n\n${introText}` : ""
           }`,
 
@@ -1774,15 +1780,17 @@ function DokumentDetail() {
                 : "Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle Änderung ist nicht möglich."}
             </p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
-            <Input
-              id="order_number"
-              placeholder="z. B. SGS-PO-123456"
-              value={String(form["order_number"] ?? "")}
-              onChange={(e) => setField("order_number", e.target.value)}
-            />
-          </div>
+          {!isPrivat && (
+            <div className="space-y-2">
+              <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
+              <Input
+                id="order_number"
+                placeholder="z. B. SGS-PO-123456"
+                value={String(form["order_number"] ?? "")}
+                onChange={(e) => setField("order_number", e.target.value)}
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Status</Label>
             <Select
@@ -1879,29 +1887,54 @@ function DokumentDetail() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Kunde auswählen</Label>
-          <Select value={String(form["customer_id"] ?? "")} onValueChange={pickCustomer}>
-            <SelectTrigger>
-              <SelectValue placeholder="Kunde aus dem Kundenstamm wählen" />
-            </SelectTrigger>
-            <SelectContent>
-              {data.customers.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.company || c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Kunde auswählen</Label>
+            <Select value={String(form["customer_id"] ?? "")} onValueChange={pickCustomer}>
+              <SelectTrigger>
+                <SelectValue placeholder="Kunde aus dem Kundenstamm wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {data.customers.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.company || c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Kundentyp</Label>
+            <Select
+              value={isPrivat ? "privat" : "firma"}
+              onValueChange={(v) => setField("customer_type", v)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="firma">Firmenkunde</SelectItem>
+                <SelectItem value="privat">Privatkunde</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Bei Privatkunden entfallen Firma, USt-IdNr. und Bestellnummer – das Angebot nutzt den
+              Privatkunden-Text.
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {(
             [
-              { key: "customer_company", label: "Firma" },
-              { key: "customer_name", label: "Ansprechpartner" },
+              ...(!isPrivat
+                ? ([
+                    { key: "customer_company", label: "Firma" },
+                    { key: "customer_vat_id", label: "USt-IdNr. des Kunden" },
+                  ] as const)
+                : []),
+              { key: "customer_name", label: isPrivat ? "Name" : "Ansprechpartner" },
               { key: "customer_email", label: "E-Mail" },
-              { key: "customer_vat_id", label: "USt-IdNr. des Kunden" },
               { key: "customer_address_line", label: "Straße und Hausnummer" },
               { key: "customer_postal_code", label: "PLZ" },
               { key: "customer_city", label: "Ort" },
@@ -2186,14 +2219,18 @@ function DokumentDetail() {
           <div className="mt-7 grid gap-8 sm:grid-cols-2">
             <address className="not-italic">
               <div className="border-b pb-1 text-[10px] text-muted-foreground">{senderLine}</div>
-              <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
-              <div>{String(form["customer_name"] ?? "")}</div>
+              {!isPrivat && (
+                <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
+              )}
+              <div className={isPrivat ? "mt-3 font-medium" : undefined}>
+                {String(form["customer_name"] ?? "")}
+              </div>
               <div>{String(form["customer_address_line"] ?? "")}</div>
               <div>
                 {String(form["customer_postal_code"] ?? "")} {String(form["customer_city"] ?? "")}
               </div>
               <div>{String(form["customer_country"] ?? "")}</div>
-              {form["customer_vat_id"] && (
+              {!isPrivat && form["customer_vat_id"] && (
                 <div className="mt-1 text-xs">USt-IdNr.: {String(form["customer_vat_id"])}</div>
               )}
             </address>
@@ -2232,7 +2269,7 @@ function DokumentDetail() {
                   <dd className="inline">{formatDate(String(form["due_date"]))}</dd>
                 </div>
               )}
-              {form["order_number"] && (
+              {!isPrivat && form["order_number"] && (
                 <div>
                   <dt className="inline text-muted-foreground">Bestellnummer: </dt>
                   <dd className="inline font-medium">{String(form["order_number"])}</dd>
@@ -2258,7 +2295,9 @@ function DokumentDetail() {
                     )}
               </h2>
               <p className="mt-3 text-justify text-sm leading-relaxed">
-                {quoteIntro(String(settings?.["company_name"] ?? ""))}
+                {isPrivat
+                  ? QUOTE_INTRO_PRIVAT
+                  : quoteIntro(String(settings?.["company_name"] ?? ""))}
               </p>
             </>
           )}

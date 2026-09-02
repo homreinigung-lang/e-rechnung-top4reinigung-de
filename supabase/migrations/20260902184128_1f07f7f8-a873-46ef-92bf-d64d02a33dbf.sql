@@ -1,0 +1,2 @@
+ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS customer_type text NOT NULL DEFAULT 'firma';
+ALTER TABLE public.documents ADD CONSTRAINT documents_customer_type_check CHECK (customer_type IN ('privat','firma'));
