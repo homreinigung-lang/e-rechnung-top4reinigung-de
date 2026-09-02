@@ -2314,16 +2314,23 @@ function DokumentDetail() {
                       ),
                     )}
               </h2>
-              <p className="mt-3 text-justify text-sm leading-relaxed">
-                {isPrivat
-                  ? QUOTE_INTRO_PRIVAT
-                  : quoteIntro(String(settings?.["company_name"] ?? ""))}
-              </p>
+              {!isQuote && (
+                <p className="mt-3 text-justify text-sm leading-relaxed">
+                  {isPrivat
+                    ? QUOTE_INTRO_PRIVAT
+                    : quoteIntro(String(settings?.["company_name"] ?? ""))}
+                </p>
+              )}
             </>
           )}
           {/* Einleitungstext live aus dem Eingabefeld – direkt über der Positionstabelle. */}
           {isInvoice && !introText && (
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{INVOICE_INTRO}</p>
+          )}
+          {isQuote && !introText && (
+            <p className="mt-3 whitespace-pre-line text-justify text-sm leading-relaxed">
+              {defaultQuoteIntro(isPrivat, String(settings?.["company_name"] ?? ""))}
+            </p>
           )}
           {introText && (
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{introText}</p>
