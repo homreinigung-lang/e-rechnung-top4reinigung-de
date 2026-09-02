@@ -2219,14 +2219,18 @@ function DokumentDetail() {
           <div className="mt-7 grid gap-8 sm:grid-cols-2">
             <address className="not-italic">
               <div className="border-b pb-1 text-[10px] text-muted-foreground">{senderLine}</div>
-              <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
-              <div>{String(form["customer_name"] ?? "")}</div>
+              {!isPrivat && (
+                <div className="mt-3 font-medium">{String(form["customer_company"] ?? "")}</div>
+              )}
+              <div className={isPrivat ? "mt-3 font-medium" : undefined}>
+                {String(form["customer_name"] ?? "")}
+              </div>
               <div>{String(form["customer_address_line"] ?? "")}</div>
               <div>
                 {String(form["customer_postal_code"] ?? "")} {String(form["customer_city"] ?? "")}
               </div>
               <div>{String(form["customer_country"] ?? "")}</div>
-              {form["customer_vat_id"] && (
+              {!isPrivat && form["customer_vat_id"] && (
                 <div className="mt-1 text-xs">USt-IdNr.: {String(form["customer_vat_id"])}</div>
               )}
             </address>
@@ -2265,7 +2269,7 @@ function DokumentDetail() {
                   <dd className="inline">{formatDate(String(form["due_date"]))}</dd>
                 </div>
               )}
-              {form["order_number"] && (
+              {!isPrivat && form["order_number"] && (
                 <div>
                   <dt className="inline text-muted-foreground">Bestellnummer: </dt>
                   <dd className="inline font-medium">{String(form["order_number"])}</dd>
