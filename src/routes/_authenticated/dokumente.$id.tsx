@@ -1052,7 +1052,7 @@ function DokumentDetail() {
         label: isInvoice ? "Fällig am" : "Gültig bis",
         value: formatDate(String(form["due_date"])),
       });
-    if (form["order_number"])
+    if (!isPrivat && form["order_number"])
       meta.push({ label: "Bestellnummer", value: String(form["order_number"]) });
     // Referenz auf den Quellbeleg (Angebot bzw. Auftragsbestätigung) – § 14 UStG.
     if (sourceDoc) {
@@ -1142,17 +1142,18 @@ function DokumentDetail() {
       contactPhone: settings?.["phone"] ? String(settings["phone"]) : undefined,
       senderLine,
       customer: [
-        String(form["customer_company"] ?? ""),
+        ...(isPrivat ? [] : [String(form["customer_company"] ?? "")]),
         String(form["customer_name"] ?? ""),
         String(form["customer_address_line"] ?? ""),
         `${String(form["customer_postal_code"] ?? "")} ${String(form["customer_city"] ?? "")}`.trim(),
         String(form["customer_country"] ?? ""),
       ],
-      customerVatId: form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
+      customerVatId:
+        !isPrivat && form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
       introText: isInvoice
         ? introText || INVOICE_INTRO
-        : `${isOrder ? ORDER_INTRO : quoteIntro(companyName)}${
+        : `${isOrder ? ORDER_INTRO : isPrivat ? QUOTE_INTRO_PRIVAT : quoteIntro(companyName)}${
             introText ? `\n\n${introText}` : ""
           }`,
 
