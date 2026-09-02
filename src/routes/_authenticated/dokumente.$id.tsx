@@ -253,6 +253,7 @@ function DokumentDetail() {
       customer_country: String(d["customer_country"] ?? ""),
       customer_vat_id: String(d["customer_vat_id"] ?? ""),
       intro_text: String(d["intro_text"] ?? ""),
+      title: String(d["title"] ?? ""),
       service_description: String(d["service_description"] ?? ""),
       discount_percent: String(d["discount_percent"] ?? "0"),
       discount_reason: String(d["discount_reason"] ?? ""),
@@ -997,12 +998,16 @@ function DokumentDetail() {
       ...(isInvoice
         ? {}
         : {
-            headline: (isOrder ? orderHeadline : quoteHeadline)(
-              deriveServiceName(
-                form["service_description"] ? String(form["service_description"]) : "",
-                items[0]?.description ?? "",
-              ),
-            ),
+            // Frei eingetragener Titel hat Vorrang vor der automatisch
+            // erzeugten Überschrift (Logik bleibt als Fallback erhalten).
+            headline: String(form["title"] ?? "").trim()
+              ? String(form["title"]).trim()
+              : (isOrder ? orderHeadline : quoteHeadline)(
+                  deriveServiceName(
+                    form["service_description"] ? String(form["service_description"]) : "",
+                    items[0]?.description ?? "",
+                  ),
+                ),
           }),
       logo: (await loadLogo()) ?? null,
       logoInitials: companyName
@@ -1962,6 +1967,22 @@ function DokumentDetail() {
 
         {!isInvoice && (
           <div className="space-y-2">
+            <Label htmlFor="title">Titel (optional)</Label>
+            <Input
+              id="title"
+              value={String(form["title"] ?? "")}
+              onChange={(e) => setField("title", e.target.value)}
+              placeholder="z. B. Grundreinigung – Komplett Haus"
+            />
+            <p className="text-xs text-muted-foreground">
+              Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
+              bisher automatisch erzeugt.
+            </p>
+          </div>
+        )}
+
+        {!isInvoice && (
+          <div className="space-y-2">
             <Label htmlFor="service_description">
               Detaillierte Leistungsbeschreibung (optional)
             </Label>
@@ -2105,12 +2126,14 @@ function DokumentDetail() {
           ) : (
             <>
               <h2 className="mt-7 text-center font-display text-lg font-bold text-balance">
-                {(isOrder ? orderHeadline : quoteHeadline)(
-                  deriveServiceName(
-                    form["service_description"] ? String(form["service_description"]) : "",
-                    items[0]?.description ?? "",
-                  ),
-                )}
+                {String(form["title"] ?? "").trim()
+                  ? String(form["title"]).trim()
+                  : (isOrder ? orderHeadline : quoteHeadline)(
+                      deriveServiceName(
+                        form["service_description"] ? String(form["service_description"]) : "",
+                        items[0]?.description ?? "",
+                      ),
+                    )}
               </h2>
               <p className="mt-3 text-justify text-sm leading-relaxed">
                 {quoteIntro(String(settings?.["company_name"] ?? ""))}
