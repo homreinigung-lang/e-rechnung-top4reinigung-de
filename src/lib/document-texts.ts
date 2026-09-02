@@ -32,7 +32,7 @@ export function deriveServiceName(
 
 /** Einleitungstext für Angebote an Privatkunden. */
 export const QUOTE_INTRO_PRIVAT =
-  "Vielen Dank für das angenehme Gespräch und Ihr Vertrauen. Wir freuen uns sehr, dass wir Ihr Zuhause in neuem Glanz erstrahlen lassen dürfen. Mit unserem zuverlässigen und gründlichen Reinigungsservice sorgen wir dafür, dass Sie sich in Ihren eigenen vier Wänden rundum wohlfühlen. Nachfolgend finden Sie unser maßgeschneidertes Angebot für die gewünschten Reinigungsarbeiten. Bei Fragen stehen wir Ihnen selbstverständlich jederzeit gerne zur Verfügung.";
+  "Vielen Dank für das angenehme Gespräch und Ihr Vertrauen. Ihr Zuhause verdient eine Reinigung mit Sorgfalt und Aufmerksamkeit fürs Detail — genau dafür stehen wir. Als zuverlässiger Partner sorgen wir mit geschultem Personal und bewährten Reinigungsmethoden dafür, dass Sie sich in Ihren eigenen vier Wänden rundum wohlfühlen. Nachfolgend finden Sie unser maßgeschneidertes Angebot für die gewünschten Reinigungsarbeiten. Sollten Sie mit einem Ergebnis nicht zufrieden sein, reinigen wir selbstverständlich kostenfrei nach. Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.";
 
 /** Rechtlicher Hinweis am Ende jedes Angebots. */
 export const QUOTE_DISCLAIMER =
