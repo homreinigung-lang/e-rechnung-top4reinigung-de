@@ -229,6 +229,9 @@ function DokumentDetail() {
   const [stornoReason, setStornoReason] = useState("");
 
   const [payDate, setPayDate] = useState<string>("");
+  // Autosave: letzte gespeicherte Fassung als Vergleichs-Fingerabdruck.
+  const savedSnapshotRef = useRef<string>("");
+  const [autoSavedAt, setAutoSavedAt] = useState<string>("");
 
   useEffect(() => {
     if (!data) return;
