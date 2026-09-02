@@ -847,21 +847,65 @@ function AngebotsTabelle({
                           </>
                         )}
 
-                        {((isOrder && !d.converted_document_id) ||
-                          (!isOrder && d.status === "accepted" && !d.converted_document_id)) && (
+                        <DropdownMenuItem
+                          onClick={() =>
+                            navigate({
+                              to: "/dokumente/$id",
+                              params: { id: d.id },
+                              search: { bearbeiten: true },
+                            })
+                          }
+                        >
+                          <FileText className="mr-2 size-4" /> {label} bearbeiten
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate({ to: "/dokumente/$id", params: { id: d.id } })}
+                        >
+                          <Receipt className="mr-2 size-4" /> {label} ansehen & PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+
+                        {!isOrder && !d.converted_document_id && (
+                          <DropdownMenuItem
+                            title="Auftragsbestätigung aus dem Angebot erstellen"
+                            onClick={() => convert.mutate(d.id)}
+                            disabled={convert.isPending}
+                          >
+                            <ClipboardCheck className="mr-2 size-4" /> Auftragsbestätigung erstellen
+                          </DropdownMenuItem>
+                        )}
+
+                        {!d.converted_document_id && (
                           <DropdownMenuItem
                             title={
                               isOrder
                                 ? "Rechnung aus der Auftragsbestätigung erstellen"
-                                : "Auftragsbestätigung aus dem Angebot erstellen"
+                                : "Rechnung direkt aus dem Angebot erstellen"
                             }
-                            onClick={() => convert.mutate(d.id)}
-                            disabled={convert.isPending}
+                            onClick={() => toInvoice.mutate(d.id)}
+                            disabled={toInvoice.isPending}
                           >
-                            <ArrowRightLeft className="mr-2 size-4" />
-                            {isOrder ? "Rechnung erstellen" : "Auftragsbestätigung erstellen"}
+                            <ArrowRightLeft className="mr-2 size-4" /> Rechnung erstellen
                           </DropdownMenuItem>
                         )}
+
+                        {(() => {
+                          const next = followUp(d.id);
+                          if (!next) return null;
+                          const nextLabel =
+                            next.type === "invoice" ? "Rechnung öffnen" : "Folgebeleg öffnen";
+                          return (
+                            <DropdownMenuItem
+                              title={`Bereits erstellt: ${next.number}`}
+                              onClick={() =>
+                                navigate({ to: "/dokumente/$id", params: { id: next.id } })
+                              }
+                            >
+                              <ArrowRightLeft className="mr-2 size-4" /> {nextLabel} ({next.number})
+                            </DropdownMenuItem>
+                          );
+                        })()}
+
 
                         {!isOrder &&
                           (d.status === "accepted" || Boolean(d.converted_document_id)) &&
