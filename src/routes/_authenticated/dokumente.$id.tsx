@@ -61,6 +61,7 @@ import {
 } from "@/lib/gobd-guard";
 import {
   convertQuoteToOrder,
+  convertQuoteToInvoice,
   convertOrderToInvoice,
   dueInfo,
   mahnLabel,
