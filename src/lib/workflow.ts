@@ -213,6 +213,13 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
         : "Nur Angebote und Auftragsbestätigungen können in eine Rechnung umgewandelt werden.",
     );
   }
+  // Nur angenommene Angebote dürfen umgewandelt werden – ein abgelehntes oder
+  // abgeschlossenes Angebot darf niemals stillschweigend fakturiert werden.
+  if (src.type === "quote" && src.status !== "accepted") {
+    throw new Error(
+      "Nur angenommene Angebote können umgewandelt werden. Bitte das Angebot zuerst annehmen.",
+    );
+  }
   const converted = (src as unknown as Record<string, unknown>)["converted_document_id"];
   if (converted) throw new Error("Dieser Beleg wurde bereits umgewandelt.");
 

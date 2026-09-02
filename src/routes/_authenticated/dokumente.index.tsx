@@ -888,7 +888,7 @@ function AngebotsTabelle({
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
 
-                        {!isOrder && !d.converted_document_id && (
+                        {!isOrder && d.status === "accepted" && !d.converted_document_id && (
                           <DropdownMenuItem
                             title="Auftragsbestätigung aus dem Angebot erstellen"
                             onClick={() => convert.mutate(d.id)}
@@ -898,7 +898,7 @@ function AngebotsTabelle({
                           </DropdownMenuItem>
                         )}
 
-                        {!d.converted_document_id && (
+                        {!d.converted_document_id && (isOrder || d.status === "accepted") && (
                           <DropdownMenuItem
                             title={
                               isOrder
