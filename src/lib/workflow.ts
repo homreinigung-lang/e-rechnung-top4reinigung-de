@@ -285,14 +285,25 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     );
   }
 
-  await supabase
+  // Atomar: nur setzen, solange noch keine Umwandlung existiert. Dadurch kann ein
+  // Doppelklick (zwei parallele Aufrufe) niemals zwei Folgebelege erzeugen.
+  const { data: claimed } = await supabase
     .from("documents")
     .update({
       converted_document_id: created.id,
       // Angebote gelten mit der Umwandlung als angenommen.
       ...(src.type === "quote" ? { status: "accepted" } : {}),
     } as never)
-    .eq("id", sourceId);
+    .eq("id", sourceId)
+    .is("converted_document_id", null)
+    .select("id");
+  if (!claimed || claimed.length === 0) {
+    // Ein paralleler Vorgang war schneller – eigenen Entwurf wieder entfernen.
+    await supabase.from("document_items").delete().eq("document_id", created.id);
+    await supabase.from("documents").delete().eq("id", created.id);
+    throw new Error("Dieser Beleg wurde bereits umgewandelt.");
+  }
+
 
   await logAudit(
     target === "order"

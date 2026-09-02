@@ -29,6 +29,7 @@ import {
   formatDate,
   formatMoney,
   formatNumber,
+  roundCents,
   taxNoteForTaxMode,
   today,
   vatRateForTaxMode,
@@ -315,11 +316,11 @@ function DokumentDetail() {
     100,
     Math.max(0, Number(String(form["discount_percent"] ?? "0").replace(",", ".")) || 0),
   );
-  const discountAmount = (itemsTotal * discountPercent) / 100;
+  const discountAmount = roundCents((itemsTotal * discountPercent) / 100);
   const discountReason = String(form["discount_reason"] ?? "");
-  const netTotal = itemsTotal - discountAmount;
-  const vatAmount = (netTotal * vatRate) / 100;
-  const grossTotal = netTotal + vatAmount;
+  const netTotal = roundCents(itemsTotal - discountAmount);
+  const vatAmount = roundCents((netTotal * vatRate) / 100);
+  const grossTotal = roundCents(netTotal + vatAmount);
 
   const save = useMutation({
     mutationFn: async () => {
