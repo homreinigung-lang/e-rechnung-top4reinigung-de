@@ -2138,13 +2138,38 @@ function DokumentDetail() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="intro">Einleitungstext</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="intro">Einleitungstext</Label>
+              {isQuote && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() =>
+                    setField(
+                      "intro_text",
+                      defaultQuoteIntro(isPrivat, String(settings?.["company_name"] ?? "")),
+                    )
+                  }
+                >
+                  Standardtext einsetzen
+                </Button>
+              )}
+            </div>
             <Textarea
               id="intro"
+              rows={isQuote ? 8 : 3}
               value={String(form["intro_text"] ?? "")}
               onChange={(e) => setField("intro_text", e.target.value)}
               placeholder="Für die erbrachten Reinigungsleistungen berechnen wir Ihnen wie folgt:"
             />
+            {isQuote && (
+              <p className="text-xs text-muted-foreground">
+                Frei bearbeitbar – gilt nur für dieses Angebot. Bleibt das Feld leer, wird beim
+                PDF-Export automatisch der Standardtext verwendet.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="notes">Schlussbemerkung</Label>
