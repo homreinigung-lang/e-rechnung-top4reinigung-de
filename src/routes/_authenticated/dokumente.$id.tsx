@@ -482,17 +482,20 @@ function DokumentDetail() {
     };
 
     const timer = setTimeout(flush, AUTOSAVE_DELAY_MS);
-    // Beim Schließen/Verlassen der Seite oder Wechsel in den Hintergrund sofort sichern.
+    // Beim Schließen/Verlassen der Seite, Tab-Wechsel oder vor dem Entladen sofort sichern.
     const onPageHide = () => flush();
     const onVisibility = () => {
       if (document.visibilityState === "hidden") flush();
     };
+    const onBeforeUnload = () => flush();
     window.addEventListener("pagehide", onPageHide);
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       clearTimeout(timer);
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [form, items, data]);
 
@@ -1678,6 +1681,20 @@ function DokumentDetail() {
           {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
         </h2>
 
+        <div className="space-y-2">
+          <Label htmlFor="title">Titel (optional)</Label>
+          <Input
+            id="title"
+            value={String(form["title"] ?? "")}
+            onChange={(e) => setField("title", e.target.value)}
+            placeholder="z. B. Grundreinigung – Komplett Haus"
+          />
+          <p className="text-xs text-muted-foreground">
+            Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
+            bisher automatisch erzeugt.
+          </p>
+        </div>
+
         <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
           <Label>Steuer-Art</Label>
           {isSmallBusiness && (
@@ -1722,21 +1739,6 @@ function DokumentDetail() {
           </p>
         </div>
 
-        {!isInvoice && (
-          <div className="space-y-2">
-            <Label htmlFor="title">Titel (optional)</Label>
-            <Input
-              id="title"
-              value={String(form["title"] ?? "")}
-              onChange={(e) => setField("title", e.target.value)}
-              placeholder="z. B. Grundreinigung – Komplett Haus"
-            />
-            <p className="text-xs text-muted-foreground">
-              Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
-              bisher automatisch erzeugt.
-            </p>
-          </div>
-        )}
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
