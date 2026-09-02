@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -229,6 +229,9 @@ function DokumentDetail() {
   const [stornoReason, setStornoReason] = useState("");
 
   const [payDate, setPayDate] = useState<string>("");
+  // Autosave: letzte gespeicherte Fassung als Vergleichs-Fingerabdruck.
+  const savedSnapshotRef = useRef<string>("");
+  const [autoSavedAt, setAutoSavedAt] = useState<string>("");
 
   useEffect(() => {
     if (!data) return;
@@ -271,7 +274,9 @@ function DokumentDetail() {
         is_optional: Boolean((i as unknown as Record<string, unknown>)["is_optional"]),
       })),
     );
+    savedSnapshotRef.current = "";
   }, [data]);
+
 
   const { canReverseCharge, isLoading: planLoading } = useCanReverseCharge();
   const isSmallBusiness = Boolean(
@@ -323,8 +328,9 @@ function DokumentDetail() {
   const vatAmount = roundCents((netTotal * vatRate) / 100);
   const grossTotal = roundCents(netTotal + vatAmount);
 
-  const save = useMutation({
-    mutationFn: async () => {
+  /** Schreibt Kopf und Positionen des Belegs in die Datenbank (Speichern + Autosave). */
+  const persistDocument = useCallback(
+    async () => {
       const current = data?.doc as unknown as Record<string, unknown> | undefined;
       // Schutz: echte Belege (versendet/festgeschrieben) dürfen nie überschrieben werden.
       if (isLockedDocument(current)) throw new Error(editBlockedMessage(current));
@@ -402,6 +408,28 @@ function DokumentDetail() {
         if (insError) throw insError;
       }
     },
+    [
+      data,
+      form,
+      items,
+      id,
+      taxMode,
+      vatRate,
+      discountPercent,
+      discountAmount,
+      discountReason,
+      netTotal,
+      vatAmount,
+      grossTotal,
+    ],
+  );
+
+  // Autosave greift auf die jeweils aktuellste Fassung zu, ohne den Timer neu zu starten.
+  const persistRef = useRef(persistDocument);
+  persistRef.current = persistDocument;
+
+  const save = useMutation({
+    mutationFn: () => persistDocument(),
     onSuccess: () => {
       toast.success("Gespeichert");
       // Verlässt der Beleg den Entwurfsstatus, wird die offizielle Nummer vergeben.
@@ -422,6 +450,53 @@ function DokumentDetail() {
         duration: 9000,
       }),
   });
+
+  // Entwurf automatisch sichern: Arbeit geht beim Schließen des Browsers nicht verloren.
+  useEffect(() => {
+    if (!data) return;
+    const current = data.doc as unknown as Record<string, unknown>;
+    if (isLockedDocument(current)) return;
+    if (Object.keys(form).length === 0) return;
+    const snapshot = JSON.stringify({ form, items });
+    if (!savedSnapshotRef.current) {
+      savedSnapshotRef.current = snapshot;
+      return;
+    }
+    if (savedSnapshotRef.current === snapshot) return;
+    const timer = setTimeout(() => {
+      void persistRef
+        .current()
+        .then(() => {
+          savedSnapshotRef.current = snapshot;
+          setAutoSavedAt(
+            new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+          );
+        })
+        .catch(() => {
+          /* Fehler zeigt der manuelle Speichern-Button */
+        });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [form, items, data]);
+
+  // Bearbeitungsmodus merken, damit man an derselben Stelle weiterarbeitet.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `doc-edit:${id}`;
+    if (bearbeiten) {
+      window.localStorage.setItem(key, "1");
+      return;
+    }
+    if (window.localStorage.getItem(key) === "1") setEditMode(true);
+  }, [id, bearbeiten]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `doc-edit:${id}`;
+    if (editMode) window.localStorage.setItem(key, "1");
+    else window.localStorage.removeItem(key);
+  }, [id, editMode]);
+
 
   const duplicate = useMutation({
     mutationFn: async () => {
@@ -1425,9 +1500,16 @@ function DokumentDetail() {
         )}
 
         {!locked && editMode && (
-          <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
-            <Save className="size-4" /> Speichern
-          </Button>
+          <>
+            <span className="text-xs text-muted-foreground">
+              {autoSavedAt
+                ? `Automatisch gespeichert um ${autoSavedAt} Uhr`
+                : "Änderungen werden automatisch gespeichert"}
+            </span>
+            <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
+              <Save className="size-4" /> Speichern
+            </Button>
+          </>
         )}
 
         {locked && isInvoice && !isStorno && !cancelledBy && (
