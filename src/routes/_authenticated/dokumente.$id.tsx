@@ -43,6 +43,7 @@ import {
   ORDER_INTRO,
   INVOICE_INTRO,
   QUOTE_INTRO_PRIVAT,
+  defaultQuoteIntro,
   orderHeadline,
   quoteIntro,
   deriveServiceName,
@@ -264,7 +265,18 @@ function DokumentDetail() {
       customer_city: String(d["customer_city"] ?? ""),
       customer_country: String(d["customer_country"] ?? ""),
       customer_vat_id: String(d["customer_vat_id"] ?? ""),
-      intro_text: String(d["intro_text"] ?? ""),
+      // Angebote: Einleitung ist pro Dokument editierbar und wird beim ersten
+      // Öffnen mit dem passenden Standardtext vorbelegt.
+      intro_text:
+        String(d["intro_text"] ?? "") ||
+        (String(d["type"] ?? "") === "quote"
+          ? defaultQuoteIntro(
+              String(d["customer_type"] ?? "firma") === "privat",
+              String(
+                (data.settings as Record<string, unknown> | null)?.["company_name"] ?? "",
+              ),
+            )
+          : ""),
       title: String(d["title"] ?? ""),
       service_description: String(d["service_description"] ?? ""),
       discount_percent: String(d["discount_percent"] ?? "0"),
@@ -1154,9 +1166,9 @@ function DokumentDetail() {
       meta,
       introText: isInvoice
         ? introText || INVOICE_INTRO
-        : `${isOrder ? ORDER_INTRO : isPrivat ? QUOTE_INTRO_PRIVAT : quoteIntro(companyName)}${
-            introText ? `\n\n${introText}` : ""
-          }`,
+        : isQuote
+          ? introText || defaultQuoteIntro(isPrivat, companyName)
+          : `${ORDER_INTRO}${introText ? `\n\n${introText}` : ""}`,
 
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
@@ -2126,13 +2138,38 @@ function DokumentDetail() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="intro">Einleitungstext</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="intro">Einleitungstext</Label>
+              {isQuote && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() =>
+                    setField(
+                      "intro_text",
+                      defaultQuoteIntro(isPrivat, String(settings?.["company_name"] ?? "")),
+                    )
+                  }
+                >
+                  Standardtext einsetzen
+                </Button>
+              )}
+            </div>
             <Textarea
               id="intro"
+              rows={isQuote ? 8 : 3}
               value={String(form["intro_text"] ?? "")}
               onChange={(e) => setField("intro_text", e.target.value)}
               placeholder="Für die erbrachten Reinigungsleistungen berechnen wir Ihnen wie folgt:"
             />
+            {isQuote && (
+              <p className="text-xs text-muted-foreground">
+                Frei bearbeitbar – gilt nur für dieses Angebot. Bleibt das Feld leer, wird beim
+                PDF-Export automatisch der Standardtext verwendet.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="notes">Schlussbemerkung</Label>
@@ -2302,16 +2339,23 @@ function DokumentDetail() {
                       ),
                     )}
               </h2>
-              <p className="mt-3 text-justify text-sm leading-relaxed">
-                {isPrivat
-                  ? QUOTE_INTRO_PRIVAT
-                  : quoteIntro(String(settings?.["company_name"] ?? ""))}
-              </p>
+              {!isQuote && (
+                <p className="mt-3 text-justify text-sm leading-relaxed">
+                  {isPrivat
+                    ? QUOTE_INTRO_PRIVAT
+                    : quoteIntro(String(settings?.["company_name"] ?? ""))}
+                </p>
+              )}
             </>
           )}
           {/* Einleitungstext live aus dem Eingabefeld – direkt über der Positionstabelle. */}
           {isInvoice && !introText && (
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{INVOICE_INTRO}</p>
+          )}
+          {isQuote && !introText && (
+            <p className="mt-3 whitespace-pre-line text-justify text-sm leading-relaxed">
+              {defaultQuoteIntro(isPrivat, String(settings?.["company_name"] ?? ""))}
+            </p>
           )}
           {introText && (
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{introText}</p>

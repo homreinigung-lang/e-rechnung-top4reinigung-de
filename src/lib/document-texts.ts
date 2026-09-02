@@ -38,6 +38,14 @@ export const QUOTE_INTRO_PRIVAT =
 export const QUOTE_DISCLAIMER =
   "Dieses Angebot basiert auf der durchgeführten Besichtigung des Objekts und den dabei erfassten Angaben. Änderungen im Leistungsumfang können zu einer Anpassung des Preises führen. Wir würden uns über eine Zusammenarbeit freuen.";
 
+/**
+ * Standard-Einleitung für Angebote je nach Kundentyp. Wird als Vorbelegung im
+ * Dokumenteneditor genutzt und greift beim PDF-Export, wenn das Feld leer ist.
+ */
+export function defaultQuoteIntro(isPrivat: boolean, companyName?: string | null): string {
+  return isPrivat ? QUOTE_INTRO_PRIVAT : quoteIntro(companyName);
+}
+
 /** Storno- und Terminbedingungen (Angebot und Auftragsbestätigung). */
 export const CANCELLATION_TERMS =
   "Terminverschiebungen oder -änderungen müssen bis spätestens 24 Stunden vor dem vereinbarten Termin mitgeteilt werden. Eine komplette Stornierung des Auftrags oder Vertrages muss schriftlich erfolgen und bis spätestens 14 Tage vor dem vereinbarten Leistungstermin eingehen. Bei einer späteren Stornierung des gesamten Auftrags behalten wir uns das Recht vor, eine Ausfallpauschale in Höhe von 50% des Auftragswertes zu berechnen.";
