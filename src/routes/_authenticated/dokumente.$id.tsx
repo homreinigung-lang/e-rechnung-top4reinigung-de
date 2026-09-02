@@ -1374,7 +1374,7 @@ function DokumentDetail() {
                 </Button>
               </>
             )}
-            {!convertedId && (
+            {!convertedId && doc.status === "accepted" && (
               <>
                 <Button
                   variant="outline"
