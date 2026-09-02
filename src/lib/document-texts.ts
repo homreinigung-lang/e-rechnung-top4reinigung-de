@@ -30,6 +30,10 @@ export function deriveServiceName(
   return raw.length > 60 ? `${raw.slice(0, 57).trimEnd()}…` : raw;
 }
 
+/** Einleitungstext für Angebote an Privatkunden. */
+export const QUOTE_INTRO_PRIVAT =
+  "Vielen Dank für das angenehme Gespräch und Ihr Vertrauen. Wir freuen uns sehr, dass wir Ihr Zuhause in neuem Glanz erstrahlen lassen dürfen. Mit unserem zuverlässigen und gründlichen Reinigungsservice sorgen wir dafür, dass Sie sich in Ihren eigenen vier Wänden rundum wohlfühlen. Nachfolgend finden Sie unser maßgeschneidertes Angebot für die gewünschten Reinigungsarbeiten. Bei Fragen stehen wir Ihnen selbstverständlich jederzeit gerne zur Verfügung.";
+
 /** Rechtlicher Hinweis am Ende jedes Angebots. */
 export const QUOTE_DISCLAIMER =
   "Dieses Angebot basiert auf der durchgeführten Besichtigung des Objekts und den dabei erfassten Angaben. Änderungen im Leistungsumfang können zu einer Anpassung des Preises führen. Wir würden uns über eine Zusammenarbeit freuen.";

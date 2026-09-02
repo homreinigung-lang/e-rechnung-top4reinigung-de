@@ -751,6 +751,7 @@ export type Database = {
           customer_name: string
           customer_number: string
           customer_postal_code: string
+          customer_type: string
           customer_vat_id: string
           deleted_at: string | null
           discount_amount: number
@@ -804,6 +805,7 @@ export type Database = {
           customer_name?: string
           customer_number?: string
           customer_postal_code?: string
+          customer_type?: string
           customer_vat_id?: string
           deleted_at?: string | null
           discount_amount?: number
@@ -857,6 +859,7 @@ export type Database = {
           customer_name?: string
           customer_number?: string
           customer_postal_code?: string
+          customer_type?: string
           customer_vat_id?: string
           deleted_at?: string | null
           discount_amount?: number
@@ -2224,6 +2227,7 @@ export type Database = {
           customer_name: string
           customer_number: string
           customer_postal_code: string
+          customer_type: string
           customer_vat_id: string
           deleted_at: string | null
           discount_amount: number
