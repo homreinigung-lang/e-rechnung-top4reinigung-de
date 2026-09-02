@@ -323,8 +323,9 @@ function DokumentDetail() {
   const vatAmount = roundCents((netTotal * vatRate) / 100);
   const grossTotal = roundCents(netTotal + vatAmount);
 
-  const save = useMutation({
-    mutationFn: async () => {
+  /** Schreibt Kopf und Positionen des Belegs in die Datenbank (Speichern + Autosave). */
+  const persistDocument = useCallback(
+    async () => {
       const current = data?.doc as unknown as Record<string, unknown> | undefined;
       // Schutz: echte Belege (versendet/festgeschrieben) dürfen nie überschrieben werden.
       if (isLockedDocument(current)) throw new Error(editBlockedMessage(current));
