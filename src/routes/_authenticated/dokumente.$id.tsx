@@ -191,13 +191,13 @@ function DokumentDetail() {
         followUpId
           ? supabase
               .from("documents")
-              .select("id, number, type")
+              .select("id, number, type, issue_date")
               .eq("id", followUpId)
               .maybeSingle()
           : Promise.resolve({ data: null }),
         supabase
           .from("documents")
-          .select("id, number, type")
+          .select("id, number, type, issue_date")
           .eq("converted_document_id", id)
           .maybeSingle(),
       ]);
@@ -701,7 +701,11 @@ function DokumentDetail() {
   const followUpDoc =
     (data as { followUp?: { id: string; number: string; type: string } | null }).followUp ?? null;
   const sourceDoc =
-    (data as { source?: { id: string; number: string; type: string } | null }).source ?? null;
+    (
+      data as {
+        source?: { id: string; number: string; type: string; issue_date?: string } | null;
+      }
+    ).source ?? null;
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
   const introText = String(form["intro_text"] ?? "").trim();
@@ -927,6 +931,21 @@ function DokumentDetail() {
       });
     if (form["order_number"])
       meta.push({ label: "Bestellnummer", value: String(form["order_number"]) });
+    // Referenz auf den Quellbeleg (Angebot bzw. Auftragsbestätigung) – § 14 UStG.
+    if (sourceDoc) {
+      const refLabel =
+        sourceDoc.type === "quote"
+          ? "Angebot"
+          : sourceDoc.type === "order"
+            ? "Auftragsbestätigung"
+            : "Referenz";
+      meta.push({
+        label: refLabel,
+        value: sourceDoc.issue_date
+          ? `${sourceDoc.number} vom ${formatDate(String(sourceDoc.issue_date))}`
+          : sourceDoc.number,
+      });
+    }
 
     const summary: PdfDocData["summary"] = [];
     if (discountPercent > 0) {
