@@ -265,7 +265,18 @@ function DokumentDetail() {
       customer_city: String(d["customer_city"] ?? ""),
       customer_country: String(d["customer_country"] ?? ""),
       customer_vat_id: String(d["customer_vat_id"] ?? ""),
-      intro_text: String(d["intro_text"] ?? ""),
+      // Angebote: Einleitung ist pro Dokument editierbar und wird beim ersten
+      // Öffnen mit dem passenden Standardtext vorbelegt.
+      intro_text:
+        String(d["intro_text"] ?? "") ||
+        (String(d["type"] ?? "") === "quote"
+          ? defaultQuoteIntro(
+              String(d["customer_type"] ?? "firma") === "privat",
+              String(
+                (data.settings as Record<string, unknown> | null)?.["company_name"] ?? "",
+              ),
+            )
+          : ""),
       title: String(d["title"] ?? ""),
       service_description: String(d["service_description"] ?? ""),
       discount_percent: String(d["discount_percent"] ?? "0"),
