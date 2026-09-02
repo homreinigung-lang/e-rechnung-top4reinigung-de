@@ -419,13 +419,23 @@ function DokumenteListe() {
             setDeclineTarget({ id, label });
             setDeclineReason("");
           }}
-          convert={tab === "order" ? toInvoice : convert}
+          convert={convert}
+          toInvoice={tab === "order" ? toInvoice : quoteToInvoice}
           complete={complete}
           duplicate={duplicate}
           remove={remove}
           isLocked={(r: Record<string, unknown>) => isLockedDocument(r)}
+          followUp={(id: string) => {
+            const src = documents.find((x) => x.id === id);
+            const targetId = src?.converted_document_id ?? null;
+            if (!targetId) return null;
+            const target = documents.find((x) => x.id === targetId);
+            if (!target) return null;
+            return { id: target.id, number: String(target.number), type: String(target.type) };
+          }}
           onDelete={(id, label) => setDeleteTarget({ id, label })}
         />
+
       ) : (
         <div className="surface overflow-hidden">
           {list.length === 0 ? (
