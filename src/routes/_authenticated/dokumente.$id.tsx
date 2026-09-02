@@ -1709,19 +1709,26 @@ function DokumentDetail() {
           {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
         </h2>
 
-        <div className="space-y-2">
-          <Label htmlFor="title">Titel (optional)</Label>
-          <Input
-            id="title"
-            value={String(form["title"] ?? "")}
-            onChange={(e) => setField("title", e.target.value)}
-            placeholder="z. B. Grundreinigung – Komplett Haus"
+        {isQuote ? (
+          <DocumentTitleSelector
+            title={String(form["title"] ?? "")}
+            onChange={(value) => setField("title", value)}
           />
-          <p className="text-xs text-muted-foreground">
-            Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
-            bisher automatisch erzeugt.
-          </p>
-        </div>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="title">Titel (optional)</Label>
+            <Input
+              id="title"
+              value={String(form["title"] ?? "")}
+              onChange={(e) => setField("title", e.target.value)}
+              placeholder="z. B. Grundreinigung – Komplett Haus"
+            />
+            <p className="text-xs text-muted-foreground">
+              Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
+              bisher automatisch erzeugt.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
           <Label>Steuer-Art</Label>
