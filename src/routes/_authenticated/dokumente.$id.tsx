@@ -42,6 +42,7 @@ import {
   CANCELLATION_TERMS,
   ORDER_INTRO,
   INVOICE_INTRO,
+  QUOTE_INTRO_PRIVAT,
   orderHeadline,
   quoteIntro,
   deriveServiceName,
@@ -251,6 +252,7 @@ function DokumentDetail() {
       service_period: String(d["service_period"] ?? ""),
       tax_mode: String(d["tax_mode"] ?? "eu_reverse_charge"),
       customer_id: (d["customer_id"] as string) ?? null,
+      customer_type: String(d["customer_type"] ?? "firma"),
       customer_number: String(d["customer_number"] ?? ""),
 
       customer_name: String(d["customer_name"] ?? ""),
