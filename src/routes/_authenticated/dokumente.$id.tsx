@@ -482,17 +482,20 @@ function DokumentDetail() {
     };
 
     const timer = setTimeout(flush, AUTOSAVE_DELAY_MS);
-    // Beim Schließen/Verlassen der Seite oder Wechsel in den Hintergrund sofort sichern.
+    // Beim Schließen/Verlassen der Seite, Tab-Wechsel oder vor dem Entladen sofort sichern.
     const onPageHide = () => flush();
     const onVisibility = () => {
       if (document.visibilityState === "hidden") flush();
     };
+    const onBeforeUnload = () => flush();
     window.addEventListener("pagehide", onPageHide);
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       clearTimeout(timer);
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [form, items, data]);
 
