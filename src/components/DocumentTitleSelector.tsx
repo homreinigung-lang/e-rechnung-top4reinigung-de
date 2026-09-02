@@ -19,7 +19,9 @@ type DocumentTitleSelectorProps = {
 export function DocumentTitleSelector({ title, onChange }: DocumentTitleSelectorProps) {
   const extension = useMemo(() => {
     if (title.startsWith(PREFIX)) return title.slice(PREFIX.length);
-    return "";
+    // Bereits gespeicherte freie Titel werden einmalig angezeigt und
+    // bei der nächsten Bearbeitung ins neue Präfix-Format überführt.
+    return title;
   }, [title]);
 
   const setExtension = (value: string) => {
