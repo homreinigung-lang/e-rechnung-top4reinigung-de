@@ -698,6 +698,10 @@ function DokumentDetail() {
   const canMahnen = mahnungAllowed(docRecord["due_date"] as string | null);
 
   const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
+  const followUpDoc =
+    (data as { followUp?: { id: string; number: string; type: string } | null }).followUp ?? null;
+  const sourceDoc =
+    (data as { source?: { id: string; number: string; type: string } | null }).source ?? null;
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
   const introText = String(form["intro_text"] ?? "").trim();
