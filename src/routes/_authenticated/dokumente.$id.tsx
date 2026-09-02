@@ -43,6 +43,7 @@ import {
   ORDER_INTRO,
   INVOICE_INTRO,
   QUOTE_INTRO_PRIVAT,
+  defaultQuoteIntro,
   orderHeadline,
   quoteIntro,
   deriveServiceName,
