@@ -1886,29 +1886,54 @@ function DokumentDetail() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Kunde auswählen</Label>
-          <Select value={String(form["customer_id"] ?? "")} onValueChange={pickCustomer}>
-            <SelectTrigger>
-              <SelectValue placeholder="Kunde aus dem Kundenstamm wählen" />
-            </SelectTrigger>
-            <SelectContent>
-              {data.customers.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.company || c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Kunde auswählen</Label>
+            <Select value={String(form["customer_id"] ?? "")} onValueChange={pickCustomer}>
+              <SelectTrigger>
+                <SelectValue placeholder="Kunde aus dem Kundenstamm wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {data.customers.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.company || c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Kundentyp</Label>
+            <Select
+              value={isPrivat ? "privat" : "firma"}
+              onValueChange={(v) => setField("customer_type", v)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="firma">Firmenkunde</SelectItem>
+                <SelectItem value="privat">Privatkunde</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Bei Privatkunden entfallen Firma, USt-IdNr. und Bestellnummer – das Angebot nutzt den
+              Privatkunden-Text.
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {(
             [
-              { key: "customer_company", label: "Firma" },
-              { key: "customer_name", label: "Ansprechpartner" },
+              ...(!isPrivat
+                ? ([
+                    { key: "customer_company", label: "Firma" },
+                    { key: "customer_vat_id", label: "USt-IdNr. des Kunden" },
+                  ] as const)
+                : []),
+              { key: "customer_name", label: isPrivat ? "Name" : "Ansprechpartner" },
               { key: "customer_email", label: "E-Mail" },
-              { key: "customer_vat_id", label: "USt-IdNr. des Kunden" },
               { key: "customer_address_line", label: "Straße und Hausnummer" },
               { key: "customer_postal_code", label: "PLZ" },
               { key: "customer_city", label: "Ort" },
