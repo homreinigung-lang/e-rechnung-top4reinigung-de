@@ -233,8 +233,14 @@ function DokumentDetail() {
   const savedSnapshotRef = useRef<string>("");
   const [autoSavedAt, setAutoSavedAt] = useState<string>("");
 
+  // Schutz gegen Überschreiben: die Eingabefelder gehören allein dem lokalen
+  // State. Server-Daten werden nur beim ersten Laden dieses Belegs übernommen –
+  // Refetches nach Autosave/Hintergrund-Mutationen füllen die Felder nie nach.
+  const initializedIdRef = useRef<string>("");
   useEffect(() => {
     if (!data) return;
+    if (initializedIdRef.current === id) return;
+    initializedIdRef.current = id;
     const d = data.doc as Record<string, unknown>;
     setForm({
       number: String(d["number"] ?? ""),
