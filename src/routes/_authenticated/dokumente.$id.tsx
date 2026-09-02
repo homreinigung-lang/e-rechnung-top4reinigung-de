@@ -290,6 +290,8 @@ function DokumentDetail() {
   const isSmallBusiness = Boolean(
     (data?.settings as Record<string, unknown> | null | undefined)?.["small_business"],
   );
+  // Kundentyp: Privatkunden ohne Firmen-/Steuerfelder.
+  const isPrivat = String(form["customer_type"] ?? "firma") === "privat";
   // Bestandsschutz: Belege, die bereits als Reverse-Charge gespeichert wurden,
   // dürfen nie automatisch auf 19 % Inland umgestellt werden.
   const storedTaxMode = String(
@@ -885,6 +887,7 @@ function DokumentDetail() {
     setForm((f) => ({
       ...f,
       customer_id: c.id,
+      customer_type: c.company?.trim() ? "firma" : "privat",
       customer_number: (c as { customer_number?: string }).customer_number ?? "",
 
       customer_name: c.name,
