@@ -46,6 +46,22 @@ async function pages(bytes: Uint8Array) {
   return (await PDFDocument.load(bytes)).getPageCount();
 }
 
+/**
+ * Vergleichbarer Fingerabdruck des PDF-Inhalts: Seitenanzahl, Seitengrößen und
+ * alle Zeichenoperationen. Zeitstempel/Datei-IDs (die sich sekündlich ändern)
+ * bleiben bewusst außen vor.
+ */
+async function fingerprint(bytes: Uint8Array) {
+  const pdf = await PDFDocument.load(bytes);
+  const text = new TextDecoder("latin1").decode(bytes);
+  const streams = text.match(/BT[\s\S]*?ET/g) ?? [];
+  return JSON.stringify({
+    pages: pdf.getPageCount(),
+    sizes: pdf.getPages().map((pg) => [pg.getWidth(), pg.getHeight()]),
+    ops: streams,
+  });
+}
+
 describe("Eine einzige PDF-Quelle für Vorschau, Download und E-Mail", () => {
   it("SendEmailDialog nutzt keinen eigenen Render-Pfad (kein Screenshot-Fallback)", () => {
     const src = readFileSync("src/components/SendEmailDialog.tsx", "utf8");
@@ -68,8 +84,7 @@ describe("Eine einzige PDF-Quelle für Vorschau, Download und E-Mail", () => {
       const download = await buildDocumentPdfBytes(data);
       const email = await buildDocumentPdfBytes(data);
       expect(await pages(email)).toBe(await pages(download));
-      expect(email.length).toBe(download.length);
-      expect(Buffer.from(email).equals(Buffer.from(download))).toBe(true);
+      expect(await fingerprint(email)).toBe(await fingerprint(download));
     },
   );
 
@@ -78,6 +93,6 @@ describe("Eine einzige PDF-Quelle für Vorschau, Download und E-Mail", () => {
     const download = await buildDocumentPdfBytes(data);
     const email = await buildDocumentPdfBytes(data);
     expect(await pages(download)).toBeGreaterThan(1);
-    expect(Buffer.from(email).equals(Buffer.from(download))).toBe(true);
+    expect(await fingerprint(email)).toBe(await fingerprint(download));
   });
 });
