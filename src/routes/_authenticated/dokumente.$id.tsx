@@ -274,7 +274,9 @@ function DokumentDetail() {
         is_optional: Boolean((i as unknown as Record<string, unknown>)["is_optional"]),
       })),
     );
+    savedSnapshotRef.current = "";
   }, [data]);
+
 
   const { canReverseCharge, isLoading: planLoading } = useCanReverseCharge();
   const isSmallBusiness = Boolean(
