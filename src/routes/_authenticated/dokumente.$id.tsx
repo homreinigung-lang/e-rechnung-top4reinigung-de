@@ -1146,12 +1146,20 @@ function DokumentDetail() {
     }
   }
 
+  /**
+   * Einzige PDF-Quelle der Wahrheit: Vorschau, Download und E-Mail-Anhang
+   * verwenden ausschließlich diese Funktion mit denselben Daten.
+   */
+  async function makePdfBytes(): Promise<Uint8Array> {
+    return buildDocumentPdfBytes(await buildPdfData());
+  }
+
   /** Fertiges Dokument direkt als A4-PDF herunterladen (pdf-lib, kein Browser-Druck). */
   async function downloadPdf() {
     if (!(await persistBeforeOutput())) return;
     const toastId = toast.loading("PDF wird erzeugt…");
     try {
-      const bytes = await buildDocumentPdfBytes(await buildPdfData());
+      const bytes = await makePdfBytes();
       downloadBytes(
         bytes,
         `${DOC_TYPE_LABEL[doc.type]}-${docNumber.replace(/\W+/g, "_")}.pdf`.replace(/\s+/g, "-"),
