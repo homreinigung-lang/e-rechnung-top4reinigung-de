@@ -403,6 +403,28 @@ function DokumentDetail() {
         if (insError) throw insError;
       }
     },
+    [
+      data,
+      form,
+      items,
+      id,
+      taxMode,
+      vatRate,
+      discountPercent,
+      discountAmount,
+      discountReason,
+      netTotal,
+      vatAmount,
+      grossTotal,
+    ],
+  );
+
+  // Autosave greift auf die jeweils aktuellste Fassung zu, ohne den Timer neu zu starten.
+  const persistRef = useRef(persistDocument);
+  persistRef.current = persistDocument;
+
+  const save = useMutation({
+    mutationFn: () => persistDocument(),
     onSuccess: () => {
       toast.success("Gespeichert");
       // Verlässt der Beleg den Entwurfsstatus, wird die offizielle Nummer vergeben.
