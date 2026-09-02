@@ -1166,9 +1166,9 @@ function DokumentDetail() {
       meta,
       introText: isInvoice
         ? introText || INVOICE_INTRO
-        : `${isOrder ? ORDER_INTRO : isPrivat ? QUOTE_INTRO_PRIVAT : quoteIntro(companyName)}${
-            introText ? `\n\n${introText}` : ""
-          }`,
+        : isQuote
+          ? introText || defaultQuoteIntro(isPrivat, companyName)
+          : `${ORDER_INTRO}${introText ? `\n\n${introText}` : ""}`,
 
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
