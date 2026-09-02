@@ -61,6 +61,7 @@ import {
 } from "@/lib/gobd-guard";
 import {
   convertQuoteToOrder,
+  convertQuoteToInvoice,
   convertOrderToInvoice,
   dueInfo,
   mahnLabel,
@@ -184,9 +185,27 @@ function DokumentDetail() {
               .maybeSingle()
           ).data
         : null;
+      // Folgebeleg (aus diesem Beleg erzeugt) und Quellbeleg (dieser Beleg wurde daraus erzeugt).
+      const followUpId = (rec["converted_document_id"] as string | null) ?? null;
+      const [followUpRes, sourceRes] = await Promise.all([
+        followUpId
+          ? supabase
+              .from("documents")
+              .select("id, number, type")
+              .eq("id", followUpId)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase
+          .from("documents")
+          .select("id, number, type")
+          .eq("converted_document_id", id)
+          .maybeSingle(),
+      ]);
       return {
         doc: doc.data,
         related,
+        followUp: followUpRes.data ?? null,
+        source: sourceRes.data ?? null,
         items: (items.data ?? []) as Item[],
         settings: settings.data,
         customers: customers.data ?? [],
@@ -642,6 +661,19 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Angebot direkt abrechnen (einmalige Dienstleistung, ohne Auftragsbestätigung).
+  const quoteToInvoice = useMutation({
+    mutationFn: (): Promise<string> => convertQuoteToInvoice(id),
+    onSuccess: (newId: string) => {
+      toast.success("Rechnung aus Angebot erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   if (isLoading || !data) {
     return <p className="text-muted-foreground">Wird geladen…</p>;
   }
@@ -666,6 +698,10 @@ function DokumentDetail() {
   const canMahnen = mahnungAllowed(docRecord["due_date"] as string | null);
 
   const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
+  const followUpDoc =
+    (data as { followUp?: { id: string; number: string; type: string } | null }).followUp ?? null;
+  const sourceDoc =
+    (data as { source?: { id: string; number: string; type: string } | null }).source ?? null;
   const due = dueInfo(doc.due_date, doc.status);
   const docNumber = doc.number;
   const introText = String(form["intro_text"] ?? "").trim();
@@ -1311,9 +1347,22 @@ function DokumentDetail() {
               </>
             )}
             {!convertedId && (
-              <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
-                <ArrowRightLeft className="size-4" /> In Auftragsbestätigung umwandeln
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => convert.mutate()}
+                  disabled={convert.isPending}
+                >
+                  <ArrowRightLeft className="size-4" /> Auftragsbestätigung erstellen
+                </Button>
+                <Button
+                  onClick={() => quoteToInvoice.mutate()}
+                  disabled={quoteToInvoice.isPending}
+                  title="Einmalige Dienstleistung direkt abrechnen"
+                >
+                  <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
+                </Button>
+              </>
             )}
           </>
         )}
@@ -1433,6 +1482,39 @@ function DokumentDetail() {
           </div>
         </div>
       )}
+
+      {(followUpDoc || sourceDoc) && (
+        <div className="no-print rounded-lg border border-border bg-muted/40 p-4 text-sm">
+          {followUpDoc && (
+            <p>
+              {followUpDoc.type === "invoice"
+                ? "Für diesen Beleg wurde bereits eine Rechnung erstellt: "
+                : "Folgebeleg erstellt: "}
+              <Link
+                to="/dokumente/$id"
+                params={{ id: followUpDoc.id }}
+                className="font-medium underline"
+              >
+                {followUpDoc.number}
+              </Link>
+            </p>
+          )}
+          {sourceDoc && (
+            <p>
+              Erstellt aus{" "}
+              {sourceDoc.type === "quote" ? "Angebot" : DOC_TYPE_LABEL[sourceDoc.type] ?? "Beleg"}{" "}
+              <Link
+                to="/dokumente/$id"
+                params={{ id: sourceDoc.id }}
+                className="font-medium underline"
+              >
+                {sourceDoc.number}
+              </Link>
+            </p>
+          )}
+        </div>
+      )}
+
 
       {(due || reminderLevel > 0) && (
         <div

@@ -38,6 +38,7 @@ import { formatPeriod, periodForIssueDate, syncMonthInText } from "@/lib/invoice
 import {
   completeQuote,
   convertQuoteToOrder,
+  convertQuoteToInvoice,
   convertOrderToInvoice,
   declineQuote,
   dueInfo,
@@ -353,6 +354,18 @@ function DokumenteListe() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Einmalige Dienstleistung: Angebot ohne Auftragsbestätigung direkt abrechnen.
+  const quoteToInvoice = useMutation({
+    mutationFn: (docId: string) => convertQuoteToInvoice(docId),
+    onSuccess: (newId) => {
+      toast.success("Rechnung aus Angebot erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   // Stabile, lückenlose Standard-Sortierung nach Belegnummer (absteigend = neueste zuerst).
   // Die Nummern sind nullgestellt (z. B. RE-2026-0001), daher ist ein lexikalischer
   // Sort identisch mit einer numerischen Sortierung und bleibt über Jahre hinweg stabil.
@@ -419,13 +432,23 @@ function DokumenteListe() {
             setDeclineTarget({ id, label });
             setDeclineReason("");
           }}
-          convert={tab === "order" ? toInvoice : convert}
+          convert={convert}
+          toInvoice={tab === "order" ? toInvoice : quoteToInvoice}
           complete={complete}
           duplicate={duplicate}
           remove={remove}
           isLocked={(r: Record<string, unknown>) => isLockedDocument(r)}
+          followUp={(id: string) => {
+            const src = documents.find((x) => x.id === id);
+            const targetId = src?.converted_document_id ?? null;
+            if (!targetId) return null;
+            const target = documents.find((x) => x.id === targetId);
+            if (!target) return null;
+            return { id: target.id, number: String(target.number), type: String(target.type) };
+          }}
           onDelete={(id, label) => setDeleteTarget({ id, label })}
         />
+
       ) : (
         <div className="surface overflow-hidden">
           {list.length === 0 ? (
@@ -760,10 +783,12 @@ function AngebotsTabelle({
   decide,
   decline,
   convert,
+  toInvoice,
   complete,
   duplicate,
   remove,
   isLocked,
+  followUp,
   onDelete,
 }: AngebotsTabelleProps) {
   const navigate = useNavigate();
@@ -845,21 +870,65 @@ function AngebotsTabelle({
                           </>
                         )}
 
-                        {((isOrder && !d.converted_document_id) ||
-                          (!isOrder && d.status === "accepted" && !d.converted_document_id)) && (
+                        <DropdownMenuItem
+                          onClick={() =>
+                            navigate({
+                              to: "/dokumente/$id",
+                              params: { id: d.id },
+                              search: { bearbeiten: true },
+                            })
+                          }
+                        >
+                          <FileText className="mr-2 size-4" /> {label} bearbeiten
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => navigate({ to: "/dokumente/$id", params: { id: d.id } })}
+                        >
+                          <Receipt className="mr-2 size-4" /> {label} ansehen & PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+
+                        {!isOrder && !d.converted_document_id && (
+                          <DropdownMenuItem
+                            title="Auftragsbestätigung aus dem Angebot erstellen"
+                            onClick={() => convert.mutate(d.id)}
+                            disabled={convert.isPending}
+                          >
+                            <ClipboardCheck className="mr-2 size-4" /> Auftragsbestätigung erstellen
+                          </DropdownMenuItem>
+                        )}
+
+                        {!d.converted_document_id && (
                           <DropdownMenuItem
                             title={
                               isOrder
                                 ? "Rechnung aus der Auftragsbestätigung erstellen"
-                                : "Auftragsbestätigung aus dem Angebot erstellen"
+                                : "Rechnung direkt aus dem Angebot erstellen"
                             }
-                            onClick={() => convert.mutate(d.id)}
-                            disabled={convert.isPending}
+                            onClick={() => toInvoice.mutate(d.id)}
+                            disabled={toInvoice.isPending}
                           >
-                            <ArrowRightLeft className="mr-2 size-4" />
-                            {isOrder ? "Rechnung erstellen" : "Auftragsbestätigung erstellen"}
+                            <ArrowRightLeft className="mr-2 size-4" /> Rechnung erstellen
                           </DropdownMenuItem>
                         )}
+
+                        {(() => {
+                          const next = followUp(d.id);
+                          if (!next) return null;
+                          const nextLabel =
+                            next.type === "invoice" ? "Rechnung öffnen" : "Folgebeleg öffnen";
+                          return (
+                            <DropdownMenuItem
+                              title={`Bereits erstellt: ${next.number}`}
+                              onClick={() =>
+                                navigate({ to: "/dokumente/$id", params: { id: next.id } })
+                              }
+                            >
+                              <ArrowRightLeft className="mr-2 size-4" /> {nextLabel} ({next.number})
+                            </DropdownMenuItem>
+                          );
+                        })()}
+
 
                         {!isOrder &&
                           (d.status === "accepted" || Boolean(d.converted_document_id)) &&
