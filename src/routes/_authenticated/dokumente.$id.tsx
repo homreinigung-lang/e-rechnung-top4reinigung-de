@@ -184,9 +184,27 @@ function DokumentDetail() {
               .maybeSingle()
           ).data
         : null;
+      // Folgebeleg (aus diesem Beleg erzeugt) und Quellbeleg (dieser Beleg wurde daraus erzeugt).
+      const followUpId = (rec["converted_document_id"] as string | null) ?? null;
+      const [followUpRes, sourceRes] = await Promise.all([
+        followUpId
+          ? supabase
+              .from("documents")
+              .select("id, number, type")
+              .eq("id", followUpId)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase
+          .from("documents")
+          .select("id, number, type")
+          .eq("converted_document_id", id)
+          .maybeSingle(),
+      ]);
       return {
         doc: doc.data,
         related,
+        followUp: followUpRes.data ?? null,
+        source: sourceRes.data ?? null,
         items: (items.data ?? []) as Item[],
         settings: settings.data,
         customers: customers.data ?? [],
