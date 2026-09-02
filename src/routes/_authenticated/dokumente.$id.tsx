@@ -1483,6 +1483,39 @@ function DokumentDetail() {
         </div>
       )}
 
+      {(followUpDoc || sourceDoc) && (
+        <div className="no-print rounded-lg border border-border bg-muted/40 p-4 text-sm">
+          {followUpDoc && (
+            <p>
+              {followUpDoc.type === "invoice"
+                ? "Für diesen Beleg wurde bereits eine Rechnung erstellt: "
+                : "Folgebeleg erstellt: "}
+              <Link
+                to="/dokumente/$id"
+                params={{ id: followUpDoc.id }}
+                className="font-medium underline"
+              >
+                {followUpDoc.number}
+              </Link>
+            </p>
+          )}
+          {sourceDoc && (
+            <p>
+              Erstellt aus{" "}
+              {sourceDoc.type === "quote" ? "Angebot" : DOC_TYPE_LABEL[sourceDoc.type] ?? "Beleg"}{" "}
+              <Link
+                to="/dokumente/$id"
+                params={{ id: sourceDoc.id }}
+                className="font-medium underline"
+              >
+                {sourceDoc.number}
+              </Link>
+            </p>
+          )}
+        </div>
+      )}
+
+
       {(due || reminderLevel > 0) && (
         <div
           className={`no-print rounded-lg border p-4 text-sm ${
