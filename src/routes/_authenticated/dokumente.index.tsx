@@ -353,6 +353,18 @@ function DokumenteListe() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Einmalige Dienstleistung: Angebot ohne Auftragsbestätigung direkt abrechnen.
+  const quoteToInvoice = useMutation({
+    mutationFn: (docId: string) => convertQuoteToInvoice(docId),
+    onSuccess: (newId) => {
+      toast.success("Rechnung aus Angebot erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   // Stabile, lückenlose Standard-Sortierung nach Belegnummer (absteigend = neueste zuerst).
   // Die Nummern sind nullgestellt (z. B. RE-2026-0001), daher ist ein lexikalischer
   // Sort identisch mit einer numerischen Sortierung und bleibt über Jahre hinweg stabil.
