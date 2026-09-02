@@ -66,16 +66,9 @@ export function SendEmailDialog({
   }, [open]);
 
   async function buildPdf() {
-    let invoice: Uint8Array;
-    if (buildPdfBytes) {
-      // Identische Engine wie „PDF herunterladen“/Druck: A4, feste Ränder,
-      // saubere Seitenumbrüche (keine zerschnittenen Summenblöcke).
-      invoice = await buildPdfBytes();
-    } else {
-      const element = document.querySelector(printAreaSelector);
-      if (!(element instanceof HTMLElement)) throw new Error("Druckansicht nicht gefunden");
-      invoice = await elementToPdfBytes(element);
-    }
+    // Identische Engine wie Vorschau und „PDF herunterladen“: A4, feste Ränder,
+    // gleiche Seitenumbrüche, gleiche Kopf-/Fußzeilen.
+    const invoice: Uint8Array = await buildPdfBytes();
     if (attachment && merge) {
       const extra = new Uint8Array(await attachment.arrayBuffer());
       return mergePdfs([invoice, extra]);
