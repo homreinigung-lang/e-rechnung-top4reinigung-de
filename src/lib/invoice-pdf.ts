@@ -310,11 +310,11 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
 
   // ---- Titel + Einleitung -------------------------------------------------
   if (d.headline) {
-    const hLines = wrap(bold, 13, d.headline, CONTENT_W);
-    ensure(ctx, hLines.length * 17 + 10);
+    const hLines = wrap(bold, 16, d.headline, CONTENT_W);
+    ensure(ctx, hLines.length * 21 + 10);
     for (const line of hLines) {
-      text(ctx, line, { y: ctx.y, size: 13, font: bold, align: "center" });
-      ctx.y -= 17;
+      text(ctx, line, { y: ctx.y, size: 16, font: bold, align: "center" });
+      ctx.y -= 21;
     }
     ctx.y -= 6;
   } else {
