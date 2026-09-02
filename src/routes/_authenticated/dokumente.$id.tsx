@@ -48,6 +48,7 @@ import {
   deriveServiceName,
   quoteHeadline,
 } from "@/lib/document-texts";
+import { DocumentTitleSelector } from "@/components/DocumentTitleSelector";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
