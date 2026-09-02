@@ -2295,7 +2295,9 @@ function DokumentDetail() {
                     )}
               </h2>
               <p className="mt-3 text-justify text-sm leading-relaxed">
-                {quoteIntro(String(settings?.["company_name"] ?? ""))}
+                {isPrivat
+                  ? QUOTE_INTRO_PRIVAT
+                  : quoteIntro(String(settings?.["company_name"] ?? ""))}
               </p>
             </>
           )}
