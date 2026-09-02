@@ -1779,15 +1779,17 @@ function DokumentDetail() {
                 : "Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle Änderung ist nicht möglich."}
             </p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
-            <Input
-              id="order_number"
-              placeholder="z. B. SGS-PO-123456"
-              value={String(form["order_number"] ?? "")}
-              onChange={(e) => setField("order_number", e.target.value)}
-            />
-          </div>
+          {!isPrivat && (
+            <div className="space-y-2">
+              <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
+              <Input
+                id="order_number"
+                placeholder="z. B. SGS-PO-123456"
+                value={String(form["order_number"] ?? "")}
+                onChange={(e) => setField("order_number", e.target.value)}
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Status</Label>
             <Select
