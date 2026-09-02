@@ -642,6 +642,19 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Angebot direkt abrechnen (einmalige Dienstleistung, ohne Auftragsbestätigung).
+  const quoteToInvoice = useMutation({
+    mutationFn: (): Promise<string> => convertQuoteToInvoice(id),
+    onSuccess: (newId: string) => {
+      toast.success("Rechnung aus Angebot erstellt");
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      navigate({ to: "/dokumente/$id", params: { id: newId }, search: { bearbeiten: true } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   if (isLoading || !data) {
     return <p className="text-muted-foreground">Wird geladen…</p>;
   }
