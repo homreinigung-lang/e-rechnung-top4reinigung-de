@@ -1500,9 +1500,16 @@ function DokumentDetail() {
         )}
 
         {!locked && editMode && (
-          <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
-            <Save className="size-4" /> Speichern
-          </Button>
+          <>
+            <span className="text-xs text-muted-foreground">
+              {autoSavedAt
+                ? `Automatisch gespeichert um ${autoSavedAt} Uhr`
+                : "Änderungen werden automatisch gespeichert"}
+            </span>
+            <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
+              <Save className="size-4" /> Speichern
+            </Button>
+          </>
         )}
 
         {locked && isInvoice && !isStorno && !cancelledBy && (
