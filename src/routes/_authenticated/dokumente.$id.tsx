@@ -451,7 +451,9 @@ function DokumentDetail() {
       }),
   });
 
-  // Entwurf automatisch sichern: Arbeit geht beim Schließen des Browsers nicht verloren.
+  // Entwurf automatisch sichern – schonend: erst nach einer Schreibpause (Debounce)
+  // oder geräuschlos beim Verlassen der Seite. Kein Speichern mitten beim Tippen.
+  const AUTOSAVE_DELAY_MS = 4000;
   useEffect(() => {
     if (!data) return;
     const current = data.doc as unknown as Record<string, unknown>;
@@ -463,7 +465,9 @@ function DokumentDetail() {
       return;
     }
     if (savedSnapshotRef.current === snapshot) return;
-    const timer = setTimeout(() => {
+
+    const flush = () => {
+      if (savedSnapshotRef.current === snapshot) return;
       void persistRef
         .current()
         .then(() => {
@@ -475,8 +479,21 @@ function DokumentDetail() {
         .catch(() => {
           /* Fehler zeigt der manuelle Speichern-Button */
         });
-    }, 1500);
-    return () => clearTimeout(timer);
+    };
+
+    const timer = setTimeout(flush, AUTOSAVE_DELAY_MS);
+    // Beim Schließen/Verlassen der Seite oder Wechsel in den Hintergrund sofort sichern.
+    const onPageHide = () => flush();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [form, items, data]);
 
   // Bearbeitungsmodus merken, damit man an derselben Stelle weiterarbeitet.
@@ -1705,6 +1722,22 @@ function DokumentDetail() {
           </p>
         </div>
 
+        {!isInvoice && (
+          <div className="space-y-2">
+            <Label htmlFor="title">Titel (optional)</Label>
+            <Input
+              id="title"
+              value={String(form["title"] ?? "")}
+              onChange={(e) => setField("title", e.target.value)}
+              placeholder="z. B. Grundreinigung – Komplett Haus"
+            />
+            <p className="text-xs text-muted-foreground">
+              Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
+              bisher automatisch erzeugt.
+            </p>
+          </div>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="number">
@@ -2046,22 +2079,6 @@ function DokumentDetail() {
             />
           </div>
         </div>
-
-        {!isInvoice && (
-          <div className="space-y-2">
-            <Label htmlFor="title">Titel (optional)</Label>
-            <Input
-              id="title"
-              value={String(form["title"] ?? "")}
-              onChange={(e) => setField("title", e.target.value)}
-              placeholder="z. B. Grundreinigung – Komplett Haus"
-            />
-            <p className="text-xs text-muted-foreground">
-              Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
-              bisher automatisch erzeugt.
-            </p>
-          </div>
-        )}
 
         {!isInvoice && (
           <div className="space-y-2">
