@@ -779,6 +779,7 @@ export type Database = {
           status: Database["public"]["Enums"]["doc_status"]
           storno_reason: string
           tax_mode: string
+          title: string
           total: number
           type: Database["public"]["Enums"]["doc_type"]
           updated_at: string
@@ -831,6 +832,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["doc_status"]
           storno_reason?: string
           tax_mode?: string
+          title?: string
           total?: number
           type?: Database["public"]["Enums"]["doc_type"]
           updated_at?: string
@@ -883,6 +885,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["doc_status"]
           storno_reason?: string
           tax_mode?: string
+          title?: string
           total?: number
           type?: Database["public"]["Enums"]["doc_type"]
           updated_at?: string
@@ -2249,6 +2252,7 @@ export type Database = {
           status: Database["public"]["Enums"]["doc_status"]
           storno_reason: string
           tax_mode: string
+          title: string
           total: number
           type: Database["public"]["Enums"]["doc_type"]
           updated_at: string
