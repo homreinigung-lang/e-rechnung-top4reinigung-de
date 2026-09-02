@@ -1343,9 +1343,22 @@ function DokumentDetail() {
               </>
             )}
             {!convertedId && (
-              <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
-                <ArrowRightLeft className="size-4" /> In Auftragsbestätigung umwandeln
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => convert.mutate()}
+                  disabled={convert.isPending}
+                >
+                  <ArrowRightLeft className="size-4" /> Auftragsbestätigung erstellen
+                </Button>
+                <Button
+                  onClick={() => quoteToInvoice.mutate()}
+                  disabled={quoteToInvoice.isPending}
+                  title="Einmalige Dienstleistung direkt abrechnen"
+                >
+                  <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
+                </Button>
+              </>
             )}
           </>
         )}
