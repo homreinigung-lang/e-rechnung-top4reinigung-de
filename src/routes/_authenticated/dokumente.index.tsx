@@ -760,10 +760,12 @@ function AngebotsTabelle({
   decide,
   decline,
   convert,
+  toInvoice,
   complete,
   duplicate,
   remove,
   isLocked,
+  followUp,
   onDelete,
 }: AngebotsTabelleProps) {
   const navigate = useNavigate();
