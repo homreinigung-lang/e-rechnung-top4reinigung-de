@@ -705,8 +705,21 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
   // ---- Fußbereich (auf jeder Seite, fest am unteren Rand, nie überlappend) --
 
   const footTop = M_Y + footH - 14;
-  for (const page of pdf.getPages()) {
+  const pages = pdf.getPages();
+  pages.forEach((page, pageIndex) => {
     ctx.page = page;
+    // Seitenzahl nur bei mehrseitigen Belegen (DIN 5008), über der Fußzeilenlinie.
+    if (pages.length > 1) {
+      text(ctx, `Seite ${pageIndex + 1} von ${pages.length}`, {
+        x: M_X,
+        y: footTop + 12,
+        width: CONTENT_W,
+        align: "right",
+        size: 7.5,
+        color: COLOR_MUTED,
+      });
+    }
+
     page.drawLine({
       start: { x: M_X, y: footTop + 6 },
       end: { x: M_X + CONTENT_W, y: footTop + 6 },
