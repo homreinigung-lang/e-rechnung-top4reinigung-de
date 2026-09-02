@@ -38,6 +38,7 @@ import { formatPeriod, periodForIssueDate, syncMonthInText } from "@/lib/invoice
 import {
   completeQuote,
   convertQuoteToOrder,
+  convertQuoteToInvoice,
   convertOrderToInvoice,
   declineQuote,
   dueInfo,
