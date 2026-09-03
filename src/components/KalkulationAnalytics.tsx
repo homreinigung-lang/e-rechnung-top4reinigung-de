@@ -134,14 +134,17 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
     for (let i = 5; i >= 0; i--) {
       months.push(monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
     }
-    const docs = (data?.docs ?? []).filter((d) => d.type === "invoice" && d.status !== "draft");
+    // Stornorechnungen zählen nicht als abgerechneter Umsatz.
+    const docs = (data?.docs ?? []).filter(
+      (d) => d.type === "invoice" && d.status !== "draft" && d.status !== "cancelled" && !d.is_storno,
+    );
     const entries = (data?.entries ?? []).filter(
       (e) =>
         (e.entry_type ?? "work") === "work" && (e.approval_status ?? "approved") !== "rejected",
     );
     return months.map((key) => ({
       month: monthLabel(key),
-      umsatz: round2(
+      abgerechnet: round2(
         docs
           .filter((d) => String(d.issue_date).startsWith(key))
           .reduce((s, d) => s + Number(d.net_total || 0), 0),
@@ -158,15 +161,15 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
     const revenue = round2(stats.reduce((s, p) => s + p.revenue, 0));
     const cost = round2(stats.reduce((s, p) => s + p.cost, 0));
     const planned = round2(stats.reduce((s, p) => s + p.plannedHours, 0));
-    const actual = round2(stats.reduce((s, p) => s + p.actualHours, 0));
+    const monthActual = round2(stats.reduce((s, p) => s + p.monthHours, 0));
     return {
       revenue,
       cost,
       margin: round2(revenue - cost),
       marginPct: revenue > 0 ? Math.round(((revenue - cost) / revenue) * 100) : 0,
       planned,
-      actual,
-      efficiency: planned > 0 ? Math.round((actual / planned) * 100) : 0,
+      monthActual,
+      efficiency: planned > 0 ? Math.round((monthActual / planned) * 100) : 0,
       active: stats.filter((p) => p.actualHours > 0).length,
     };
   }, [stats]);
@@ -177,7 +180,11 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
   }));
 
   const kpis: [string, string, string][] = [
-    ["Kalkulierter Umsatz", formatMoney(totals.revenue), `${totals.active} aktive Projekte`],
+    [
+      "Kalkulatorische Leistung",
+      formatMoney(totals.revenue),
+      `Ist-Stunden × Projekt-Stundensatz · ${totals.active} aktive Projekte`,
+    ],
     ["Personalkosten", formatMoney(totals.cost), "aus erfassten Arbeitszeiten"],
     [
       "Deckungsbeitrag",
@@ -185,11 +192,12 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
       `Marge ${formatNumber(totals.marginPct)} % über alle Projekte`,
     ],
     [
-      "Effizienzquote",
+      "Effizienzquote (laufender Monat)",
       `${formatNumber(totals.efficiency)} %`,
-      `${formatNumber(totals.actual)} Ist- zu ${formatNumber(totals.planned)} Soll-Std.`,
+      `${formatNumber(totals.monthActual)} Ist- zu ${formatNumber(totals.planned)} Soll-Std. im Monat`,
     ],
   ];
+
 
   return (
     <div className="space-y-6">
