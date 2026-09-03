@@ -103,6 +103,18 @@ function DokumenteListe() {
   const search = Route.useSearch();
   const [tab, setTab] = useState<"invoice" | "quote" | "order">(search.tab ?? "invoice");
 
+  // URL ist führend: Navigation von außen (z. B. Dashboard/Sidebar-Links mit
+  // ?tab=quote) muss den Tab auch bei bereits gemounteter Seite umschalten.
+  useEffect(() => {
+    const urlTab = search.tab ?? "invoice";
+    setTab((prev) => (prev === urlTab ? prev : urlTab));
+  }, [search.tab]);
+
+  function selectTab(next: "invoice" | "quote" | "order") {
+    setTab(next);
+    navigate({ to: "/dokumente", search: { tab: next }, replace: true });
+  }
+
   const { data: documents = [] } = useQuery({
     queryKey: ["documents"],
     queryFn: async () => {
