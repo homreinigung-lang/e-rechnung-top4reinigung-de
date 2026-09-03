@@ -430,7 +430,7 @@ describe("11) Export enthält nur aktuelle, freigegebene und kalkulierte Positio
 });
 
 describe("11) Intervall-Erkennung ohne Substring-Kollisionen", () => {
-  const per = (t: string) => normalizeItem({ description: t } as never).frequency.perYear;
+  const per = (t: string) => normalizeItem({ description: t } as never, "test").frequency.perYear;
   it("zweiwöchentlich/14-tägig ergibt 26 statt 52", () => {
     expect(per("Reinigung zweiwöchentlich")).toBe(26);
     expect(per("Reinigung 14-tägig")).toBe(26);
