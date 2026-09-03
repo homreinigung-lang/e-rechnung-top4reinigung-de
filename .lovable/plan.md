@@ -1,77 +1,58 @@
-# Umsetzungsplan: Behebung der Audit-Befunde
+# Code-Prüfung LV-Analyse-Bereich (nur Analyse, kein Code geändert)
 
-Reihenfolge: kritisch → wichtig → nice-to-have. Business-Logik-Entscheidungen (Runden, Wochenfaktor, MwSt.) werden **nicht** angefasst, bevor Sie die Empfehlungen unten bestätigen.
+Geprüft: `LvAnalyse.tsx`, `LvPositionenTabelle.tsx`, `aggregate.ts`, `calculation.ts`, `classify.ts`, `export.ts`, `gaeb.ts`, `normalize.ts`, `pipeline.ts`, `types.ts`, `validate.ts`, `lv-analyse.functions.ts`, `lv-pdf.ts` sowie die RLS-Lage von `lv_import_logs` (per DB-Abfrage geprüft).
 
----
+## Kritisch
 
-## Teil A – Eindeutige technische Bugs (direkte Korrektur, keine Rückfrage nötig)
+1. **Intervall „zweiwöchentlich“ / „alle 2 Wochen“ wird als wöchentlich gewertet** – `normalize.ts` FREQ_RULES: die Regel `/wöchentlich/` steht vor `/14-tägig|zweiwöchentlich|alle 2 wochen/`. „zweiwöchentlich“ enthält „wöchentlich“ und liefert 52 statt 26 Einsätze/Jahr. Wirkt direkt auf Jahresfläche, Jahresstunden, Jahresnetto und Preisempfehlung (Faktor 2).
+2. **PDF-Bericht: Kopfzeile zeigt Werte aller Positionen, Tabelle nur die freigegebenen** – `LvAnalyse.tsx` übergibt `area.totalArea`, `hours.totalHours`, `cost.net` (berechnet über **alle** `items`) an `buildPdfReport`, das darunter nur `exportItems` auflistet. Der Text „Freigegebene Positionen: N … Summe: X €“ ist damit falsch, sobald nicht alle Positionen freigegeben sind. CSV/XLSX rechnen dagegen korrekt über die Exportmenge.
+3. **Angebotspreis rechnet mit Menge 1, wenn die Menge fehlt** – `calculation.ts:offerPrice` setzt `qty = 1` bei `quantity === null`. Im Export steht in der Mengenspalte „Prüfung erforderlich“, in der Preisspalte aber ein scheinbar gültiger Betrag. Führt zu massiv unterkalkulierten Angebotssummen ohne Warnung.
+4. **PDF-Beschreibung wird stumm abgeschnitten** – `export.ts` nutzt `doc.splitTextToSize(...)[0]`: jede Zelle zeigt nur die erste Zeile, ohne Kürzungshinweis. Positionstexte im Bericht sind unvollständig.
 
-### A1. Cron-Endpoint absichern (kritisch)
-`src/routes/api/public/foto-retention.ts` prüft aktuell den Header `apikey` gegen den öffentlichen Publishable-Key — der steht im Browser-Bundle, jeder kann den Endpunkt auslösen und Fotos löschen.
-- Neues Secret `CRON_SECRET` (von Ihnen in den Projekt-Einstellungen zu hinterlegen) und Prüfung per zeitkonstantem Vergleich.
-- Kein Treffer → 401, ohne Detailmeldung.
-- Der geplante Job wird auf den neuen Header umgestellt.
+## Wichtig
 
-### A2. Stille 0-Werte beim E-Rechnungs-Import (kritisch)
-`src/lib/e-invoice-import.ts` ersetzt nicht parsbare Beträge/Datumswerte durch `0` bzw. leere Werte. Damit landen falsche Rechnungssummen im System.
-- Parser gibt `null` statt `0` zurück; fehlende Pflichtfelder (Summe, Netto, Steuer, Rechnungsnummer, Datum) führen zu einem klaren Importfehler.
-- Import bricht mit deutscher Fehlermeldung ab und listet die betroffenen Felder, statt einen falschen Beleg anzulegen.
-- Rundungs-Gegenprobe: Netto + Steuer muss der Bruttosumme entsprechen (Toleranz 1 Cent), sonst Warnung im Importprotokoll.
+5. **Doppelte, abweichende MwSt-Logik** – `summarizeCost` erhält `companyVatRate` (0/19), `summarizeOwnCalculation` wird in `LvAnalyse.tsx` und in `export.ts` **ohne** Steuersatz aufgerufen (Default 19). In der UI wird `ownSummary.net` mit `cost.vat`/`cost.gross` gemischt. Bei Kleinunternehmern liefert `summarizeOwnCalculation` intern falsche Werte; heute nur deshalb unauffällig, weil im UI zufällig die Netto-Felder daraus stammen.
+6. **Falscher Hinweis „abweichender Steuersatz 0 %“** – die KI liefert `vat_rate: 0`, wenn kein Satz erkannt wurde; `normalizeItem` speichert 0 (nicht `null`), `summarizeCost` vergleicht `0 !== 19` und blendet den Warnhinweis ein, obwohl das Dokument gar keinen Steuersatz nennt.
+7. **Kennzahl-Inkonsistenz Stunden** – Tab „Arbeitsstunden“ zeigt `annualHours` (nur erfasste Stunden), `recommendPrice` rechnet mit `annualHours + estimatedFromArea`; `monthlyHours` lässt die Flächenschätzung ebenfalls weg. Drei Tabs zeigen unterschiedliche Stundenbasis.
+8. **Division durch Null in der Preisempfehlung** – `recommendPrice.deltaPercent` teilt durch `recommended`; ohne Stunden/Fläche ist `recommended = 0` → `Infinity`/`NaN` in der Anzeige.
+9. **Jahresnetto mischt Jahres- und Einzelpreise** – `summarizeOwnCalculation`/`summarizeCost` addieren `annualOfferPrice(i) ?? offerPrice(i)`: Positionen ohne erkanntes Intervall gehen mit dem Einmalpreis in die Jahressumme ein, ohne Kennzeichnung → systematische Unterschätzung.
+10. **Stunden-Spalte im Export nie als prüfbedürftig markiert** – `export.ts:buildExportRows` ruft `num(item.working_hours, "area_m2", [])` auf: falsches Feld und leere Review-Liste, dadurch wird `null`/unsicher nur über den `null`-Zweig erkannt und die Confidence-Regel greift nicht.
+11. **Klassifizierung: ein einziger Geldbetrag genügt für „Preisblatt“** – `classify.ts` prüft `structuredItemCount < 3 && (… || moneyLines >= 1)` **vor** der Leistungsbeschreibungs-Erkennung. Reine Leistungsbeschreibungen mit einer Preisangabe werden als `pricing_form` eingestuft.
+12. **GAEB-XML mit Endung `.xml` läuft nicht durch den GAEB-Parser** – `isGaebFile` prüft nur `x8x/d8x/p8x/gaeb`; `.xml` ist in `isSupportedFile` erlaubt und landet im generischen Dokumentleser.
+13. **Flacher GAEB-Zweig erzeugt Pseudopositionen** – `parseGaeb` splittet feste Satzformate an „2+ Leerzeichen“ und meldet jede Zeile als Datensatz; `itemCount` täuscht dann Erfolg vor.
+14. **KI-Einstufung darf die Heuristik auf `unsupported` überstimmen** – in `pipeline.ts` kann `aiKind = "unsupported"` den Status auf „Fehler“ setzen, obwohl Positionen extrahiert wurden; diese bleiben im State sichtbar, der Export ist aber gesperrt.
+15. **Tabellenpositionen bekommen pauschal Confidence 0,8 und Seite 1** – `pipeline.ts` überschreibt die reale Erkennungsqualität; Review-Markierungen und Quellseiten sind damit nicht belastbar.
+16. **Dedupe kann echte Positionen verschlucken** – `dedupeItems` schlüsselt auf `item_number + erste 80 Zeichen Beschreibung`; gleichlautende Positionen ohne Nummer (typisch bei Etagen-Wiederholungen) werden zu einer zusammengeführt, Mengen gehen verloren.
+17. **Fehler werden still verschluckt (Fehlerbehandlung)**
+    - `loadLog`: `if (error) return;` – keine Meldung.
+    - Insert in `lv_import_logs`: Rückgabewert wird nicht geprüft.
+    - Laden von `company_settings`: kein Error-Handling; bei Fehler stiller Fallback auf 19 % (Kleinunternehmer sehen falsche MwSt).
+    - Scheitert die KI-Analyse, kann der Gesamtstatus trotzdem „Erfolgreich verarbeitet“ lauten (Erfolgstoast), der Fehler steht nur in der Schrittliste.
+18. **`lv-pdf.ts` rechnet nicht cent-genau** – `net += p.quantity * p.unitPrice` ohne Rundung je Zeile, während `calculation.ts`/`kalkulation-engine.ts` konsequent in ganzen Cent rechnen. Angezeigte Zeilensummen und Endsumme können um Cent abweichen.
+19. **Chunking der KI-Analyse ohne Obergrenze/Teilfehler-Toleranz** – bis zu 9 sequentielle Gateway-Aufrufe (400 000 / 45 000 Zeichen); ein fehlgeschlagener Chunk verwirft das gesamte Ergebnis, Positionen an Chunk-Grenzen können doppelt entstehen.
 
-### A3. Stille `catch`-Blöcke (wichtig)
-Betroffen: PDF-Erzeugung (`src/lib/invoice-pdf.ts`), Passwort-Reset (`src/routes/reset-password.tsx`), Mail-Versand-Aufrufer.
-- Leere `catch {}` werden ersetzt durch: Fehler protokollieren **und** eine deutsche Toast-/Fehlermeldung an die Nutzerin ausgeben.
-- Wo ein Fallback sinnvoll ist (z. B. Logo lädt nicht), bleibt der Fallback, aber mit sichtbarem Hinweis statt Stille.
+## Nice-to-have
 
-### A4. Öffentlicher Mail-Endpunkt drosseln (wichtig)
-`src/lib/auth-mail.functions.ts` ist unauthentifiziert und kann zum Mail-Bombing missbraucht werden.
-- Neue Tabelle `auth_mail_throttle` (E-Mail-Hash + IP-Hash, Zeitstempel) mit RLS (nur `service_role`).
-- Limit: max. 3 Anfragen je Adresse / 15 Minuten, max. 20 je IP / Stunde. Bei Überschreitung identische Erfolgsantwort (kein Konto-Leak), aber kein Versand.
+20. Manuell angelegte Positionen erhalten `analysis_id: ""`, wenn noch keine Analyse geladen ist – `selectExportItems` filtert sie dann trotz Freigabe aus dem Export.
+21. `recommendPrice.documentAnnualNet` heißt „document…“, enthält aber die eigene Jahressumme; die UI-Formulierung ist dadurch missverständlich.
+22. Export-Zahlen via `String(v).replace(".", ",")`: keine feste 2-Stellen-Formatierung, Exponentialschreibweise bei Extremwerten möglich; XLSX-Zellen ohne Zahlenformat.
+23. PDF-Summenblock: Betrag (`marginX+120`, rechtsbündig) und Seitenangabe (`marginX+130`) können überlappen; außerdem fehlt im PDF der Summenblock der eigenen Kalkulation, den CSV/XLSX ausgeben.
+24. `extractTotals` erfasst auch „Mehrwertsteuer“-Zeilen als Summen – in der Tabelle „Erkannte Summen“ wirkt das wie doppelte Beträge.
+25. Serverfunktion verwirft Summen mit `amount === 0` (`filter(t => t.amount !== 0)`) – legitime 0,00-Positionen verschwinden.
+26. `.txt`/`.xml` sind erlaubt, werden dem Nutzer aber als Format nicht genannt („Unterstützte Formate: PDF, XLSX, CSV, GAEB“).
 
-### A5. Zustandsändernder GET-Endpoint (wichtig)
-`src/routes/api/public/konto-freigabe.ts` löscht bzw. genehmigt Konten per `GET` — E-Mail-Scanner und Link-Vorschauen können den Link unbeabsichtigt auslösen.
-- `GET` zeigt nur noch eine Bestätigungsseite mit Button.
-- Die eigentliche Aktion läuft über `POST` mit demselben Einmal-Token; Token wird nach Ausführung entwertet.
+## Sicherheit / RLS – Ergebnis
 
-### A6. Zahl-Parser vereinheitlichen (wichtig)
-Vier deutsche Zahl-Parser existieren parallel (`src/lib/format.ts`, `lv-form/number.ts`, `lv-analyse/normalize.ts`, Inline-Logik in `kalkulation.tsx`).
-- `parseGermanNumber` / `parsePositiveNumber` aus `src/lib/format.ts` wird der einzige Standard.
-- Die übrigen Implementierungen werden auf diesen Kern umgestellt (dünne Re-Exports, wo Signaturen abweichen), Tests decken die bisherigen Sonderfälle ab (`1.234,56`, `1 234,56`, `1234.56`, reine Tausenderpunkte).
+- `lv_import_logs`: RLS ist aktiv, eine Policy `ALL` für Rolle `authenticated` mit `auth.uid() = user_id` in USING **und** WITH CHECK. Lesen und Schreiben sind korrekt auf den eingeloggten Nutzer beschränkt; der clientseitig gesetzte `user_id` ist durch WITH CHECK abgesichert.
+- Hinweis (nice-to-have): `anon` besitzt Tabellen-GRANTs auf `lv_import_logs`, aber keine Policy – Zugriff ist damit faktisch blockiert; die Grants sind dennoch unnötig weit.
+- Beide Server-Funktionen laufen mit `requireSupabaseAuth`, der KI-Schlüssel wird nur serverseitig gelesen. Keine Auffälligkeiten.
 
----
+## Race Conditions / State (Punkt 3 der Anfrage)
 
-## Teil B – Business-Logik: meine Empfehlungen (bitte bestätigen)
+- Doppel-Uploads sind durch `busy` + `disabled` weitgehend verhindert; der `onStep`-Callback schreibt jedoch ungeprüft in den globalen `steps`-State – ohne Lauf-ID würden parallele Läufe ihre Schritte vermischen.
+- `loadLog` hat keinen Abbruch bei Unmount (der `company_settings`-Effekt hat einen `active`-Guard – uneinheitlich).
+- Kein grundlegender Fehler in der Tab-/Item-Verwaltung gefunden; `items` und `result` werden beim neuen Upload sauber zurückgesetzt und über `stampAnalysis` an die Analyse-ID gebunden.
 
-### B1. Rundung — Empfehlung: **Integer-Cent-Rechnung (Weg aus `kalkulation-engine.ts`)**
-Heute rechnet `kalkulation-engine.ts` in Cent, `lv-analyse/calculation.ts` mit reinen Float-Rundungen — bei vielen Positionen driften die Summen um Cents auseinander.
-**Empfehlung:** Cent-Arithmetik überall; erst am Ende in Euro formatieren. Gerundet wird pro Position (kaufmännisch, halb aufwärts), Summen entstehen als Summe der gerundeten Positionen — so entspricht die PDF-Summe immer der Addition der sichtbaren Zeilen (Prüfkriterium des Finanzamts).
-Zusätzlich: Die aktuelle `EPSILON`-Verwendung in `toCents` ist bei negativen Beträgen (Rabattzeilen) fehleranfällig und wird durch eine vorzeichenkorrekte Variante ersetzt.
-*Auswirkung:* Abweichungen im Cent-Bereich gegenüber bisherigen LV-Auswertungen. Bestehende Belege bleiben unverändert (GoBD).
+## Nächster Schritt
 
-### B2. Wochen-je-Monat — Empfehlung: **52 Wochen/Jahr als Basis, Monat = 52/12**
-`kalkulation.tsx` nutzt den gerundeten Wert `4,33`, `lv-analyse/normalize.ts` rechnet mit 52 Wochen/Jahr (= 4,3333/Monat). Über ein Jahr ergibt 4,33 nur 51,96 Wochen → rund 0,08 % zu wenig.
-**Empfehlung:** Eine zentrale Konstantendatei mit `WEEKS_PER_YEAR = 52` und `WEEKS_PER_MONTH = 52 / 12` (ungerundet in der Rechnung). In der Oberfläche wird weiterhin „× 4,33" als gerundeter Anzeigewert erklärt, gerechnet wird aber exakt.
-*Auswirkung:* Monats-/Jahrespreise steigen um ca. 0,08 % gegenüber heute — beide Module liefern danach identische Werte.
-
-### B3. MwSt.-Logik — Empfehlung: **Steuerart aus den Firmeneinstellungen (Weg aus `calculation.ts`)**
-`aggregate.ts` übernimmt heute den Steuersatz der **ersten Position mit gesetztem Wert** aus dem hochgeladenen Ausschreibungsdokument — also einen Fremdwert. `calculation.ts` erhält den Satz als Parameter.
-**Empfehlung:** Einzige Quelle ist die Steuerart des Firmenkontos (`vatRateForTaxMode` aus `src/lib/format.ts`): Inland 19 %, Reverse-Charge 0 %, Kleinunternehmer 0 % — passend zu Ihrer bereits umgesetzten §-13b-/§-19-Logik. Ein abweichender Satz im Fremddokument wird nur noch als Hinweis („Dokument nennt X %") angezeigt, nicht mehr gerechnet.
-*Auswirkung:* Keine Steuerübernahme aus fremden PDFs mehr — konsistent mit der Regel „keine Preise aus dem Dokument übernehmen".
-
----
-
-## Teil C – Nice-to-have (nach A und B)
-- Toter Code in `src/lib/lv-form/*` und redundante Route `lv-formular.tsx` entfernen bzw. abschließend in die LV-Analyse überführen.
-- Doppelte Konstanten (`WEEKS_PER_MONTH`, Stundensätze, MwSt.-Sätze) in ein Modul zusammenführen.
-- Tabelle `bank_transactions` entweder mit Funktion füllen oder entfernen — aktuell ohne Logik.
-- Server-seitige Durchsetzung der Plan-Beschränkungen (Reverse-Charge nur ab Pro) in den Server-Funktionen, nicht nur im Frontend.
-
----
-
-## Vorgehen
-1. Sie bestätigen B1–B3 (oder korrigieren einzelne Punkte).
-2. Umsetzung Teil A (kritisch → wichtig), inkl. neuer Tests für Parser, E-Rechnungs-Import und Cron-Auth.
-3. Umsetzung Teil B mit Regressionstests für Kalkulation und LV-Analyse; bestehende Belege bleiben unverändert.
-4. Teil C.
-
-Benötigt von Ihnen: das Secret `CRON_SECRET` in den Projekt-Einstellungen.
+Kein Code geändert. Auf Wunsch setze ich die Punkte in Reihenfolge Kritisch → Wichtig um, sinnvoll gebündelt: (a) Kalkulations-/Frequenzlogik inkl. Tests, (b) Export-Konsistenz (PDF-Kopf, Review-Felder, Summenblock), (c) Klassifizierung/GAEB, (d) Fehlermeldungen sichtbar machen.
