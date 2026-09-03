@@ -47,6 +47,8 @@ export function useRaumbuch(projectId: string | null) {
         supabase.from("projects").select("sqm_per_hour").eq("id", projectId).maybeSingle(),
       ]);
       if (roomsRes.error) throw roomsRes.error;
+      if (ratesRes.error) throw ratesRes.error;
+      if (projectRes.error) throw projectRes.error;
 
       const rooms = (roomsRes.data ?? []).map((r) => ({
         name: r.name ?? "",

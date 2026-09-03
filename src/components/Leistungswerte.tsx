@@ -42,13 +42,25 @@ export function Leistungswerte() {
   const seed = useMutation({
     mutationFn: async () => {
       const userId = await currentUserId();
-      const rows = DEFAULT_PERFORMANCE_RATES.map((r) => ({ ...r, user_id: userId }));
+      // Duplikate vermeiden: bereits vorhandene Kombinationen überspringen.
+      const existing = new Set(
+        rates.map((r) => `${r.usage_type.trim().toLowerCase()}|${r.floor_covering.trim().toLowerCase()}`),
+      );
+      const rows = DEFAULT_PERFORMANCE_RATES.filter(
+        (r) => !existing.has(`${r.usage_type.trim().toLowerCase()}|${r.floor_covering.trim().toLowerCase()}`),
+      ).map((r) => ({ ...r, user_id: userId }));
+      if (rows.length === 0) return 0;
       const { error } = await supabase.from("performance_rates").insert(rows);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => {
+    onSuccess: (inserted) => {
       invalidate();
-      toast.success("Standard-Leistungswerte eingefügt");
+      if (inserted === 0) {
+        toast.info("Alle Standardwerte sind bereits vorhanden – keine Duplikate eingefügt.");
+      } else {
+        toast.success(`${inserted} Standard-Leistungswerte eingefügt`);
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -167,11 +179,16 @@ export function Leistungswerte() {
                 <Label className="sm:hidden">m² / Stunde</Label>
                 <Input
                   type="number"
-                  min={0}
+                  min={1}
                   step="1"
                   defaultValue={r.sqm_per_hour}
                   onBlur={(e) => {
                     const value = Number(e.target.value) || 0;
+                    if (value <= 0) {
+                      toast.error("Der Leistungswert muss größer als 0 m²/h sein – Wert wurde nicht gespeichert.");
+                      e.target.value = String(r.sqm_per_hour);
+                      return;
+                    }
                     if (value !== Number(r.sqm_per_hour)) {
                       patch.mutate({ id: r.id, values: { sqm_per_hour: value } });
                     }
