@@ -159,7 +159,7 @@ export default function LvAnalyse() {
 
       const { data: auth } = await supabase.auth.getUser();
       if (auth.user) {
-        await supabase.from("lv_import_logs").insert({
+        const { error: logError } = await supabase.from("lv_import_logs").insert({
           user_id: auth.user.id,
           file_name: analysis.fileName,
           file_size: analysis.fileSize,
@@ -170,6 +170,11 @@ export default function LvAnalyse() {
           status_message: analysis.statusMessage,
           page_count: analysis.pageCount,
         });
+        if (logError) {
+          toast.warning("Import-Protokoll nicht gespeichert", {
+            description: `${logError.message} Die Analyse selbst ist davon nicht betroffen.`,
+          });
+        }
         void loadLog();
       }
 
@@ -185,6 +190,12 @@ export default function LvAnalyse() {
         description: `${analysis.statusMessage} ${analysis.recommendedAction}`,
         duration: 8000,
       });
+
+      // Teilfehler der Verarbeitung (KI, OCR, GAEB) sichtbar machen.
+      for (const failure of analysis.failures ?? []) {
+        toast.warning("Hinweis zur Verarbeitung", { description: failure, duration: 10000 });
+      }
+
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       setSteps((prev) => [
