@@ -21,7 +21,14 @@ export const REVIEW_LABEL = "Prüfung erforderlich";
 export const CONFIDENCE_THRESHOLD = 0.5;
 
 export type ReviewField =
-  "description" | "quantity" | "unit" | "frequency" | "area_m2" | "unit_price" | "total_price";
+  | "description"
+  | "quantity"
+  | "unit"
+  | "frequency"
+  | "area_m2"
+  | "working_hours"
+  | "unit_price"
+  | "total_price";
 
 /**
  * Liefert alle Felder einer Position, die leer oder unsicher sind.
@@ -35,11 +42,20 @@ export function reviewFields(item: LvNormalizedItem): ReviewField[] {
   if (!item.unit.trim()) out.add("unit");
   if (item.frequency.perYear === null) out.add("frequency");
   if (item.area_m2 === null) out.add("area_m2");
+  if (item.working_hours === null) out.add("working_hours");
   if (!hasOwnPrice(item)) out.add("unit_price");
   if (offerPrice(item) === null) out.add("total_price");
   if (item.source_method !== "manuell" && item.confidence_score < CONFIDENCE_THRESHOLD) {
     (
-      ["quantity", "unit", "frequency", "area_m2", "unit_price", "total_price"] as ReviewField[]
+      [
+        "quantity",
+        "unit",
+        "frequency",
+        "area_m2",
+        "working_hours",
+        "unit_price",
+        "total_price",
+      ] as ReviewField[]
     ).forEach((f) => out.add(f));
   }
   return [...out];
@@ -119,7 +135,7 @@ export function buildExportRows(items: LvNormalizedItem[]): string[][] {
         ? REVIEW_LABEL
         : String(item.frequency.perYear),
       num(item.area_m2, "area_m2", review),
-      num(item.working_hours, "area_m2", []),
+      num(item.working_hours, "working_hours", review),
       item.source_page === null ? REVIEW_LABEL : String(item.source_page),
       String(Math.round(item.confidence_score * 100)),
       review.length ? `${REVIEW_LABEL}: ${review.join(", ")}` : "geprüft",
@@ -142,23 +158,40 @@ const GROUP_ROW: string[] = [
 ];
 
 /** Summenzeilen ausschließlich aus den eigenen Kalkulationsdaten. */
-function ownSummaryRows(items: LvNormalizedItem[]): string[][] {
-  const s = summarizeOwnCalculation(items);
-  return [
+function ownSummaryRows(items: LvNormalizedItem[], vatRate: number): string[][] {
+  const s = summarizeOwnCalculation(items, vatRate);
+  const rows: string[][] = [
     [],
     ["Eigene Kalkulation – Gesamtsumme"],
     ["Kalkulierte Positionen", String(s.calculatedItems)],
     ["Angebotssumme netto €", String(s.net).replace(".", ",")],
+    [`MwSt ${String(s.vatRate).replace(".", ",")} % €`, String(s.vat).replace(".", ",")],
+    ["Angebotssumme brutto €", String(s.gross).replace(".", ",")],
     ["Jahressumme netto €", String(s.annualNet).replace(".", ",")],
   ];
+  if (s.itemsWithoutFrequency > 0) {
+    rows.push([
+      "Hinweis zur Jahressumme",
+      `${s.itemsWithoutFrequency} kalkulierte Positionen ohne erkanntes Intervall gehen nur einmalig (nicht jährlich) in die Jahressumme ein.`,
+    ]);
+  }
+  return rows;
 }
+
+/** Optionen der Exportbausteine – der Steuersatz kommt aus den Firmeneinstellungen. */
+export type ExportOptions = { vatRate?: number };
 
 function csvCell(value: string): string {
   return /[";\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 /** CSV im Standardformat des Systems: UTF-8 mit BOM, Semikolon-getrennt. */
-export function buildCsv(items: LvNormalizedItem[], result?: LvAnalysisResult | null): string {
+export function buildCsv(
+  items: LvNormalizedItem[],
+  result?: LvAnalysisResult | null,
+  options: ExportOptions = {},
+): string {
+  const vatRate = options.vatRate ?? 19;
   const lines: string[][] = [];
   if (result) {
     lines.push(["Datei", result.fileName]);
@@ -181,7 +214,7 @@ export function buildCsv(items: LvNormalizedItem[], result?: LvAnalysisResult | 
   lines.push(GROUP_ROW);
   lines.push([...EXPORT_HEADERS]);
   lines.push(...buildExportRows(items));
-  lines.push(...ownSummaryRows(items));
+  lines.push(...ownSummaryRows(items, vatRate));
   return `\uFEFF${lines.map((row) => row.map(csvCell).join(";")).join("\r\n")}\r\n`;
 }
 
@@ -226,7 +259,9 @@ function sheetXml(rows: string[][]): string {
 export async function buildXlsx(
   items: LvNormalizedItem[],
   result?: LvAnalysisResult | null,
+  options: ExportOptions = {},
 ): Promise<Blob> {
+  const vatRate = options.vatRate ?? 19;
   const rows: string[][] = [];
   if (result) {
     rows.push(["Datei", result.fileName]);
@@ -237,7 +272,7 @@ export async function buildXlsx(
   rows.push(GROUP_ROW);
   rows.push([...EXPORT_HEADERS]);
   rows.push(...buildExportRows(items));
-  rows.push(...ownSummaryRows(items));
+  rows.push(...ownSummaryRows(items, vatRate));
   if (result?.totals.length) {
     rows.push([]);
     rows.push(["Erkannte Summen", "Betrag €", "Quellseite"]);
@@ -279,6 +314,10 @@ export type PdfReportSummary = {
   totalArea: number;
   totalHours: number;
   totalCost: number;
+  /** Steuersatz aus den Firmeneinstellungen. */
+  vatRate?: number;
+  /** Kalkulierte Positionen ohne erkanntes Intervall (nur einmalig in der Jahressumme). */
+  itemsWithoutFrequency?: number;
 };
 
 /** Erzeugt einen echten PDF-Bericht (Vektor, jsPDF) als Blob. */
@@ -318,8 +357,17 @@ export async function buildPdfReport(
     marginX,
     y,
   );
+  y += 4.5;
+  if ((summary.itemsWithoutFrequency ?? 0) > 0) {
+    doc.text(
+      `Hinweis: ${summary.itemsWithoutFrequency} Positionen ohne erkanntes Intervall gehen nur einmalig (nicht jährlich) in die Jahressumme ein.`,
+      marginX,
+      y,
+    );
+    y += 4.5;
+  }
   doc.setTextColor(0, 0, 0);
-  y += 7;
+  y += 3;
 
   const cols: { title: string; w: number; align?: "right" }[] = [
     { title: "Pos.", w: 18 },
