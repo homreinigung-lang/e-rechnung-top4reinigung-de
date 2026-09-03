@@ -213,6 +213,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                           <Link
                             to={item.to}
                             {...(item.hash ? { hash: item.hash } : {})}
+                            {...(item.search ? { search: item.search } : {})}
                             className={cn(
                               "flex w-full cursor-pointer items-center gap-2",
                               active && "bg-secondary text-secondary-foreground",
