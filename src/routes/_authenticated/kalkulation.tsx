@@ -1213,7 +1213,7 @@ function KalkulationPage() {
           reverse_charge: taxMode === "eu_reverse_charge",
           net_total: net,
           vat_amount: vat,
-          total: round2(net + vat),
+          total: grossTotal,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
