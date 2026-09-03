@@ -330,10 +330,6 @@ function DokumentDetail() {
       : "",
   );
 
-  const itemsTotal = useMemo(
-    () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
-    [items],
-  );
   const hasOptionalItems = useMemo(() => items.some((i) => i.is_optional), [items]);
   const regularTotal = useMemo(
     () =>
@@ -342,15 +338,25 @@ function DokumentDetail() {
         .reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
-  const discountPercent = Math.min(
+  /**
+   * Enthält der Beleg bereits eine aus der Kalkulation übertragene
+   * Rabattposition (negativer Einzelpreis), darf kein zweiter Belegrabatt
+   * greifen – sonst würde derselbe Nachlass doppelt abgezogen.
+   */
+  const discountItemPresent = useMemo(() => hasDiscountPosition(items), [items]);
+  const enteredDiscountPercent = Math.min(
     100,
     Math.max(0, Number(String(form["discount_percent"] ?? "0").replace(",", ".")) || 0),
   );
-  const discountAmount = roundCents((itemsTotal * discountPercent) / 100);
+  const discountPercent = discountItemPresent ? 0 : enteredDiscountPercent;
   const discountReason = String(form["discount_reason"] ?? "");
-  const netTotal = roundCents(itemsTotal - discountAmount);
-  const vatAmount = roundCents((netTotal * vatRate) / 100);
-  const grossTotal = roundCents(netTotal + vatAmount);
+  const {
+    itemsTotal,
+    discountAmount,
+    netTotal,
+    vatAmount,
+    grossTotal,
+  } = computeDocumentTotals(items, discountPercent, vatRate);
 
   /** Schreibt Kopf und Positionen des Belegs in die Datenbank (Speichern + Autosave). */
   const persistDocument = useCallback(
