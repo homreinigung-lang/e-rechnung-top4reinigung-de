@@ -51,9 +51,6 @@ export function isCalculable(item: LvNormalizedItem): boolean {
   return hasOwnPrice(item) && hasQuantity(item);
 }
 
-/** Einheitliche Rundung über ganze Cent (identisch zur Grundkalkulation). */
-const round2 = (n: number) => fromCents(toCents(n));
-
 /**
  * Angebotspreis der Position. Ohne eigenen Einheitspreis ODER ohne geforderte
  * Menge: null (keine Berechnung) – eine fehlende Menge darf nie stillschweigend
@@ -85,7 +82,8 @@ export function annualOfferPrice(item: LvNormalizedItem): number | null {
 
 
 export function calcStatus(item: LvNormalizedItem): LvCalcStatus {
-  if (!hasOwnPrice(item)) return "not_calculated";
+  // Ohne eigenen Preis ODER ohne Menge ist die Position nicht kalkuliert.
+  if (!isCalculable(item)) return "not_calculated";
   return item.approved ? "released" : "calculated_review";
 }
 
@@ -130,7 +128,7 @@ export function summarizeOwnCalculation(
   items: LvNormalizedItem[],
   vatRate = 19,
 ): OwnCalculationSummary {
-  const calculated = items.filter(hasOwnPrice);
+  const calculated = items.filter(isCalculable);
   // Summe der bereits gerundeten Positionen: die Gesamtsumme entspricht exakt
   // der Addition der sichtbaren Zeilen.
   const netCents = calculated.reduce((s, i) => s + toCents(offerPrice(i) ?? 0), 0);
