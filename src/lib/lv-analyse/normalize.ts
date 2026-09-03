@@ -66,12 +66,14 @@ const FREQ_RULES: [RegExp, (m: RegExpExecArray) => number][] = [
   [/14[-\s]?tägig|zweiwöchentlich|alle\s*2\s*wochen/i, () => WEEKS_PER_YEAR / 2],
   [/vierteljährlich|quartalsweise|alle\s*3\s*monate/i, () => 4],
   [/halbjährlich|alle\s*6\s*monate/i, () => 2],
-  [/halbmonatlich|alle\s*2\s*monate/i, () => 6],
+  [/halbmonatlich|zweimal\s*(?:pro\s*|je\s*)?monat/i, () => MONTHS_PER_YEAR * 2],
+  [/alle\s*2\s*monate/i, () => 6],
   // 3) Grundbegriffe – nur als eigenständiges Wort.
   [/\btäglich/i, () => WORKDAYS_PER_YEAR],
   [/\bwöchentlich/i, () => WEEKS_PER_YEAR],
   [/\bmonatlich/i, () => MONTHS_PER_YEAR],
   [/\bjährlich/i, () => 1],
+
 
 ];
 
