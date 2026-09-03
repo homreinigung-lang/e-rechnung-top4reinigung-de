@@ -117,6 +117,8 @@ export type OwnCalculationSummary = {
   vat: number;
   gross: number;
   complete: boolean;
+  /** Kalkulierte Positionen ohne erkanntes Intervall (nur einmalig in der Jahressumme). */
+  itemsWithoutFrequency: number;
 };
 
 /**
@@ -145,6 +147,7 @@ export function summarizeOwnCalculation(
     vatRate,
     vat: fromCents(vatCents),
     gross: fromCents(netCents + vatCents),
+    itemsWithoutFrequency: calculated.filter((i) => i.frequency.perYear === null).length,
     complete: items.length > 0 && calculated.length === items.length,
   };
 

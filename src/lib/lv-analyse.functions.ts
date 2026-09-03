@@ -25,6 +25,8 @@ export type LvAnalyseResponse = {
   summary: string;
   items: LvAnalyseRawItem[];
   totals: LvAnalyseRawTotal[];
+  /** Hinweise zu Teilausfällen (einzelne Textabschnitte) – nie stillschweigend. */
+  warnings?: string[];
 };
 
 const SYSTEM = `Du bist Ausschreibungs-Analyst für ein deutsches Gebäudereinigungsunternehmen.
@@ -246,22 +248,75 @@ export const analyseLvDocument = createServerFn({ method: "POST" })
     return { text };
   })
   .handler(async ({ data }): Promise<LvAnalyseResponse> => {
-    const chunks = chunkText(data.text);
+    const all = chunkText(data.text);
+    const chunks = all.slice(0, MAX_CHUNKS);
+    const warnings: string[] = [];
+    if (all.length > MAX_CHUNKS) {
+      warnings.push(
+        `Das Dokument ist sehr umfangreich: Es wurden die ersten ${MAX_CHUNKS} von ${all.length} Textabschnitten analysiert. Bitte den Rest separat hochladen.`,
+      );
+    }
+
     const merged: LvAnalyseResponse = { document_kind: "", summary: "", items: [], totals: [] };
+    let ok = 0;
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       if (!chunk?.trim()) continue;
-      const result = await callGateway(
-        `Textabschnitt ${i + 1} von ${chunks.length}. Analysiere ausschließlich diesen Abschnitt:\n\n${chunk}`,
-      );
-      if (!merged.document_kind && result.document_kind)
-        merged.document_kind = result.document_kind;
-      if (!merged.summary && result.summary) merged.summary = result.summary;
-      merged.items.push(...result.items);
-      merged.totals.push(...result.totals);
+      try {
+        const result = await callGateway(
+          `Textabschnitt ${i + 1} von ${chunks.length}. Analysiere ausschließlich diesen Abschnitt:\n\n${chunk}`,
+        );
+        ok += 1;
+        if (!merged.document_kind && result.document_kind)
+          merged.document_kind = result.document_kind;
+        if (!merged.summary && result.summary) merged.summary = result.summary;
+        merged.items.push(...result.items);
+        merged.totals.push(...result.totals);
+      } catch (error) {
+        // Ein fehlgeschlagener Abschnitt darf nie das gesamte Ergebnis verwerfen.
+        const reason = error instanceof Error ? error.message : String(error);
+        warnings.push(`Textabschnitt ${i + 1} von ${chunks.length} konnte nicht analysiert werden: ${reason}`);
+      }
     }
+    if (ok === 0) {
+      throw new Error(
+        warnings[0] ?? "Die KI-Analyse lieferte kein Ergebnis für dieses Dokument.",
+      );
+    }
+
+    // Doppelerfassung an Abschnittsgrenzen entfernen (gleiche Position in zwei Abschnitten).
+    merged.items = dedupeRawItems(merged.items);
+    merged.totals = dedupeRawTotals(merged.totals);
+    if (warnings.length) merged.warnings = warnings;
     return merged;
   });
+
+/** Höchstzahl der KI-Abschnitte je Analyse (Kosten- und Laufzeitgrenze). */
+const MAX_CHUNKS = 12;
+
+function dedupeRawItems(items: LvAnalyseRawItem[]): LvAnalyseRawItem[] {
+  const map = new Map<string, LvAnalyseRawItem>();
+  for (const item of items) {
+    const key = [
+      item.item_number.trim().toLowerCase(),
+      item.description.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 100),
+      item.quantity,
+      item.unit.trim().toLowerCase(),
+    ].join("|");
+    const existing = map.get(key);
+    if (!existing || item.confidence_score > existing.confidence_score) map.set(key, item);
+  }
+  return [...map.values()];
+}
+
+function dedupeRawTotals(totals: LvAnalyseRawTotal[]): LvAnalyseRawTotal[] {
+  const map = new Map<string, LvAnalyseRawTotal>();
+  for (const total of totals) {
+    const key = `${total.label.trim().toLowerCase().replace(/\s+/g, " ")}|${total.amount}`;
+    if (!map.has(key)) map.set(key, total);
+  }
+  return [...map.values()];
+}
 
 /** OCR-Analyse gescannter PDFs – die Texterkennung übernimmt das multimodale Modell. */
 export const analyseLvScan = createServerFn({ method: "POST" })

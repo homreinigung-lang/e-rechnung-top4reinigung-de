@@ -10,6 +10,18 @@ export function isGaebFile(fileName: string): boolean {
   return /\.(x8[1-9]|d8[1-9]|p8[1-9]|gaeb)$/i.test(fileName.trim());
 }
 
+/** GAEB-XML wird oft mit generischer Endung .xml geliefert – Inhalt entscheidet. */
+export function isGaebXmlContent(content: string): boolean {
+  const head = content.slice(0, 4000);
+  return /<GAEB[\s>]/i.test(head) || /<Award[\s>]/i.test(head) || /<BoQ[\s>]/i.test(head);
+}
+
+/** Datei soll durch den GAEB-Parser laufen (Endung oder XML-Inhalt). */
+export function shouldParseAsGaeb(fileName: string, content = ""): boolean {
+  if (isGaebFile(fileName)) return true;
+  return /\.xml$/i.test(fileName.trim()) && isGaebXmlContent(content);
+}
+
 const MONEY_LINE = /(?:€|EUR)\s*[\d.]+,\d{2}|[\d.]+,\d{2}\s*(?:€|EUR)/i;
 const TOTAL_WORDS =
   /(gesamt|summe|angebotssumme|endsumme|nettosumme|bruttosumme|jahrespreis|monatspreis|zwischensumme|preisblatt|angebotspreis)/i;
@@ -75,8 +87,17 @@ export function classifyDocument(input: ClassifyInput): ClassifyOutput {
     };
   }
 
+  // Beschreibende Leistungstexte zuerst: ein einzelner Geldbetrag macht daraus kein Preisblatt.
+  if (specHits >= 2 && structuredItemCount < 3 && totalCount === 0 && totalLines === 0) {
+    return {
+      kind: "cleaning_spec",
+      reason: `Beschreibender Leistungstext ohne kalkulierbare Positionen erkannt (${specHits} Fachbegriffe der Leistungsbeschreibung).`,
+    };
+  }
+
   // Preisblatt: überwiegend Preis-/Jahresbeträge ohne vollständige LV-Tabelle.
-  if (structuredItemCount < 3 && (totalCount > 0 || totalLines > 0 || moneyLines >= 1)) {
+  // Ein einzelner Betrag reicht nicht – es braucht Summenzeilen oder mehrere Beträge.
+  if (structuredItemCount < 3 && (totalCount > 0 || totalLines > 0 || moneyLines >= 3)) {
     return {
       kind: "pricing_form",
       reason:

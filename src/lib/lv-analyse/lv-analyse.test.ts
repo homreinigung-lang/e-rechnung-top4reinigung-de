@@ -122,7 +122,9 @@ describe("3) XLSX-Datei", () => {
     expect(result.items.length).toBe(3);
     expect(result.items[0]?.quantity).toBe(1250);
     expect(result.items[0]?.unit).toBe("m²");
-    expect(result.items.every((i) => i.source_page === 1)).toBe(true);
+    // Tabellenzeilen haben keine belastbare Seitenangabe – daher bewusst null.
+    expect(result.items.every((i) => i.source_page === null)).toBe(true);
+
   });
 });
 

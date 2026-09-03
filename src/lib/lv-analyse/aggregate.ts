@@ -69,6 +69,14 @@ export type HoursSummary = {
   annualHours: number;
   monthlyHours: number;
   itemsWithHours: number;
+  /**
+   * Einheitliche Stundenbasis aller Auswertungen:
+   * erfasste Jahresstunden + aus Fläche geschätzte Stunden.
+   */
+  annualHoursTotal: number;
+  monthlyHoursTotal: number;
+  /** Positionen ohne erkanntes Intervall – sie zählen nur einmalig. */
+  itemsWithoutFrequency: number;
   /** Aus Fläche geschätzte Stunden (Leistungswert m²/Std). */
   estimatedFromArea: number;
   performanceRate: number;
@@ -90,12 +98,17 @@ export function summarizeHours(
   const areaWithoutHours = items
     .filter((i) => (i.working_hours ?? 0) <= 0 && (i.area_m2 ?? 0) > 0)
     .reduce((s, i) => s + (i.area_m2 ?? 0) * (i.frequency.perYear ?? 1), 0);
+  const estimatedFromArea = round2(performanceRate > 0 ? areaWithoutHours / performanceRate : 0);
+  const annualHoursTotal = round2(annualHours + estimatedFromArea);
   return {
     totalHours: round2(totalHours),
     annualHours: round2(annualHours),
     monthlyHours: round2(annualHours / MONTHS_PER_YEAR),
     itemsWithHours: withHours.length,
-    estimatedFromArea: round2(performanceRate > 0 ? areaWithoutHours / performanceRate : 0),
+    annualHoursTotal,
+    monthlyHoursTotal: round2(annualHoursTotal / MONTHS_PER_YEAR),
+    itemsWithoutFrequency: items.filter((i) => i.frequency.perYear === null).length,
+    estimatedFromArea,
     performanceRate,
   };
 }
@@ -109,6 +122,11 @@ export type CostSummary = {
   pricedItems: number;
   unpricedItems: number;
   documentTotals: LvTotalLine[];
+  /**
+   * Positionen ohne erkanntes Intervall: sie gehen nur EINMALIG in die
+   * Jahressumme ein und müssen im Bericht gekennzeichnet werden.
+   */
+  itemsWithoutFrequency: number;
   /**
    * Abweichender Steuersatz aus dem hochgeladenen Dokument – nur als Hinweis,
    * er fließt bewusst NICHT in die Berechnung ein.
@@ -136,6 +154,7 @@ export function summarizeCost(
     0,
   );
   const vatCents = Math.round((netCents * vatRate) / 100);
+  const itemsWithoutFrequency = priced.filter((i) => i.frequency.perYear === null).length;
   const documentRate = items.find((i) => i.vat_rate !== null)?.vat_rate ?? null;
   return {
     net: fromCents(netCents),
@@ -146,6 +165,7 @@ export function summarizeCost(
     pricedItems: priced.length,
     unpricedItems: items.length - priced.length,
     documentTotals: totals,
+    itemsWithoutFrequency,
     documentVatRateHint: documentRate !== null && documentRate !== vatRate ? documentRate : null,
   };
 }
@@ -184,7 +204,8 @@ export function recommendPrice(
   inputs: PriceInputs,
 ): PriceRecommendation {
   const hours = summarizeHours(items, inputs.performanceRate);
-  const annualHours = round2(hours.annualHours + hours.estimatedFromArea);
+  // Einheitliche Stundenbasis wie in den Reitern „Arbeitsstunden“ und „Kostenanalyse“.
+  const annualHours = hours.annualHoursTotal;
   const labor = annualHours * inputs.hourlyRate;
   const withOverhead = labor * (1 + inputs.overheadPercent / 100);
   const recommended = round2(withOverhead * (1 + inputs.profitPercent / 100));
@@ -200,8 +221,9 @@ export function recommendPrice(
     recommendedMonthlyNet: round2(recommended / MONTHS_PER_YEAR),
     recommendedPerSqm: area > 0 ? round2(recommended / area) : 0,
     documentAnnualNet,
+    // Ohne Empfehlungsbasis (recommended = 0) ist kein Prozentvergleich möglich.
     deltaPercent:
-      documentAnnualNet > 0
+      documentAnnualNet > 0 && recommended > 0
         ? round2(((documentAnnualNet - recommended) / recommended) * 100)
         : null,
   };
