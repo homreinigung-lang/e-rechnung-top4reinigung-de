@@ -179,11 +179,16 @@ export function Leistungswerte() {
                 <Label className="sm:hidden">m² / Stunde</Label>
                 <Input
                   type="number"
-                  min={0}
+                  min={1}
                   step="1"
                   defaultValue={r.sqm_per_hour}
                   onBlur={(e) => {
                     const value = Number(e.target.value) || 0;
+                    if (value <= 0) {
+                      toast.error("Der Leistungswert muss größer als 0 m²/h sein – Wert wurde nicht gespeichert.");
+                      e.target.value = String(r.sqm_per_hour);
+                      return;
+                    }
                     if (value !== Number(r.sqm_per_hour)) {
                       patch.mutate({ id: r.id, values: { sqm_per_hour: value } });
                     }
