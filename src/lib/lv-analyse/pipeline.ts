@@ -10,7 +10,7 @@ import {
   analyseLvScan,
   type LvAnalyseResponse,
 } from "@/lib/lv-analyse.functions";
-import { classifyDocument, isGaebFile, isSupportedFile } from "./classify";
+import { classifyDocument, isGaebFile, isSupportedFile, shouldParseAsGaeb } from "./classify";
 import { parseGaeb } from "./gaeb";
 import {
   dedupeItems,
@@ -52,6 +52,8 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
   const analyseScan = deps.analyseScan ?? ((args) => analyseLvScan(args));
   const readDocument: ReadDocument = deps.readDocument ?? ((f) => extractDocument(f));
   const steps: LvProcessStep[] = [];
+  // Teilfehler (KI, OCR, GAEB) – sie werden dem Nutzer sichtbar gemeldet.
+  const failures: string[] = [];
   const push = (step: LvProcessStep) => {
     steps.push(step);
     deps.onStep?.(step);
@@ -92,9 +94,11 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
   let pageCount = 0;
 
   try {
-    if (isGaebFile(file.name)) {
+    const isXml = /\.xml$/i.test(file.name);
+    const rawContent = isGaebFile(file.name) || isXml ? await file.text() : "";
+    if (shouldParseAsGaeb(file.name, rawContent)) {
       push({ state: "ok", label: "GAEB-Datei wird gelesen" });
-      const gaeb = parseGaeb(await file.text());
+      const gaeb = parseGaeb(rawContent);
       text = gaeb.text;
       rows = gaeb.rows;
       hasTextLayer = gaeb.text.trim().length > 0;
@@ -103,6 +107,16 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
         state: gaeb.itemCount ? "ok" : "warn",
         label: `GAEB gelesen: ${gaeb.itemCount} Datensätze`,
       });
+      for (const warning of gaeb.warnings) {
+        push({ state: "warn", label: warning });
+        failures.push(warning);
+      }
+    } else if (isXml) {
+      push({ state: "warn", label: "XML ohne GAEB-Struktur – Inhalt wird als Text ausgewertet" });
+      text = rawContent.replace(/<[^>]+>/g, " ").replace(/[ \t]{2,}/g, " ");
+      rows = [];
+      hasTextLayer = text.trim().length > 0;
+      pageCount = 1;
     } else {
       push({ state: "ok", label: "Datei wird gelesen" });
       const doc = await readDocument(file);
@@ -138,12 +152,10 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
 
   // 1) Tabellenspalten (CSV/Excel/GAEB) – ohne KI.
   if (rows.length > 1) {
-    const tableItems = cleanItems(itemsFromRows(rows)).map(
-      (i, index) =>
-        normalizeItem(
-          { ...i, source_page: 1, confidence_score: 0.8, quantity: i.quantity, unit: i.unit },
-          "tabelle",
-        ) as LvNormalizedItem & { _i?: number },
+    // Keine pauschale Sicherheit/Seite mehr: die Erkennungsqualität ergibt sich
+    // aus den tatsächlich gelesenen Feldern (Beschreibung, Menge, Einheit, Preis).
+    const tableItems = cleanItems(itemsFromRows(rows)).map((i) =>
+      normalizeItem({ ...i, source_page: null, confidence_score: null }, "tabelle"),
     );
     candidates.push(...tableItems);
     push({
@@ -178,9 +190,14 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
         state: aiItems.length ? "ok" : "warn",
         label: `KI-Analyse: ${aiItems.length} Positionen`,
       });
+      for (const warning of ai.warnings ?? []) {
+        push({ state: "warn", label: warning });
+        failures.push(warning);
+      }
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       push({ state: "error", label: `KI-Analyse fehlgeschlagen: ${reason}` });
+      failures.push(`KI-Analyse fehlgeschlagen: ${reason}`);
     }
 
     // 3) Regelbasierte Zweitmeinung.
@@ -224,6 +241,7 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       push({ state: "error", label: `OCR fehlgeschlagen: ${reason}` });
+      failures.push(`OCR fehlgeschlagen: ${reason}`);
     }
   }
 
@@ -253,6 +271,10 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     ).length;
     if (aiKind === "detailed_lv" && structured < 3) {
       // KI meldet LV, es fehlt aber die vollständige LV-Struktur: Heuristik behalten.
+    } else if (aiKind === "unsupported" && items.length > 0) {
+      // Es wurden bereits Positionen extrahiert – eine KI-Einstufung „unsupported“
+      // darf das Ergebnis nicht verwerfen.
+      kindReason = `${classification.reason} Hinweis: Die KI stufte das Dokument als nicht verwertbar ein, es wurden jedoch ${items.length} Positionen erkannt.`;
     } else if (aiKind !== kind) {
       kind = aiKind as typeof kind;
       kindReason = `${classification.reason} KI-Einstufung: ${aiKind}.`;
@@ -294,6 +316,7 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     steps,
     pageCount,
     rawText: text,
+    failures,
   };
 }
 
