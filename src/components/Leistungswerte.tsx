@@ -42,9 +42,17 @@ export function Leistungswerte() {
   const seed = useMutation({
     mutationFn: async () => {
       const userId = await currentUserId();
-      const rows = DEFAULT_PERFORMANCE_RATES.map((r) => ({ ...r, user_id: userId }));
+      // Duplikate vermeiden: bereits vorhandene Kombinationen überspringen.
+      const existing = new Set(
+        rates.map((r) => `${r.usage_type.trim().toLowerCase()}|${r.floor_covering.trim().toLowerCase()}`),
+      );
+      const rows = DEFAULT_PERFORMANCE_RATES.filter(
+        (r) => !existing.has(`${r.usage_type.trim().toLowerCase()}|${r.floor_covering.trim().toLowerCase()}`),
+      ).map((r) => ({ ...r, user_id: userId }));
+      if (rows.length === 0) return 0;
       const { error } = await supabase.from("performance_rates").insert(rows);
       if (error) throw error;
+      return rows.length;
     },
     onSuccess: () => {
       invalidate();
