@@ -421,7 +421,7 @@ function DokumenteListe() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "invoice" | "quote" | "order")}>
+      <Tabs value={tab} onValueChange={(v) => selectTab(v as "invoice" | "quote" | "order")}>
         <TabsList>
           <TabsTrigger value="invoice">
             <Receipt className="mr-2 size-4" /> Rechnungen
