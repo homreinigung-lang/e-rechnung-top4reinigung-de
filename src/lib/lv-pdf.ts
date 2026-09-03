@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { formatDate, formatMoney, formatNumber, today } from "@/lib/format";
+import { fromCents, toCents } from "@/lib/kalkulation-engine";
 
 /**
  * Erzeugt ein Leistungsverzeichnis (LV) als PDF – vektorbasiert mit pdf-lib,
@@ -206,7 +207,9 @@ export async function buildLvPdf(data: LvPdfData): Promise<Uint8Array> {
 
   drawHead();
 
-  let net = 0;
+  // Cent-genau rechnen (identisch zu calculation.ts / kalkulation-engine.ts):
+  // jede Zeile wird gerundet, die Summe entspricht exakt den gedruckten Zeilen.
+  let netCents = 0;
   for (const p of data.positions) {
     const lines = wrap(regular, 9, p.description || "—", wDesc - 6);
     const rowH = Math.max(16, lines.length * 11 + 6);
@@ -230,8 +233,8 @@ export async function buildLvPdf(data: LvPdfData): Promise<Uint8Array> {
         thickness: 0.6,
       });
     }
-    const total = p.quantity * p.unitPrice;
-    net += total;
+    const total = fromCents(toCents(p.quantity * p.unitPrice));
+    netCents += toCents(total);
     const ty = y - 12;
     draw(p.oz, colOz + 3, ty, 9);
     lines.forEach((line, idx) => draw(line, colDesc + 3, ty - idx * 11, 9));
@@ -246,13 +249,15 @@ export async function buildLvPdf(data: LvPdfData): Promise<Uint8Array> {
   y -= 14;
   ensure(60);
   const rate = Number.isFinite(data.vatRate) ? data.vatRate : 0;
-  const vat = (net * rate) / 100;
+  const net = fromCents(netCents);
+  const vat = fromCents(Math.round((netCents * rate) / 100));
+  const gross = fromCents(netCents + toCents(vat));
   const sums: Array<[string, string, boolean]> =
     rate > 0
       ? [
           ["Angebotssumme netto", formatMoney(net), false],
           [`zzgl. ${formatNumber(rate)} % USt.`, formatMoney(vat), false],
-          ["Angebotssumme brutto", formatMoney(net + vat), true],
+          ["Angebotssumme brutto", formatMoney(gross), true],
         ]
       : [
           ["Angebotssumme netto", formatMoney(net), false],
