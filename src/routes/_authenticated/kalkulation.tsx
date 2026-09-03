@@ -257,8 +257,17 @@ function KalkulationPage() {
    * Raumbuch des verknüpften Projekts. Liegen erfasste Räume vor, kommen
    * Fläche und Stundenbedarf daraus statt aus der KI-Schätzung.
    */
-  const { data: raumbuch } = useRaumbuch(projectId);
+  const { data: raumbuch, error: raumbuchError } = useRaumbuch(projectId);
   const [raumbuchApplied, setRaumbuchApplied] = useState(false);
+
+  // Ladefehler des Raumbuchs sichtbar machen, statt still zu schweigen.
+  useEffect(() => {
+    if (raumbuchError) {
+      toast.error(
+        `Raumbuch konnte nicht geladen werden: ${raumbuchError.message ?? "Unbekannter Fehler"}`,
+      );
+    }
+  }, [raumbuchError]);
 
   useEffect(() => {
     if (!raumbuch) {
