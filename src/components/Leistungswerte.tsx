@@ -54,9 +54,13 @@ export function Leistungswerte() {
       if (error) throw error;
       return rows.length;
     },
-    onSuccess: () => {
+    onSuccess: (inserted) => {
       invalidate();
-      toast.success("Standard-Leistungswerte eingefügt");
+      if (inserted === 0) {
+        toast.info("Alle Standardwerte sind bereits vorhanden – keine Duplikate eingefügt.");
+      } else {
+        toast.success(`${inserted} Standard-Leistungswerte eingefügt`);
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
