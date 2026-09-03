@@ -772,8 +772,13 @@ function DokumentDetail() {
   });
 
   const decide = useMutation({
-    mutationFn: (decision: "accepted" | "declined") => setQuoteDecision(id, decision),
-    onSuccess: () => {
+    mutationFn: async (decision: "accepted" | "declined") => {
+      await setQuoteDecision(id, decision);
+      return decision;
+    },
+    onSuccess: (decision) => {
+      // Lokalen Status mitziehen, sonst überschreibt das Autosave den alten Wert.
+      setForm((f) => ({ ...f, status: decision }));
       toast.success("Angebotsstatus aktualisiert");
       queryClient.invalidateQueries({ queryKey: ["document", id] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });

@@ -25,8 +25,8 @@ export function DocumentTitleSelector({ title, onChange }: DocumentTitleSelector
   }, [title]);
 
   const setExtension = (value: string) => {
-    const trimmed = value.trim();
-    onChange(trimmed ? `${PREFIX}${trimmed}` : "");
+    // Nicht trimmen: sonst gehen Leerzeichen beim Tippen mehrteiliger Titel verloren.
+    onChange(value.trim() ? `${PREFIX}${value}` : "");
   };
 
   return (
