@@ -117,7 +117,12 @@ export default function LvAnalyse() {
       .select("id, file_name, created_at, document_kind, item_count, status, status_message")
       .order("created_at", { ascending: false })
       .limit(50);
-    if (error) return;
+    if (error) {
+      toast.error("Import-Protokoll konnte nicht geladen werden", {
+        description: error.message,
+      });
+      return;
+    }
     setLog(
       (data ?? []).map((row) => ({
         id: row.id as string,
@@ -198,11 +203,17 @@ export default function LvAnalyse() {
   useEffect(() => {
     let active = true;
     void (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("company_settings")
         .select("small_business")
         .maybeSingle();
       if (!active) return;
+      if (error) {
+        toast.error("Firmeneinstellungen konnten nicht geladen werden", {
+          description: `${error.message} Es wird vorläufig mit 19 % MwSt gerechnet.`,
+        });
+        return;
+      }
       setCompanyVatRate(data?.small_business ? 0 : 19);
     })();
     return () => {
@@ -268,7 +279,10 @@ export default function LvAnalyse() {
   const reviewCount = items.filter((i) => needsReview(i)).length;
   const exportReady = canExport(result, items);
   const exportItems = selectExportItems(items, result?.analysisId ?? null);
-  const ownSummary = useMemo(() => summarizeOwnCalculation(items), [items]);
+  const ownSummary = useMemo(
+    () => summarizeOwnCalculation(items, companyVatRate),
+    [items, companyVatRate],
+  );
   const exportDisabled = !exportReady || exportItems.length === 0 || exporting;
   const exportHint = !result
     ? "Bitte zuerst eine Ausschreibung analysieren."
@@ -302,11 +316,16 @@ export default function LvAnalyse() {
       const base = exportBaseName(result);
       if (kind === "csv") {
         downloadBlob(
-          new Blob([buildCsv(exportItems, result)], { type: "text/csv;charset=utf-8" }),
+          new Blob([buildCsv(exportItems, result, { vatRate: companyVatRate })], {
+            type: "text/csv;charset=utf-8",
+          }),
           `${base}.csv`,
         );
       } else if (kind === "xlsx") {
-        downloadBlob(await buildXlsx(exportItems, result), `${base}.xlsx`);
+        downloadBlob(
+          await buildXlsx(exportItems, result, { vatRate: companyVatRate }),
+          `${base}.xlsx`,
+        );
       } else {
         // Kopfzeile muss exakt die exportierten (freigegebenen) Positionen abbilden.
         const exportArea = summarizeArea(exportItems);
@@ -314,8 +333,10 @@ export default function LvAnalyse() {
         const exportCost = summarizeCost(exportItems, result?.totals ?? [], companyVatRate);
         const blob = await buildPdfReport(result, exportItems, {
           totalArea: exportArea.totalArea,
-          totalHours: exportHours.totalHours,
+          totalHours: exportHours.annualHoursTotal,
           totalCost: exportCost.net,
+          vatRate: companyVatRate,
+          itemsWithoutFrequency: exportCost.itemsWithoutFrequency,
         });
 
         downloadBlob(blob, `${base}.pdf`);
@@ -511,8 +532,8 @@ export default function LvAnalyse() {
         <TabsContent value="hours" className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-4">
             <Kpi label="Stunden je Einsatz" value={formatNumber(hours.totalHours)} />
-            <Kpi label="Jahresstunden" value={formatNumber(hours.annualHours)} />
-            <Kpi label="Monatsstunden" value={formatNumber(hours.monthlyHours)} />
+            <Kpi label="Jahresstunden gesamt" value={formatNumber(hours.annualHoursTotal)} />
+            <Kpi label="Monatsstunden gesamt" value={formatNumber(hours.monthlyHoursTotal)} />
             <Kpi
               label={`Geschätzt aus Fläche (${formatNumber(hours.performanceRate)} m²/Std.)`}
               value={formatNumber(hours.estimatedFromArea)}
@@ -530,7 +551,7 @@ export default function LvAnalyse() {
             <CardContent className="grid gap-3 sm:grid-cols-4">
               <Kpi label="Positionen" value={String(items.length)} />
               <Kpi label="Gesamtfläche" value={`${formatNumber(area.totalArea)} m²`} />
-              <Kpi label="Geforderte Stunden" value={formatNumber(hours.totalHours)} />
+              <Kpi label="Jahresstunden gesamt" value={formatNumber(hours.annualHoursTotal)} />
               <Kpi label="Ohne eigenen Preis" value={String(ownSummary.openItems)} />
             </CardContent>
           </Card>
