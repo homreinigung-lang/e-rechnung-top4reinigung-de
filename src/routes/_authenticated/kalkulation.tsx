@@ -1192,8 +1192,12 @@ function KalkulationPage() {
         .filter(Boolean)
         .join("\n");
 
-      const net = positionsTotal(positions);
-      const vat = round2((net * vatRate) / 100);
+      // Gleiche Summenlogik wie im Belegeditor (Rabatt steckt bereits als Position).
+      const { netTotal: net, vatAmount: vat, grossTotal } = computeDocumentTotals(
+        positions,
+        0,
+        vatRate,
+      );
       const { error: docError } = await supabase
         .from("documents")
         .update({
