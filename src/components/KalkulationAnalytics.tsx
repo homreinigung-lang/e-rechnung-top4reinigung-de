@@ -81,6 +81,9 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
     },
   });
 
+  /** Aktueller Monat – Basis für den Soll-/Ist-Vergleich. */
+  const currentMonth = monthKey(new Date());
+
   const stats = useMemo<ProjectStat[]>(() => {
     if (!data) return [];
     const entries = data.entries.filter(
@@ -95,6 +98,12 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
           own.reduce((s, e) => s + Number(e.hours || 0) * Number(e.hourly_rate || 0), 0),
         );
         const revenue = round2(actualHours * Number(p.hourly_rate || 0));
+        // Effizienz: Ist und Soll beziehen sich beide auf den aktuellen Monat.
+        const monthHours = round2(
+          own
+            .filter((e) => String(e.work_date).startsWith(currentMonth))
+            .reduce((s, e) => s + Number(e.hours || 0), 0),
+        );
         const plannedWeekly = data.assignments
           .filter((a) => a.project_id === p.id)
           .reduce((s, a) => s + Number(a.hours_per_week || 0), 0);
@@ -109,11 +118,13 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
           marginPct: revenue > 0 ? Math.round((margin / revenue) * 100) : 0,
           plannedHours,
           actualHours,
-          efficiency: plannedHours > 0 ? Math.round((actualHours / plannedHours) * 100) : 0,
+          monthHours,
+          efficiency: plannedHours > 0 ? Math.round((monthHours / plannedHours) * 100) : 0,
         };
       })
       .sort((a, b) => b.margin - a.margin);
-  }, [data]);
+  }, [data, currentMonth]);
+
 
   const trend = useMemo(() => {
     const months: string[] = [];
