@@ -2086,23 +2086,34 @@ function DokumentDetail() {
                 <span>Optionale Zusatzleistung (nur bei Durchführung berechnet)</span>
               </label>
               <p className="text-xs text-muted-foreground sm:col-span-12">
-                Netto {formatMoney(item.quantity * item.unit_price)}
+                Netto {formatMoney(roundCents(item.quantity * item.unit_price))}
                 {vatRate > 0 && (
                   <>
                     {" · "}Brutto inkl. {formatNumber(vatRate)} % MwSt.{" "}
-                    {formatMoney(item.quantity * item.unit_price * (1 + vatRate / 100))}
+                    {formatMoney(roundCents(item.quantity * item.unit_price * (1 + vatRate / 100)))}
                   </>
                 )}
               </p>
             </div>
           ))}
 
+          {discountItemPresent && (
+            <p
+              role="alert"
+              className="rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              Dieser Beleg enthält bereits eine Rabattposition aus der Kalkulation. Ein zusätzlicher
+              Belegrabatt ist deshalb gesperrt – sonst würde derselbe Nachlass doppelt abgezogen.
+            </p>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Rabatt (%)</Label>
               <Input
                 inputMode="decimal"
-                value={String(form["discount_percent"] ?? "0")}
+                disabled={discountItemPresent}
+                value={discountItemPresent ? "0" : String(form["discount_percent"] ?? "0")}
                 onChange={(e) => setField("discount_percent", e.target.value)}
                 placeholder="0"
               />
@@ -2116,6 +2127,7 @@ function DokumentDetail() {
               />
             </div>
           </div>
+
 
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
             <div className="flex justify-between">
