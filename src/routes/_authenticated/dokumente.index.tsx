@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { draftPlaceholderNumber } from "@/lib/doc-number";
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,18 @@ function DokumenteListe() {
   const queryClient = useQueryClient();
   const search = Route.useSearch();
   const [tab, setTab] = useState<"invoice" | "quote" | "order">(search.tab ?? "invoice");
+
+  // URL ist führend: Navigation von außen (z. B. Dashboard/Sidebar-Links mit
+  // ?tab=quote) muss den Tab auch bei bereits gemounteter Seite umschalten.
+  useEffect(() => {
+    const urlTab = search.tab ?? "invoice";
+    setTab((prev) => (prev === urlTab ? prev : urlTab));
+  }, [search.tab]);
+
+  function selectTab(next: "invoice" | "quote" | "order") {
+    setTab(next);
+    navigate({ to: "/dokumente", search: { tab: next }, replace: true });
+  }
 
   const { data: documents = [] } = useQuery({
     queryKey: ["documents"],
@@ -409,7 +421,7 @@ function DokumenteListe() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "invoice" | "quote" | "order")}>
+      <Tabs value={tab} onValueChange={(v) => selectTab(v as "invoice" | "quote" | "order")}>
         <TabsList>
           <TabsTrigger value="invoice">
             <Receipt className="mr-2 size-4" /> Rechnungen
