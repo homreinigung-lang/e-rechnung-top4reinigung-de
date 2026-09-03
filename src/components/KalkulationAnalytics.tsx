@@ -41,6 +41,8 @@ type ProjectStat = {
   marginPct: number;
   plannedHours: number;
   actualHours: number;
+  /** Ist-Stunden im laufenden Monat (Vergleichsbasis für die Soll-Stunden). */
+  monthHours: number;
   efficiency: number;
 };
 
