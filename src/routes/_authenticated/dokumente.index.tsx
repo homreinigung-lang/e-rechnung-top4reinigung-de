@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { draftPlaceholderNumber } from "@/lib/doc-number";
 import { Button } from "@/components/ui/button";
@@ -101,17 +101,11 @@ function DokumenteListe() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const search = Route.useSearch();
-  const [tab, setTab] = useState<"invoice" | "quote" | "order">(search.tab ?? "invoice");
-
-  // URL ist führend: Navigation von außen (z. B. Dashboard/Sidebar-Links mit
-  // ?tab=quote) muss den Tab auch bei bereits gemounteter Seite umschalten.
-  useEffect(() => {
-    const urlTab = search.tab ?? "invoice";
-    setTab((prev) => (prev === urlTab ? prev : urlTab));
-  }, [search.tab]);
+  // Tab kommt ausschließlich aus der URL; dadurch folgt die Anzeige zuverlässig
+  // dem ?tab=...-Suchparameter, auch wenn die Route bereits gemountet ist.
+  const tab = search.tab ?? "invoice";
 
   function selectTab(next: "invoice" | "quote" | "order") {
-    setTab(next);
     navigate({ to: "/dokumente", search: { tab: next }, replace: true });
   }
 
