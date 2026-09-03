@@ -159,6 +159,8 @@ export function normalizeItem(raw: RawItem, method: string): LvNormalizedItem {
       : scoreConfidence(description, quantity, unit, unitPrice);
 
   const page = toNumberOrNull(raw.source_page);
+  const vatRaw = toNumberOrNull(raw.vat_rate);
+  const vatRate = vatRaw !== null && vatRaw > 0 ? vatRaw : null;
 
   return {
     id: nextId(),
@@ -173,7 +175,9 @@ export function normalizeItem(raw: RawItem, method: string): LvNormalizedItem {
     working_hours: hours,
     unit_price: unitPrice,
     total_price: total,
-    vat_rate: toNumberOrNull(raw.vat_rate),
+    // 0 bedeutet in KI-/Tabellenrohdaten „nicht erkannt“ – sonst würde später
+    // fälschlich ein „abweichender Steuersatz von 0 %“ gemeldet.
+    vat_rate: vatRate,
     calculation: emptyCalculation(),
     source_page: page !== null && page > 0 ? Math.round(page) : null,
     confidence_score: Math.round(confidence * 100) / 100,
@@ -206,12 +210,29 @@ function scoreConfidence(
   return Math.min(1, score);
 }
 
-/** Entfernt Dubletten; die Position mit der höheren Datendichte gewinnt. */
+/**
+ * Entfernt Dubletten; die Position mit der höheren Datendichte gewinnt.
+ *
+ * Positionen OHNE Ordnungszahl werden nur dann zusammengeführt, wenn zusätzlich
+ * Menge, Einheit, Fläche und Quellseite übereinstimmen – sonst gingen echte
+ * Wiederholungen (z. B. gleiche Leistung je Etage) verloren.
+ */
 export function dedupeItems(items: LvNormalizedItem[]): LvNormalizedItem[] {
   const map = new Map<string, LvNormalizedItem>();
   for (const item of items) {
     if (!item.description && !item.item_number) continue;
-    const key = `${item.item_number}|${item.description.toLowerCase().replace(/\s+/g, " ").slice(0, 80)}`;
+    const text = item.description.toLowerCase().replace(/\s+/g, " ").slice(0, 80);
+    const key = item.item_number
+      ? `${item.item_number}|${text}`
+      : [
+          "ohne-nr",
+          text,
+          item.quantity ?? "",
+          item.unit.toLowerCase(),
+          item.area_m2 ?? "",
+          item.frequency.label.toLowerCase(),
+          item.source_page ?? "",
+        ].join("|");
     const existing = map.get(key);
     if (!existing || density(item) > density(existing)) map.set(key, item);
   }
