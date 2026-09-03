@@ -25,7 +25,8 @@ export const MIN_STAIR_RATE = STAIR_RATE_PER_FLOOR;
  * Geldbeträge werden für Vergleiche und Summen immer als ganze Cent verarbeitet.
  * Die Rundung selbst liegt zentral in src/lib/money.ts.
  */
-export { toCents, fromCents, round2 } from "@/lib/money";
+import { toCents, fromCents, round2 } from "@/lib/money";
+export { toCents, fromCents, round2 };
 
 
 /** Erkennt Glas-/Fensterleistungen anhand des Positionstextes. */
