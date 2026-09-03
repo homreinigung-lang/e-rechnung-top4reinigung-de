@@ -458,6 +458,6 @@ describe("12) Fehlende Menge blockiert den Angebotspreis", () => {
     expect(offerPrice(item)).toBeNull();
     expect(calcStatus(item)).toBe("not_calculated");
     expect(summarizeOwnCalculation([item]).net).toBe(0);
-    expect(reviewFields(item).has("total_price")).toBe(true);
+    expect([...reviewFields(item)]).toContain("total_price");
   });
 });
