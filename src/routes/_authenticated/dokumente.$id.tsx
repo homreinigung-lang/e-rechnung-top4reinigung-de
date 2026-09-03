@@ -34,6 +34,7 @@ import {
   today,
   vatRateForTaxMode,
 } from "@/lib/format";
+import { computeDocumentTotals, hasDiscountPosition } from "@/lib/document-totals";
 import { Sparkles } from "lucide-react";
 import { useCanReverseCharge } from "@/lib/subscriptions";
 import { buildEpcPayload } from "@/lib/epc";
