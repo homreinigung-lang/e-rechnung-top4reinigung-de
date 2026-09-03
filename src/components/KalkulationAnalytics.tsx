@@ -224,7 +224,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div>
-              <p className="mb-2 text-sm font-medium">Umsatzentwicklung (6 Monate)</p>
+              <p className="mb-2 text-sm font-medium">Abgerechneter Umsatz & Kosten (6 Monate)</p>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trend}>
@@ -234,8 +234,8 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                     <Tooltip formatter={(v: number) => formatMoney(Number(v))} />
                     <Line
                       type="monotone"
-                      dataKey="umsatz"
-                      name="Umsatz"
+                      dataKey="abgerechnet"
+                      name="Abgerechnet (netto)"
                       stroke="var(--primary)"
                       strokeWidth={2}
                       dot={false}
@@ -274,7 +274,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
         <CardHeader>
           <CardTitle>Rentabilität je Projekt</CardTitle>
           <CardDescription>
-            Umsatz, Kosten, Marge und Effizienz (Ist- zu Soll-Stunden) im direkten Vergleich.
+            Kalkulatorische Leistung, Kosten, Marge und Effizienz (Ist-Stunden des laufenden Monats zu Soll-Stunden) im direkten Vergleich.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -290,11 +290,11 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                 <thead>
                   <tr className="border-b text-xs text-muted-foreground">
                     <th className="py-2 text-left font-medium">Projekt</th>
-                    <th className="py-2 text-right font-medium">Umsatz</th>
+                    <th className="py-2 text-right font-medium">Leistung (kalk.)</th>
                     <th className="py-2 text-right font-medium">Kosten</th>
                     <th className="py-2 text-right font-medium">Deckungsbeitrag</th>
                     <th className="py-2 text-right font-medium">Marge</th>
-                    <th className="py-2 text-right font-medium">Ist / Soll Std.</th>
+                    <th className="py-2 text-right font-medium">Ist (Monat) / Soll Std.</th>
                     <th className="py-2 text-right font-medium">Effizienz</th>
                   </tr>
                 </thead>
@@ -316,7 +316,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                         </Badge>
                       </td>
                       <td className="py-2 text-right">
-                        {formatNumber(p.actualHours)} / {formatNumber(p.plannedHours)}
+                        {formatNumber(p.monthHours)} / {formatNumber(p.plannedHours)}
                       </td>
                       <td className="py-2 text-right">
                         {p.plannedHours > 0 ? `${formatNumber(p.efficiency)} %` : "–"}
