@@ -54,6 +54,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   hash?: string;
+  search?: Record<string, unknown>;
 };
 
 type NavGroup = { title: string; items: readonly NavItem[] };
@@ -70,7 +71,7 @@ const navGroups: readonly NavGroup[] = [
   {
     title: "Buchhaltung",
     items: [
-      { to: "/dokumente", label: "Rechnungen", icon: FileText },
+      { to: "/dokumente", label: "Rechnungen", icon: FileText, search: { tab: "invoice" } },
       { to: "/wiederkehrend", label: "Wiederkehrende Rechnung", icon: Repeat },
       { to: "/dashboard", label: "EÜR", icon: BarChart3, hash: "euer" },
       { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
@@ -86,7 +87,7 @@ const navGroups: readonly NavGroup[] = [
   {
     title: "Vertrieb & Projekte",
     items: [
-      { to: "/dokumente", label: "Angebot", icon: FileSignature },
+      { to: "/dokumente", label: "Angebot", icon: FileSignature, search: { tab: "quote" } },
       { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
       { to: "/projekte", label: "Projekte", icon: FolderKanban },
       { to: "/lv-analyse", label: "LV-Analyse", icon: FileSearch },
