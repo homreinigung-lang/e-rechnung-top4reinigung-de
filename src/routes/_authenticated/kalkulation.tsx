@@ -32,6 +32,7 @@ import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
 import { useRaumbuch } from "@/lib/raumbuch";
+import { computeDocumentTotals } from "@/lib/document-totals";
 import {
   buildConsolidatedPositions,
   buildDiscountPosition,
