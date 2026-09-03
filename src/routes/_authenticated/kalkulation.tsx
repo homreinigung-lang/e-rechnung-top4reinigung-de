@@ -32,6 +32,7 @@ import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
 import { useRaumbuch } from "@/lib/raumbuch";
+import { computeDocumentTotals } from "@/lib/document-totals";
 import {
   buildConsolidatedPositions,
   buildDiscountPosition,
@@ -1192,8 +1193,12 @@ function KalkulationPage() {
         .filter(Boolean)
         .join("\n");
 
-      const net = positionsTotal(positions);
-      const vat = round2((net * vatRate) / 100);
+      // Gleiche Summenlogik wie im Belegeditor (Rabatt steckt bereits als Position).
+      const { netTotal: net, vatAmount: vat, grossTotal } = computeDocumentTotals(
+        positions,
+        0,
+        vatRate,
+      );
       const { error: docError } = await supabase
         .from("documents")
         .update({
@@ -1209,7 +1214,7 @@ function KalkulationPage() {
           reverse_charge: taxMode === "eu_reverse_charge",
           net_total: net,
           vat_amount: vat,
-          total: round2(net + vat),
+          total: grossTotal,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;

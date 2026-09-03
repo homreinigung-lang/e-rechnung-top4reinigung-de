@@ -34,6 +34,7 @@ import {
   today,
   vatRateForTaxMode,
 } from "@/lib/format";
+import { computeDocumentTotals, hasDiscountPosition } from "@/lib/document-totals";
 import { Sparkles } from "lucide-react";
 import { useCanReverseCharge } from "@/lib/subscriptions";
 import { buildEpcPayload } from "@/lib/epc";
@@ -329,10 +330,6 @@ function DokumentDetail() {
       : "",
   );
 
-  const itemsTotal = useMemo(
-    () => items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
-    [items],
-  );
   const hasOptionalItems = useMemo(() => items.some((i) => i.is_optional), [items]);
   const regularTotal = useMemo(
     () =>
@@ -341,15 +338,25 @@ function DokumentDetail() {
         .reduce((sum, i) => sum + Number(i.quantity) * Number(i.unit_price), 0),
     [items],
   );
-  const discountPercent = Math.min(
+  /**
+   * Enthält der Beleg bereits eine aus der Kalkulation übertragene
+   * Rabattposition (negativer Einzelpreis), darf kein zweiter Belegrabatt
+   * greifen – sonst würde derselbe Nachlass doppelt abgezogen.
+   */
+  const discountItemPresent = useMemo(() => hasDiscountPosition(items), [items]);
+  const enteredDiscountPercent = Math.min(
     100,
     Math.max(0, Number(String(form["discount_percent"] ?? "0").replace(",", ".")) || 0),
   );
-  const discountAmount = roundCents((itemsTotal * discountPercent) / 100);
+  const discountPercent = discountItemPresent ? 0 : enteredDiscountPercent;
   const discountReason = String(form["discount_reason"] ?? "");
-  const netTotal = roundCents(itemsTotal - discountAmount);
-  const vatAmount = roundCents((netTotal * vatRate) / 100);
-  const grossTotal = roundCents(netTotal + vatAmount);
+  const {
+    itemsTotal,
+    discountAmount,
+    netTotal,
+    vatAmount,
+    grossTotal,
+  } = computeDocumentTotals(items, discountPercent, vatRate);
 
   /** Schreibt Kopf und Positionen des Belegs in die Datenbank (Speichern + Autosave). */
   const persistDocument = useCallback(
@@ -2079,23 +2086,34 @@ function DokumentDetail() {
                 <span>Optionale Zusatzleistung (nur bei Durchführung berechnet)</span>
               </label>
               <p className="text-xs text-muted-foreground sm:col-span-12">
-                Netto {formatMoney(item.quantity * item.unit_price)}
+                Netto {formatMoney(roundCents(item.quantity * item.unit_price))}
                 {vatRate > 0 && (
                   <>
                     {" · "}Brutto inkl. {formatNumber(vatRate)} % MwSt.{" "}
-                    {formatMoney(item.quantity * item.unit_price * (1 + vatRate / 100))}
+                    {formatMoney(roundCents(item.quantity * item.unit_price * (1 + vatRate / 100)))}
                   </>
                 )}
               </p>
             </div>
           ))}
 
+          {discountItemPresent && (
+            <p
+              role="alert"
+              className="rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              Dieser Beleg enthält bereits eine Rabattposition aus der Kalkulation. Ein zusätzlicher
+              Belegrabatt ist deshalb gesperrt – sonst würde derselbe Nachlass doppelt abgezogen.
+            </p>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Rabatt (%)</Label>
               <Input
                 inputMode="decimal"
-                value={String(form["discount_percent"] ?? "0")}
+                disabled={discountItemPresent}
+                value={discountItemPresent ? "0" : String(form["discount_percent"] ?? "0")}
                 onChange={(e) => setField("discount_percent", e.target.value)}
                 placeholder="0"
               />
@@ -2109,6 +2127,7 @@ function DokumentDetail() {
               />
             </div>
           </div>
+
 
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
             <div className="flex justify-between">

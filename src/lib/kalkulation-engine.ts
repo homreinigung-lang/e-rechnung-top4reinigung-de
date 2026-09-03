@@ -21,19 +21,13 @@ export const GLASS_SQM_PER_HOUR = 40;
 /** Mindestpreis je Etage Treppenhausreinigung (netto) – verhindert 0,00 €. */
 export const MIN_STAIR_RATE = STAIR_RATE_PER_FLOOR;
 
-/** Geldbeträge werden für Vergleiche und Summen immer als ganze Cent verarbeitet. */
-export function toCents(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.sign(value) * Math.round((Math.abs(value) + Number.EPSILON) * 100);
-}
+/**
+ * Geldbeträge werden für Vergleiche und Summen immer als ganze Cent verarbeitet.
+ * Die Rundung selbst liegt zentral in src/lib/money.ts.
+ */
+import { toCents, fromCents, round2 } from "@/lib/money";
+export { toCents, fromCents, round2 };
 
-export function fromCents(value: number): number {
-  return Math.trunc(Number.isFinite(value) ? value : 0) / 100;
-}
-
-export function round2(value: number): number {
-  return fromCents(toCents(value));
-}
 
 /** Erkennt Glas-/Fensterleistungen anhand des Positionstextes. */
 export function isGlassText(text: string): boolean {

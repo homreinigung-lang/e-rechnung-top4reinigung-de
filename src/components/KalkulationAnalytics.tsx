@@ -41,6 +41,8 @@ type ProjectStat = {
   marginPct: number;
   plannedHours: number;
   actualHours: number;
+  /** Ist-Stunden im laufenden Monat (Vergleichsbasis für die Soll-Stunden). */
+  monthHours: number;
   efficiency: number;
 };
 
@@ -81,6 +83,9 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
     },
   });
 
+  /** Aktueller Monat – Basis für den Soll-/Ist-Vergleich. */
+  const currentMonth = monthKey(new Date());
+
   const stats = useMemo<ProjectStat[]>(() => {
     if (!data) return [];
     const entries = data.entries.filter(
@@ -95,6 +100,12 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
           own.reduce((s, e) => s + Number(e.hours || 0) * Number(e.hourly_rate || 0), 0),
         );
         const revenue = round2(actualHours * Number(p.hourly_rate || 0));
+        // Effizienz: Ist und Soll beziehen sich beide auf den aktuellen Monat.
+        const monthHours = round2(
+          own
+            .filter((e) => String(e.work_date).startsWith(currentMonth))
+            .reduce((s, e) => s + Number(e.hours || 0), 0),
+        );
         const plannedWeekly = data.assignments
           .filter((a) => a.project_id === p.id)
           .reduce((s, a) => s + Number(a.hours_per_week || 0), 0);
@@ -109,11 +120,13 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
           marginPct: revenue > 0 ? Math.round((margin / revenue) * 100) : 0,
           plannedHours,
           actualHours,
-          efficiency: plannedHours > 0 ? Math.round((actualHours / plannedHours) * 100) : 0,
+          monthHours,
+          efficiency: plannedHours > 0 ? Math.round((monthHours / plannedHours) * 100) : 0,
         };
       })
       .sort((a, b) => b.margin - a.margin);
-  }, [data]);
+  }, [data, currentMonth]);
+
 
   const trend = useMemo(() => {
     const months: string[] = [];
@@ -121,14 +134,17 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
     for (let i = 5; i >= 0; i--) {
       months.push(monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
     }
-    const docs = (data?.docs ?? []).filter((d) => d.type === "invoice" && d.status !== "draft");
+    // Stornorechnungen zählen nicht als abgerechneter Umsatz.
+    const docs = (data?.docs ?? []).filter(
+      (d) => d.type === "invoice" && d.status !== "draft" && d.status !== "cancelled" && !d.is_storno,
+    );
     const entries = (data?.entries ?? []).filter(
       (e) =>
         (e.entry_type ?? "work") === "work" && (e.approval_status ?? "approved") !== "rejected",
     );
     return months.map((key) => ({
       month: monthLabel(key),
-      umsatz: round2(
+      abgerechnet: round2(
         docs
           .filter((d) => String(d.issue_date).startsWith(key))
           .reduce((s, d) => s + Number(d.net_total || 0), 0),
@@ -145,15 +161,15 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
     const revenue = round2(stats.reduce((s, p) => s + p.revenue, 0));
     const cost = round2(stats.reduce((s, p) => s + p.cost, 0));
     const planned = round2(stats.reduce((s, p) => s + p.plannedHours, 0));
-    const actual = round2(stats.reduce((s, p) => s + p.actualHours, 0));
+    const monthActual = round2(stats.reduce((s, p) => s + p.monthHours, 0));
     return {
       revenue,
       cost,
       margin: round2(revenue - cost),
       marginPct: revenue > 0 ? Math.round(((revenue - cost) / revenue) * 100) : 0,
       planned,
-      actual,
-      efficiency: planned > 0 ? Math.round((actual / planned) * 100) : 0,
+      monthActual,
+      efficiency: planned > 0 ? Math.round((monthActual / planned) * 100) : 0,
       active: stats.filter((p) => p.actualHours > 0).length,
     };
   }, [stats]);
@@ -164,7 +180,11 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
   }));
 
   const kpis: [string, string, string][] = [
-    ["Kalkulierter Umsatz", formatMoney(totals.revenue), `${totals.active} aktive Projekte`],
+    [
+      "Kalkulatorische Leistung",
+      formatMoney(totals.revenue),
+      `Ist-Stunden × Projekt-Stundensatz · ${totals.active} aktive Projekte`,
+    ],
     ["Personalkosten", formatMoney(totals.cost), "aus erfassten Arbeitszeiten"],
     [
       "Deckungsbeitrag",
@@ -172,11 +192,12 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
       `Marge ${formatNumber(totals.marginPct)} % über alle Projekte`,
     ],
     [
-      "Effizienzquote",
+      "Effizienzquote (laufender Monat)",
       `${formatNumber(totals.efficiency)} %`,
-      `${formatNumber(totals.actual)} Ist- zu ${formatNumber(totals.planned)} Soll-Std.`,
+      `${formatNumber(totals.monthActual)} Ist- zu ${formatNumber(totals.planned)} Soll-Std. im Monat`,
     ],
   ];
+
 
   return (
     <div className="space-y-6">
@@ -203,7 +224,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div>
-              <p className="mb-2 text-sm font-medium">Umsatzentwicklung (6 Monate)</p>
+              <p className="mb-2 text-sm font-medium">Abgerechneter Umsatz & Kosten (6 Monate)</p>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trend}>
@@ -213,8 +234,8 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                     <Tooltip formatter={(v: number) => formatMoney(Number(v))} />
                     <Line
                       type="monotone"
-                      dataKey="umsatz"
-                      name="Umsatz"
+                      dataKey="abgerechnet"
+                      name="Abgerechnet (netto)"
                       stroke="var(--primary)"
                       strokeWidth={2}
                       dot={false}
@@ -253,7 +274,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
         <CardHeader>
           <CardTitle>Rentabilität je Projekt</CardTitle>
           <CardDescription>
-            Umsatz, Kosten, Marge und Effizienz (Ist- zu Soll-Stunden) im direkten Vergleich.
+            Kalkulatorische Leistung, Kosten, Marge und Effizienz (Ist-Stunden des laufenden Monats zu Soll-Stunden) im direkten Vergleich.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -269,11 +290,11 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                 <thead>
                   <tr className="border-b text-xs text-muted-foreground">
                     <th className="py-2 text-left font-medium">Projekt</th>
-                    <th className="py-2 text-right font-medium">Umsatz</th>
+                    <th className="py-2 text-right font-medium">Leistung (kalk.)</th>
                     <th className="py-2 text-right font-medium">Kosten</th>
                     <th className="py-2 text-right font-medium">Deckungsbeitrag</th>
                     <th className="py-2 text-right font-medium">Marge</th>
-                    <th className="py-2 text-right font-medium">Ist / Soll Std.</th>
+                    <th className="py-2 text-right font-medium">Ist (Monat) / Soll Std.</th>
                     <th className="py-2 text-right font-medium">Effizienz</th>
                   </tr>
                 </thead>
@@ -295,7 +316,7 @@ export function KalkulationAnalytics({ activeProjectId }: { activeProjectId: str
                         </Badge>
                       </td>
                       <td className="py-2 text-right">
-                        {formatNumber(p.actualHours)} / {formatNumber(p.plannedHours)}
+                        {formatNumber(p.monthHours)} / {formatNumber(p.plannedHours)}
                       </td>
                       <td className="py-2 text-right">
                         {p.plannedHours > 0 ? `${formatNumber(p.efficiency)} %` : "–"}

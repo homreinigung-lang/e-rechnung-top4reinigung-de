@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, roundCents } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
+import { roundCents } from "@/lib/money";
+import {
+  computeDocumentTotals,
+  hasDiscountPosition,
+  itemsSubtotal,
+} from "@/lib/document-totals";
 
 /** Gleiche Rechenkette wie im Belegeditor (Datenbank = UI = PDF). */
 function totals(
@@ -7,12 +13,11 @@ function totals(
   discountPercent: number,
   vatRate: number,
 ) {
-  const itemsTotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const discountAmount = roundCents((itemsTotal * discountPercent) / 100);
-  const netTotal = roundCents(itemsTotal - discountAmount);
-  const vatAmount = roundCents((netTotal * vatRate) / 100);
-  const grossTotal = roundCents(netTotal + vatAmount);
-  return { netTotal, vatAmount, grossTotal, discountAmount };
+  return computeDocumentTotals(
+    items.map((i) => ({ quantity: i.quantity, unit_price: i.unitPrice })),
+    discountPercent,
+    vatRate,
+  );
 }
 
 describe("Belegsummen", () => {
@@ -46,6 +51,26 @@ describe("Belegsummen", () => {
 
   it("verkraftet 0 Positionen", () => {
     const t = totals([], 10, 19);
-    expect(t).toEqual({ netTotal: 0, vatAmount: 0, grossTotal: 0, discountAmount: 0 });
+    expect(t).toEqual({
+      itemsTotal: 0,
+      netTotal: 0,
+      vatAmount: 0,
+      grossTotal: 0,
+      discountAmount: 0,
+    });
+  });
+
+  it("begrenzt unsinnige Rabattwerte auf 0–100 %", () => {
+    expect(totals([{ quantity: 1, unitPrice: 100 }], -20, 0).netTotal).toBe(100);
+    expect(totals([{ quantity: 1, unitPrice: 100 }], 250, 0).netTotal).toBe(0);
+  });
+
+  it("summiert Positionen cent-genau", () => {
+    expect(itemsSubtotal([{ quantity: 3, unit_price: 0.335 }])).toBe(1.01);
+  });
+
+  it("erkennt eine übertragene Rabattposition", () => {
+    expect(hasDiscountPosition([{ quantity: 1, unit_price: -50 }])).toBe(true);
+    expect(hasDiscountPosition([{ quantity: 1, unit_price: 50 }])).toBe(false);
   });
 });

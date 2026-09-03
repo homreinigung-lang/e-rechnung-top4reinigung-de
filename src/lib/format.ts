@@ -15,13 +15,11 @@ const DE_NUMBER = new Intl.NumberFormat(DE_LOCALE, {
 });
 
 /**
- * Kaufmännisch auf volle Cent runden. Damit sind Datenbank, UI und PDF
- * garantiert identisch (Netto + MwSt. = Brutto, keine 1-Cent-Abweichung).
+ * Kaufmännisch auf volle Cent runden. Einzige Implementierung im Projekt
+ * (src/lib/money.ts) – hier nur für bestehende Importe weitergereicht.
  */
-export function roundCents(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
+export { roundCents, toCents, fromCents } from "@/lib/money";
+
 
 export function formatMoney(value: number): string {
   return EUR.format(Number.isFinite(value) ? value : 0);
