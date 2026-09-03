@@ -41,17 +41,29 @@ export function hasOwnPrice(item: LvNormalizedItem): boolean {
   return p !== null && Number.isFinite(p) && p > 0;
 }
 
+/** Menge aus der Ausschreibung vorhanden? Ohne Menge ist kein Preis berechenbar. */
+export function hasQuantity(item: LvNormalizedItem): boolean {
+  return item.quantity !== null && Number.isFinite(item.quantity) && item.quantity > 0;
+}
+
+/** Position ist rechenbar: eigener Einheitspreis UND geforderte Menge liegen vor. */
+export function isCalculable(item: LvNormalizedItem): boolean {
+  return hasOwnPrice(item) && hasQuantity(item);
+}
+
 /** Einheitliche Rundung über ganze Cent (identisch zur Grundkalkulation). */
 const round2 = (n: number) => fromCents(toCents(n));
 
 /**
- * Angebotspreis der Position. Ohne eigenen Einheitspreis: null (keine Berechnung).
+ * Angebotspreis der Position. Ohne eigenen Einheitspreis ODER ohne geforderte
+ * Menge: null (keine Berechnung) – eine fehlende Menge darf nie stillschweigend
+ * als 1 angenommen werden.
  * Formel: (eigener EP × Menge + Lohn + Material + Gemeinkosten) × (1 + Gewinn %).
  * Gerechnet wird in ganzen Cent, damit Positions- und Gesamtsummen exakt passen.
  */
 export function offerPrice(item: LvNormalizedItem): number | null {
-  if (!hasOwnPrice(item)) return null;
-  const qty = item.quantity !== null && item.quantity > 0 ? item.quantity : 1;
+  if (!isCalculable(item)) return null;
+  const qty = item.quantity as number;
   const c = item.calculation;
   const baseCents =
     toCents((c.own_unit_price ?? 0) * qty) +
@@ -61,6 +73,7 @@ export function offerPrice(item: LvNormalizedItem): number | null {
   const withProfit = Math.round(baseCents * (1 + (c.profit_percent ?? 0) / 100));
   return fromCents(withProfit);
 }
+
 
 /** Jahrespreis nur bei vorhandenem eigenen Preis und erkanntem Intervall. */
 export function annualOfferPrice(item: LvNormalizedItem): number | null {
