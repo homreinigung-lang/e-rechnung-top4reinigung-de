@@ -351,6 +351,15 @@ export async function buildPdfReport(
     y,
   );
   y += 4.5;
+  if (summary.vatRate !== undefined) {
+    const vat = (summary.totalCost * summary.vatRate) / 100;
+    doc.text(
+      `MwSt ${summary.vatRate.toLocaleString("de-DE")} %: ${vat.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € · Brutto: ${(summary.totalCost + vat).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
+      marginX,
+      y,
+    );
+    y += 4.5;
+  }
   doc.setTextColor(150, 60, 0);
   doc.text(
     `Hinweis: Mit „${REVIEW_LABEL}“ gekennzeichnete Felder wurden nicht sicher erkannt.`,
