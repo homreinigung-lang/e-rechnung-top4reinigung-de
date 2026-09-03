@@ -110,7 +110,10 @@ export type LvAnalysisResult = {
   steps: LvProcessStep[];
   pageCount: number;
   rawText: string;
+  /** Teilfehler der Verarbeitung (KI, OCR, GAEB) – werden dem Nutzer angezeigt. */
+  failures?: string[];
 };
+
 
 /** Eintrag im Import-Protokoll. */
 export type LvImportLogEntry = {
