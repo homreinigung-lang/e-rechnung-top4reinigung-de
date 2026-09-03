@@ -428,3 +428,36 @@ describe("11) Export enthält nur aktuelle, freigegebene und kalkulierte Positio
     expect(csv).not.toContain("0,85");
   });
 });
+
+describe("11) Intervall-Erkennung ohne Substring-Kollisionen", () => {
+  const per = (t: string) => normalizeItem({ description: t } as never, "test").frequency.perYear;
+  it("zweiwöchentlich/14-tägig ergibt 26 statt 52", () => {
+    expect(per("Reinigung zweiwöchentlich")).toBe(26);
+    expect(per("Reinigung 14-tägig")).toBe(26);
+    expect(per("Reinigung alle 2 Wochen")).toBe(26);
+    expect(per("Reinigung wöchentlich")).toBe(52);
+  });
+  it("viertel-/halbjährlich werden nicht als jährlich gelesen", () => {
+    expect(per("Grundreinigung vierteljährlich")).toBe(4);
+    expect(per("Grundreinigung halbjährlich")).toBe(2);
+    expect(per("Grundreinigung jährlich")).toBe(1);
+  });
+  it("arbeitstäglich bleibt getrennt von täglich", () => {
+    expect(per("arbeitstäglich")).toBe(per("täglich"));
+    expect(per("3x pro Woche")).toBe(156);
+  });
+});
+
+describe("12) Fehlende Menge blockiert den Angebotspreis", () => {
+  it("ohne Menge kein Preis, trotz eigenem Einheitspreis", () => {
+    const item = {
+      ...tenderItem({ calculation: { ...emptyCalculation(), own_unit_price: 5 } }),
+      quantity: null,
+    } as LvNormalizedItem;
+    expect(hasOwnPrice(item)).toBe(true);
+    expect(offerPrice(item)).toBeNull();
+    expect(calcStatus(item)).toBe("not_calculated");
+    expect(summarizeOwnCalculation([item]).net).toBe(0);
+    expect([...reviewFields(item)]).toContain("total_price");
+  });
+});

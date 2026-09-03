@@ -39,7 +39,15 @@ export function detectCategory(text: string): LvItemCategory {
   return "sonstiges";
 }
 
+/**
+ * Reihenfolge ist bewusst „spezifisch vor allgemein“:
+ * „zweiwöchentlich“ darf nie als „wöchentlich“, „vierteljährlich“/„halbjährlich“
+ * nie als „jährlich“ gelesen werden. Zusätzlich sichern Wortgrenzen (\b) die
+ * allgemeinen Regeln gegen Substring-Treffer ab (ä/ö sind keine \w-Zeichen,
+ * daher steht \b hier links vom Wortanfang korrekt).
+ */
 const FREQ_RULES: [RegExp, (m: RegExpExecArray) => number][] = [
+  // 1) Zahlenangaben („3x pro Woche“) – immer am eindeutigsten.
   [
     /(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?woche|(\d+)\s*x\s*wöchentlich/i,
     (m) => Number(m[1] ?? m[2]) * WEEKS_PER_YEAR,
@@ -53,13 +61,20 @@ const FREQ_RULES: [RegExp, (m: RegExpExecArray) => number][] = [
     /(\d+)\s*(?:x|mal)\s*(?:pro\s*|je\s*)?tag|(\d+)\s*x\s*täglich/i,
     (m) => Number(m[1] ?? m[2]) * WORKDAYS_PER_YEAR,
   ],
-  [/arbeitstäglich|werktäglich|täglich/i, () => WORKDAYS_PER_YEAR],
-  [/wöchentlich/i, () => WEEKS_PER_YEAR],
+  // 2) Zusammengesetzte Intervalle vor den Grundbegriffen.
+  [/arbeitstäglich|werktäglich/i, () => WORKDAYS_PER_YEAR],
   [/14[-\s]?tägig|zweiwöchentlich|alle\s*2\s*wochen/i, () => WEEKS_PER_YEAR / 2],
-  [/monatlich/i, () => MONTHS_PER_YEAR],
-  [/vierteljährlich|quartalsweise/i, () => 4],
-  [/halbjährlich/i, () => 2],
-  [/jährlich/i, () => 1],
+  [/vierteljährlich|quartalsweise|alle\s*3\s*monate/i, () => 4],
+  [/halbjährlich|alle\s*6\s*monate/i, () => 2],
+  [/halbmonatlich|zweimal\s*(?:pro\s*|je\s*)?monat/i, () => MONTHS_PER_YEAR * 2],
+  [/alle\s*2\s*monate/i, () => 6],
+  // 3) Grundbegriffe – nur als eigenständiges Wort.
+  [/\btäglich/i, () => WORKDAYS_PER_YEAR],
+  [/\bwöchentlich/i, () => WEEKS_PER_YEAR],
+  [/\bmonatlich/i, () => MONTHS_PER_YEAR],
+  [/\bjährlich/i, () => 1],
+
+
 ];
 
 /** Liest ein Reinigungsintervall aus Freitext und rechnet es auf Einsätze pro Jahr um. */

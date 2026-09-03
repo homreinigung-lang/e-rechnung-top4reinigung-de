@@ -308,11 +308,16 @@ export default function LvAnalyse() {
       } else if (kind === "xlsx") {
         downloadBlob(await buildXlsx(exportItems, result), `${base}.xlsx`);
       } else {
+        // Kopfzeile muss exakt die exportierten (freigegebenen) Positionen abbilden.
+        const exportArea = summarizeArea(exportItems);
+        const exportHours = summarizeHours(exportItems, priceInputs.performanceRate);
+        const exportCost = summarizeCost(exportItems, result?.totals ?? [], companyVatRate);
         const blob = await buildPdfReport(result, exportItems, {
-          totalArea: area.totalArea,
-          totalHours: hours.totalHours,
-          totalCost: cost.net,
+          totalArea: exportArea.totalArea,
+          totalHours: exportHours.totalHours,
+          totalCost: exportCost.net,
         });
+
         downloadBlob(blob, `${base}.pdf`);
       }
       toast.success("Export erstellt", {

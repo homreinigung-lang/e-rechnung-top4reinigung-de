@@ -128,7 +128,7 @@ export function buildExportRows(items: LvNormalizedItem[]): string[][] {
       own(item.calculation.material_cost),
       own(item.calculation.overhead_cost),
       own(item.calculation.profit_percent),
-      price === null ? NO_OWN_PRICE_LABEL : own(price),
+      price === null ? (hasOwnPrice(item) ? REVIEW_LABEL : NO_OWN_PRICE_LABEL) : own(price),
       CALC_STATUS_LABELS[calcStatus(item)],
     ];
   });
@@ -354,12 +354,8 @@ export async function buildPdfReport(
   drawHead();
 
   const rows = buildExportRows(items);
+  const LINE_H = 4.4;
   for (const row of rows) {
-    if (y > pageH - 16) {
-      doc.addPage();
-      y = 16;
-      drawHead();
-    }
     const values = [
       row[0],
       row[1],
@@ -373,20 +369,37 @@ export async function buildPdfReport(
       row[9],
       row[10],
     ];
-    let x = marginX;
-    values.forEach((raw, index) => {
+    // Jede Zelle vollständig umbrechen – es wird nichts stillschweigend gekürzt.
+    const wrapped = values.map((raw, index) => {
       const col = cols[index]!;
       const value = raw ?? "";
-      const short = value === REVIEW_LABEL ? "prüfen" : value;
-      const text = doc.splitTextToSize(short, col.w - 3)[0] ?? "";
-      if (value === REVIEW_LABEL) doc.setTextColor(190, 60, 0);
-      doc.text(String(text), col.align === "right" ? x + col.w - 2 : x, y, {
-        align: col.align ?? "left",
+      const shown = value === REVIEW_LABEL ? "prüfen" : value;
+      const lines = shown ? (doc.splitTextToSize(shown, col.w - 3) as string[]) : [""];
+      return { col, value, lines };
+    });
+    const rowH = Math.max(...wrapped.map((c) => c.lines.length)) * LINE_H;
+
+    if (y + rowH > pageH - 12) {
+      doc.addPage();
+      y = 16;
+      drawHead();
+    }
+
+    let x = marginX;
+    for (const cell of wrapped) {
+      if (cell.value === REVIEW_LABEL) doc.setTextColor(190, 60, 0);
+      cell.lines.forEach((line, lineIndex) => {
+        doc.text(
+          String(line),
+          cell.col.align === "right" ? x + cell.col.w - 2 : x,
+          y + lineIndex * LINE_H,
+          { align: cell.col.align ?? "left" },
+        );
       });
       doc.setTextColor(0, 0, 0);
-      x += col.w;
-    });
-    y += 4.4;
+      x += cell.col.w;
+    }
+    y += rowH;
   }
 
   if (result.totals.length) {

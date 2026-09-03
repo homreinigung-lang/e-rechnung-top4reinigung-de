@@ -1,6 +1,6 @@
 import { MONTHS_PER_YEAR } from "@/lib/constants";
 import { fromCents, toCents } from "@/lib/kalkulation-engine";
-import { annualOfferPrice, hasOwnPrice, offerPrice } from "./calculation";
+import { annualOfferPrice, isCalculable, offerPrice } from "./calculation";
 import type { LvItemCategory, LvNormalizedItem, LvTotalLine } from "./types";
 
 const round2 = (n: number) => fromCents(toCents(n));
@@ -129,7 +129,7 @@ export function summarizeCost(
   vatRate = 19,
 ): CostSummary {
   // Ausschließlich eigene Kalkulationsdaten – Preise aus dem Dokument fließen nie ein.
-  const priced = items.filter(hasOwnPrice);
+  const priced = items.filter(isCalculable);
   const netCents = priced.reduce((s, i) => s + toCents(offerPrice(i) ?? 0), 0);
   const annualCents = priced.reduce(
     (s, i) => s + toCents(annualOfferPrice(i) ?? offerPrice(i) ?? 0),
