@@ -668,6 +668,24 @@ export function Personal() {
                         }}
                       />
                     </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        key={`u-${e.id}-${e.vacation_days_per_year ?? 0}`}
+                        defaultValue={String(e.vacation_days_per_year ?? 0)}
+                        inputMode="decimal"
+                        placeholder="0"
+                        className="h-9"
+                        title="Jahresurlaub in Tagen"
+                        onBlur={(ev) => {
+                          const days = toNumber(ev.target.value);
+                          if (days !== Number(e.vacation_days_per_year ?? 0))
+                            patchEmployee.mutate({
+                              id: e.id,
+                              patch: { vacation_days_per_year: days },
+                            });
+                        }}
+                      />
+                    </td>
                     <td className="px-3 py-2 text-right font-medium">
                       {trackedHours(e.id).toFixed(2)} Std.
                     </td>
