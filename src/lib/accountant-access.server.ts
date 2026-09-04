@@ -2,8 +2,11 @@
  * Prüfung des Steuerberater-Zugangs (Token + Zugangscode) inklusive Schutz
  * gegen das Durchprobieren von Codes (Brute-Force).
  *
- * Nach mehreren Fehlversuchen wird der Zugang zeitweise gesperrt. Erfolgreiche
- * Anmeldungen setzen den Zähler zurück.
+ * Der Zugangscode wird niemals im Klartext gespeichert, sondern nur als
+ * SHA-256-Prüfsumme (mit dem Zugangs-Token als Salz). Der Vergleich erfolgt
+ * zeitkonstant, damit sich der Code nicht über Laufzeitunterschiede erraten
+ * lässt. Nach mehreren Fehlversuchen wird der Zugang zeitweise gesperrt;
+ * erfolgreiche Anmeldungen setzen den Zähler zurück.
  */
 
 const MAX_ATTEMPTS = 5;
@@ -14,8 +17,29 @@ export type AccountantAccessRow = {
   user_id: string;
 };
 
-function normalizeCode(value: string) {
+export function normalizeCode(value: string) {
   return (value ?? "").trim().toUpperCase();
+}
+
+/** SHA-256-Prüfsumme des Zugangscodes, mit dem Token als Salz. */
+export async function hashAccessCode(token: string, code: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`${normalizeCode(code)}:${token}`);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/** Zeitkonstanter Vergleich zweier Prüfsummen. */
+export function timingSafeEqual(a: string, b: string): boolean {
+  const x = String(a ?? "");
+  const y = String(b ?? "");
+  const len = Math.max(x.length, y.length);
+  let diff = x.length === y.length ? 0 : 1;
+  for (let i = 0; i < len; i += 1) {
+    diff |= (x.charCodeAt(i) || 0) ^ (y.charCodeAt(i) || 0);
+  }
+  return diff === 0;
 }
 
 export async function verifyAccountantAccess(
@@ -26,11 +50,18 @@ export async function verifyAccountantAccess(
 
   const { data: access } = await supabaseAdmin
     .from("accountant_access")
-    .select("id, user_id, access_code, active, activated_at, failed_attempts, locked_until")
+    .select(
+      "id, user_id, access_code_hash, active, activated_at, failed_attempts, locked_until, expires_at",
+    )
     .eq("token", token)
     .maybeSingle();
 
   if (!access || !access.active) throw new Error("Zugang ungültig.");
+
+  const expiresAt = access.expires_at ? new Date(access.expires_at as string) : null;
+  if (expiresAt && expiresAt.getTime() < Date.now()) {
+    throw new Error("Dieser Zugang ist abgelaufen. Bitte den Mandanten um einen neuen Zugang.");
+  }
 
   const lockedUntil = access.locked_until ? new Date(access.locked_until as string) : null;
   if (lockedUntil && lockedUntil.getTime() > Date.now()) {
@@ -39,7 +70,9 @@ export async function verifyAccountantAccess(
     );
   }
 
-  const ok = String(access.access_code ?? "").toUpperCase() === normalizeCode(code);
+  const stored = String(access.access_code_hash ?? "");
+  const candidate = await hashAccessCode(token, code);
+  const ok = stored.length > 0 && timingSafeEqual(stored, candidate);
 
   if (!ok) {
     const attempts = Number(access.failed_attempts ?? 0) + 1;
