@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.time_entries_validate() FROM PUBLIC, anon, authenticated;

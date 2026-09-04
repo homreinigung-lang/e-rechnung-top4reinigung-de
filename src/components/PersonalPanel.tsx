@@ -309,6 +309,8 @@ export function Personal() {
         hourly_rate?: number;
         weekly_hours?: number;
         work_location?: string;
+        vacation_days_per_year?: number;
+        vacation_carryover_days?: number;
       };
     }) => {
       const { error } = await supabase.from("employees").update(patch).eq("id", id);
@@ -575,8 +577,9 @@ export function Personal() {
                 <th className="px-5 py-3 w-[22%]">Mitarbeiter</th>
                 <th className="px-3 py-3 w-[14%]">Funktion</th>
                 <th className="px-3 py-3 w-[26%]">Einsatzort</th>
-                <th className="px-3 py-3 w-[12%]">Std./Woche</th>
-                <th className="px-3 py-3 w-[12%]">Stundenlohn €</th>
+                <th className="px-3 py-3 w-[10%]">Std./Woche</th>
+                <th className="px-3 py-3 w-[10%]">Stundenlohn €</th>
+                <th className="px-3 py-3 w-[10%]">Urlaub/Jahr</th>
                 <th className="px-3 py-3 text-right w-[10%]">Erfasst</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -664,6 +667,24 @@ export function Personal() {
                           const rate = toNumber(ev.target.value);
                           if (rate !== Number(e.hourly_rate ?? 0))
                             patchEmployee.mutate({ id: e.id, patch: { hourly_rate: rate } });
+                        }}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        key={`u-${e.id}-${e.vacation_days_per_year ?? 0}`}
+                        defaultValue={String(e.vacation_days_per_year ?? 0)}
+                        inputMode="decimal"
+                        placeholder="0"
+                        className="h-9"
+                        title="Jahresurlaub in Tagen"
+                        onBlur={(ev) => {
+                          const days = toNumber(ev.target.value);
+                          if (days !== Number(e.vacation_days_per_year ?? 0))
+                            patchEmployee.mutate({
+                              id: e.id,
+                              patch: { vacation_days_per_year: days },
+                            });
                         }}
                       />
                     </td>

@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
+import { friendlyDbError } from "@/lib/db-errors";
 import {
   ABSENCE_REASONS,
   absenceClasses,
@@ -381,6 +382,12 @@ export function EinsatzKalender({
       const hours = absence ? 0 : hoursFromTimes(values.start, values.end, breakMinutes);
       if (!absence && !(hours > 0))
         throw new Error("Die geplante Dauer muss größer als 0 Stunden sein.");
+      // Über Mitternacht wird nur bei plausibler Schichtlänge gerechnet –
+      // sonst ist es fast immer ein Zahlendreher (z. B. 08:00–07:00).
+      if (!absence && endMin! <= startMin! && hours > 12)
+        throw new Error(
+          "Endzeit liegt vor der Startzeit. Für Nachtschichten sind maximal 12 Stunden möglich – bitte Zeiten prüfen.",
+        );
       const locText = values.location.trim();
       const project = absence
         ? null
@@ -412,7 +419,7 @@ export function EinsatzKalender({
       }));
 
       const { error } = await supabase.from("time_entries").insert(rows);
-      if (error) throw error;
+      if (error) throw new Error(friendlyDbError(error, "Einsatz konnte nicht geplant werden."));
       return rows.length;
     },
     onSuccess: (count, values) => {
@@ -469,6 +476,11 @@ export function EinsatzKalender({
       workDate: string;
       employeeId?: string;
     }) => {
+      const source = allEntries.find((e) => e.id === id);
+      if (source?.billed)
+        throw new Error(
+          "Bereits abgerechnete Einsätze können nicht verschoben werden. Bitte die Abrechnung zuerst aufheben.",
+        );
       const emp = employeeId ? employees.find((e) => e.id === employeeId) : null;
       const patch = {
         work_date: workDate,
@@ -484,7 +496,7 @@ export function EinsatzKalender({
       };
 
       const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
-      if (error) throw error;
+      if (error) throw new Error(friendlyDbError(error, "Einsatz konnte nicht verschoben werden."));
     },
     onSuccess: () => {
       toast.success("Einsatz verschoben – als neue Aufgabe (offen) angelegt");
@@ -522,7 +534,7 @@ export function EinsatzKalender({
         entry_type: "work",
         absence_reason: "",
       });
-      if (error) throw error;
+      if (error) throw new Error(friendlyDbError(error, "Einsatz konnte nicht zugewiesen werden."));
     },
     onSuccess: () => {
       toast.success("Einsatz zugewiesen (08:00–16:00, Pause 30 Min.) – bei Bedarf anpassen");

@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { CalendarRange } from "lucide-react";
 import { ABSENCE_REASONS, absenceLabel, type AbsenceReason } from "@/lib/absence";
 import { formatDate } from "@/lib/format";
+import { friendlyDbError } from "@/lib/db-errors";
 
 export type AbsenceEmployee = { id: string; name: string; user_id?: string };
 
@@ -107,7 +108,7 @@ export function AbwesenheitZeitraum({
         approval_status: asRequest ? "pending" : "approved",
       }));
       const { error } = await supabase.from("time_entries").insert(rows);
-      if (error) throw error;
+      if (error) throw new Error(friendlyDbError(error, "Abwesenheit konnte nicht gebucht werden."));
       return rows.length;
     },
     onSuccess: (count) => {
