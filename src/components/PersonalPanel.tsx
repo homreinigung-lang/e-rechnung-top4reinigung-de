@@ -575,8 +575,9 @@ export function Personal() {
                 <th className="px-5 py-3 w-[22%]">Mitarbeiter</th>
                 <th className="px-3 py-3 w-[14%]">Funktion</th>
                 <th className="px-3 py-3 w-[26%]">Einsatzort</th>
-                <th className="px-3 py-3 w-[12%]">Std./Woche</th>
-                <th className="px-3 py-3 w-[12%]">Stundenlohn €</th>
+                <th className="px-3 py-3 w-[10%]">Std./Woche</th>
+                <th className="px-3 py-3 w-[10%]">Stundenlohn €</th>
+                <th className="px-3 py-3 w-[10%]">Urlaub/Jahr</th>
                 <th className="px-3 py-3 text-right w-[10%]">Erfasst</th>
                 <th className="px-5 py-3" />
               </tr>
