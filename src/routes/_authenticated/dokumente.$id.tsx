@@ -51,6 +51,7 @@ import {
   quoteHeadline,
 } from "@/lib/document-texts";
 import { DocumentTitleSelector } from "@/components/DocumentTitleSelector";
+import { isEmptyDraft } from "@/lib/empty-draft";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -491,12 +492,22 @@ function DokumentDetail() {
   // Verweis auf den aktuellen Flush, damit die Unload-Listener nur einmal
   // gemountet werden müssen und trotzdem stets die neueste Fassung sichern.
   const flushRef = useRef<() => void>(() => {});
+  // Leere Entwürfe (nur Standardwerte) werden weder gespeichert noch behalten.
+  const blankDraft = isEmptyDraft(form, items);
+  const blankDraftRef = useRef(blankDraft);
+  blankDraftRef.current = blankDraft;
+
   useEffect(() => {
     const serverData = dataRef.current;
     if (!serverData) return;
     const current = serverData.doc as unknown as Record<string, unknown>;
     if (isLockedDocument(current)) return;
     if (Object.keys(form).length === 0) return;
+    if (isEmptyDraft(form, items)) {
+      // Nichts eingegeben – kein Autosave, damit keine leere Karteileiche entsteht.
+      flushRef.current = () => {};
+      return;
+    }
     const snapshot = JSON.stringify({ form, items });
     if (!savedSnapshotRef.current) {
       savedSnapshotRef.current = snapshot;
@@ -543,6 +554,24 @@ function DokumentDetail() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Beim Verlassen der Seite einen komplett leeren Entwurf wieder entfernen.
+  useEffect(() => {
+    return () => {
+      if (!blankDraftRef.current) return;
+      const current = dataRef.current?.doc as Record<string, unknown> | undefined;
+      if (!current) return;
+      if (isLockedDocument(current)) return;
+      if (String(current["status"] ?? "draft") !== "draft") return;
+      void (async () => {
+        await supabase.from("document_items").delete().eq("document_id", id);
+        const { error } = await supabase.from("documents").delete().eq("id", id);
+        if (!error) await queryClient.invalidateQueries({ queryKey: ["documents"] });
+      })();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
 
   // Bearbeitungsmodus merken, damit man an derselben Stelle weiterarbeitet.
   useEffect(() => {
@@ -1115,9 +1144,15 @@ function DokumentDetail() {
       rule: true,
     });
 
+    const customTitle = String(form["title"] ?? "").trim();
+    const autoTitle = `${isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[doc.type]} ${number}`;
+
     return {
       isInvoice,
-      title: `${isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[doc.type]} ${number}`,
+      // Auch bei Rechnungen ersetzt ein frei eingetragener Titel die
+      // automatische Überschrift; die Nummer bleibt im Belegkopf sichtbar.
+      title: isInvoice && customTitle ? customTitle : autoTitle,
+
       // Sichtbarer Stempel bei Stornobeleg und bei stornierter Originalrechnung.
       ...(isStorno || cancelledBy || doc.status === "cancelled"
         ? {
@@ -2349,8 +2384,11 @@ function DokumentDetail() {
 
           {isInvoice ? (
             <h2 className="mt-7 font-display text-xl font-semibold">
-              {DOC_TYPE_LABEL[doc.type]} {docNumber}
+              {String(form["title"] ?? "").trim()
+                ? String(form["title"]).trim()
+                : `${DOC_TYPE_LABEL[doc.type]} ${docNumber}`}
             </h2>
+
           ) : (
             <>
               <h2 className="mt-7 text-center font-display text-lg font-bold text-balance">
