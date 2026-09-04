@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dailyHours, urlaubskontoFor, zeitkontoFor } from "./zeitkonto";
+import { dailyHours, urlaubskontoFor, zeitkontoFor, sollHours, sollHoursForMonth } from "./zeitkonto";
 
 const emp = "e1";
 
@@ -104,5 +104,27 @@ describe("urlaubskontoFor", () => {
     expect(k.genommen).toBe(1);
     expect(k.beantragt).toBe(1);
     expect(k.rest).toBe(24);
+  });
+});
+
+describe("sollHoursForMonth (Eintrittsdatum)", () => {
+  it("liefert kein Soll vor dem Eintrittsdatum", () => {
+    expect(sollHoursForMonth(40, "2026-01", "2026-03-01")).toBe(0);
+  });
+
+  it("liefert volles Soll nach dem Eintrittsmonat", () => {
+    expect(sollHoursForMonth(40, "2026-05", "2026-03-01")).toBe(sollHours(40));
+  });
+
+  it("rechnet den Eintrittsmonat anteilig", () => {
+    const voll = sollHours(40);
+    const anteil = sollHoursForMonth(40, "2026-04", "2026-04-16"); // 15 von 30 Tagen
+    expect(anteil).toBeCloseTo(Math.round(voll * 0.5 * 100) / 100, 2);
+  });
+
+  it("zeitkontoFor erzeugt vor Eintritt keine Minusstunden", () => {
+    const k = zeitkontoFor("e1", 40, [], [], "2026-01", "2026-03-01");
+    expect(k.soll).toBe(0);
+    expect(k.saldo).toBe(0);
   });
 });
