@@ -14,6 +14,8 @@ export type MyEmployee = {
   contract_start?: string | null;
   weekly_hours?: number | null;
   work_location?: string | null;
+  vacation_days_per_year?: number | null;
+  vacation_carryover_days?: number | null;
 };
 
 /**
@@ -35,7 +37,7 @@ export function useMyEmployee() {
       const { data: existing } = await supabase
         .from("employees")
         .select(
-          "id,name,role,hourly_rate,email,phone,personnel_number,user_id,contract_type,contract_start,weekly_hours,work_location",
+          "id,name,role,hourly_rate,email,phone,personnel_number,user_id,contract_type,contract_start,weekly_hours,work_location,vacation_days_per_year,vacation_carryover_days",
         )
         .eq("auth_user_id", uid)
         .maybeSingle();
@@ -47,7 +49,7 @@ export function useMyEmployee() {
       const { data: linked } = await supabase
         .from("employees")
         .select(
-          "id,name,role,hourly_rate,email,phone,personnel_number,user_id,contract_type,contract_start,weekly_hours,work_location",
+          "id,name,role,hourly_rate,email,phone,personnel_number,user_id,contract_type,contract_start,weekly_hours,work_location,vacation_days_per_year,vacation_carryover_days",
         )
         .eq("id", linkedId as string)
         .maybeSingle();
