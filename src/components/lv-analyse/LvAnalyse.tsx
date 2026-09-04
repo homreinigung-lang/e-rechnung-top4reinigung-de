@@ -64,6 +64,7 @@ import {
   summarizeOwnCalculation,
 } from "@/lib/lv-analyse/calculation";
 import { LvPositionenTabelle } from "@/components/lv-analyse/LvPositionenTabelle";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import {
   buildCsv,
   buildPdfReport,
@@ -139,6 +140,41 @@ export default function LvAnalyse() {
   useEffect(() => {
     void loadLog();
   }, [loadLog]);
+
+  const [deletingLog, setDeletingLog] = useState(false);
+
+  const deleteLogEntry = async (id: string) => {
+    setDeletingLog(true);
+    const { error } = await supabase.from("lv_import_logs").delete().eq("id", id);
+    setDeletingLog(false);
+    if (error) {
+      toast.error("Protokolleintrag konnte nicht gelöscht werden", { description: error.message });
+      return;
+    }
+    toast.success("Protokolleintrag gelöscht");
+    void loadLog();
+  };
+
+  const deleteAllLogEntries = async () => {
+    setDeletingLog(true);
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      setDeletingLog(false);
+      toast.error("Nicht angemeldet");
+      return;
+    }
+    const { error } = await supabase
+      .from("lv_import_logs")
+      .delete()
+      .eq("user_id", auth.user.id);
+    setDeletingLog(false);
+    if (error) {
+      toast.error("Einträge konnten nicht gelöscht werden", { description: error.message });
+      return;
+    }
+    toast.success("Alle Protokolleinträge gelöscht");
+    void loadLog();
+  };
 
   const handleUpload = async (file: File) => {
     setBusy(true);
@@ -707,9 +743,25 @@ export default function LvAnalyse() {
 
         {/* 7) Import-Protokoll */}
         <TabsContent value="log" className="space-y-3">
-          <Button variant="outline" size="sm" onClick={() => void loadLog()}>
-            <RefreshCw className="mr-1 size-4" /> Aktualisieren
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => void loadLog()}>
+              <RefreshCw className="mr-1 size-4" /> Aktualisieren
+            </Button>
+            {log.length > 0 && (
+              <ConfirmDeleteButton
+                title="Alle Protokolleinträge löschen?"
+                description={`Es werden alle ${log.length} Einträge unwiderruflich gelöscht.`}
+                onConfirm={() => void deleteAllLogEntries()}
+                confirmLabel="Alle löschen"
+                disabled={deletingLog}
+                size="sm"
+                variant="outline"
+                ariaLabel="Alle Protokolleinträge löschen"
+              >
+                <Trash2 className="mr-1 size-4 text-destructive" /> Alle Einträge löschen
+              </ConfirmDeleteButton>
+            )}
+          </div>
           {log.length === 0 ? (
             <p className="text-sm text-muted-foreground">Noch keine Importe protokolliert.</p>
           ) : (
@@ -721,6 +773,7 @@ export default function LvAnalyse() {
                   <TableHead className="w-56">Erkannter Typ</TableHead>
                   <TableHead className="w-24 text-right">Positionen</TableHead>
                   <TableHead className="w-40">Status</TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -736,6 +789,15 @@ export default function LvAnalyse() {
                       <Badge variant={STATUS_STYLE[entry.status]?.variant ?? "outline"}>
                         {STATUS_STYLE[entry.status]?.label ?? entry.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <ConfirmDeleteButton
+                        title="Protokolleintrag löschen?"
+                        description={`„${entry.file_name}" wird unwiderruflich aus dem Protokoll entfernt.`}
+                        onConfirm={() => void deleteLogEntry(entry.id)}
+                        disabled={deletingLog}
+                        ariaLabel={`Protokolleintrag ${entry.file_name} löschen`}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
