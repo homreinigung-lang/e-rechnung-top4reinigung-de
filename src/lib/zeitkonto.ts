@@ -69,7 +69,17 @@ export function zeitkontoFor(
     (e) =>
       e.employee_id === employeeId && isEffective(e) && (!month || monthOf(e.work_date) === month),
   );
-  const ist = rows.filter((e) => !isAbsence(e)).reduce((s, e) => s + Number(e.hours || 0), 0);
+  const gearbeitet = rows.filter((e) => !isAbsence(e)).reduce((s, e) => s + Number(e.hours || 0), 0);
+
+  // Genehmigte Abwesenheiten werden mit der Tages-Sollzeit gutgeschrieben,
+  // damit Urlaub und Krankheit keine Minusstunden erzeugen.
+  const tagessoll = dailyHours(weeklyHours);
+  const abwesenheitstage = new Set(
+    rows.filter((e) => isAbsence(e)).map((e) => String(e.work_date ?? "")),
+  );
+  abwesenheitstage.delete("");
+  const abwesenheit = abwesenheitstage.size * tagessoll;
+  const ist = gearbeitet + abwesenheit;
 
   const korrektur = adjustments
     .filter((a) => a.employee_id === employeeId && (!month || monthOf(a.entry_date) === month))
@@ -83,9 +93,64 @@ export function zeitkontoFor(
   const round = (n: number) => Math.round(n * 100) / 100;
   return {
     ist: round(ist),
+    gearbeitet: round(gearbeitet),
+    abwesenheit: round(abwesenheit),
     soll,
     korrektur: round(korrektur),
     saldo: round(ist + korrektur - soll),
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * Urlaubskonto: Anspruch, genommene Tage und Resturlaub
+ * ------------------------------------------------------------------------- */
+
+export type Urlaubskonto = {
+  anspruch: number;
+  uebertrag: number;
+  genommen: number;
+  beantragt: number;
+  rest: number;
+};
+
+/**
+ * Urlaubskonto eines Mitarbeiters für ein Kalenderjahr.
+ * `genommen` zählt genehmigte Urlaubstage, `beantragt` offene Anträge.
+ */
+export function urlaubskontoFor(
+  employeeId: string,
+  entitlement: { vacation_days_per_year?: number | string | null; vacation_carryover_days?: number | string | null },
+  entries: (TimeEntryLike & { approval_status?: string | null })[],
+  year: string,
+): Urlaubskonto {
+  const anspruch = Number(entitlement.vacation_days_per_year ?? 0) || 0;
+  const uebertrag = Number(entitlement.vacation_carryover_days ?? 0) || 0;
+
+  const rows = entries.filter(
+    (e) =>
+      e.employee_id === employeeId &&
+      isAbsence(e) &&
+      (e.absence_reason ?? "") === "vacation" &&
+      String(e.work_date ?? "").slice(0, 4) === year,
+  );
+  const daysFor = (status: string) => {
+    const set = new Set(
+      rows
+        .filter((e) => (e.approval_status ?? "approved") === status)
+        .map((e) => String(e.work_date ?? "")),
+    );
+    set.delete("");
+    return set.size;
+  };
+
+  const genommen = daysFor("approved");
+  const beantragt = daysFor("pending");
+  return {
+    anspruch,
+    uebertrag,
+    genommen,
+    beantragt,
+    rest: Math.round((anspruch + uebertrag - genommen - beantragt) * 100) / 100,
   };
 }
 
