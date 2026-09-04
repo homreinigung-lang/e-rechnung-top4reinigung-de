@@ -43,6 +43,36 @@ export function dailyHours(weeklyHours: number | null | undefined) {
   return w > 0 ? Math.round((w / 5) * 100) / 100 : 0;
 }
 
+/** Anzahl Tage eines Monats („2026-03" → 31). */
+function daysInMonth(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  if (!y || !m) return 30;
+  return new Date(y, m, 0).getDate();
+}
+
+/**
+ * Soll-Stunden eines einzelnen Monats unter Berücksichtigung des
+ * Eintrittsdatums: vor dem Eintritt entsteht kein Soll, im Eintrittsmonat wird
+ * anteilig gerechnet.
+ */
+export function sollHoursForMonth(
+  weeklyHours: number | null | undefined,
+  month: string,
+  contractStart?: string | null,
+) {
+  const full = sollHours(weeklyHours);
+  if (full <= 0 || !month) return 0;
+  const start = String(contractStart ?? "").slice(0, 10);
+  if (!start) return full;
+  const startMonth = start.slice(0, 7);
+  if (startMonth > month) return 0;
+  if (startMonth < month) return full;
+  const total = daysInMonth(month);
+  const startDay = Number(start.slice(8, 10)) || 1;
+  const share = (total - startDay + 1) / total;
+  return Math.round(full * share * 100) / 100;
+}
+
 export type Zeitkonto = {
   ist: number;
   /** Tatsächlich geleistete Arbeitsstunden (ohne Abwesenheiten). */
@@ -56,7 +86,8 @@ export type Zeitkonto = {
 
 /**
  * Zeitkonto für einen Mitarbeiter. Ohne `month` wird über alle Zeiträume
- * gerechnet (laufendes Guthaben / Minusstunden).
+ * gerechnet (laufendes Guthaben / Minusstunden). `contractStart` verhindert
+ * Sollstunden vor dem Eintrittsdatum.
  */
 export function zeitkontoFor(
   employeeId: string,
@@ -64,6 +95,7 @@ export function zeitkontoFor(
   entries: TimeEntryLike[],
   adjustments: Adjustment[],
   month?: string,
+  contractStart?: string | null,
 ): Zeitkonto {
   const rows = entries.filter(
     (e) =>
@@ -86,9 +118,13 @@ export function zeitkontoFor(
     .reduce((s, a) => s + Number(a.hours || 0), 0);
 
   const months = month
-    ? 1
-    : new Set(rows.map((e) => monthOf(e.work_date)).filter(Boolean)).size || 1;
-  const soll = Math.round(sollHours(weeklyHours) * months * 100) / 100;
+    ? [month]
+    : Array.from(new Set(rows.map((e) => monthOf(e.work_date)).filter(Boolean)));
+  const soll =
+    Math.round(
+      months.reduce((s, m) => s + sollHoursForMonth(weeklyHours, m, contractStart), 0) * 100,
+    ) / 100;
+
 
   const round = (n: number) => Math.round(n * 100) / 100;
   return {
