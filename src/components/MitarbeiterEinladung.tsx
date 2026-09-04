@@ -7,8 +7,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Copy, RefreshCw } from "lucide-react";
 
+/** Zufälliger Unternehmens-Code (12 Zeichen, ohne verwechselbare Zeichen). */
 function randomCode(): string {
-  return crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from(crypto.getRandomValues(new Uint8Array(12)))
+    .map((b) => alphabet[b % alphabet.length])
+    .join("");
 }
 
 /**
