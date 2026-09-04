@@ -1115,9 +1115,15 @@ function DokumentDetail() {
       rule: true,
     });
 
+    const customTitle = String(form["title"] ?? "").trim();
+    const autoTitle = `${isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[doc.type]} ${number}`;
+
     return {
       isInvoice,
-      title: `${isStorno ? "Stornorechnung" : DOC_TYPE_LABEL[doc.type]} ${number}`,
+      // Auch bei Rechnungen ersetzt ein frei eingetragener Titel die
+      // automatische Überschrift; die Nummer bleibt im Belegkopf sichtbar.
+      title: isInvoice && customTitle ? customTitle : autoTitle,
+
       // Sichtbarer Stempel bei Stornobeleg und bei stornierter Originalrechnung.
       ...(isStorno || cancelledBy || doc.status === "cancelled"
         ? {
