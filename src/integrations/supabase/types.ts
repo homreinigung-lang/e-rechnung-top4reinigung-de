@@ -943,6 +943,8 @@ export type Database = {
           role: string
           updated_at: string
           user_id: string
+          vacation_carryover_days: number
+          vacation_days_per_year: number
           weekly_hours: number
           work_location: string
         }
@@ -961,6 +963,8 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id: string
+          vacation_carryover_days?: number
+          vacation_days_per_year?: number
           weekly_hours?: number
           work_location?: string
         }
@@ -979,6 +983,8 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id?: string
+          vacation_carryover_days?: number
+          vacation_days_per_year?: number
           weekly_hours?: number
           work_location?: string
         }
