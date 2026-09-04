@@ -813,7 +813,7 @@ export function EinsatzKalender({
       <LoadError
         error={loadError}
         title="Kalenderdaten konnten nicht geladen werden"
-        onRetry={() => void qc.invalidateQueries()}
+        onRetry={() => void queryClient.invalidateQueries()}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
