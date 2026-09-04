@@ -600,6 +600,14 @@ export function Zeiterfassung() {
                   id: e.id,
                   name: e.name,
                   weekly_hours: (e as unknown as { weekly_hours?: number }).weekly_hours ?? 0,
+                  contract_start:
+                    (e as unknown as { contract_start?: string | null }).contract_start ?? null,
+                  vacation_days_per_year:
+                    (e as unknown as { vacation_days_per_year?: number }).vacation_days_per_year ??
+                    0,
+                  vacation_carryover_days:
+                    (e as unknown as { vacation_carryover_days?: number })
+                      .vacation_carryover_days ?? 0,
                 }))}
                 entries={entries as never}
                 month={month}
