@@ -183,9 +183,13 @@ export function AccountantAccessCard() {
                 <div className="min-w-0">
                   <div className="font-medium">{a.email || "Ohne E-Mail"}</div>
                   <div className="truncate text-xs text-muted-foreground">
-                    Passwort: {a.access_code} · unbegrenzt gültig
+                    Passwort: verschlüsselt gespeichert (nicht mehr lesbar) ·{" "}
+                    {new Date(a.expires_at).getFullYear() > 2100
+                      ? "unbegrenzt gültig"
+                      : `gültig bis ${formatDate(a.expires_at)}`}
                     {a.last_used_at ? ` · zuletzt genutzt ${formatDate(a.last_used_at)}` : ""}
                   </div>
+
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
