@@ -292,6 +292,7 @@ export function Arbeitsplanung() {
 
   // Entwurf: eingegebene Zeiten bleiben lokal, bis „Speichern" gedrückt wird.
   const [draft, setDraft] = React.useState<Record<string, DayTime[]>>({});
+  const [cellErrors, setCellErrors] = React.useState<Record<string, string>>({});
   React.useEffect(() => {
     setDraft({});
   }, [weekStart]);
