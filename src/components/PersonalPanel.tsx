@@ -309,6 +309,8 @@ export function Personal() {
         hourly_rate?: number;
         weekly_hours?: number;
         work_location?: string;
+        vacation_days_per_year?: number;
+        vacation_carryover_days?: number;
       };
     }) => {
       const { error } = await supabase.from("employees").update(patch).eq("id", id);
