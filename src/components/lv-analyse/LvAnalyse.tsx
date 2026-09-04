@@ -140,6 +140,41 @@ export default function LvAnalyse() {
     void loadLog();
   }, [loadLog]);
 
+  const [deletingLog, setDeletingLog] = useState(false);
+
+  const deleteLogEntry = async (id: string) => {
+    setDeletingLog(true);
+    const { error } = await supabase.from("lv_import_logs").delete().eq("id", id);
+    setDeletingLog(false);
+    if (error) {
+      toast.error("Protokolleintrag konnte nicht gelöscht werden", { description: error.message });
+      return;
+    }
+    toast.success("Protokolleintrag gelöscht");
+    void loadLog();
+  };
+
+  const deleteAllLogEntries = async () => {
+    setDeletingLog(true);
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      setDeletingLog(false);
+      toast.error("Nicht angemeldet");
+      return;
+    }
+    const { error } = await supabase
+      .from("lv_import_logs")
+      .delete()
+      .eq("user_id", auth.user.id);
+    setDeletingLog(false);
+    if (error) {
+      toast.error("Einträge konnten nicht gelöscht werden", { description: error.message });
+      return;
+    }
+    toast.success("Alle Protokolleinträge gelöscht");
+    void loadLog();
+  };
+
   const handleUpload = async (file: File) => {
     setBusy(true);
     setSteps([{ state: "running", label: `„${file.name}" wird verarbeitet …` }]);
