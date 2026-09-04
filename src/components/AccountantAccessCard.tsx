@@ -19,7 +19,7 @@ type Access = {
   id: string;
   email: string;
   token: string;
-  access_code: string;
+  access_code?: string;
   active: boolean;
   expires_at: string;
   last_used_at: string | null;
@@ -39,10 +39,11 @@ export function AccountantAccessCard() {
   const sendInviteFn = useServerFn(sendAccountantInvite);
 
   const sendInvite = useMutation({
-    mutationFn: async (vars: { id: string; email: string }) =>
+    mutationFn: async (vars: { id: string; email: string; password?: string }) =>
       sendInviteFn({ data: { ...vars, origin: window.location.origin } }),
     onSuccess: async (res) => {
       await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
+      setPassword("");
       toast.info(`Versandauftrag für ${res.to} angenommen.`, {
         description: `Resend-ID: ${res.messageId}. Die Annahme bestätigt noch nicht die Zustellung; bitte auch den Spam-Ordner prüfen.`,
         duration: 12000,
@@ -70,15 +71,18 @@ export function AccountantAccessCard() {
 
   const create = useMutation({
     mutationFn: async () => createAccess({ data: { email, password } }),
-    onSuccess: async ({ token }) => {
+    onSuccess: async ({ token, accessCode }) => {
       await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
       setPassword("");
       try {
         await navigator.clipboard.writeText(linkFor(token));
-        toast.success("Zugangs-Link erstellt und kopiert.");
       } catch {
-        toast.success("Zugangs-Link erstellt.");
+        /* Zwischenablage nicht verfügbar */
       }
+      toast.success("Zugangs-Link erstellt.", {
+        description: `Passwort: ${accessCode} – bitte jetzt notieren, es wird verschlüsselt gespeichert und später nicht mehr angezeigt.`,
+        duration: 20000,
+      });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -88,7 +92,7 @@ export function AccountantAccessCard() {
     onSuccess: async (_d, vars) => {
       await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
       setEdits((prev) => ({ ...prev, [vars.id]: "" }));
-      toast.success("Passwort dauerhaft gespeichert.");
+      toast.success("Passwort gespeichert (verschlüsselt).");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -114,7 +118,7 @@ export function AccountantAccessCard() {
       toast.error("Bitte E-Mail-Adresse des Steuerberaters eintragen.");
       return;
     }
-    sendInvite.mutate({ id: access.id, email: to });
+    sendInvite.mutate({ id: access.id, email: to, password: password.trim() });
   }
 
   return (
@@ -140,7 +144,7 @@ export function AccountantAccessCard() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="stb_password">Passwort (optional, dauerhaft)</Label>
+          <Label htmlFor="stb_password">Passwort (optional, min. 8 Zeichen)</Label>
           <Input
             id="stb_password"
             placeholder="Leer lassen für automatisches Passwort"
@@ -226,7 +230,7 @@ export function AccountantAccessCard() {
                   <Input
                     id={`pw_${a.id}`}
                     value={edits[a.id] ?? ""}
-                    placeholder="Neues dauerhaftes Passwort"
+                    placeholder="Neues Passwort (min. 8 Zeichen)"
                     onChange={(e) => setEdits((prev) => ({ ...prev, [a.id]: e.target.value }))}
                   />
                 </div>
