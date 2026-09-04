@@ -7,7 +7,7 @@
  */
 import { roundCents } from "@/lib/money";
 
-export type TotalsItem = { quantity: number; unit_price: number };
+export type TotalsItem = { quantity: number; unit_price: number; description?: string | null };
 
 export type DocumentTotals = {
   itemsTotal: number;
