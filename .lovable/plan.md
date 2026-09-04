@@ -1,37 +1,40 @@
-# Prüfbericht Kalkulation (nur Analyse, keine Änderungen)
+# Prüfbericht: Personal, Einsatzplanung, Zeiterfassung, Zugriffsrechte
 
-Geprüft: `src/routes/_authenticated/kalkulation.tsx`, `src/lib/kalkulation-engine.ts`, `src/components/KalkulationAnalytics.tsx`, `src/components/Leistungswerte.tsx`, `src/lib/leistungswerte.ts`, `src/lib/raumbuch.ts` sowie die Module, die dieselbe Engine nutzen (`lv-analyse/aggregate.ts`, `lv-analyse/calculation.ts`, `lv-pdf.ts`) und der Belegeditor `dokumente.$id.tsx`.
+Nur Analyse – es wurde nichts geändert. Geprüft: Personal-/Team-Modul, Einsatzkalender, Arbeitsplanung, Zeiterfassung, Mitarbeiterportal, Urlaubsanträge, Zeitkonto, Steuerberater-Zugang sowie die zugehörigen Zugriffsregeln der Datenbank und die öffentlichen Serverfunktionen.
 
 ## Kritisch
 
-1. **Verwaister Test ohne Produktivcode** — `src/lib/document-totals.test.ts:4-16` rechnet die Summenkette (Rabatt → Netto → MwSt → Brutto) in einer eigenen Testfunktion nach; `src/lib/document-totals.ts` existiert nicht. Der Test bestätigt also eine Kopie, nicht die produktive Logik in `dokumente.$id.tsx:348-352`. Änderungen am Belegeditor bleiben ungetestet.
-2. **Zwei parallele Rundungs-Implementierungen** — `kalkulation-engine.ts:25-36` (`toCents/fromCents/round2`) und `format.ts:21-24` (`roundCents`). Aktuell verhalten sie sich fast gleich, aber Kalkulation/LV-Analyse/LV-PDF laufen über die Engine, Belegeditor und Dokument-PDF über `roundCents`. Eine spätere Änderung an einer Seite erzeugt abweichende Beträge zwischen Kalkulation und Angebot/Rechnung.
+1. **Urlaub und Krankheit erzeugen falsche Minusstunden.** Abwesenheiten werden zwingend mit 0 Stunden gespeichert, während das Zeitkonto die volle Sollzeit gegenrechnet. Jeder genehmigte Urlaubstag verschlechtert das Stundenkonto der Mitarbeitenden – arbeitsrechtlich und für die Lohnabrechnung falsch.
+2. **Mitarbeitende können ihren eigenen Stundensatz setzen.** Die Zugriffsregel für selbst erfasste Arbeitszeiten prüft nur Besitzer und Eintragsart, nicht `hourly_rate`, `hours` oder das Datum. Über die öffentliche Datenschnittstelle lässt sich damit ein beliebiger Stundensatz oder eine beliebige Stundenzahl buchen, die anschließend direkt in Lohnauswertung, Steuerberater-Export und Kostenstatistik einfließt.
+3. **Kein Urlaubsanspruch, kein Resturlaub.** Nirgends existiert ein Jahresanspruch je Mitarbeiter. Es werden nur genommene Tage gezählt; Überschreitungen, Resttage und Übertrag ins Folgejahr sind weder sichtbar noch geprüft.
+4. **Keine Doppelbuchungs-Prüfung.** Weder Einsatzplanung noch Abwesenheitszeitraum prüfen, ob für Mitarbeiter und Tag bereits ein Eintrag existiert. Zwei Nutzer oder zwei Browsertabs erzeugen doppelte Einsätze und doppelte Urlaubstage; in der Datenbank fehlt eine entsprechende Eindeutigkeitsregel.
 
 ## Wichtig
 
-3. **Ungerundete MwSt-Anzeige je Position** — `dokumente.$id.tsx:2086`: `item.quantity * item.unit_price * (1 + vatRate/100)` ohne `roundCents`. Nur Anzeige (fließt nicht in gespeicherte Summen), kann aber sichtbar um einen Cent von der Endsumme abweichen.
-4. **Kennzahlen ohne Mandantenfilter im Code** — `KalkulationAnalytics.tsx:60-70` liest `projects`, `time_entries`, `project_assignments`, `documents` ohne `user_id`-Filter. Abgesichert allein durch RLS. Für Mitarbeiter-Accounts greift zusätzlich die Policy „employee reads assigned projects", d. h. dieselbe Auswertung zeigt je nach Rolle unterschiedliche Grundgesamtheiten (Projekte sichtbar, Zeiten/Belege ggf. nicht) — Umsatz und Marge können dadurch systematisch zu niedrig erscheinen, statt gar nicht angezeigt zu werden.
-5. **„Umsatz" ist kalkulatorisch, nicht abgerechnet** — `KalkulationAnalytics.tsx:92`: Projektumsatz = Ist-Stunden × `projects.hourly_rate`. Im Trend-Diagramm (`:129-141`) ist „Umsatz" dagegen die Summe der Rechnungs-Nettobeträge. Zwei verschiedene Umsatzbegriffe unter demselben Wort in einer Ansicht.
-6. **Stornorechnungen nicht ausgeklammert** — `KalkulationAnalytics.tsx:124` filtert nur `type === "invoice"` und `status !== "draft"`; `is_storno` wird geladen, aber nicht ausgewertet. Stornos erhöhen den Trendumsatz statt ihn zu mindern.
-7. **Soll-Stunden mit fester Monatsumrechnung** — `KalkulationAnalytics.tsx:98-100`: `hours_per_week × WEEKS_PER_MONTH` als Soll für einen beliebigen Zeitraum, während die Ist-Stunden über **alle** je erfassten Einträge laufen (kein Datumsfilter, `:87-90`). Die Effizienzquote vergleicht damit Gesamt-Ist gegen Ein-Monats-Soll und ist praktisch immer > 100 %.
-8. **Rabattposition ohne Schutz beim Angebot** — `kalkulation.tsx:1130,1174-1184,1202-1205` überträgt die negative Rabattposition als eigene Zeile und setzt `discount_percent/amount` bewusst auf 0. Korrekt beim Anlegen; ein späteres Setzen eines Dokumentrabatts im Belegeditor zieht den Rabatt jedoch ein zweites Mal ab, ohne Warnung.
-9. **Leistungswerte ohne Wertvalidierung** — `Leistungswerte.tsx:59-77,174`: `sqm_per_hour` wird als `Number(...) || 0` gespeichert; der Wert 0 oder ein negativer Wert ist speicherbar. In `leistungswerte.ts:127-131` gilt `perHour <= 0` dann als „unmatched" und der Raum fällt still aus der Stundenberechnung.
-10. **Stiller Fallback im Raumbuch** — `raumbuch.ts:47,60-62`: Fehler bei `performance_rates`/`projects` werden nicht geprüft (nur `roomsRes.error`), bei leerem Ergebnis greifen Default-Werte bzw. `sqm_per_hour = 0`. Der Nutzer sieht keine Meldung, dass mit Branchenrichtwerten statt eigenen Werten gerechnet wurde.
-11. **Duplikate bei Standard-Leistungswerten** — `Leistungswerte.tsx:43-51` fügt `DEFAULT_PERFORMANCE_RATES` ohne Prüfung auf bereits vorhandene Zeilen ein; mehrfaches Klicken erzeugt doppelte Sätze, die `findRate` willkürlich auflösen lässt.
+5. **Rollentrennung nur in der Oberfläche.** Mitarbeitende werden per Weiterleitung aus Firmenbereichen ausgesperrt. Der Schutz greift ausschließlich im Browser; ob jede Firmentabelle die Mitarbeiterkonten serverseitig ebenfalls ausschließt, ist nicht durchgängig abgesichert (z. B. Projekt- und Kundendaten, auf die geplante Einsätze verweisen).
+6. **Fremdbezug bei selbst erfassten Zeiten möglich.** Beim Eintrag durch Mitarbeitende werden Projekt- und Kundenbezug nicht gegen den Bestand der eigenen Firma geprüft.
+7. **Passwort-Wiederherstellung ohne Drosselung.** Die Registrierungs-E-Mail hat eine Sperre je Adresse und IP; der Wiederherstellungs-Link hat keine. Damit ist Mail-Bombing auf beliebige Adressen möglich, mit Risiko für die Zustellreputation der Absenderdomain.
+8. **Einladungscode ist zu kurz und unbegrenzt versuchbar.** Acht Zeichen ohne Fehlversuchssperre; ein angemeldetes Fremdkonto kann sich durch Durchprobieren als Mitarbeiter in eine fremde Firma eintragen. Es fehlt zudem eine Bestätigung durch die Firma.
+9. **Öffentlich lesbare Firmendaten.** Aktive, auf der Startseite sichtbare Abonnements geben Kontakt-E-Mail, Anschrift und Notiz frei; die Plattform-Zahlungsdaten liefern IBAN, BIC, Steuernummer und E-Mail an nicht angemeldete Besucher. Beides sollte auf die wirklich benötigten Felder reduziert werden.
+10. **Paketbestellungen sind ungeprüft anlegbar.** Bestellungen dürfen ohne Anmeldung eingetragen werden, inklusive frei wählbarer Beträge und Status – Spam und manipulierte Beträge sind möglich.
+11. **Steuerberater-Zugang mit schwachem Zugangscode.** Der Code wird im Klartext gespeichert, ist kurz und wird zeichenweise verglichen. Die Sperre nach Fehlversuchen greift, ein Ablaufdatum je Code und ein gehashter Vergleich fehlen.
+12. **Urlaubsanträge: Entscheidungen ohne Sperre.** Beim Genehmigen wird nicht geprüft, ob der Antrag noch offen ist, und es wird kein Entscheider protokolliert. Zwei gleichzeitig arbeitende Vorgesetzte überschreiben einander.
+13. **Verschieben per Drag-and-drop setzt Nachweise zurück.** Beim Umplanen werden Erledigt-Status, Fotos und Freigaben gelöscht – auch bei bereits abgerechneten oder genehmigten Einsätzen. Abgerechnete Einsätze sollten nicht verschiebbar sein.
+14. **Nachtschichten werden stillschweigend umgerechnet.** Endet ein Einsatz vor dem Start, wird über Mitternacht gerechnet; ein Tippfehler wie 08:00–07:00 ergibt 23 Stunden ohne Warnung.
+15. **Fehler beim Laden bleiben unsichtbar.** Nahezu alle Listen (Personal, Kalender, Zuordnungen, Benachrichtigungen) fallen bei einem Fehler auf eine leere Liste zurück. Ein Rechteproblem oder Netzausfall sieht dann aus wie „keine Daten“.
+16. **Wochenplanung speichert Zelle für Zelle ohne Konfliktprüfung.** Bricht der Speichervorgang in der Mitte ab, bleibt ein Teil gespeichert und der Entwurf inkonsistent; parallele Bearbeitung überschreibt sich gegenseitig ohne Hinweis.
+17. **Sollstunden-Berechnung pauschal.** Das Zeitkonto rechnet mit einer festen Wochenzahl je Monat und berücksichtigt nur Monate, in denen es bereits Einträge gibt. Feiertage, Eintrittsdatum und Teilmonate verzerren das Ergebnis.
+18. **Zwei-Faktor ohne Wirkung auf Rechte.** TOTP kann aktiviert werden, aber weder Administrationsbereich noch Datenzugriff verlangen die zweite Stufe; Abschalten ist ohne erneute Anmeldung möglich. Auch die Passwortänderung verlangt kein aktuelles Passwort.
 
 ## Nice-to-have
 
-12. **Rundung zweimal auf demselben Wert** — `kalkulation-engine.ts:317-322` rundet je Position und danach die Summe; mathematisch unschädlich, aber der doppelte Schritt verschleiert, welche Ebene maßgeblich ist.
-13. **Kein Datumsbereich in den Kennzahlen** — die Projekttabelle summiert alle Zeiten seit Beginn; ein Zeitraumfilter (Jahr/Quartal) würde die Aussagen erst vergleichbar machen.
-14. **`round2` dreifach lokal definiert** — u. a. `KalkulationAnalytics.tsx:22-24` und `lv-analyse/aggregate.ts:6` statt Import aus der Engine.
+19. **Benachrichtigung „Plan freigegeben" nur im geöffneten Browser** – wer nicht angemeldet ist, erfährt nichts; der gelesen-Status hängt am jeweiligen Gerät.
+20. **Wiederholte Objektanlage** bei der Wochenplanung kann bei paralleler Nutzung doppelte Objekte erzeugen.
+21. **Datenbank-Prüfung meldet 19 Hinweise**: eine Erweiterung im öffentlichen Bereich und 18 Funktionen mit erhöhten Rechten, die angemeldete Nutzer aufrufen dürfen. Ein Teil davon ist bewusst so gebaut (Belegnummern, Storno); die Liste sollte einmal Funktion für Funktion bestätigt und dokumentiert werden.
+22. **Kein Prüfprotokoll für Personaldaten** – Änderungen an Stundensatz, Vertrag und Zeiten sind nicht historisiert; für Lohnprüfungen wäre das hilfreich.
 
-## Ausdrücklich in Ordnung
+## Empfohlene Reihenfolge
 
-- Rundungsreihenfolge ist projektweit gleich: Positionen cent-genau → Summe → MwSt auf die Nettosumme → Brutto.
-- MwSt-Satz kommt überall aus `vatRateForTaxMode` (`format.ts:153`), `tax_mode`/`reverse_charge` werden beim Angebot korrekt mitgeschrieben (`kalkulation.tsx:1207-1209`).
-- Gemeinkosten/Gewinn wirken nur im LV-Analyse-Modul und dort korrekt vor MwSt (`lv-analyse/calculation.ts:58-71`).
-- RLS: `calculations`, `calculation_items`, `performance_rates`, `project_rooms`, `project_lv_items`, `projects` haben jeweils eine `ALL`-Policy `auth.uid() = user_id` in USING **und** WITH CHECK, GRANTs für `authenticated`/`service_role` sind in den Migrationen vorhanden.
-
-## Vorgeschlagene Reihenfolge bei Freigabe
-
-1 → 2 (gemeinsame Summenlogik in ein Modul ziehen und den vorhandenen Test darauf richten), danach 6/7/5 (Kennzahlen korrigieren), dann 9/10/11 (Leistungswerte robust machen), zuletzt 3/8 und die Nice-to-haves.
+1. Punkte 1–4 (Zeitkonto, Stundensatz-Absicherung, Urlaubsanspruch, Doppelbuchung)
+2. Punkte 5–11 (Zugriffs- und Missbrauchsschutz)
+3. Punkte 12–18 (Datenintegrität und Bedienbarkeit)
