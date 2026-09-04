@@ -138,6 +138,10 @@ export const sendAccountRecoveryLink = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     try {
+      // Drosselung wie bei der Registrierungsmail (Schutz vor Mail-Bombing).
+      const { allowPublicMail } = await import("./mail-throttle.server");
+      if (!(await allowPublicMail({ email }))) return { sent: true as const };
+
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { sendMail, siteUrl, escapeHtml } = await import("./approval-mail.server");
 
