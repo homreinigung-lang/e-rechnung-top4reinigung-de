@@ -242,12 +242,14 @@ function DokumentDetail() {
   // State. Server-Daten werden nur beim ersten Laden dieses Belegs übernommen –
   // Refetches nach Autosave/Hintergrund-Mutationen füllen die Felder nie nach.
   const initializedIdRef = useRef<string>("");
+  // Formularstand direkt nach dem Laden – Referenz für „unberührter Entwurf“.
+  const baselineFormRef = useRef<Record<string, string | boolean | null> | null>(null);
   useEffect(() => {
     if (!data) return;
     if (initializedIdRef.current === id) return;
     initializedIdRef.current = id;
     const d = data.doc as Record<string, unknown>;
-    setForm({
+    const initialForm: Record<string, string | boolean | null> = {
       number: String(d["number"] ?? ""),
       order_number: String(d["order_number"] ?? ""),
       status: String(d["status"] ?? "draft"),
@@ -287,7 +289,10 @@ function DokumentDetail() {
       notes: String(d["notes"] ?? ""),
       attachment_title: String(d["attachment_title"] ?? ""),
       attachment_text: String(d["attachment_text"] ?? ""),
-    });
+    };
+    baselineFormRef.current = initialForm;
+    setForm(initialForm);
+
 
     setItems(
       data.items.map((i) => ({
@@ -493,7 +498,7 @@ function DokumentDetail() {
   // gemountet werden müssen und trotzdem stets die neueste Fassung sichern.
   const flushRef = useRef<() => void>(() => {});
   // Leere Entwürfe (nur Standardwerte) werden weder gespeichert noch behalten.
-  const blankDraft = isEmptyDraft(form, items);
+  const blankDraft = isEmptyDraft(form, items, baselineFormRef.current);
   const blankDraftRef = useRef(blankDraft);
   blankDraftRef.current = blankDraft;
 
@@ -503,7 +508,7 @@ function DokumentDetail() {
     const current = serverData.doc as unknown as Record<string, unknown>;
     if (isLockedDocument(current)) return;
     if (Object.keys(form).length === 0) return;
-    if (isEmptyDraft(form, items)) {
+    if (isEmptyDraft(form, items, baselineFormRef.current)) {
       // Nichts eingegeben – kein Autosave, damit keine leere Karteileiche entsteht.
       flushRef.current = () => {};
       return;

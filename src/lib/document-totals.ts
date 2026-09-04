@@ -7,7 +7,7 @@
  */
 import { roundCents } from "@/lib/money";
 
-export type TotalsItem = { quantity: number; unit_price: number };
+export type TotalsItem = { quantity: number; unit_price: number; description?: string | null };
 
 export type DocumentTotals = {
   itemsTotal: number;
@@ -47,10 +47,17 @@ export function computeDocumentTotals(
 }
 
 /**
- * Erkennt eine aus der Kalkulation übertragene Rabattposition (negativer
- * Einzelpreis). Ein zusätzlicher Belegrabatt würde denselben Nachlass
- * ein zweites Mal abziehen.
+ * Erkennt eine aus der Kalkulation übertragene Rabattposition: negativer
+ * Einzelpreis **und** eine als Rabatt bezeichnete Position. Ein zusätzlicher
+ * Belegrabatt würde denselben Nachlass ein zweites Mal abziehen.
+ *
+ * Andere negative Zeilen (Gutschriften, Abzüge) sind kein Belegrabatt und
+ * dürfen einen vereinbarten Prozentrabatt nicht entfernen.
  */
+const DISCOUNT_LABEL = /(rabatt|nachlass|skonto)/i;
+
 export function hasDiscountPosition(items: TotalsItem[]): boolean {
-  return items.some((i) => Number(i.unit_price) < 0);
+  return items.some(
+    (i) => Number(i.unit_price) < 0 && DISCOUNT_LABEL.test(String(i.description ?? "")),
+  );
 }

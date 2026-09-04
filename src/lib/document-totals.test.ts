@@ -70,7 +70,12 @@ describe("Belegsummen", () => {
   });
 
   it("erkennt eine übertragene Rabattposition", () => {
-    expect(hasDiscountPosition([{ quantity: 1, unit_price: -50 }])).toBe(true);
+    expect(
+      hasDiscountPosition([{ quantity: 1, unit_price: -50, description: "Rabatt (10 %)" }]),
+    ).toBe(true);
+    expect(
+      hasDiscountPosition([{ quantity: 1, unit_price: -50, description: "Gutschrift Vormonat" }]),
+    ).toBe(false);
     expect(hasDiscountPosition([{ quantity: 1, unit_price: 50 }])).toBe(false);
   });
 });
