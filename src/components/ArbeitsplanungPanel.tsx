@@ -27,6 +27,8 @@ import {
   type DayTime,
 } from "@/lib/planung";
 import { formatDate } from "@/lib/format";
+import { friendlyDbError } from "@/lib/db-errors";
+import { LoadError, firstError } from "@/components/LoadError";
 
 /**
  * Schnellauswahl: eine Zeitvorlage auf die ganze Woche (Mo–Fr bzw. Mo–So)
@@ -162,7 +164,7 @@ export function Arbeitsplanung() {
   const weekStart = isoDay(monday);
   const weekEnd = isoDay(addDays(monday, 6));
 
-  const { data: employees = [] } = useQuery({
+  const { data: employees = [], error: employeesError } = useQuery({
     queryKey: ["employees", "planung"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -175,7 +177,7 @@ export function Arbeitsplanung() {
     },
   });
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], error: projectsError } = useQuery({
     queryKey: ["projects", "planung"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -187,7 +189,7 @@ export function Arbeitsplanung() {
     },
   });
 
-  const { data: customers = [] } = useQuery({
+  const { data: customers = [], error: customersError } = useQuery({
     queryKey: ["customers", "planung"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -199,7 +201,7 @@ export function Arbeitsplanung() {
     },
   });
 
-  const { data: assignments = [] } = useQuery({
+  const { data: assignments = [], error: assignmentsError } = useQuery({
     queryKey: ["project_assignments", "planung", weekStart],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -418,20 +420,46 @@ export function Arbeitsplanung() {
 
   const saveAll = useMutation({
     mutationFn: async () => {
+      // Jede Zelle einzeln speichern: Konflikte (z. B. Überschneidungen) dürfen
+      // nicht den gesamten Wochenplan verwerfen.
+      const failures: { key: string; label: string; message: string }[] = [];
+      const savedKeys: string[] = [];
       for (const k of dirtyKeys) {
         const [eid, pid] = k.split("|");
         const employee = employees.find((e) => e.id === eid);
         const object = objects.find((o) => o.id === pid);
         if (!employee || !object) continue;
-        await persistCell(employee, object, draft[k] ?? normalizeDayTimes(null));
+        try {
+          await persistCell(employee, object, draft[k] ?? normalizeDayTimes(null));
+          savedKeys.push(k);
+        } catch (err) {
+          failures.push({
+            key: k,
+            label: `${employee.name} – ${object.name || "Objekt"}`,
+            message: friendlyDbError(err, "Zelle konnte nicht gespeichert werden."),
+          });
+        }
       }
+      return { failures, savedKeys };
     },
 
-    onSuccess: () => {
-      setDraft({});
+    onSuccess: ({ failures, savedKeys }) => {
+      // Nur erfolgreich gespeicherte Zellen aus dem Entwurf entfernen.
+      setDraft((prev) => {
+        const next = { ...prev };
+        for (const k of savedKeys) delete next[k];
+        return next;
+      });
+      setCellErrors(Object.fromEntries(failures.map((f) => [f.key, f.message])));
       queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Wochenplan gespeichert (Entwurf).");
+      if (failures.length === 0) {
+        toast.success("Wochenplan gespeichert (Entwurf).");
+      } else {
+        toast.error(
+          `${failures.length} von ${failures.length + savedKeys.length} Einträgen konnten nicht gespeichert werden.`,
+        );
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -450,8 +478,41 @@ export function Arbeitsplanung() {
 
   const grandTotal = employees.reduce((s, e) => s + employeeTotal(e.id), 0);
 
+  const loadError = firstError(employeesError, projectsError, customersError, assignmentsError);
+  const cellErrorList = Object.entries(cellErrors);
+
   return (
     <div className="space-y-6">
+      <LoadError
+        error={loadError}
+        title="Planungsdaten konnten nicht geladen werden"
+        onRetry={() => void queryClient.invalidateQueries()}
+      />
+      {cellErrorList.length > 0 && (
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm"
+        >
+          <p className="font-medium text-destructive">
+            Diese Einträge konnten nicht gespeichert werden:
+          </p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
+            {cellErrorList.map(([key, message]) => {
+              const [eid, pid] = key.split("|");
+              const emp = employees.find((e) => e.id === eid)?.name ?? "Mitarbeiter";
+              const obj = objects.find((o) => o.id === pid)?.name ?? "Objekt";
+              return (
+                <li key={key}>
+                  <span className="font-medium">
+                    {emp} – {obj}:
+                  </span>{" "}
+                  {message}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       <div>
         <h1 className="text-3xl font-bold">Arbeitsplanung</h1>
         <p className="mt-1 text-muted-foreground">
