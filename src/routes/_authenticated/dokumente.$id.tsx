@@ -51,6 +51,7 @@ import {
   quoteHeadline,
 } from "@/lib/document-texts";
 import { DocumentTitleSelector } from "@/components/DocumentTitleSelector";
+import { isEmptyDraft } from "@/lib/empty-draft";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
