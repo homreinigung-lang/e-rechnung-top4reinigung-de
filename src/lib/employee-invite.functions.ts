@@ -29,6 +29,20 @@ export const redeemInviteCode = createServerFn({ method: "POST" })
     const email = String(context.claims?.["email"] ?? "").toLowerCase();
     if (!email) throw new Error("Für dieses Konto ist keine E-Mail-Adresse hinterlegt.");
 
+    // Schutz vor dem Durchprobieren von Codes: maximal 5 Versuche je Konto
+    // und Stunde. Jeder Versuch wird gezählt, unabhängig vom Ergebnis.
+    const { allowPublicMail } = await import("./mail-throttle.server");
+    const allowed = await allowPublicMail({
+      email: `invite:${userId}`,
+      limitPerEmail: 5,
+      windowEmailMinutes: 60,
+      limitPerIp: 30,
+      windowIpMinutes: 60,
+    });
+    if (!allowed) {
+      throw new Error("Zu viele Versuche. Bitte später erneut versuchen.");
+    }
+
     const { data: company } = await supabaseAdmin
       .from("company_settings")
       .select("user_id,company_name")
