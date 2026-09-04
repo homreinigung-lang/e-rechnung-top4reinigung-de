@@ -141,7 +141,7 @@ export function AssignmentBell() {
     setSeenAt(now);
   }
 
-  const loadError = firstError(assignmentsError, releasesError);
+  const loadError = Boolean(firstError(assignmentsError, releasesError));
 
   return (
     <DropdownMenu
