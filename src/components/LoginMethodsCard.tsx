@@ -14,6 +14,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 export function LoginMethodsCard() {
   const [email, setEmail] = useState("");
   const [providers, setProviders] = useState<string[]>([]);
+  const [current, setCurrent] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,13 +40,27 @@ export function LoginMethodsCard() {
       toast.error("Die Passwörter stimmen nicht überein.");
       return;
     }
+    if (hasPassword && current.trim().length < 6) {
+      toast.error("Bitte zuerst Ihr aktuelles Passwort eingeben.");
+      return;
+    }
     setLoading(true);
+    // Re-Authentifizierung: bestehendes Passwort muss bestätigt werden.
+    if (hasPassword) {
+      const check = await supabase.auth.signInWithPassword({ email, password: current });
+      if (check.error) {
+        setLoading(false);
+        toast.error("Das aktuelle Passwort ist nicht korrekt.");
+        return;
+      }
+    }
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) {
       toast.error("Passwort konnte nicht gespeichert werden: " + error.message);
       return;
     }
+    setCurrent("");
     setPassword("");
     setConfirm("");
     toast.success(
@@ -89,6 +104,23 @@ export function LoginMethodsCard() {
           Sie sich damit entweder über Google oder mit Ihrem Passwort an.
         </p>
       </div>
+
+      {hasPassword && (
+        <div className="max-w-sm space-y-2">
+          <Label htmlFor="cur_pw">Aktuelles Passwort</Label>
+          <PasswordInput
+            id="cur_pw"
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            dir="ltr"
+          />
+          <p className="text-xs text-muted-foreground">
+            Aus Sicherheitsgründen ist das aktuelle Passwort erforderlich, bevor ein neues gesetzt
+            werden kann.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">

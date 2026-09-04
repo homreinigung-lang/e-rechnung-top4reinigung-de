@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LoadError, firstError } from "@/components/LoadError";
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -233,7 +234,7 @@ export function Personal() {
     queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
   };
 
-  const { data: employees = [] } = useQuery({
+  const { data: employees = [], error: employeesError } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
       const { data, error } = await supabase.from("employees").select("*").order("name");
@@ -242,7 +243,7 @@ export function Personal() {
     },
   });
 
-  const { data: assignments = [] } = useQuery({
+  const { data: assignments = [], error: assignmentsError } = useQuery({
     queryKey: ["project_assignments"],
     queryFn: async () => {
       const { data, error } = await supabase.from("project_assignments").select("*");
@@ -253,7 +254,7 @@ export function Personal() {
 
   // Eigener Query-Key: verhindert Kollision mit anders geformten "projects"-Caches
   // (Zeiterfassung/Projektliste) und lädt die Objektliste bei jedem Aufruf frisch.
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], error: projectsError } = useQuery({
     queryKey: ["projects", "personal-picker"],
     staleTime: 0,
     refetchOnMount: "always",
@@ -268,7 +269,7 @@ export function Personal() {
     },
   });
 
-  const { data: entries = [] } = useQuery({
+  const { data: entries = [], error: entriesError } = useQuery({
     queryKey: ["time_entries"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -466,8 +467,15 @@ export function Personal() {
     setWeekStart(mondayOf(d));
   };
 
+  const loadError = firstError(employeesError, assignmentsError, projectsError, entriesError);
+
   return (
     <div className="space-y-6">
+      <LoadError
+        error={loadError}
+        title="Personaldaten konnten nicht geladen werden"
+        onRetry={() => void queryClient.invalidateQueries()}
+      />
       <MitarbeiterEinladung />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

@@ -36,6 +36,7 @@ import {
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
 import { friendlyDbError } from "@/lib/db-errors";
+import { LoadError, firstError } from "@/components/LoadError";
 import {
   ABSENCE_REASONS,
   absenceClasses,
@@ -180,7 +181,7 @@ export function EinsatzKalender({
 
   // Eigene Projektliste laden, damit das Objekt/Projekt-Dropdown immer gefüllt ist,
   // auch wenn die übergebene Liste leer oder noch nicht geladen ist.
-  const { data: fetchedProjects = [] } = useQuery({
+  const { data: fetchedProjects = [], error: projectsError } = useQuery({
     queryKey: ["projects", "kalender-picker"],
     staleTime: 0,
     refetchOnMount: "always",
@@ -239,7 +240,7 @@ export function EinsatzKalender({
   const rangeFrom = isoDay(days[0]!);
   const rangeTo = isoDay(days[days.length - 1]!);
 
-  const { data: allEntries = [] } = useQuery({
+  const { data: allEntries = [], error: entriesError } = useQuery({
     queryKey: ["time_entries", "calendar", rangeFrom, rangeTo],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -270,7 +271,7 @@ export function EinsatzKalender({
   );
 
   /** Kundennamen für die Schnellansicht und den Export. */
-  const { data: customers = [] } = useQuery({
+  const { data: customers = [], error: customersError } = useQuery({
     queryKey: ["customers", "calendar-names"],
     staleTime: 300_000,
     queryFn: async () => {
@@ -597,7 +598,7 @@ export function EinsatzKalender({
   }, [entries]);
 
   /** Wochenplanung (Arbeitsplanung) für den sichtbaren Zeitraum. */
-  const { data: assignments = [] } = useQuery({
+  const { data: assignments = [], error: assignmentsError } = useQuery({
     queryKey: ["project_assignments", "calendar", rangeFrom, rangeTo],
     queryFn: async () => {
       const from = new Date(`${rangeFrom}T12:00:00`);
@@ -805,8 +806,15 @@ export function EinsatzKalender({
     setDay(key);
   };
 
+  const loadError = firstError(projectsError, entriesError, customersError, assignmentsError);
+
   return (
     <section id="einsatz-kalender-print" className="surface space-y-4 p-5">
+      <LoadError
+        error={loadError}
+        title="Kalenderdaten konnten nicht geladen werden"
+        onRetry={() => void queryClient.invalidateQueries()}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Einsatz-Kalender</h2>

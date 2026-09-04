@@ -19,57 +19,92 @@ function normalizeCode(value: string) {
   return value.trim().toUpperCase();
 }
 
-/** Erstellt einen neuen dauerhaften Nur-Lese-Zugang für den Steuerberater. */
+/** Ablaufdatum aus einer optionalen Gültigkeitsdauer in Tagen. */
+function expiryFrom(validDays?: number | null) {
+  const days = Number(validDays ?? 0);
+  if (!Number.isFinite(days) || days <= 0) return NO_EXPIRY;
+  return new Date(Date.now() + days * 86_400_000).toISOString();
+}
+
+/** Zufälliger Zugangscode (12 Zeichen, gut lesbar). */
+function randomCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from(crypto.getRandomValues(new Uint8Array(12)))
+    .map((b) => alphabet[b % alphabet.length])
+    .join("");
+}
+
+/** Erstellt einen neuen Nur-Lese-Zugang für den Steuerberater. */
 export const createAccountantAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { email?: string; password?: string }) => ({
+  .inputValidator((data: { email?: string; password?: string; validDays?: number }) => ({
     email: (data.email ?? "").trim(),
     password: (data.password ?? "").trim(),
+    validDays: Number(data.validDays ?? 0),
   }))
   .handler(async ({ data, context }) => {
     const token = crypto.randomUUID().replace(/-/g, "");
-    const accessCode = data.password
-      ? normalizeCode(data.password)
-      : Array.from(crypto.getRandomValues(new Uint8Array(4)))
-          .map((b) => (b % 36).toString(36))
-          .join("")
-          .toUpperCase();
+    const accessCode = data.password ? normalizeCode(data.password) : randomCode();
 
-    if (data.password && accessCode.length < 4) {
-      throw new Error("Passwort muss mindestens 4 Zeichen haben.");
+    if (data.password && accessCode.length < 8) {
+      throw new Error("Passwort muss mindestens 8 Zeichen haben.");
     }
+
+    const { hashAccessCode } = await import("./accountant-access.server");
 
     const { error } = await context.supabase.from("accountant_access").insert({
       user_id: context.userId,
       email: data.email,
       token,
-      access_code: accessCode,
-      expires_at: NO_EXPIRY,
+      // Klartext wird nicht gespeichert – nur die Prüfsumme.
+      access_code: "",
+      access_code_hash: await hashAccessCode(token, accessCode),
+      expires_at: expiryFrom(data.validDays),
     });
     if (error) throw new Error(error.message);
 
     return { token, accessCode };
   });
 
-/** Setzt ein dauerhaftes, selbst gewähltes Passwort für einen bestehenden Zugang. */
+/** Setzt ein selbst gewähltes Passwort für einen bestehenden Zugang. */
 export const setAccountantPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string; password: string }) => ({
+  .inputValidator((data: { id: string; password: string; validDays?: number }) => ({
     id: data.id,
     password: normalizeCode(data.password ?? ""),
+    validDays: Number(data.validDays ?? 0),
   }))
   .handler(async ({ data, context }) => {
-    if (data.password.length < 4) {
-      throw new Error("Passwort muss mindestens 4 Zeichen haben.");
+    if (data.password.length < 8) {
+      throw new Error("Passwort muss mindestens 8 Zeichen haben.");
     }
+    const { data: access, error: loadError } = await context.supabase
+      .from("accountant_access")
+      .select("id, token")
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (loadError) throw new Error(loadError.message);
+    if (!access) throw new Error("Zugang nicht gefunden.");
+
+    const { hashAccessCode } = await import("./accountant-access.server");
+
     const { error } = await context.supabase
       .from("accountant_access")
-      .update({ access_code: data.password, expires_at: NO_EXPIRY, active: true })
+      .update({
+        access_code: "",
+        access_code_hash: await hashAccessCode(access.token as string, data.password),
+        expires_at: expiryFrom(data.validDays),
+        active: true,
+        failed_attempts: 0,
+        locked_until: null,
+      })
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true, accessCode: data.password };
   });
+
 
 /** Prüft Token + Passwort und liefert die Auswertung des Zeitraums (nur Lesen). */
 export const getAccountantReport = createServerFn({ method: "POST" })
@@ -266,24 +301,46 @@ export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
  */
 export const sendAccountantInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string; email: string; origin?: string }) => ({
+  .inputValidator((data: { id: string; email: string; origin?: string; password?: string }) => ({
     id: String(data.id ?? ""),
     email: String(data.email ?? "").trim(),
     origin: String(data.origin ?? "").trim(),
+    password: normalizeCode(String(data.password ?? "")),
   }))
   .handler(async ({ data, context }) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
       throw new Error("Bitte eine gültige E-Mail-Adresse eingeben.");
     }
+    if (data.password && data.password.length < 8) {
+      throw new Error("Passwort muss mindestens 8 Zeichen haben.");
+    }
 
     const { data: access, error } = await context.supabase
       .from("accountant_access")
-      .select("id, token, access_code")
+      .select("id, token")
       .eq("id", data.id)
       .eq("user_id", context.userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!access) throw new Error("Zugang nicht gefunden.");
+
+    // Das Passwort ist nur als Prüfsumme gespeichert und kann nicht mehr
+    // ausgelesen werden. Für die Einladung wird deshalb ein neues Passwort
+    // gesetzt (entweder das eingegebene oder ein zufälliges).
+    const accessCode = data.password || randomCode();
+    const { hashAccessCode } = await import("./accountant-access.server");
+    const { error: pwError } = await context.supabase
+      .from("accountant_access")
+      .update({
+        access_code: "",
+        access_code_hash: await hashAccessCode(access.token as string, accessCode),
+        active: true,
+        failed_attempts: 0,
+        locked_until: null,
+      })
+      .eq("id", access.id)
+      .eq("user_id", context.userId);
+    if (pwError) throw new Error(pwError.message);
 
     const { data: settings } = await context.supabase
       .from("company_settings")
@@ -303,9 +360,9 @@ export const sendAccountantInvite = createServerFn({ method: "POST" })
 anbei Ihr persönlicher Nur-Lese-Zugang zu den Rechnungen und Ausgaben von ${companyName} (DATEV- und Excel-Export inklusive).
 
 Zugangs-Link: ${link}
-Passwort (dauerhaft gültig): ${access.access_code}
+Passwort: ${accessCode}
 
-Der Zugang hat kein Ablaufdatum.
+Bitte bewahren Sie das Passwort sicher auf – es kann aus Sicherheitsgründen nicht erneut angezeigt werden.
 
 Mit freundlichen Grüßen
 ${companyName}`;
@@ -315,10 +372,11 @@ ${companyName}`;
       <p>Guten Tag,</p>
       <p>anbei Ihr persönlicher Nur-Lese-Zugang zu den Rechnungen und Ausgaben von <strong>${escapeHtml(companyName)}</strong> (DATEV- und Excel-Export inklusive).</p>
       <p style="margin:24px 0"><a href="${link}" style="background:#0369a1;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">Zugang öffnen</a></p>
-      <p>Passwort (dauerhaft gültig): <strong>${escapeHtml(access.access_code)}</strong></p>
+      <p>Passwort: <strong>${escapeHtml(accessCode)}</strong></p>
       <p style="color:#64748b;font-size:13px">Falls der Button nicht funktioniert: ${escapeHtml(link)}</p>
       <p style="margin-top:28px;color:#64748b;font-size:12px">${escapeHtml(companyName)}</p>
     </div>`;
+
 
     const delivery = await sendMail({
       to: data.email,

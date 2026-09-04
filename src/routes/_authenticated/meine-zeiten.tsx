@@ -475,7 +475,16 @@ function MeineZeiten() {
       </section>
 
       <ZeitkontoCard
-        employees={[{ id: me.id, name: me.name, weekly_hours: me.weekly_hours ?? 0 }]}
+        employees={[
+          {
+            id: me.id,
+            name: me.name,
+            weekly_hours: me.weekly_hours ?? 0,
+            contract_start: me.contract_start ?? null,
+            vacation_days_per_year: me.vacation_days_per_year ?? 0,
+            vacation_carryover_days: me.vacation_carryover_days ?? 0,
+          },
+        ]}
         entries={entries as never}
         month={month}
         readOnly

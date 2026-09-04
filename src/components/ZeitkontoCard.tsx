@@ -28,7 +28,6 @@ import {
   formatStunden,
   zeitkontoFor,
   urlaubskontoFor,
-  sollHours,
   type Adjustment,
   type TimeEntryLike,
 } from "@/lib/zeitkonto";
@@ -41,6 +40,7 @@ export type ZeitkontoEmployee = {
   user_id?: string | null;
   vacation_days_per_year?: number | string | null;
   vacation_carryover_days?: number | string | null;
+  contract_start?: string | null;
 };
 
 function useAdjustments(employeeId?: string) {
@@ -87,8 +87,22 @@ export function ZeitkontoCard({
     () =>
       employees.map((e) => ({
         employee: e,
-        month: zeitkontoFor(e.id, Number(e.weekly_hours ?? 0), entries, adjustments, month),
-        gesamt: zeitkontoFor(e.id, Number(e.weekly_hours ?? 0), entries, adjustments),
+        month: zeitkontoFor(
+          e.id,
+          Number(e.weekly_hours ?? 0),
+          entries,
+          adjustments,
+          month,
+          e.contract_start ?? null,
+        ),
+        gesamt: zeitkontoFor(
+          e.id,
+          Number(e.weekly_hours ?? 0),
+          entries,
+          adjustments,
+          undefined,
+          e.contract_start ?? null,
+        ),
         urlaub: urlaubskontoFor(e.id, e, entries as never, month.slice(0, 4)),
       })),
     [employees, entries, adjustments, month],
@@ -221,10 +235,13 @@ export function ZeitkontoCard({
               <tr key={r.employee.id}>
                 <td className="py-2 font-medium">{r.employee.name}</td>
                 <td className="py-2 text-right text-muted-foreground">
-                  {sollHours(Number(r.employee.weekly_hours ?? 0))
-                    .toFixed(2)
-                    .replace(".", ",")}{" "}
-                  Std.
+                  {r.month.soll.toFixed(2).replace(".", ",")} Std.
+                  {r.employee.contract_start &&
+                  String(r.employee.contract_start).slice(0, 7) >= month ? (
+                    <span className="block text-xs">
+                      ab Eintritt {formatDate(r.employee.contract_start)}
+                    </span>
+                  ) : null}
                 </td>
                 <td className="py-2 text-right">
                   {r.month.ist.toFixed(2).replace(".", ",")} Std.

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { firstError } from "@/components/LoadError";
 import { Bell } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +41,7 @@ export function AssignmentBell() {
     setSeenAt(window.localStorage.getItem(STORAGE_KEY) ?? "");
   }, []);
 
-  const { data: assignments = [] } = useQuery({
+  const { data: assignments = [], error: assignmentsError } = useQuery({
     queryKey: ["assignment_notifications", me?.id],
     enabled: !!me?.id,
     queryFn: async (): Promise<Assignment[]> => {
@@ -50,8 +51,11 @@ export function AssignmentBell() {
         .eq("employee_id", me!.id)
         .order("created_at", { ascending: false })
         .limit(15);
-      if (error) return [];
-      const { data: rel } = await supabase.from("plan_releases").select("week_start");
+      if (error) throw error;
+      const { data: rel, error: relError } = await supabase
+        .from("plan_releases")
+        .select("week_start");
+      if (relError) throw relError;
       const released = new Set((rel ?? []).map((r) => String(r.week_start)));
       // Entwürfe (noch nicht freigegebene Wochen) werden nicht gemeldet.
       return ((data ?? []) as Assignment[]).filter(
@@ -60,15 +64,16 @@ export function AssignmentBell() {
     },
   });
 
-  const { data: releases = [] } = useQuery({
+  const { data: releases = [], error: releasesError } = useQuery({
     queryKey: ["plan_release_notifications", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("plan_releases")
         .select("id,week_start,week_end,released_at")
         .order("released_at", { ascending: false })
         .limit(5);
+      if (error) throw error;
       return (data ?? []) as {
         id: string;
         week_start: string;
@@ -136,6 +141,8 @@ export function AssignmentBell() {
     setSeenAt(now);
   }
 
+  const loadError = Boolean(firstError(assignmentsError, releasesError));
+
   return (
     <DropdownMenu
       onOpenChange={(open) => {
@@ -160,7 +167,12 @@ export function AssignmentBell() {
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>Benachrichtigungen</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {assignments.length === 0 && releases.length === 0 && (
+        {loadError && (
+          <DropdownMenuItem disabled className="text-destructive">
+            Benachrichtigungen konnten nicht geladen werden.
+          </DropdownMenuItem>
+        )}
+        {!loadError && assignments.length === 0 && releases.length === 0 && (
           <DropdownMenuItem disabled>Keine Zuweisungen</DropdownMenuItem>
         )}
         {releases.map((r) => {
