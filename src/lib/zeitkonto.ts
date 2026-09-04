@@ -34,8 +34,21 @@ export function sollHours(weeklyHours: number | null | undefined) {
   return w > 0 ? Math.round(w * WEEKS_PER_MONTH * 100) / 100 : 0;
 }
 
+/**
+ * Tages-Sollzeit (5-Tage-Woche). Wird für genehmigte Abwesenheiten
+ * gutgeschrieben: Urlaub und Krankheit dürfen kein Minus erzeugen.
+ */
+export function dailyHours(weeklyHours: number | null | undefined) {
+  const w = Number(weeklyHours ?? 0);
+  return w > 0 ? Math.round((w / 5) * 100) / 100 : 0;
+}
+
 export type Zeitkonto = {
   ist: number;
+  /** Tatsächlich geleistete Arbeitsstunden (ohne Abwesenheiten). */
+  gearbeitet: number;
+  /** Gutschrift für genehmigte Abwesenheiten (Urlaub, Krankheit, Sonstiges). */
+  abwesenheit: number;
   soll: number;
   korrektur: number;
   saldo: number;
