@@ -2355,8 +2355,11 @@ function DokumentDetail() {
 
           {isInvoice ? (
             <h2 className="mt-7 font-display text-xl font-semibold">
-              {DOC_TYPE_LABEL[doc.type]} {docNumber}
+              {String(form["title"] ?? "").trim()
+                ? String(form["title"]).trim()
+                : `${DOC_TYPE_LABEL[doc.type]} ${docNumber}`}
             </h2>
+
           ) : (
             <>
               <h2 className="mt-7 text-center font-display text-lg font-bold text-balance">
