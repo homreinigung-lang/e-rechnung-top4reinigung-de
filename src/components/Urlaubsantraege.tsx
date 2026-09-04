@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Check, X, CalendarCheck } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { absenceClasses, absenceLabel, absenceReason, type AbsenceReason } from "@/lib/absence";
+import { urlaubskontoFor } from "@/lib/zeitkonto";
 
 type Row = {
   id: string;
@@ -18,6 +19,7 @@ type Row = {
 
 type Antrag = {
   key: string;
+  employeeId: string | null;
   employeeName: string;
   reason: AbsenceReason | null;
   from: string;
@@ -55,6 +57,7 @@ function toAntraege(rows: Row[]): Antrag[] {
     }
     out.push({
       key: `${r.employee_id}|${r.absence_reason}|${r.work_date}`,
+      employeeId: r.employee_id,
       employeeName: r.employee_name || "Mitarbeiter",
       reason,
       from: r.work_date,
