@@ -90,14 +90,22 @@ export function Urlaubsantraege() {
 
   const decide = useMutation({
     mutationFn: async ({ ids, approve }: { ids: string[]; approve: boolean }) => {
-      const { error } = await supabase
+      const { data: auth } = await supabase.auth.getUser();
+      // Nur noch offene Anträge entscheiden – verhindert das Überschreiben
+      // einer Entscheidung, die parallel bereits getroffen wurde.
+      const { data, error } = await supabase
         .from("time_entries")
         .update({
           approval_status: approve ? "approved" : "rejected",
           decided_at: new Date().toISOString(),
+          decided_by: auth.user?.id ?? null,
         } as never)
-        .in("id", ids);
+        .in("id", ids)
+        .eq("approval_status", "pending")
+        .select("id");
       if (error) throw error;
+      if ((data ?? []).length === 0)
+        throw new Error("Dieser Antrag wurde bereits von jemand anderem entschieden.");
     },
     onSuccess: (_d, v) => {
       toast.success(v.approve ? "Antrag genehmigt" : "Antrag abgelehnt");

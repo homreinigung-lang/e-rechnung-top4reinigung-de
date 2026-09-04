@@ -27,6 +27,7 @@ import { formatDate } from "@/lib/format";
 import {
   formatStunden,
   zeitkontoFor,
+  urlaubskontoFor,
   sollHours,
   type Adjustment,
   type TimeEntryLike,
@@ -38,6 +39,8 @@ export type ZeitkontoEmployee = {
   name: string;
   weekly_hours?: number | string | null;
   user_id?: string | null;
+  vacation_days_per_year?: number | string | null;
+  vacation_carryover_days?: number | string | null;
 };
 
 function useAdjustments(employeeId?: string) {
@@ -86,6 +89,7 @@ export function ZeitkontoCard({
         employee: e,
         month: zeitkontoFor(e.id, Number(e.weekly_hours ?? 0), entries, adjustments, month),
         gesamt: zeitkontoFor(e.id, Number(e.weekly_hours ?? 0), entries, adjustments),
+        urlaub: urlaubskontoFor(e.id, e, entries as never, month.slice(0, 4)),
       })),
     [employees, entries, adjustments, month],
   );
@@ -208,6 +212,8 @@ export function ZeitkontoCard({
               <th className="py-2 text-right">Korrekturen</th>
               <th className="py-2 text-right">Saldo Monat</th>
               <th className="py-2 text-right">Saldo gesamt</th>
+              <th className="py-2 text-right">Urlaub genommen</th>
+              <th className="py-2 text-right">Resturlaub</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -220,7 +226,14 @@ export function ZeitkontoCard({
                     .replace(".", ",")}{" "}
                   Std.
                 </td>
-                <td className="py-2 text-right">{r.month.ist.toFixed(2).replace(".", ",")} Std.</td>
+                <td className="py-2 text-right">
+                  {r.month.ist.toFixed(2).replace(".", ",")} Std.
+                  {r.month.abwesenheit > 0 ? (
+                    <span className="block text-xs text-muted-foreground">
+                      davon {r.month.abwesenheit.toFixed(2).replace(".", ",")} Std. Abwesenheit
+                    </span>
+                  ) : null}
+                </td>
                 <td className="py-2 text-right">{formatStunden(r.month.korrektur)}</td>
                 <td
                   className={`py-2 text-right font-semibold ${r.month.saldo < 0 ? "text-destructive" : "text-sky-600"}`}
@@ -232,11 +245,20 @@ export function ZeitkontoCard({
                 >
                   {formatStunden(r.gesamt.saldo)}
                 </td>
+                <td className="py-2 text-right text-muted-foreground">
+                  {r.urlaub.genommen} von {r.urlaub.anspruch + r.urlaub.uebertrag} Tagen
+                  {r.urlaub.beantragt > 0 ? ` (+${r.urlaub.beantragt} beantragt)` : ""}
+                </td>
+                <td
+                  className={`py-2 text-right font-semibold ${r.urlaub.rest < 0 ? "text-destructive" : ""}`}
+                >
+                  {r.urlaub.rest} Tage
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-muted-foreground">
+                <td colSpan={8} className="py-6 text-center text-muted-foreground">
                   Keine Mitarbeiter vorhanden.
                 </td>
               </tr>
