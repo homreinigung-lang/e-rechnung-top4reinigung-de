@@ -88,6 +88,42 @@ export function Urlaubsantraege() {
 
   const antraege = useMemo(() => toAntraege(rows), [rows]);
 
+  const year = String(new Date().getFullYear());
+
+  // Urlaubsanspruch und bereits verplante Tage, damit die Entscheidung
+  // direkt mit dem Resturlaub des Mitarbeiters getroffen werden kann.
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees", "urlaubsanspruch"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id,vacation_days_per_year,vacation_carryover_days");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: vacationEntries = [] } = useQuery({
+    queryKey: ["absence_year", year],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("employee_id,work_date,entry_type,absence_reason,approval_status")
+        .eq("entry_type", "absence")
+        .gte("work_date", `${year}-01-01`)
+        .lte("work_date", `${year}-12-31`);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  /** Resturlaub des Mitarbeiters im laufenden Jahr (inkl. offener Anträge). */
+  const restUrlaub = (employeeId: string | null) => {
+    const emp = employees.find((e) => e.id === employeeId);
+    if (!employeeId || !emp) return null;
+    return urlaubskontoFor(employeeId, emp, vacationEntries as never, year);
+  };
+
   const decide = useMutation({
     mutationFn: async ({ ids, approve }: { ids: string[]; approve: boolean }) => {
       const { data: auth } = await supabase.auth.getUser();
@@ -148,6 +184,19 @@ export function Urlaubsantraege() {
                   {a.to !== a.from ? ` – ${formatDate(a.to)}` : ""} · {a.days} Tag(e)
                   {a.note ? ` · ${a.note}` : ""}
                 </div>
+                {(() => {
+                  const k = restUrlaub(a.employeeId);
+                  if (!k || a.reason !== "vacation") return null;
+                  return (
+                    <div className="text-xs text-muted-foreground">
+                      Urlaubsanspruch {k.anspruch + k.uebertrag} Tage · genommen {k.genommen} ·
+                      beantragt {k.beantragt} ·{" "}
+                      <span className={k.rest < 0 ? "font-medium text-destructive" : "font-medium"}>
+                        Resturlaub {k.rest} Tage
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button
