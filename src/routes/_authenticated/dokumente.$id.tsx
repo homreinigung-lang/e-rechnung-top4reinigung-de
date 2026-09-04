@@ -498,7 +498,7 @@ function DokumentDetail() {
   // gemountet werden müssen und trotzdem stets die neueste Fassung sichern.
   const flushRef = useRef<() => void>(() => {});
   // Leere Entwürfe (nur Standardwerte) werden weder gespeichert noch behalten.
-  const blankDraft = isEmptyDraft(form, items);
+  const blankDraft = isEmptyDraft(form, items, baselineFormRef.current);
   const blankDraftRef = useRef(blankDraft);
   blankDraftRef.current = blankDraft;
 
@@ -508,7 +508,7 @@ function DokumentDetail() {
     const current = serverData.doc as unknown as Record<string, unknown>;
     if (isLockedDocument(current)) return;
     if (Object.keys(form).length === 0) return;
-    if (isEmptyDraft(form, items)) {
+    if (isEmptyDraft(form, items, baselineFormRef.current)) {
       // Nichts eingegeben – kein Autosave, damit keine leere Karteileiche entsteht.
       flushRef.current = () => {};
       return;
