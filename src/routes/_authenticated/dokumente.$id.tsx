@@ -289,7 +289,10 @@ function DokumentDetail() {
       notes: String(d["notes"] ?? ""),
       attachment_title: String(d["attachment_title"] ?? ""),
       attachment_text: String(d["attachment_text"] ?? ""),
-    });
+    };
+    baselineFormRef.current = initialForm;
+    setForm(initialForm);
+
 
     setItems(
       data.items.map((i) => ({
