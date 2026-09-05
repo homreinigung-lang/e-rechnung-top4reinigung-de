@@ -2090,6 +2090,7 @@ export type Database = {
           photo_paths: string[]
           project_id: string | null
           start_time: string | null
+          status: string
           updated_at: string
           user_id: string
           work_date: string
@@ -2117,6 +2118,7 @@ export type Database = {
           photo_paths?: string[]
           project_id?: string | null
           start_time?: string | null
+          status?: string
           updated_at?: string
           user_id: string
           work_date?: string
@@ -2144,6 +2146,7 @@ export type Database = {
           photo_paths?: string[]
           project_id?: string | null
           start_time?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
           work_date?: string
