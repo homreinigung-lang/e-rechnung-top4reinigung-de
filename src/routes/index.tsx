@@ -42,7 +42,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Software für Reinigungsfirmen: Angebote, Kalkulation und E-Rechnungen für Büroreinigung, Unterhaltsreinigung und Treppenhausreinigung – GoBD-konform, EU-Reverse-Charge.",
+          "GebCalc ist die Software für Gebäudereinigungsunternehmen: Kalkulation, Leistungsverzeichnis, Angebote, E-Rechnungen, Zeiterfassung und Einsatzplanung – GoBD-konform und für den EU-Einsatz.",
       },
       {
         name: "keywords",
@@ -85,7 +85,7 @@ export const Route = createFileRoute("/")({
           url: "https://e-rechnung.top4reinigung.de/",
           inLanguage: "de-DE",
           description:
-            "Software für Reinigungsfirmen: Angebote, Kalkulation, Zeiterfassung und GoBD-konforme E-Rechnungen (XRechnung, ZUGFeRD).",
+            "Software für Gebäudereinigungsunternehmen: Kalkulation, Leistungsverzeichnis, Angebote, E-Rechnungen, Zeiterfassung und Einsatzplanung.",
           offers: {
             "@type": "Offer",
             priceCurrency: "EUR",
@@ -221,7 +221,7 @@ function Landing() {
           />
           <span className="flex flex-col leading-tight">
             <span className="font-display text-lg font-semibold">GebCalc</span>
-            <span className="text-xs text-muted-foreground">Rechnungssystem</span>
+            <span className="text-xs text-muted-foreground">Software für Gebäudereinigung</span>
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -326,14 +326,14 @@ function Landing() {
       <main>
         <section className="mx-auto max-w-6xl px-6 pt-10 pb-16 md:pt-20">
           <p className="text-sm font-semibold tracking-wide text-primary uppercase">
-            Rechnungsprogramm für Reinigungsdienstleistungen
+            Software für Gebäudereinigungsunternehmen
           </p>
           <h1 className="mt-4 max-w-3xl text-4xl leading-tight font-bold md:text-6xl">
-            Angebote und Rechnungen – sauber, schnell, ohne Umsatzsteuer.
+            GebCalc – Kalkulation, Angebote, Rechnungen & Einsatzplanung für Gebäudereinigung
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
-            Verwalten Sie Kunden, schreiben Sie Angebote und Rechnungen mit Reverse-Charge-Hinweis
-            für den EU-Raum und versenden Sie diese direkt per E-Mail.
+            GebCalc unterstützt Gebäudereinigungsunternehmen bei Kalkulation und Leistungsverzeichnis,
+            Angeboten und Rechnungen sowie Zeiterfassung und Einsatzplanung – alles in einer zentralen Web-App.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
@@ -507,7 +507,7 @@ function Landing() {
 
       <footer className="border-t py-8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 text-sm text-muted-foreground">
-          <span>GebCalc – Rechnungssystem · Völklingen · USt-IdNr. DE458492078</span>
+          <span>GebCalc – Software für Gebäudereinigung · Völklingen · USt-IdNr. DE458492078</span>
           <nav className="flex flex-wrap gap-x-4 gap-y-2">
             <Link to="/rechtliches/impressum" className="hover:text-foreground hover:underline">
               Impressum
