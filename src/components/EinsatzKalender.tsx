@@ -1138,15 +1138,15 @@ export function EinsatzKalender({
                       const reason = absenceReason(e);
                       const donePlan = doneEntries.get(e.id);
                       return (
+                        <div key={e.id} className="group relative">
                         <button
-                          key={e.id}
                           type="button"
                           {...entryDragProps(e)}
                           onClick={(ev) => {
                             ev.stopPropagation();
                             setDetail(e);
                           }}
-                          className={`flex w-full cursor-grab items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 active:cursor-grabbing ${
+                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${
                             donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
                           }`}
 
@@ -1175,7 +1175,23 @@ export function EinsatzKalender({
                             {donePlan ? " · Erledigt" : ""}
                           </span>
                         </button>
+                        {!isCompleted(e) && (
+                          <button
+                            type="button"
+                            title="Auf weitere Tage kopieren"
+                            aria-label="Einsatz wiederholen"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setRepeatEntry(e);
+                            }}
+                            className="absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-0.5 opacity-70 hover:bg-background/60 hover:opacity-100"
+                          >
+                            <Repeat className="size-3" />
+                          </button>
+                        )}
+                        </div>
                       );
+
                     })}
                     {list.length > 3 && (
                       <div className="text-[10px] text-muted-foreground">
