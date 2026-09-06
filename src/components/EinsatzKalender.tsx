@@ -587,18 +587,111 @@ export function EinsatzKalender({
     },
   });
 
-  const entryDragProps = (e: TimeEntry) => ({
-    draggable: true,
-    onDragStart: (ev: ReactDragEvent) => {
-      ev.dataTransfer.effectAllowed = "move";
-      ev.dataTransfer.setData("text/plain", e.id);
-      setDrag({ kind: "entry", id: e.id, employeeId: e.employee_id, date: e.work_date });
+  /** Nur den Mitarbeiter einer bestehenden Aufgabe tauschen (per eindeutiger id). */
+  const reassignEmployee = useMutation({
+    mutationFn: async ({ id, employeeId }: { id: string; employeeId: string }) => {
+      const source = allEntries.find((e) => e.id === id);
+      if (source && isCompleted(source))
+        throw new Error("Abgeschlossene Einsätze können nicht umbesetzt werden.");
+      const emp = employees.find((e) => e.id === employeeId);
+      if (!emp) throw new Error("Mitarbeiter nicht gefunden");
+      const { error } = await supabase
+        .from("time_entries")
+        .update({ employee_id: emp.id, employee_name: emp.name })
+        .eq("id", id)
+        .neq("status", "completed");
+      if (error)
+        throw new Error(friendlyDbError(error, "Mitarbeiter konnte nicht geändert werden."));
     },
-    onDragEnd: () => {
-      setDrag(null);
-      setDropTarget(null);
+    onSuccess: () => {
+      toast.success("Mitarbeiter des Einsatzes geändert");
+      refresh();
     },
+    onError: (e: Error) => toast.error(e.message),
   });
+
+  /** Kopiert eine Aufgabe unverändert auf weitere Tage (Batch-INSERT). */
+  const repeatTask = useMutation({
+    mutationFn: async ({ source, dates }: { source: TimeEntry; dates: string[] }) => {
+      if (dates.length === 0) throw new Error("Bitte mindestens einen Tag auswählen.");
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const rows = dates.map((work_date) => ({
+        user_id: userId,
+        employee_id: source.employee_id,
+        employee_name: source.employee_name,
+        customer_id: source.customer_id,
+        project_id: source.project_id,
+        location: source.location,
+        note: source.note,
+        start_time: source.start_time,
+        end_time: source.end_time,
+        break_minutes: source.break_minutes,
+        hours: source.hours,
+        hourly_rate: source.hourly_rate,
+        entry_type: source.entry_type,
+        absence_reason: source.absence_reason,
+        work_date,
+        status: "active",
+      }));
+      const { error } = await supabase.from("time_entries").insert(rows);
+      if (error) throw new Error(friendlyDbError(error, "Kopieren fehlgeschlagen."));
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      toast.success(`${count} Einsatz/Einsätze angelegt`);
+      setRepeatEntry(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const entryDragProps = (e: TimeEntry) => {
+    const locked = isCompleted(e);
+    return {
+      draggable: !locked,
+      onDragStart: (ev: ReactDragEvent) => {
+        if (locked) {
+          ev.preventDefault();
+          toast.info("Abgeschlossene Einsätze können nicht verschoben werden.");
+          return;
+        }
+        ev.dataTransfer.effectAllowed = "move";
+        ev.dataTransfer.setData("text/plain", e.id);
+        setDrag({ kind: "entry", id: e.id, employeeId: e.employee_id, date: e.work_date });
+      },
+      onDragEnd: () => {
+        setDrag(null);
+        setDropTarget(null);
+      },
+      // Mitarbeiter aus der Liste auf eine bestehende Aufgabe ziehen = nur umbesetzen
+      onDragOver: (ev: ReactDragEvent) => {
+        if (drag?.kind !== "employee") return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.dataTransfer.dropEffect = locked ? "none" : "link";
+      },
+      onDrop: (ev: ReactDragEvent) => {
+        if (drag?.kind !== "employee") return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const employeeId = drag.employeeId;
+        setDrag(null);
+        setDropTarget(null);
+        if (locked) {
+          toast.info("Abgeschlossene Einsätze können nicht umbesetzt werden.");
+          return;
+        }
+        if (e.employee_id === employeeId) return;
+        reassignEmployee.mutate({ id: e.id, employeeId });
+      },
+    };
+  };
+
+  const entryLockClasses = (e: TimeEntry) =>
+    isCompleted(e) ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing";
+
 
   const byDay = useMemo(() => {
     const map = new Map<string, typeof entries>();
