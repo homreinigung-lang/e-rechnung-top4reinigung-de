@@ -31,6 +31,7 @@ import {
   HeartPulse,
   Plus,
   Printer,
+  Repeat,
   Trash2,
 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
