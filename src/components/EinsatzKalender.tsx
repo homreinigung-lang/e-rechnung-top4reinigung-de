@@ -31,6 +31,7 @@ import {
   HeartPulse,
   Plus,
   Printer,
+  Repeat,
   Trash2,
 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
@@ -453,6 +454,7 @@ export function EinsatzKalender({
 
   /* ---------------------------------------------------------------
    * Drag & Drop: Einsätze verschieben bzw. Mitarbeiter auf einen Tag ziehen
+   * Einsätze werden ausschließlich über ihre eindeutige id identifiziert.
    * ------------------------------------------------------------- */
   type DragPayload =
     | { kind: "entry"; id: string; employeeId: string | null; date: string }
@@ -460,6 +462,11 @@ export function EinsatzKalender({
 
   const [drag, setDrag] = useState<DragPayload | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [repeatEntry, setRepeatEntry] = useState<TimeEntry | null>(null);
+
+  /** Abgeschlossene Einsätze sind gesperrt (kein Verschieben, kein Umbesetzen). */
+  const isCompleted = (e: { status?: string | null }) => (e.status ?? "active") === "completed";
+
 
   /**
    * Einsatz auf einen anderen Tag (und optional Mitarbeiter) verschieben.
@@ -478,6 +485,8 @@ export function EinsatzKalender({
       employeeId?: string;
     }) => {
       const source = allEntries.find((e) => e.id === id);
+      if (source && isCompleted(source))
+        throw new Error("Abgeschlossene Einsätze können nicht verschoben werden.");
       if (source?.billed)
         throw new Error(
           "Bereits abgerechnete Einsätze können nicht verschoben werden. Bitte die Abrechnung zuerst aufheben.",
@@ -496,8 +505,13 @@ export function EinsatzKalender({
         ...(emp ? { employee_name: emp.name } : {}),
       };
 
-      const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
+      const { error } = await supabase
+        .from("time_entries")
+        .update(patch)
+        .eq("id", id)
+        .neq("status", "completed");
       if (error) throw new Error(friendlyDbError(error, "Einsatz konnte nicht verschoben werden."));
+
     },
     onSuccess: () => {
       toast.success("Einsatz verschoben – als neue Aufgabe (offen) angelegt");
@@ -574,18 +588,111 @@ export function EinsatzKalender({
     },
   });
 
-  const entryDragProps = (e: TimeEntry) => ({
-    draggable: true,
-    onDragStart: (ev: ReactDragEvent) => {
-      ev.dataTransfer.effectAllowed = "move";
-      ev.dataTransfer.setData("text/plain", e.id);
-      setDrag({ kind: "entry", id: e.id, employeeId: e.employee_id, date: e.work_date });
+  /** Nur den Mitarbeiter einer bestehenden Aufgabe tauschen (per eindeutiger id). */
+  const reassignEmployee = useMutation({
+    mutationFn: async ({ id, employeeId }: { id: string; employeeId: string }) => {
+      const source = allEntries.find((e) => e.id === id);
+      if (source && isCompleted(source))
+        throw new Error("Abgeschlossene Einsätze können nicht umbesetzt werden.");
+      const emp = employees.find((e) => e.id === employeeId);
+      if (!emp) throw new Error("Mitarbeiter nicht gefunden");
+      const { error } = await supabase
+        .from("time_entries")
+        .update({ employee_id: emp.id, employee_name: emp.name })
+        .eq("id", id)
+        .neq("status", "completed");
+      if (error)
+        throw new Error(friendlyDbError(error, "Mitarbeiter konnte nicht geändert werden."));
     },
-    onDragEnd: () => {
-      setDrag(null);
-      setDropTarget(null);
+    onSuccess: () => {
+      toast.success("Mitarbeiter des Einsatzes geändert");
+      refresh();
     },
+    onError: (e: Error) => toast.error(e.message),
   });
+
+  /** Kopiert eine Aufgabe unverändert auf weitere Tage (Batch-INSERT). */
+  const repeatTask = useMutation({
+    mutationFn: async ({ source, dates }: { source: TimeEntry; dates: string[] }) => {
+      if (dates.length === 0) throw new Error("Bitte mindestens einen Tag auswählen.");
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      const rows = dates.map((work_date) => ({
+        user_id: userId,
+        employee_id: source.employee_id,
+        employee_name: source.employee_name,
+        customer_id: source.customer_id,
+        project_id: source.project_id,
+        location: source.location,
+        note: source.note,
+        start_time: source.start_time,
+        end_time: source.end_time,
+        break_minutes: source.break_minutes,
+        hours: source.hours,
+        hourly_rate: source.hourly_rate,
+        entry_type: source.entry_type,
+        absence_reason: source.absence_reason,
+        work_date,
+        status: "active",
+      }));
+      const { error } = await supabase.from("time_entries").insert(rows);
+      if (error) throw new Error(friendlyDbError(error, "Kopieren fehlgeschlagen."));
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      toast.success(`${count} Einsatz/Einsätze angelegt`);
+      setRepeatEntry(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const entryDragProps = (e: TimeEntry) => {
+    const locked = isCompleted(e);
+    return {
+      draggable: !locked,
+      onDragStart: (ev: ReactDragEvent) => {
+        if (locked) {
+          ev.preventDefault();
+          toast.info("Abgeschlossene Einsätze können nicht verschoben werden.");
+          return;
+        }
+        ev.dataTransfer.effectAllowed = "move";
+        ev.dataTransfer.setData("text/plain", e.id);
+        setDrag({ kind: "entry", id: e.id, employeeId: e.employee_id, date: e.work_date });
+      },
+      onDragEnd: () => {
+        setDrag(null);
+        setDropTarget(null);
+      },
+      // Mitarbeiter aus der Liste auf eine bestehende Aufgabe ziehen = nur umbesetzen
+      onDragOver: (ev: ReactDragEvent) => {
+        if (drag?.kind !== "employee") return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.dataTransfer.dropEffect = locked ? "none" : "link";
+      },
+      onDrop: (ev: ReactDragEvent) => {
+        if (drag?.kind !== "employee") return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const employeeId = drag.employeeId;
+        setDrag(null);
+        setDropTarget(null);
+        if (locked) {
+          toast.info("Abgeschlossene Einsätze können nicht umbesetzt werden.");
+          return;
+        }
+        if (e.employee_id === employeeId) return;
+        reassignEmployee.mutate({ id: e.id, employeeId });
+      },
+    };
+  };
+
+  const entryLockClasses = (e: TimeEntry) =>
+    isCompleted(e) ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing";
+
 
   const byDay = useMemo(() => {
     const map = new Map<string, typeof entries>();
@@ -1032,15 +1139,15 @@ export function EinsatzKalender({
                       const reason = absenceReason(e);
                       const donePlan = doneEntries.get(e.id);
                       return (
+                        <div key={e.id} className="group relative">
                         <button
-                          key={e.id}
                           type="button"
                           {...entryDragProps(e)}
                           onClick={(ev) => {
                             ev.stopPropagation();
                             setDetail(e);
                           }}
-                          className={`flex w-full cursor-grab items-center gap-1 truncate rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 active:cursor-grabbing ${
+                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${
                             donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
                           }`}
 
@@ -1069,7 +1176,23 @@ export function EinsatzKalender({
                             {donePlan ? " · Erledigt" : ""}
                           </span>
                         </button>
+                        {!isCompleted(e) && (
+                          <button
+                            type="button"
+                            title="Auf weitere Tage kopieren"
+                            aria-label="Einsatz wiederholen"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setRepeatEntry(e);
+                            }}
+                            className="absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-0.5 opacity-70 hover:bg-background/60 hover:opacity-100"
+                          >
+                            <Repeat className="size-3" />
+                          </button>
+                        )}
+                        </div>
                       );
+
                     })}
                     {list.length > 3 && (
                       <div className="text-[10px] text-muted-foreground">
@@ -1177,8 +1300,8 @@ export function EinsatzKalender({
                           const reason = absenceReason(e);
                           const donePlan = doneEntries.get(e.id);
                           return (
+                            <div key={e.id} className="relative">
                             <button
-                              key={e.id}
                               type="button"
                               {...entryDragProps(e)}
                               onClick={(ev) => {
@@ -1190,7 +1313,7 @@ export function EinsatzKalender({
                                   ? `Erledigt · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`}`
                                   : statusLabel(e)
                               }
-                              className={`w-full cursor-grab rounded border px-1 py-0.5 text-left text-[11px] leading-tight hover:brightness-95 active:cursor-grabbing ${
+                              className={`w-full rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${
                                 donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
                               }`}
                             >
@@ -1230,7 +1353,23 @@ export function EinsatzKalender({
                                 </>
                               )}
                             </button>
+                            {!isCompleted(e) && (
+                              <button
+                                type="button"
+                                title="Auf weitere Tage kopieren"
+                                aria-label="Einsatz wiederholen"
+                                onClick={(ev) => {
+                                  ev.stopPropagation();
+                                  setRepeatEntry(e);
+                                }}
+                                className="absolute right-0.5 top-0.5 rounded p-0.5 opacity-70 hover:bg-background/60 hover:opacity-100"
+                              >
+                                <Repeat className="size-3" />
+                              </button>
+                            )}
+                            </div>
                           );
+
                         })}
                         {openPlans(key, emp.id).map((p) => (
                           <button
@@ -1796,6 +1935,132 @@ export function EinsatzKalender({
           </div>
         </DialogContent>
       </Dialog>
+
+      <RepeatDialog
+        entry={repeatEntry}
+        pending={repeatTask.isPending}
+        onClose={() => setRepeatEntry(null)}
+        onConfirm={(dates) =>
+          repeatEntry && repeatTask.mutate({ source: repeatEntry, dates })
+        }
+      />
     </section>
   );
 }
+
+/** Dialog: Aufgabe auf ausgewählte Wochentage innerhalb eines Zeitraums kopieren. */
+function RepeatDialog({
+  entry,
+  pending,
+  onClose,
+  onConfirm,
+}: {
+  entry: TimeEntry | null;
+  pending: boolean;
+  onClose: () => void;
+  onConfirm: (dates: string[]) => void;
+}) {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [weekdays, setWeekdays] = useState<number[]>([]);
+
+  const open = entry !== null;
+  const start = from || entry?.work_date || "";
+  const end = to || start;
+
+  const dates = useMemo(() => {
+    if (!start || !end || end < start) return [] as string[];
+    const out: string[] = [];
+    const d = new Date(`${start}T12:00:00`);
+    const last = new Date(`${end}T12:00:00`);
+    while (d <= last && out.length < 366) {
+      const iso = isoDay(d);
+      const wd = (d.getDay() + 6) % 7;
+      if ((weekdays.length === 0 || weekdays.includes(wd)) && iso !== entry?.work_date)
+        out.push(iso);
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }, [start, end, weekdays, entry?.work_date]);
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          setFrom("");
+          setTo("");
+          setWeekdays([]);
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Einsatz wiederholen</DialogTitle>
+        </DialogHeader>
+        {entry && (
+          <div className="space-y-4 text-sm">
+            <p className="text-muted-foreground">
+              {entry.employee_name} · {(entry.start_time ?? "").slice(0, 5)}–
+              {(entry.end_time ?? "").slice(0, 5)}
+              {entry.location ? ` · ${entry.location}` : ""}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Von</Label>
+                <Input
+                  type="date"
+                  value={start}
+                  onChange={(ev) => setFrom(ev.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Bis</Label>
+                <Input type="date" value={end} onChange={(ev) => setTo(ev.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Wochentage (leer = alle Tage)</Label>
+              <div className="flex flex-wrap gap-2">
+                {WEEKDAYS.map((label, i) => (
+                  <label
+                    key={label}
+                    className={`cursor-pointer rounded border px-2 py-1 text-xs ${
+                      weekdays.includes(i) ? "border-primary bg-primary/10 text-primary" : ""
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={weekdays.includes(i)}
+                      onChange={() =>
+                        setWeekdays((c) =>
+                          c.includes(i) ? c.filter((x) => x !== i) : [...c, i],
+                        )
+                      }
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {dates.length} neue Einsätze werden angelegt. Der ursprüngliche Einsatz bleibt
+              unverändert.
+            </p>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Abbrechen
+          </Button>
+          <Button disabled={pending || dates.length === 0} onClick={() => onConfirm(dates)}>
+            Kopieren
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
