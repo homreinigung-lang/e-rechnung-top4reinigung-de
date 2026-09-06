@@ -453,6 +453,7 @@ export function EinsatzKalender({
 
   /* ---------------------------------------------------------------
    * Drag & Drop: Einsätze verschieben bzw. Mitarbeiter auf einen Tag ziehen
+   * Einsätze werden ausschließlich über ihre eindeutige id identifiziert.
    * ------------------------------------------------------------- */
   type DragPayload =
     | { kind: "entry"; id: string; employeeId: string | null; date: string }
@@ -460,6 +461,11 @@ export function EinsatzKalender({
 
   const [drag, setDrag] = useState<DragPayload | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [repeatEntry, setRepeatEntry] = useState<TimeEntry | null>(null);
+
+  /** Abgeschlossene Einsätze sind gesperrt (kein Verschieben, kein Umbesetzen). */
+  const isCompleted = (e: { status?: string | null }) => (e.status ?? "active") === "completed";
+
 
   /**
    * Einsatz auf einen anderen Tag (und optional Mitarbeiter) verschieben.
