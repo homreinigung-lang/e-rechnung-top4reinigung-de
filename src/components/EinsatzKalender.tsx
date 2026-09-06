@@ -484,6 +484,8 @@ export function EinsatzKalender({
       employeeId?: string;
     }) => {
       const source = allEntries.find((e) => e.id === id);
+      if (source && isCompleted(source))
+        throw new Error("Abgeschlossene Einsätze können nicht verschoben werden.");
       if (source?.billed)
         throw new Error(
           "Bereits abgerechnete Einsätze können nicht verschoben werden. Bitte die Abrechnung zuerst aufheben.",
@@ -502,8 +504,13 @@ export function EinsatzKalender({
         ...(emp ? { employee_name: emp.name } : {}),
       };
 
-      const { error } = await supabase.from("time_entries").update(patch).eq("id", id);
+      const { error } = await supabase
+        .from("time_entries")
+        .update(patch)
+        .eq("id", id)
+        .neq("status", "completed");
       if (error) throw new Error(friendlyDbError(error, "Einsatz konnte nicht verschoben werden."));
+
     },
     onSuccess: () => {
       toast.success("Einsatz verschoben – als neue Aufgabe (offen) angelegt");
