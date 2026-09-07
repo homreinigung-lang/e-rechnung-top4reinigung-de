@@ -2089,6 +2089,7 @@ export type Database = {
           note: string
           photo_paths: string[]
           project_id: string | null
+          service_category: string
           start_time: string | null
           status: string
           updated_at: string
@@ -2117,6 +2118,7 @@ export type Database = {
           note?: string
           photo_paths?: string[]
           project_id?: string | null
+          service_category?: string
           start_time?: string | null
           status?: string
           updated_at?: string
@@ -2145,6 +2147,7 @@ export type Database = {
           note?: string
           photo_paths?: string[]
           project_id?: string | null
+          service_category?: string
           start_time?: string | null
           status?: string
           updated_at?: string
@@ -2171,6 +2174,42 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entry_employees: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          time_entry_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          time_entry_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          time_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entry_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_employees_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
             referencedColumns: ["id"]
           },
         ]
