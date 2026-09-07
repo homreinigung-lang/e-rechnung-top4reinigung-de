@@ -144,10 +144,52 @@ function hoursFromTimes(start: string, end: string, breakMinutes: number) {
   return Number.isFinite(hours) ? Math.max(0, hours) : 0;
 }
 
+/** Leistungsarten für Arbeitseinsätze inkl. Farbgebung im Kalender. */
+const SERVICE_CATEGORIES = [
+  {
+    value: "unterhaltsreinigung",
+    label: "Unterhaltsreinigung",
+    classes:
+      "border-blue-500 bg-blue-100 text-blue-900 dark:border-blue-400 dark:bg-blue-950/70 dark:text-blue-100",
+    dot: "bg-blue-500",
+  },
+  {
+    value: "glasreinigung",
+    label: "Glasreinigung",
+    classes:
+      "border-emerald-500 bg-emerald-100 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950/70 dark:text-emerald-100",
+    dot: "bg-emerald-500",
+  },
+  {
+    value: "bauendreinigung",
+    label: "Bauend-/Grundreinigung",
+    classes:
+      "border-purple-500 bg-purple-100 text-purple-900 dark:border-purple-400 dark:bg-purple-950/70 dark:text-purple-100",
+    dot: "bg-purple-500",
+  },
+  {
+    value: "sonstiges",
+    label: "Sonstiges",
+    classes:
+      "border-slate-400 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-800/70 dark:text-slate-100",
+    dot: "bg-slate-400",
+  },
+] as const;
+
+type ServiceCategory = (typeof SERVICE_CATEGORIES)[number]["value"];
+
+const serviceCategoryOf = (e: { service_category?: string | null }): ServiceCategory =>
+  (SERVICE_CATEGORIES.find((c) => c.value === (e.service_category ?? "sonstiges"))?.value ??
+    "sonstiges") as ServiceCategory;
+
+const serviceClasses = (e: { service_category?: string | null }) =>
+  SERVICE_CATEGORIES.find((c) => c.value === serviceCategoryOf(e))!.classes;
+
 type PlanForm = {
   employeeIds: string[];
   entryType: EntryType;
   absenceReason: AbsenceReason;
+  serviceCategory: ServiceCategory;
   projectId: string;
   customerId: string;
   location: string;
@@ -161,6 +203,7 @@ const emptyForm: PlanForm = {
   employeeIds: [],
   entryType: "work",
   absenceReason: "vacation",
+  serviceCategory: "sonstiges",
   projectId: NO_PROJECT,
   customerId: NO_PROJECT,
   location: "",
@@ -170,6 +213,7 @@ const emptyForm: PlanForm = {
   breakMinutes: "30",
   note: "",
 };
+
 
 export function EinsatzKalender({
   employees,
@@ -254,6 +298,58 @@ export function EinsatzKalender({
       return data;
     },
   });
+
+  /** Zusätzlich zugeordnete Mitarbeiter (Team) je Einsatz. */
+  const entryIds = useMemo(() => allEntries.map((e) => e.id).sort(), [allEntries]);
+  const { data: teamRows = [], error: teamError } = useQuery({
+    queryKey: ["time_entry_employees", "calendar", entryIds],
+    enabled: entryIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entry_employees")
+        .select("id,time_entry_id,employee_id")
+        .in("time_entry_id", entryIds);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  type TeamMember = { rowId: string; employeeId: string; name: string };
+
+  const teamByEntry = useMemo(() => {
+    const map = new Map<string, TeamMember[]>();
+    for (const r of teamRows) {
+      const list = map.get(r.time_entry_id) ?? [];
+      list.push({
+        rowId: r.id,
+        employeeId: r.employee_id,
+        name: employees.find((e) => e.id === r.employee_id)?.name ?? "Mitarbeiter",
+      });
+      map.set(r.time_entry_id, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.name.localeCompare(b.name, "de"));
+    return map;
+  }, [teamRows, employees]);
+
+  const teamOf = useCallback(
+    (e: { id: string; employee_id?: string | null; employee_name?: string | null }): TeamMember[] => {
+      const list = teamByEntry.get(e.id) ?? [];
+      if (list.length > 0) return list;
+      return e.employee_id
+        ? [{ rowId: "", employeeId: e.employee_id, name: e.employee_name || "Mitarbeiter" }]
+        : [];
+    },
+    [teamByEntry],
+  );
+
+  const teamNames = useCallback(
+    (e: TimeEntry) => {
+      const names = teamOf(e).map((m) => m.name);
+      return names.length > 0 ? names.join(" & ") : e.employee_name || "";
+    },
+    [teamOf],
+  );
+
 
   /** Anzeige nach Mitarbeiter- und Projektfilter eingeschränkt. */
   const entries = useMemo(
@@ -365,6 +461,7 @@ export function EinsatzKalender({
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["time_entries"] });
+    queryClient.invalidateQueries({ queryKey: ["time_entry_employees"] });
   };
 
   const createPlan = useMutation({
@@ -418,6 +515,7 @@ export function EinsatzKalender({
         note: values.note.trim(),
         entry_type: values.entryType,
         absence_reason: absence ? values.absenceReason : "",
+        service_category: absence ? "sonstiges" : values.serviceCategory,
       }));
 
       const { error } = await supabase.from("time_entries").insert(rows);
@@ -588,24 +686,56 @@ export function EinsatzKalender({
     },
   });
 
-  /** Nur den Mitarbeiter einer bestehenden Aufgabe tauschen (per eindeutiger id). */
-  const reassignEmployee = useMutation({
+  /** Mitarbeiter zusätzlich zu einer bestehenden Aufgabe hinzufügen. */
+  const addTeamMember = useMutation({
     mutationFn: async ({ id, employeeId }: { id: string; employeeId: string }) => {
       const source = allEntries.find((e) => e.id === id);
       if (source && isCompleted(source))
-        throw new Error("Abgeschlossene Einsätze können nicht umbesetzt werden.");
+        throw new Error("Abgeschlossene Einsätze können nicht geändert werden.");
       const emp = employees.find((e) => e.id === employeeId);
       if (!emp) throw new Error("Mitarbeiter nicht gefunden");
+      // Primär-Mitarbeiter der Aufgabe ebenfalls als Zuordnung sichern.
+      if (source?.employee_id) {
+        await supabase
+          .from("time_entry_employees")
+          .upsert(
+            { time_entry_id: id, employee_id: source.employee_id },
+            { onConflict: "time_entry_id,employee_id", ignoreDuplicates: true },
+          );
+      }
       const { error } = await supabase
-        .from("time_entries")
-        .update({ employee_id: emp.id, employee_name: emp.name })
-        .eq("id", id)
-        .neq("status", "completed");
+        .from("time_entry_employees")
+        .upsert(
+          { time_entry_id: id, employee_id: employeeId },
+          { onConflict: "time_entry_id,employee_id", ignoreDuplicates: true },
+        );
       if (error)
-        throw new Error(friendlyDbError(error, "Mitarbeiter konnte nicht geändert werden."));
+        throw new Error(friendlyDbError(error, "Mitarbeiter konnte nicht hinzugefügt werden."));
+      return emp.name;
+    },
+    onSuccess: (name) => {
+      toast.success(`${name} zum Einsatz hinzugefügt`);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Einen einzelnen Mitarbeiter von einer Aufgabe entfernen (Aufgabe bleibt bestehen). */
+  const removeTeamMember = useMutation({
+    mutationFn: async ({ id, employeeId }: { id: string; employeeId: string }) => {
+      const source = allEntries.find((e) => e.id === id);
+      if (source && isCompleted(source))
+        throw new Error("Abgeschlossene Einsätze können nicht geändert werden.");
+      const { error } = await supabase
+        .from("time_entry_employees")
+        .delete()
+        .eq("time_entry_id", id)
+        .eq("employee_id", employeeId);
+      if (error)
+        throw new Error(friendlyDbError(error, "Mitarbeiter konnte nicht entfernt werden."));
     },
     onSuccess: () => {
-      toast.success("Mitarbeiter des Einsatzes geändert");
+      toast.success("Mitarbeiter vom Einsatz entfernt");
       refresh();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -633,11 +763,30 @@ export function EinsatzKalender({
         hourly_rate: source.hourly_rate,
         entry_type: source.entry_type,
         absence_reason: source.absence_reason,
+        service_category: source.service_category ?? "sonstiges",
         work_date,
         status: "active",
       }));
-      const { error } = await supabase.from("time_entries").insert(rows);
+      const { data: created, error } = await supabase
+        .from("time_entries")
+        .insert(rows)
+        .select("id");
       if (error) throw new Error(friendlyDbError(error, "Kopieren fehlgeschlagen."));
+
+      // Zugeordnete Mitarbeiter mitkopieren
+      const members = (teamByEntry.get(source.id) ?? []).map((m) => m.employeeId);
+      if (source.employee_id && !members.includes(source.employee_id))
+        members.push(source.employee_id);
+      if (created && created.length > 0 && members.length > 0) {
+        const links = created.flatMap((row) =>
+          members.map((employee_id) => ({ time_entry_id: row.id, employee_id })),
+        );
+        const { error: linkError } = await supabase.from("time_entry_employees").insert(links);
+        if (linkError)
+          throw new Error(
+            friendlyDbError(linkError, "Mitarbeiter konnten nicht mitkopiert werden."),
+          );
+      }
       return rows.length;
     },
     onSuccess: (count) => {
@@ -666,12 +815,12 @@ export function EinsatzKalender({
         setDrag(null);
         setDropTarget(null);
       },
-      // Mitarbeiter aus der Liste auf eine bestehende Aufgabe ziehen = nur umbesetzen
+      // Mitarbeiter aus der Liste auf eine bestehende Aufgabe ziehen = zusätzlich zuordnen
       onDragOver: (ev: ReactDragEvent) => {
         if (drag?.kind !== "employee") return;
         ev.preventDefault();
         ev.stopPropagation();
-        ev.dataTransfer.dropEffect = locked ? "none" : "link";
+        ev.dataTransfer.dropEffect = locked ? "none" : "copy";
       },
       onDrop: (ev: ReactDragEvent) => {
         if (drag?.kind !== "employee") return;
@@ -681,17 +830,58 @@ export function EinsatzKalender({
         setDrag(null);
         setDropTarget(null);
         if (locked) {
-          toast.info("Abgeschlossene Einsätze können nicht umbesetzt werden.");
+          toast.info("Abgeschlossene Einsätze können nicht geändert werden.");
           return;
         }
-        if (e.employee_id === employeeId) return;
-        reassignEmployee.mutate({ id: e.id, employeeId });
+        if (teamOf(e).some((m) => m.employeeId === employeeId)) return;
+        addTeamMember.mutate({ id: e.id, employeeId });
       },
     };
   };
 
   const entryLockClasses = (e: TimeEntry) =>
     isCompleted(e) ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing";
+
+  /** Farbgebung der Karte: Arbeitseinsätze nach Leistungsart, Abwesenheiten wie bisher. */
+  const entryCardClasses = (e: TimeEntry, donePlan: unknown) => {
+    if (donePlan) return "border-sky-600 bg-sky-600 text-white";
+    if (isAbsence(e)) return statusClasses(e);
+    return serviceClasses(e);
+  };
+
+  /** Mitarbeiter-Chips mit „x" zum Entfernen einzelner Mitarbeiter. */
+  const TeamChips = ({ e }: { e: TimeEntry }) => {
+    const members = teamOf(e);
+    if (members.length === 0) return null;
+    const locked = isCompleted(e);
+    return (
+      <div className="mt-0.5 flex flex-wrap gap-1">
+        {members.map((m) => (
+          <span
+            key={m.employeeId}
+            className="inline-flex items-center gap-0.5 rounded-full border bg-background/80 px-1.5 text-[10px] leading-4"
+          >
+            {m.name}
+            {!locked && (
+              <button
+                type="button"
+                aria-label={`${m.name} vom Einsatz entfernen`}
+                title={`${m.name} vom Einsatz entfernen`}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  removeTeamMember.mutate({ id: e.id, employeeId: m.employeeId });
+                }}
+                className="rounded-full px-0.5 text-muted-foreground hover:text-destructive"
+              >
+                ×
+              </button>
+            )}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
 
 
   const byDay = useMemo(() => {
