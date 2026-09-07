@@ -685,24 +685,56 @@ export function EinsatzKalender({
     },
   });
 
-  /** Nur den Mitarbeiter einer bestehenden Aufgabe tauschen (per eindeutiger id). */
-  const reassignEmployee = useMutation({
+  /** Mitarbeiter zusätzlich zu einer bestehenden Aufgabe hinzufügen. */
+  const addTeamMember = useMutation({
     mutationFn: async ({ id, employeeId }: { id: string; employeeId: string }) => {
       const source = allEntries.find((e) => e.id === id);
       if (source && isCompleted(source))
-        throw new Error("Abgeschlossene Einsätze können nicht umbesetzt werden.");
+        throw new Error("Abgeschlossene Einsätze können nicht geändert werden.");
       const emp = employees.find((e) => e.id === employeeId);
       if (!emp) throw new Error("Mitarbeiter nicht gefunden");
+      // Primär-Mitarbeiter der Aufgabe ebenfalls als Zuordnung sichern.
+      if (source?.employee_id) {
+        await supabase
+          .from("time_entry_employees")
+          .upsert(
+            { time_entry_id: id, employee_id: source.employee_id },
+            { onConflict: "time_entry_id,employee_id", ignoreDuplicates: true },
+          );
+      }
       const { error } = await supabase
-        .from("time_entries")
-        .update({ employee_id: emp.id, employee_name: emp.name })
-        .eq("id", id)
-        .neq("status", "completed");
+        .from("time_entry_employees")
+        .upsert(
+          { time_entry_id: id, employee_id: employeeId },
+          { onConflict: "time_entry_id,employee_id", ignoreDuplicates: true },
+        );
       if (error)
-        throw new Error(friendlyDbError(error, "Mitarbeiter konnte nicht geändert werden."));
+        throw new Error(friendlyDbError(error, "Mitarbeiter konnte nicht hinzugefügt werden."));
+      return emp.name;
+    },
+    onSuccess: (name) => {
+      toast.success(`${name} zum Einsatz hinzugefügt`);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Einen einzelnen Mitarbeiter von einer Aufgabe entfernen (Aufgabe bleibt bestehen). */
+  const removeTeamMember = useMutation({
+    mutationFn: async ({ id, employeeId }: { id: string; employeeId: string }) => {
+      const source = allEntries.find((e) => e.id === id);
+      if (source && isCompleted(source))
+        throw new Error("Abgeschlossene Einsätze können nicht geändert werden.");
+      const { error } = await supabase
+        .from("time_entry_employees")
+        .delete()
+        .eq("time_entry_id", id)
+        .eq("employee_id", employeeId);
+      if (error)
+        throw new Error(friendlyDbError(error, "Mitarbeiter konnte nicht entfernt werden."));
     },
     onSuccess: () => {
-      toast.success("Mitarbeiter des Einsatzes geändert");
+      toast.success("Mitarbeiter vom Einsatz entfernt");
       refresh();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -730,11 +762,30 @@ export function EinsatzKalender({
         hourly_rate: source.hourly_rate,
         entry_type: source.entry_type,
         absence_reason: source.absence_reason,
+        service_category: source.service_category ?? "sonstiges",
         work_date,
         status: "active",
       }));
-      const { error } = await supabase.from("time_entries").insert(rows);
+      const { data: created, error } = await supabase
+        .from("time_entries")
+        .insert(rows)
+        .select("id");
       if (error) throw new Error(friendlyDbError(error, "Kopieren fehlgeschlagen."));
+
+      // Zugeordnete Mitarbeiter mitkopieren
+      const members = (teamByEntry.get(source.id) ?? []).map((m) => m.employeeId);
+      if (source.employee_id && !members.includes(source.employee_id))
+        members.push(source.employee_id);
+      if (created && created.length > 0 && members.length > 0) {
+        const links = created.flatMap((row) =>
+          members.map((employee_id) => ({ time_entry_id: row.id, employee_id })),
+        );
+        const { error: linkError } = await supabase.from("time_entry_employees").insert(links);
+        if (linkError)
+          throw new Error(
+            friendlyDbError(linkError, "Mitarbeiter konnten nicht mitkopiert werden."),
+          );
+      }
       return rows.length;
     },
     onSuccess: (count) => {
@@ -763,12 +814,12 @@ export function EinsatzKalender({
         setDrag(null);
         setDropTarget(null);
       },
-      // Mitarbeiter aus der Liste auf eine bestehende Aufgabe ziehen = nur umbesetzen
+      // Mitarbeiter aus der Liste auf eine bestehende Aufgabe ziehen = zusätzlich zuordnen
       onDragOver: (ev: ReactDragEvent) => {
         if (drag?.kind !== "employee") return;
         ev.preventDefault();
         ev.stopPropagation();
-        ev.dataTransfer.dropEffect = locked ? "none" : "link";
+        ev.dataTransfer.dropEffect = locked ? "none" : "copy";
       },
       onDrop: (ev: ReactDragEvent) => {
         if (drag?.kind !== "employee") return;
@@ -778,17 +829,58 @@ export function EinsatzKalender({
         setDrag(null);
         setDropTarget(null);
         if (locked) {
-          toast.info("Abgeschlossene Einsätze können nicht umbesetzt werden.");
+          toast.info("Abgeschlossene Einsätze können nicht geändert werden.");
           return;
         }
-        if (e.employee_id === employeeId) return;
-        reassignEmployee.mutate({ id: e.id, employeeId });
+        if (teamOf(e).some((m) => m.employeeId === employeeId)) return;
+        addTeamMember.mutate({ id: e.id, employeeId });
       },
     };
   };
 
   const entryLockClasses = (e: TimeEntry) =>
     isCompleted(e) ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing";
+
+  /** Farbgebung der Karte: Arbeitseinsätze nach Leistungsart, Abwesenheiten wie bisher. */
+  const entryCardClasses = (e: TimeEntry, donePlan: unknown) => {
+    if (donePlan) return "border-sky-600 bg-sky-600 text-white";
+    if (isAbsence(e)) return statusClasses(e);
+    return serviceClasses(e);
+  };
+
+  /** Mitarbeiter-Chips mit „x" zum Entfernen einzelner Mitarbeiter. */
+  const TeamChips = ({ e }: { e: TimeEntry }) => {
+    const members = teamOf(e);
+    if (members.length === 0) return null;
+    const locked = isCompleted(e);
+    return (
+      <div className="mt-0.5 flex flex-wrap gap-1">
+        {members.map((m) => (
+          <span
+            key={m.employeeId}
+            className="inline-flex items-center gap-0.5 rounded-full border bg-background/80 px-1.5 text-[10px] leading-4"
+          >
+            {m.name}
+            {!locked && (
+              <button
+                type="button"
+                aria-label={`${m.name} vom Einsatz entfernen`}
+                title={`${m.name} vom Einsatz entfernen`}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  removeTeamMember.mutate({ id: e.id, employeeId: m.employeeId });
+                }}
+                className="rounded-full px-0.5 text-muted-foreground hover:text-destructive"
+              >
+                ×
+              </button>
+            )}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
 
 
   const byDay = useMemo(() => {
