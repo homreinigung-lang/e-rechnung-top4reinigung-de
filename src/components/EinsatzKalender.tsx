@@ -461,6 +461,7 @@ export function EinsatzKalender({
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["time_entries"] });
+    queryClient.invalidateQueries({ queryKey: ["time_entry_employees"] });
   };
 
   const createPlan = useMutation({
