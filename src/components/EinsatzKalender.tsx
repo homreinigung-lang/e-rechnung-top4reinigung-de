@@ -515,6 +515,7 @@ export function EinsatzKalender({
         note: values.note.trim(),
         entry_type: values.entryType,
         absence_reason: absence ? values.absenceReason : "",
+        service_category: absence ? "sonstiges" : values.serviceCategory,
       }));
 
       const { error } = await supabase.from("time_entries").insert(rows);
