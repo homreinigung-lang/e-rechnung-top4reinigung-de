@@ -144,10 +144,52 @@ function hoursFromTimes(start: string, end: string, breakMinutes: number) {
   return Number.isFinite(hours) ? Math.max(0, hours) : 0;
 }
 
+/** Leistungsarten für Arbeitseinsätze inkl. Farbgebung im Kalender. */
+const SERVICE_CATEGORIES = [
+  {
+    value: "unterhaltsreinigung",
+    label: "Unterhaltsreinigung",
+    classes:
+      "border-blue-500 bg-blue-100 text-blue-900 dark:border-blue-400 dark:bg-blue-950/70 dark:text-blue-100",
+    dot: "bg-blue-500",
+  },
+  {
+    value: "glasreinigung",
+    label: "Glasreinigung",
+    classes:
+      "border-emerald-500 bg-emerald-100 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950/70 dark:text-emerald-100",
+    dot: "bg-emerald-500",
+  },
+  {
+    value: "bauendreinigung",
+    label: "Bauend-/Grundreinigung",
+    classes:
+      "border-purple-500 bg-purple-100 text-purple-900 dark:border-purple-400 dark:bg-purple-950/70 dark:text-purple-100",
+    dot: "bg-purple-500",
+  },
+  {
+    value: "sonstiges",
+    label: "Sonstiges",
+    classes:
+      "border-slate-400 bg-slate-100 text-slate-900 dark:border-slate-500 dark:bg-slate-800/70 dark:text-slate-100",
+    dot: "bg-slate-400",
+  },
+] as const;
+
+type ServiceCategory = (typeof SERVICE_CATEGORIES)[number]["value"];
+
+const serviceCategoryOf = (e: { service_category?: string | null }): ServiceCategory =>
+  (SERVICE_CATEGORIES.find((c) => c.value === (e.service_category ?? "sonstiges"))?.value ??
+    "sonstiges") as ServiceCategory;
+
+const serviceClasses = (e: { service_category?: string | null }) =>
+  SERVICE_CATEGORIES.find((c) => c.value === serviceCategoryOf(e))!.classes;
+
 type PlanForm = {
   employeeIds: string[];
   entryType: EntryType;
   absenceReason: AbsenceReason;
+  serviceCategory: ServiceCategory;
   projectId: string;
   customerId: string;
   location: string;
@@ -161,6 +203,7 @@ const emptyForm: PlanForm = {
   employeeIds: [],
   entryType: "work",
   absenceReason: "vacation",
+  serviceCategory: "sonstiges",
   projectId: NO_PROJECT,
   customerId: NO_PROJECT,
   location: "",
@@ -170,6 +213,7 @@ const emptyForm: PlanForm = {
   breakMinutes: "30",
   note: "",
 };
+
 
 export function EinsatzKalender({
   employees,
