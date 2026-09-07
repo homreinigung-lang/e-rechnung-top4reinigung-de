@@ -255,6 +255,58 @@ export function EinsatzKalender({
     },
   });
 
+  /** Zusätzlich zugeordnete Mitarbeiter (Team) je Einsatz. */
+  const entryIds = useMemo(() => allEntries.map((e) => e.id).sort(), [allEntries]);
+  const { data: teamRows = [], error: teamError } = useQuery({
+    queryKey: ["time_entry_employees", "calendar", entryIds],
+    enabled: entryIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entry_employees")
+        .select("id,time_entry_id,employee_id")
+        .in("time_entry_id", entryIds);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  type TeamMember = { rowId: string; employeeId: string; name: string };
+
+  const teamByEntry = useMemo(() => {
+    const map = new Map<string, TeamMember[]>();
+    for (const r of teamRows) {
+      const list = map.get(r.time_entry_id) ?? [];
+      list.push({
+        rowId: r.id,
+        employeeId: r.employee_id,
+        name: employees.find((e) => e.id === r.employee_id)?.name ?? "Mitarbeiter",
+      });
+      map.set(r.time_entry_id, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.name.localeCompare(b.name, "de"));
+    return map;
+  }, [teamRows, employees]);
+
+  const teamOf = useCallback(
+    (e: { id: string; employee_id?: string | null; employee_name?: string | null }): TeamMember[] => {
+      const list = teamByEntry.get(e.id) ?? [];
+      if (list.length > 0) return list;
+      return e.employee_id
+        ? [{ rowId: "", employeeId: e.employee_id, name: e.employee_name || "Mitarbeiter" }]
+        : [];
+    },
+    [teamByEntry],
+  );
+
+  const teamNames = useCallback(
+    (e: TimeEntry) => {
+      const names = teamOf(e).map((m) => m.name);
+      return names.length > 0 ? names.join(" & ") : e.employee_name || "";
+    },
+    [teamOf],
+  );
+
+
   /** Anzeige nach Mitarbeiter- und Projektfilter eingeschränkt. */
   const entries = useMemo(
     () =>
