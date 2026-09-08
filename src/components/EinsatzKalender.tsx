@@ -1217,6 +1217,14 @@ export function EinsatzKalender({
           </span>
         ))}
       </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        {SERVICE_CATEGORIES.map((c) => (
+          <span key={c.value} className="flex items-center gap-1.5">
+            <span className={`size-2.5 rounded-full ${c.dot}`} />
+            {c.label}
+          </span>
+        ))}
+      </div>
 
       {employees.length > 0 && (
         <div className="kalender-no-print rounded-lg border bg-muted/30 p-3">
@@ -1711,6 +1719,29 @@ export function EinsatzKalender({
                 </SelectContent>
               </Select>
             </div>
+
+            {!isAbsent && (
+              <div className="space-y-2">
+                <Label>Leistungsart</Label>
+                <Select
+                  value={form.serviceCategory}
+                  onValueChange={(v) =>
+                    setForm({ ...form, serviceCategory: v as ServiceCategory })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {isAbsent && (
               <div className="space-y-2">
