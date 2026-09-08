@@ -1,5 +1,3 @@
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
-
 type Attachment = {
   filename: string;
   content: string;
@@ -15,25 +13,25 @@ type SendVerifiedEmailOptions = {
   attachments?: Attachment[];
 };
 
+const RESEND_API_URL = "https://api.resend.com/emails";
+
 export async function sendVerifiedEmail(options: SendVerifiedEmailOptions) {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
   const resendKey = process.env["RESEND_API_KEY"];
-  if (!lovableKey || !resendKey) throw new Error("E-Mail-Versand ist nicht konfiguriert.");
+  if (!resendKey) throw new Error("E-Mail-Versand ist nicht konfiguriert.");
 
   const baseFrom = process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
   const baseAddress = baseFrom.match(/<([^>]+)>/)?.[1] ?? baseFrom;
-  const senderName = (options.companyName ?? "").replace(/[<>"]/g, "").trim();
+  const senderName = (options.companyName ?? "").replace(/[<>\"]/g, "").trim();
   const fromAddress = senderName ? `${senderName} <${baseAddress}>` : baseFrom;
   const copyTo = options.companyEmail?.trim() || null;
 
   let response: Response;
   try {
-    response = await fetch(`${GATEWAY_URL}/emails`, {
+    response = await fetch(RESEND_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${lovableKey}`,
-        "X-Connection-Api-Key": resendKey,
+        Authorization: `Bearer ${resendKey}`,
       },
       body: JSON.stringify({
         from: fromAddress,
