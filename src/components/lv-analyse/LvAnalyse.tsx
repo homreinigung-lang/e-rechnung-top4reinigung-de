@@ -1,5 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ClientOnly } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -97,7 +96,6 @@ function StepIcon({ state }: { state: LvProcessStep["state"] }) {
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS) as LvItemCategory[];
 
-const LvFormFiller = lazy(() => import("@/components/lv-form/LvFormFiller"));
 
 export default function LvAnalyse() {
   const runText = useServerFn(analyseLvDocument);
@@ -544,7 +542,6 @@ export default function LvAnalyse() {
           <TabsTrigger value="price">Preisempfehlung</TabsTrigger>
           <TabsTrigger value="missing">Fehlende Daten</TabsTrigger>
           <TabsTrigger value="log">Importprotokoll</TabsTrigger>
-          <TabsTrigger value="formular">LV-Formular</TabsTrigger>
         </TabsList>
 
         {/* 1) Positionen prüfen & freigeben */}
@@ -804,18 +801,6 @@ export default function LvAnalyse() {
               </TableBody>
             </Table>
           )}
-        </TabsContent>
-        {/* 8) LV-Formular ausfüllen (zusammengeführt) */}
-        <TabsContent value="formular" className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Original-PDF der Ausschreibung hochladen, Positionen prüfen und erst nach Freigabe eine
-            ausgefüllte Kopie erzeugen.
-          </p>
-          <ClientOnly fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
-            <Suspense fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
-              <LvFormFiller />
-            </Suspense>
-          </ClientOnly>
         </TabsContent>
       </Tabs>
     </div>
