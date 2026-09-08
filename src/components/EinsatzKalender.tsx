@@ -1497,6 +1497,7 @@ export function EinsatzKalender({
                         {list.map((e) => {
                           const reason = absenceReason(e);
                           const donePlan = doneEntries.get(e.id);
+                          const names = teamNames(e);
                           return (
                             <div key={e.id} className="relative">
                             <button
@@ -1508,12 +1509,10 @@ export function EinsatzKalender({
                               }}
                               title={
                                 donePlan
-                                  ? `Erledigt · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`}`
-                                  : statusLabel(e)
+                                  ? `Erledigt · ${names} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`}`
+                                  : `${names} · ${statusLabel(e)}`
                               }
-                              className={`w-full rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${
-                                donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
-                              }`}
+                              className={`w-full rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${entryCardClasses(e, donePlan)}`}
                             >
                               {reason ? (
                                 <span className="flex items-center gap-1">
@@ -1565,6 +1564,7 @@ export function EinsatzKalender({
                                 <Repeat className="size-3" />
                               </button>
                             )}
+                            <TeamChips e={e} />
                             </div>
                           );
 
