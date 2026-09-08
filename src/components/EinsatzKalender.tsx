@@ -1217,6 +1217,14 @@ export function EinsatzKalender({
           </span>
         ))}
       </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        {SERVICE_CATEGORIES.map((c) => (
+          <span key={c.value} className="flex items-center gap-1.5">
+            <span className={`size-2.5 rounded-full ${c.dot}`} />
+            {c.label}
+          </span>
+        ))}
+      </div>
 
       {employees.length > 0 && (
         <div className="kalender-no-print rounded-lg border bg-muted/30 p-3">
@@ -1328,6 +1336,7 @@ export function EinsatzKalender({
                     {list.slice(0, 3).map((e) => {
                       const reason = absenceReason(e);
                       const donePlan = doneEntries.get(e.id);
+                      const names = teamNames(e);
                       return (
                         <div key={e.id} className="group relative">
                         <button
@@ -1337,14 +1346,12 @@ export function EinsatzKalender({
                             ev.stopPropagation();
                             setDetail(e);
                           }}
-                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${
-                            donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
-                          }`}
+                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${entryCardClasses(e, donePlan)}`}
 
                           title={
                             donePlan
-                              ? `Erledigt: ${e.employee_name} · ${donePlan.projectName} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`} · Ist ${Number(e.hours ?? 0).toFixed(2)} Std.`
-                              : `${e.employee_name} · ${statusLabel(e)}`
+                              ? `Erledigt: ${names} · ${donePlan.projectName} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`} · Ist ${Number(e.hours ?? 0).toFixed(2)} Std.`
+                              : `${names} · ${statusLabel(e)}`
                           }
                         >
                           {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
@@ -1359,7 +1366,7 @@ export function EinsatzKalender({
                           )}
                           <span className="truncate">
                             {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
-                            {e.employee_name}
+                            {names}
                             {!reason && (donePlan?.projectName || e.location)
                               ? ` · ${donePlan?.projectName || e.location}`
                               : ""}
@@ -1380,6 +1387,7 @@ export function EinsatzKalender({
                             <Repeat className="size-3" />
                           </button>
                         )}
+                        <TeamChips e={e} />
                         </div>
                       );
 
@@ -1489,6 +1497,7 @@ export function EinsatzKalender({
                         {list.map((e) => {
                           const reason = absenceReason(e);
                           const donePlan = doneEntries.get(e.id);
+                          const names = teamNames(e);
                           return (
                             <div key={e.id} className="relative">
                             <button
@@ -1500,12 +1509,10 @@ export function EinsatzKalender({
                               }}
                               title={
                                 donePlan
-                                  ? `Erledigt · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`}`
-                                  : statusLabel(e)
+                                  ? `Erledigt · ${names} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`}`
+                                  : `${names} · ${statusLabel(e)}`
                               }
-                              className={`w-full rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${
-                                donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
-                              }`}
+                              className={`w-full rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${entryCardClasses(e, donePlan)}`}
                             >
                               {reason ? (
                                 <span className="flex items-center gap-1">
@@ -1557,6 +1564,7 @@ export function EinsatzKalender({
                                 <Repeat className="size-3" />
                               </button>
                             )}
+                            <TeamChips e={e} />
                             </div>
                           );
 
@@ -1711,6 +1719,29 @@ export function EinsatzKalender({
                 </SelectContent>
               </Select>
             </div>
+
+            {!isAbsent && (
+              <div className="space-y-2">
+                <Label>Leistungsart</Label>
+                <Select
+                  value={form.serviceCategory}
+                  onValueChange={(v) =>
+                    setForm({ ...form, serviceCategory: v as ServiceCategory })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {isAbsent && (
               <div className="space-y-2">
