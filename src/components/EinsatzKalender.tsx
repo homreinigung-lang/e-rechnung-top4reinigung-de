@@ -1336,6 +1336,7 @@ export function EinsatzKalender({
                     {list.slice(0, 3).map((e) => {
                       const reason = absenceReason(e);
                       const donePlan = doneEntries.get(e.id);
+                      const names = teamNames(e);
                       return (
                         <div key={e.id} className="group relative">
                         <button
@@ -1345,14 +1346,12 @@ export function EinsatzKalender({
                             ev.stopPropagation();
                             setDetail(e);
                           }}
-                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${
-                            donePlan ? "border-sky-600 bg-sky-600 text-white" : statusClasses(e)
-                          }`}
+                          className={`flex w-full items-center gap-1 truncate rounded border px-1 py-0.5 pr-5 text-left text-[11px] leading-tight hover:brightness-95 ${entryLockClasses(e)} ${entryCardClasses(e, donePlan)}`}
 
                           title={
                             donePlan
-                              ? `Erledigt: ${e.employee_name} · ${donePlan.projectName} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`} · Ist ${Number(e.hours ?? 0).toFixed(2)} Std.`
-                              : `${e.employee_name} · ${statusLabel(e)}`
+                              ? `Erledigt: ${names} · ${donePlan.projectName} · Plan ${donePlan.range || `${donePlan.hours.toFixed(2)} Std.`} · Ist ${Number(e.hours ?? 0).toFixed(2)} Std.`
+                              : `${names} · ${statusLabel(e)}`
                           }
                         >
                           {reason === "sick" && <HeartPulse className="size-3 shrink-0" />}
@@ -1367,7 +1366,7 @@ export function EinsatzKalender({
                           )}
                           <span className="truncate">
                             {reason ? absenceShort(reason) : (e.start_time ?? "").slice(0, 5)}{" "}
-                            {e.employee_name}
+                            {names}
                             {!reason && (donePlan?.projectName || e.location)
                               ? ` · ${donePlan?.projectName || e.location}`
                               : ""}
@@ -1388,6 +1387,7 @@ export function EinsatzKalender({
                             <Repeat className="size-3" />
                           </button>
                         )}
+                        <TeamChips e={e} />
                         </div>
                       );
 
