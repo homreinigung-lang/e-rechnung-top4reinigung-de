@@ -45,6 +45,7 @@ type FahrtenbuchEntry = {
   trip_date: string;
   from_location: string;
   customer_id: string | null;
+  customer_name: string;
   to_location: string;
   start_km: number;
   end_km: number;
@@ -71,6 +72,7 @@ type FormState = {
   trip_date: string;
   from_location: string;
   customer_id: string;
+  customer_name: string;
   to_location: string;
   start_km: string;
   end_km: string;
@@ -87,6 +89,7 @@ const emptyForm = (): FormState => ({
   trip_date: todayIso(),
   from_location: "",
   customer_id: "none",
+  customer_name: "",
   to_location: "",
   start_km: "",
   end_km: "",
@@ -97,13 +100,11 @@ function customerLabel(c: Customer) {
   return c.company?.trim() || c.name?.trim() || "Kunde";
 }
 
-function customerDestination(c: Customer) {
+function customerAddress(c: Customer) {
   const street = c.service_address_line?.trim() || c.address_line?.trim() || "";
   const postal = c.service_postal_code?.trim() || c.postal_code?.trim() || "";
   const city = c.service_city?.trim() || c.city?.trim() || "";
-  const address = [street, [postal, city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  const name = customerLabel(c);
-  return address ? `${name} – ${address}` : name;
+  return [street, [postal, city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
 }
 
 function formatKm(value: number | string | null | undefined) {
@@ -172,7 +173,7 @@ function Fahrtenbuch() {
       const endKm = Number(values.end_km);
       if (!values.trip_date) throw new Error("Bitte Datum eingeben.");
       if (!values.from_location.trim()) throw new Error("Bitte Startpunkt eingeben.");
-      if (!values.to_location.trim()) throw new Error("Bitte Ziel eingeben.");
+      if (!values.to_location.trim()) throw new Error("Bitte Zieladresse eingeben.");
       if (!Number.isFinite(startKm) || !Number.isFinite(endKm)) {
         throw new Error("Bitte gültige Kilometerstände eingeben.");
       }
@@ -187,6 +188,7 @@ function Fahrtenbuch() {
         trip_date: values.trip_date,
         from_location: values.from_location.trim(),
         customer_id: values.customer_id === "none" ? null : values.customer_id,
+        customer_name: values.customer_name.trim(),
         to_location: values.to_location.trim(),
         start_km: startKm,
         end_km: endKm,
@@ -238,7 +240,8 @@ function Fahrtenbuch() {
     setForm((current) => ({
       ...current,
       customer_id: value,
-      to_location: customer ? customerDestination(customer) : current.to_location,
+      customer_name: customer ? customerLabel(customer) : current.customer_name,
+      to_location: customer ? customerAddress(customer) : current.to_location,
     }));
   }
 
@@ -248,6 +251,7 @@ function Fahrtenbuch() {
       trip_date: entry.trip_date,
       from_location: entry.from_location,
       customer_id: entry.customer_id ?? "none",
+      customer_name: entry.customer_name ?? "",
       to_location: entry.to_location,
       start_km: String(entry.start_km),
       end_km: String(entry.end_km),
@@ -274,7 +278,7 @@ function Fahrtenbuch() {
             <h1 className="text-3xl font-bold">Fahrtenbuch</h1>
           </div>
           <p className="mt-1 text-muted-foreground">
-            Geschäftliche Fahrten erfassen. Die Strecke wird automatisch aus End-km minus Start-km berechnet.
+            Kunde und Adresse können aus dem Kundenstamm übernommen oder jederzeit manuell eingegeben werden.
           </p>
         </div>
         <div className="rounded-lg border bg-card px-4 py-3 text-right">
@@ -287,7 +291,7 @@ function Fahrtenbuch() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">{form.id ? "Fahrt bearbeiten" : "Neue Fahrt"}</h2>
-            <p className="text-sm text-muted-foreground">Start, Ziel und Kilometerstand eintragen.</p>
+            <p className="text-sm text-muted-foreground">Start, Kunde, Ziel und Kilometerstand eintragen.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {latestEntry ? (
@@ -325,13 +329,13 @@ function Fahrtenbuch() {
           </div>
 
           <div className="space-y-2">
-            <Label>Kunde / Einsatzort auswählen</Label>
+            <Label>Kunde auswählen (optional)</Label>
             <Select value={form.customer_id} onValueChange={selectCustomer}>
               <SelectTrigger>
                 <SelectValue placeholder="Kunde auswählen" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Manuelles Ziel</SelectItem>
+                <SelectItem value="none">Keine Auswahl / manuell</SelectItem>
                 {customers.map((customer) => (
                   <SelectItem key={customer.id} value={customer.id}>
                     {customerLabel(customer)}
@@ -342,13 +346,32 @@ function Fahrtenbuch() {
           </div>
 
           <div className="space-y-2 md:col-span-1 lg:col-span-2">
-            <Label htmlFor="to_location">Nach (Ziel)</Label>
+            <Label htmlFor="customer_name">Kunde / Firma</Label>
+            <Input
+              id="customer_name"
+              placeholder="Name oder Firma – auch manuell möglich"
+              value={form.customer_name}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  customer_name: e.target.value,
+                  customer_id: form.customer_id,
+                })
+              }
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2 lg:col-span-3">
+            <Label htmlFor="to_location">Nach (Ziel / Adresse)</Label>
             <Input
               id="to_location"
-              placeholder="Kunde / Objekt / Adresse"
+              placeholder="Straße, Hausnummer, PLZ, Ort – frei bearbeitbar"
               value={form.to_location}
               onChange={(e) => setForm({ ...form, to_location: e.target.value })}
             />
+            <p className="text-xs text-muted-foreground">
+              Bei Kundenauswahl wird die Einsatzadresse übernommen. Das Feld bleibt trotzdem frei editierbar.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -413,17 +436,16 @@ function Fahrtenbuch() {
         {isLoading ? (
           <div className="p-5 text-sm text-muted-foreground">Fahrten werden geladen…</div>
         ) : entries.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            Noch keine Fahrten erfasst.
-          </div>
+          <div className="p-8 text-center text-sm text-muted-foreground">Noch keine Fahrten erfasst.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
+            <table className="w-full min-w-[1000px] text-sm">
               <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">Datum</th>
                   <th className="px-4 py-3 font-medium">Von</th>
-                  <th className="px-4 py-3 font-medium">Nach</th>
+                  <th className="px-4 py-3 font-medium">Kunde</th>
+                  <th className="px-4 py-3 font-medium">Nach / Adresse</th>
                   <th className="px-4 py-3 text-right font-medium">Start-km</th>
                   <th className="px-4 py-3 text-right font-medium">End-km</th>
                   <th className="px-4 py-3 text-right font-medium">Strecke</th>
@@ -436,6 +458,7 @@ function Fahrtenbuch() {
                   <tr key={entry.id} className="align-top">
                     <td className="whitespace-nowrap px-4 py-3 font-medium">{formatDate(entry.trip_date)}</td>
                     <td className="px-4 py-3">{entry.from_location}</td>
+                    <td className="px-4 py-3">{entry.customer_name || "–"}</td>
                     <td className="px-4 py-3">{entry.to_location}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{formatKm(entry.start_km)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">{formatKm(entry.end_km)}</td>
@@ -463,9 +486,7 @@ function Fahrtenbuch() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Fahrt löschen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Dieser Fahrtenbucheintrag wird dauerhaft gelöscht.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Dieser Fahrtenbucheintrag wird dauerhaft gelöscht.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
