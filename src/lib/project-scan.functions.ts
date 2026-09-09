@@ -4,6 +4,18 @@ import type { ScannedProject, ScannedRoom, ScannedLvItem } from "@/lib/project-s
 
 export type { ScannedProject, ScannedRoom, ScannedLvItem };
 
+function resolveProjectScanMode(fileUrl: string, requestedMode: string): "floorplan" | "tender" {
+  const decodedUrl = decodeURIComponent(fileUrl).toLowerCase();
+
+  // Storage folder is the authoritative source. This protects Grundriss PDFs
+  // from accidentally being analysed as tender documents and keeps both
+  // workflows separated even if a caller sends the wrong mode.
+  if (decodedUrl.includes("/kalkulation/")) return "floorplan";
+  if (decodedUrl.includes("/ausschreibung/")) return "tender";
+
+  return requestedMode === "tender" ? "tender" : "floorplan";
+}
+
 /** Liest Räume (Grundriss) bzw. Leistungsverzeichnis (Ausschreibung) aus einer Projektdatei. */
 export const analyzeProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -12,7 +24,7 @@ export const analyzeProject = createServerFn({ method: "POST" })
     return {
       fileUrl: data.fileUrl,
       mimeType: data.mimeType || "application/pdf",
-      mode: data.mode === "tender" ? ("tender" as const) : ("floorplan" as const),
+      mode: resolveProjectScanMode(data.fileUrl, data.mode),
     };
   })
   .handler(async ({ data }): Promise<ScannedProject> => {
