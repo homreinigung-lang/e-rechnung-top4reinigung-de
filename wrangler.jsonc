@@ -4,6 +4,9 @@
   "compatibility_date": "2026-09-08",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "vars": {
+    "SUPABASE_URL": "https://squkjqvofugkanzuqtqn.supabase.co"
+  },
   "observability": {
     "enabled": true
   }
