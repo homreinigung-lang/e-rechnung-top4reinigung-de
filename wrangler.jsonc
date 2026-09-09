@@ -3,7 +3,7 @@
   "name": "gebcalc-staging",
   "compatibility_date": "2026-09-08",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "./src/server.ts",
+  "main": "@tanstack/react-start/server-entry",
   "observability": {
     "enabled": true
   }
