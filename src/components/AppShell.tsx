@@ -24,6 +24,7 @@ import {
   BadgeCheck,
   BarChart3,
   Calculator,
+  Car,
   Clock,
   FileSearch,
   FileSignature,
@@ -65,6 +66,7 @@ const navGroups: readonly NavGroup[] = [
     items: [
       { to: "/dashboard", label: "Startseite", icon: LayoutDashboard },
       { to: "/kunden", label: "Kunden", icon: Users },
+      { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },
       { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
     ],
   },
