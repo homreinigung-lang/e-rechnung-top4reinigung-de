@@ -4,6 +4,7 @@ CREATE TABLE public.fahrtenbuch_entries (
   trip_date date NOT NULL DEFAULT CURRENT_DATE,
   from_location text NOT NULL,
   customer_id uuid REFERENCES public.customers(id) ON DELETE SET NULL,
+  customer_name text NOT NULL DEFAULT '',
   to_location text NOT NULL,
   start_km numeric(12,1) NOT NULL CHECK (start_km >= 0),
   end_km numeric(12,1) NOT NULL CHECK (end_km >= start_km),
