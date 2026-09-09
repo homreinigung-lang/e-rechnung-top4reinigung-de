@@ -7,7 +7,31 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+type CloudflareEnv = Record<string, unknown>;
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+
+function bridgeCloudflareBindingsToProcessEnv(env: unknown) {
+  if (!env || typeof env !== "object") return;
+
+  const bindings = env as CloudflareEnv;
+  const keys = [
+    "SUPABASE_URL",
+    "SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_SECRET_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "RESEND_API_KEY",
+    "RESEND_FROM",
+    "GEMINI_API_KEY",
+  ] as const;
+
+  for (const key of keys) {
+    const value = bindings[key];
+    if (typeof value === "string" && value.length > 0) {
+      process.env[key] = value;
+    }
+  }
+}
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -47,6 +71,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      bridgeCloudflareBindingsToProcessEnv(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
