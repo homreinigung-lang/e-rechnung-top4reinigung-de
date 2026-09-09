@@ -67,6 +67,23 @@ function GrundrissReviewPage() {
     () => new Set(approvedRooms.map((room) => room.floor.trim()).filter(Boolean)).size,
     [approvedRooms],
   );
+  const dominantFloorCovering = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const room of approvedRooms) {
+      const value = room.floor_covering.trim();
+      if (!value) continue;
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+    let winner = "";
+    let max = 0;
+    for (const [value, count] of counts) {
+      if (count > max) {
+        winner = value;
+        max = count;
+      }
+    }
+    return winner;
+  }, [approvedRooms]);
 
   const analyse = async () => {
     if (!plan) return;
@@ -115,6 +132,21 @@ function GrundrissReviewPage() {
 
   const patchRoom = (id: string, patch: Partial<ReviewRoom>) => {
     setRooms((prev) => prev.map((room) => (room.id === id ? { ...room, ...patch } : room)));
+  };
+
+  const transferToCalculation = () => {
+    if (approvedRooms.length === 0 || totalArea <= 0) {
+      toast.error("Bitte mindestens einen bestätigten Raum mit Fläche erfassen.");
+      return;
+    }
+
+    navigate({
+      to: "/kalkulation",
+      search: {
+        area: Math.round(totalArea * 100) / 100,
+        ...(dominantFloorCovering ? { belag: dominantFloorCovering } : {}),
+      },
+    });
   };
 
   return (
@@ -301,7 +333,7 @@ function GrundrissReviewPage() {
               <CardTitle>Geprüfte Zusammenfassung</CardTitle>
               <CardDescription>Nur bestätigte Raumzeilen werden hier berücksichtigt.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-lg border p-4">
                   <p className="text-xs text-muted-foreground">Räume bestätigt</p>
@@ -317,10 +349,16 @@ function GrundrissReviewPage() {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                Nächster Schritt: Nach der Prüfung werden diese bestätigten Werte gezielt in die
-                normale Kalkulation übernommen. Die Verbindung kommt erst nach erfolgreichem Test
-                dieser Review-Seite, damit die bestehende Kalkulation unverändert bleibt.
+              {dominantFloorCovering ? (
+                <p className="text-sm text-muted-foreground">
+                  Häufigster Bodenbelag: <span className="font-medium text-foreground">{dominantFloorCovering}</span>
+                </p>
+              ) : null}
+
+              <div className="flex justify-end">
+                <Button type="button" disabled={approvedRooms.length === 0 || totalArea <= 0} onClick={transferToCalculation}>
+                  Für Kalkulation übernehmen
+                </Button>
               </div>
             </CardContent>
           </Card>
