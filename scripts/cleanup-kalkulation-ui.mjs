@@ -9,7 +9,7 @@ function replaceStrict(source, from, to, label = from.slice(0, 80)) {
 }
 
 const kalkFile = "src/routes/_authenticated/kalkulation.tsx";
-let source = readFileSync(kalkFile, "utf8");
+let source = readFileSync(kalkFile, "utf8").replace(/\r\n/g, "\n");
 
 const replacements = [
   [
@@ -103,7 +103,7 @@ source = source.slice(0, startIndex) + '            </CardContent>\n          </
 writeFileSync(kalkFile, source, "utf8");
 
 const stbFile = "src/routes/_authenticated/steuerberater.tsx";
-let stb = readFileSync(stbFile, "utf8");
+let stb = readFileSync(stbFile, "utf8").replace(/\r\n/g, "\n");
 const exportMarker = '      <section className="no-print flex flex-wrap gap-2">\n        <Button\n          onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}';
 const exportReplacement = '      <section className="no-print flex flex-wrap gap-2">\n        <Button variant="outline" onClick={() => { window.location.href = "/steuerberater/fahrtenbuch"; }}>\n          <FileText className="size-4" /> Fahrtenbuch für Steuerberater\n        </Button>\n        <Button\n          onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}';
 stb = replaceStrict(stb, exportMarker, exportReplacement, "Steuerberater Fahrtenbuch link");
