@@ -16,13 +16,8 @@ function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
 }
 
 function extractText(payload: unknown): string {
-  const json = payload as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  return (json.candidates?.[0]?.content?.parts ?? [])
-    .map((part) => part.text ?? "")
-    .join("")
-    .trim();
+  const json = payload as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+  return (json.candidates?.[0]?.content?.parts ?? []).map((part) => part.text ?? "").join("").trim();
 }
 
 export async function generateGeminiJson({
@@ -39,33 +34,21 @@ export async function generateGeminiJson({
   const parts: Array<Record<string, unknown>> = [{ text: prompt }];
   if (dataUrl) {
     const decoded = parseDataUrl(dataUrl);
-    parts.push({
-      inlineData: {
-        mimeType: mimeType || decoded.mimeType,
-        data: decoded.data,
-      },
-    });
+    parts.push({ inlineData: { mimeType: mimeType || decoded.mimeType, data: decoded.data } });
   }
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts }],
         generationConfig: {
           temperature: 0,
-          responseFormat: {
-            text: {
-              mimeType: "application/json",
-              schema,
-            },
-          },
+          responseMimeType: "application/json",
+          responseSchema: schema,
         },
       }),
     },
@@ -77,12 +60,11 @@ export async function generateGeminiJson({
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 500);
     console.error(`Gemini request failed [${response.status}]: ${detail}`);
-    throw new Error(`Datei konnte nicht analysiert werden (${response.status}).`);
+    throw new Error(`KI-Analyse fehlgeschlagen (${response.status}).`);
   }
 
   const raw = extractText(await response.json());
   if (!raw) return {};
-
   try {
     return JSON.parse(raw) as Record<string, unknown>;
   } catch {
