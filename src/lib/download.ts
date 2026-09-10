@@ -62,14 +62,9 @@ function isIos() {
   );
 }
 
-/**
- * Erzwingt einen echten Datei-Download über einen Anchor mit download-Attribut.
- * Auf iOS wird der Blob zusätzlich als application/octet-stream ausgeliefert,
- * damit Safari die Datei nicht als Text im Tab öffnet.
- */
+/** Normaler Browser-Download für Desktop/Android. */
 function fallbackDownload(blob: Blob, filename: string) {
-  const payload = isIos() ? new Blob([blob], { type: "application/octet-stream" }) : blob;
-  const url = URL.createObjectURL(payload);
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
@@ -77,11 +72,28 @@ function fallbackDownload(blob: Blob, filename: string) {
   a.target = "_self";
   a.style.display = "none";
   document.body.appendChild(a);
-  a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+  a.click();
   setTimeout(() => {
     a.remove();
     URL.revokeObjectURL(url);
   }, 10000);
+}
+
+/**
+ * iOS-Fallback, wenn das native Teilen nicht verfügbar ist.
+ * Statt einen unsichtbaren Download als erfolgreich zu melden, wird die Datei
+ * sichtbar in einem neuen Tab geöffnet. So kann sie über Teilen -> In Dateien
+ * sichern tatsächlich gespeichert werden.
+ */
+function openOnIos(blob: Blob): boolean {
+  const url = URL.createObjectURL(blob);
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (!opened) {
+    URL.revokeObjectURL(url);
+    return false;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return true;
 }
 
 /** iOS: „In Dateien sichern…“ über das native Teilen-Blatt. */
@@ -99,9 +111,9 @@ async function iosShare(blob: Blob, filename: string): Promise<boolean> {
 }
 
 /**
- * Speichert eine Datei lokal. Wenn der Browser es unterstützt, öffnet sich der
- * native „Speichern unter…“-Dialog (bzw. auf iOS das Teilen-/Dateien-Blatt),
- * sonst wird direkt in den Download-Ordner gespeichert.
+ * Speichert eine Datei lokal. Auf iOS wird bevorzugt das native Teilen-Blatt
+ * verwendet. Falls das nicht möglich ist, wird die Datei sichtbar geöffnet,
+ * damit kein irreführendes „Download gestartet“ ohne Ergebnis erscheint.
  */
 export async function saveFile(blobOrData: Blob, filename: string): Promise<boolean> {
   const ext = extensionOf(filename);
@@ -115,7 +127,7 @@ export async function saveFile(blobOrData: Blob, filename: string): Promise<bool
         if (await iosShare(blob, filename)) {
           toast.success("Datei bereit", {
             id: toastId,
-            description: `„${filename}“ wurde gespeichert bzw. geteilt.`,
+            description: `„${filename}“ kann jetzt gespeichert oder geteilt werden.`,
             duration: 6000,
           });
           return true;
@@ -126,17 +138,24 @@ export async function saveFile(blobOrData: Blob, filename: string): Promise<bool
           return false;
         }
       }
-      fallbackDownload(blob, filename);
-      toast.success("Download gestartet", {
+
+      if (openOnIos(blob)) {
+        toast.info("Datei geöffnet", {
+          id: toastId,
+          description: "Bitte im geöffneten Dokument auf Teilen und anschließend „In Dateien sichern“ tippen.",
+          duration: 9000,
+        });
+        return true;
+      }
+
+      toast.error("Datei konnte nicht geöffnet werden", {
         id: toastId,
-        description: `„${filename}“ wurde in „Downloads“ (App „Dateien“) gespeichert.`,
-        duration: 7000,
+        description: "Bitte Pop-ups für diese Seite erlauben und erneut versuchen.",
       });
-      return true;
+      return false;
     }
 
-    const picker = (window as unknown as { showSaveFilePicker?: SaveFilePicker })
-      .showSaveFilePicker;
+    const picker = (window as unknown as { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
 
     if (typeof picker === "function") {
       try {
@@ -158,14 +177,13 @@ export async function saveFile(blobOrData: Blob, filename: string): Promise<bool
           toast.info("Speichern abgebrochen", { id: toastId, duration: 3000 });
           return false;
         }
-        // Picker nicht nutzbar (z. B. iframe/Berechtigung) → normaler Download
       }
     }
 
     fallbackDownload(blob, filename);
     toast.success("Download gestartet", {
       id: toastId,
-      description: `„${filename}“ wurde in Ihrem Download-Ordner gespeichert.`,
+      description: `„${filename}“ wurde an den Browser übergeben.`,
       duration: 6000,
     });
     return true;
