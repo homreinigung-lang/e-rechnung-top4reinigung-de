@@ -84,6 +84,30 @@ function ResetPasswordPage() {
     navigate({ to: "/auth", replace: true });
   }
 
+  if (linkState !== "ready") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+        <div className="surface w-full max-w-md space-y-4 p-6 text-center">
+          <h1 className="font-display text-2xl font-semibold">Neues Passwort festlegen</h1>
+          {linkState === "checking" ? (
+            <p className="text-sm text-muted-foreground">Link wird geprüft …</p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Dieser Link ist nicht mehr gültig – er wurde bereits verwendet oder ist abgelaufen.
+                Bitte fordern Sie über „Passwort vergessen“ einen neuen Link an und öffnen Sie ihn
+                direkt aus der E-Mail.
+              </p>
+              <Button className="w-full" onClick={() => navigate({ to: "/auth", replace: true })}>
+                Zur Anmeldung
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
