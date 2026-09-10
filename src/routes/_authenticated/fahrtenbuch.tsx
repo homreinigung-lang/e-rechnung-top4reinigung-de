@@ -32,17 +32,21 @@ export const Route = createFileRoute("/_authenticated/fahrtenbuch")({
       { title: "Fahrtenbuch – GebCalc" },
       {
         name: "description",
-        content: "Geschäftliche Fahrten mit Start- und Endkilometer erfassen.",
+        content: "Geschäftliche Fahrten mit Zeit, Fahrtart und Kilometerständen erfassen.",
       },
     ],
   }),
   component: Fahrtenbuch,
 });
 
+type TripType = "one_way" | "round_trip";
+
 type FahrtenbuchEntry = {
   id: string;
   user_id: string;
   trip_date: string;
+  trip_time: string | null;
+  trip_type: TripType;
   from_location: string;
   customer_id: string | null;
   customer_name: string;
@@ -70,6 +74,8 @@ type Customer = {
 type FormState = {
   id?: string;
   trip_date: string;
+  trip_time: string;
+  trip_type: TripType;
   from_location: string;
   customer_id: string;
   customer_name: string;
@@ -79,22 +85,28 @@ type FormState = {
   notes: string;
 };
 
-function todayIso() {
+function localDateTime() {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 10);
+  const iso = local.toISOString();
+  return { date: iso.slice(0, 10), time: iso.slice(11, 16) };
 }
 
-const emptyForm = (): FormState => ({
-  trip_date: todayIso(),
-  from_location: "",
-  customer_id: "none",
-  customer_name: "",
-  to_location: "",
-  start_km: "",
-  end_km: "",
-  notes: "",
-});
+const emptyForm = (): FormState => {
+  const now = localDateTime();
+  return {
+    trip_date: now.date,
+    trip_time: now.time,
+    trip_type: "one_way",
+    from_location: "",
+    customer_id: "none",
+    customer_name: "",
+    to_location: "",
+    start_km: "",
+    end_km: "",
+    notes: "",
+  };
+};
 
 function customerLabel(c: Customer) {
   return c.company?.trim() || c.name?.trim() || "Kunde";
@@ -119,6 +131,14 @@ function formatDate(date: string) {
   return new Intl.DateTimeFormat("de-DE").format(new Date(`${date}T12:00:00`));
 }
 
+function formatTime(time: string | null | undefined) {
+  return time ? time.slice(0, 5) : "–";
+}
+
+function tripTypeLabel(type: TripType) {
+  return type === "round_trip" ? "Hin- und Rückfahrt" : "Nur Hinfahrt";
+}
+
 function Fahrtenbuch() {
   const queryClient = useQueryClient();
   const db = supabase as any;
@@ -132,6 +152,7 @@ function Fahrtenbuch() {
         .from("fahrtenbuch_entries")
         .select("*")
         .order("trip_date", { ascending: false })
+        .order("trip_time", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as FahrtenbuchEntry[];
@@ -172,6 +193,7 @@ function Fahrtenbuch() {
       const startKm = Number(values.start_km);
       const endKm = Number(values.end_km);
       if (!values.trip_date) throw new Error("Bitte Datum eingeben.");
+      if (!values.trip_time) throw new Error("Bitte Uhrzeit eingeben.");
       if (!values.from_location.trim()) throw new Error("Bitte Startpunkt eingeben.");
       if (!values.to_location.trim()) throw new Error("Bitte Zieladresse eingeben.");
       if (!Number.isFinite(startKm) || !Number.isFinite(endKm)) {
@@ -186,6 +208,8 @@ function Fahrtenbuch() {
 
       const payload = {
         trip_date: values.trip_date,
+        trip_time: values.trip_time,
+        trip_type: values.trip_type,
         from_location: values.from_location.trim(),
         customer_id: values.customer_id === "none" ? null : values.customer_id,
         customer_name: values.customer_name.trim(),
@@ -249,6 +273,8 @@ function Fahrtenbuch() {
     setForm({
       id: entry.id,
       trip_date: entry.trip_date,
+      trip_time: entry.trip_time?.slice(0, 5) ?? "",
+      trip_type: entry.trip_type ?? "one_way",
       from_location: entry.from_location,
       customer_id: entry.customer_id ?? "none",
       customer_name: entry.customer_name ?? "",
@@ -278,7 +304,7 @@ function Fahrtenbuch() {
             <h1 className="text-3xl font-bold">Fahrtenbuch</h1>
           </div>
           <p className="mt-1 text-muted-foreground">
-            Kunde und Adresse können aus dem Kundenstamm übernommen oder jederzeit manuell eingegeben werden.
+            Fahrzeit, Fahrtart, Kunde, Adresse und Kilometerstände vollständig erfassen.
           </p>
         </div>
         <div className="rounded-lg border bg-card px-4 py-3 text-right">
@@ -291,7 +317,7 @@ function Fahrtenbuch() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">{form.id ? "Fahrt bearbeiten" : "Neue Fahrt"}</h2>
-            <p className="text-sm text-muted-foreground">Start, Kunde, Ziel und Kilometerstand eintragen.</p>
+            <p className="text-sm text-muted-foreground">Zeit, Fahrtart, Start, Kunde, Ziel und Kilometerstand eintragen.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {latestEntry ? (
@@ -318,7 +344,33 @@ function Fahrtenbuch() {
             />
           </div>
 
-          <div className="space-y-2 md:col-span-1 lg:col-span-2">
+          <div className="space-y-2">
+            <Label htmlFor="trip_time">Uhrzeit</Label>
+            <Input
+              id="trip_time"
+              type="time"
+              value={form.trip_time}
+              onChange={(e) => setForm({ ...form, trip_time: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fahrtart</Label>
+            <Select
+              value={form.trip_type}
+              onValueChange={(value) => setForm({ ...form, trip_type: value as TripType })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="one_way">Nur Hinfahrt</SelectItem>
+                <SelectItem value="round_trip">Hin- und Rückfahrt</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 md:col-span-2 lg:col-span-3">
             <Label htmlFor="from_location">Von (Startpunkt)</Label>
             <Input
               id="from_location"
@@ -351,13 +403,7 @@ function Fahrtenbuch() {
               id="customer_name"
               placeholder="Name oder Firma – auch manuell möglich"
               value={form.customer_name}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  customer_name: e.target.value,
-                  customer_id: form.customer_id,
-                })
-              }
+              onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
             />
           </div>
 
@@ -370,7 +416,7 @@ function Fahrtenbuch() {
               onChange={(e) => setForm({ ...form, to_location: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Bei Kundenauswahl wird die Einsatzadresse übernommen. Das Feld bleibt trotzdem frei editierbar.
+              Bei Kundenauswahl wird die Einsatzadresse übernommen. Bei „Hin- und Rückfahrt“ umfasst der Kilometerstand die komplette reale Fahrt bis zur Rückkehr; die Strecke wird nicht künstlich verdoppelt.
             </p>
           </div>
 
@@ -439,10 +485,12 @@ function Fahrtenbuch() {
           <div className="p-8 text-center text-sm text-muted-foreground">Noch keine Fahrten erfasst.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-sm">
+            <table className="w-full min-w-[1180px] text-sm">
               <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">Datum</th>
+                  <th className="px-4 py-3 font-medium">Uhrzeit</th>
+                  <th className="px-4 py-3 font-medium">Fahrtart</th>
                   <th className="px-4 py-3 font-medium">Von</th>
                   <th className="px-4 py-3 font-medium">Kunde</th>
                   <th className="px-4 py-3 font-medium">Nach / Adresse</th>
@@ -457,6 +505,8 @@ function Fahrtenbuch() {
                 {entries.map((entry) => (
                   <tr key={entry.id} className="align-top">
                     <td className="whitespace-nowrap px-4 py-3 font-medium">{formatDate(entry.trip_date)}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{formatTime(entry.trip_time)}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{tripTypeLabel(entry.trip_type ?? "one_way")}</td>
                     <td className="px-4 py-3">{entry.from_location}</td>
                     <td className="px-4 py-3">{entry.customer_name || "–"}</td>
                     <td className="px-4 py-3">{entry.to_location}</td>
