@@ -1,115 +1,11 @@
+import { generateGeminiJson } from "./gemini-json.server";
+
 export type GeneratedItem = {
   description: string;
   quantity: number;
   unit: string;
   unit_price: number;
 };
-
-const SYSTEM = `Du bist Kalkulations-Assistent einer deutschen Gebäudereinigungsfirma.
-Aus der Beschreibung des Auftrags erstellst du eine realistische Leistungsaufstellung (Positionen) für ein Angebot.
-Regeln:
-- Alle Texte auf Deutsch, fachlich und knapp (max. 140 Zeichen pro Position).
-- Marktübliche Nettopreise in EUR für das Saarland/Deutschland.
-- Stundensätze: Unterhalts-/Büro-/Treppenhausreinigung 34–37 EUR/Std., Grund- und Bauendreinigung 42–45 EUR/Std.
-- Glas- und Fensterreinigung IMMER mit dem höheren Fixsatz von 38,00 EUR pro Stunde kalkulieren.
-- unit_price darf NIEMALS 0 sein. Jede Position braucht einen realistischen Preis.
-- Werden Treppen, Treppenhaus oder mehrere Etagen erwähnt, MUSS eine eigene Position "Treppenhausreinigung" mit der Etagenanzahl als Menge und mindestens 12,50 EUR je Etage enthalten sein.
-- Einheiten nur: Std., m², Stk., Etage, Pauschal, Monat.
-- BEZUGSZEITRAUM IST IMMER EIN MONAT: Bei wiederkehrenden Leistungen enthält die Menge bereits alle Einsätze des Monats (wöchentlich = 4,33 Einsätze/Monat, 14-täglich = 2, monatlich = 1). Beispiel: 2 Std. je Einsatz, wöchentlich => quantity 8,66 Std. Der Positionstext nennt den Turnus, z. B. "… – 4,33 Einsätze/Monat".
-- Hat das Treppenhaus einen abweichenden Turnus (z. B. "Treppe 2× im Monat"), gilt für diese Position ausschließlich dieser Turnus – nicht der Turnus der Unterhaltsreinigung.
-- Realistische Leistungswerte ansetzen: Büro 200–250 m²/Std., Flur 300 m²/Std., Sanitär/WC 60 m²/Std., Teeküche 100 m²/Std., Treppenhaus 120 m²/Std.
-- Keine Doppelerfassung: Sanitär, Küche und Flure, die bereits in der Gesamtfläche der Grundleistung enthalten sind, nicht zusätzlich als eigene Fläche berechnen.
-- Mengen und Preise auf 2 Nachkommastellen runden, keine Cent-Bruchteile.
-- 3 bis 10 Positionen, keine Umsatzsteuer, keine Summenzeile.
-- Arbeite deterministisch: identische Eingaben müssen identische Mengen, Einheiten und Preise ergeben. Nutze keine Preisspannen oder Zufallswerte.
-Antworte ausschließlich mit reinem JSON.`;
-
-function canonicalPrompt(prompt: string): string {
-  return prompt.trim().replace(/\s+/g, " ");
-}
-
-function num(v: unknown): number {
-  const n = typeof v === "number" ? v : Number(String(v ?? "").replace(",", "."));
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
-}
-
-export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
-
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      temperature: 0,
-      top_p: 1,
-      seed: 0,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: canonicalPrompt(prompt) },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "positionen",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              items: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    description: { type: "string" },
-                    quantity: { type: "number" },
-                    unit: { type: "string" },
-                    unit_price: { type: "number" },
-                  },
-                  required: ["description", "quantity", "unit", "unit_price"],
-                },
-              },
-            },
-            required: ["items"],
-          },
-        },
-      },
-    }),
-  });
-
-  if (res.status === 429) throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
-  if (res.status === 402) throw new Error("KI-Guthaben aufgebraucht.");
-  if (!res.ok) throw new Error(`Vorschlag fehlgeschlagen (${res.status}).`);
-
-  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const raw = json.choices?.[0]?.message?.content ?? "";
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return [];
-
-  let parsed: { items?: unknown } = {};
-  try {
-    parsed = JSON.parse(match[0]) as { items?: unknown };
-  } catch {
-    return [];
-  }
-  const list = Array.isArray(parsed.items) ? parsed.items : [];
-  return list.slice(0, 12).map((entry) => {
-    const it = (entry ?? {}) as Record<string, unknown>;
-    return {
-      description: String(it["description"] ?? "").slice(0, 200),
-      quantity: num(it["quantity"]) || 1,
-      unit: String(it["unit"] ?? "Std.").slice(0, 20) || "Std.",
-      unit_price: num(it["unit_price"]),
-    };
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Kalkulations-Assistent: liefert zusätzlich die Eckdaten für das Hauptformular
-// ---------------------------------------------------------------------------
 
 export type GeneratedCalculation = {
   cleaning_type: string;
@@ -127,104 +23,117 @@ export type GeneratedCalculation = {
   items: GeneratedItem[];
 };
 
-const CALC_SYSTEM = `${SYSTEM}
-Zusätzlich schätzt du die Eckdaten der Kalkulation:
-- cleaning_type: einer von unterhalt | grund | bau | glas | treppenhaus | buero
-- mode: "area" wenn eine Fläche genannt oder ableitbar ist, sonst "hours"
-- area_sqm, hours (Stunden JE EINSATZ), hourly_rate, price_per_sqm (m²-Preis netto JE EINSATZ: unterhalt 0,35 · grund 1,90 · bau 2,60 · glas 1,40 · treppenhaus 0,60 · buero 0,40)
-- frequency + frequency_unit (week|month), floors, stairs (Treppenhaus enthalten?), travel (Anfahrtspauschale netto, 0 wenn unbekannt)
-- note: kurze deutsche Bemerkung zur Leistung.
-Unbekannte Zahlen mit 0 belegen.`;
+const SYSTEM = `Du bist Kalkulations-Assistent einer deutschen Gebäudereinigungsfirma im Saarland.
+Erstelle aus der Auftragsbeschreibung eine fachlich plausible, deterministische Kalkulation.
+Regeln:
+- Alle Texte auf Deutsch, knapp und professionell.
+- Stundensätze netto: Unterhalts-/Büro-/Treppenhausreinigung 34–37 EUR/Std.; Grund- und Bauendreinigung 42–45 EUR/Std.; Glas/Fenster 38 EUR/Std.
+- Keine erfundenen Kundendaten, Flächen oder Mengen. Unbekannte Zahlen = 0.
+- Realistische Leistungswerte als Orientierung: Büro 200–250 m²/Std., Flur 300 m²/Std., Sanitär/WC 60 m²/Std., Teeküche 100 m²/Std., Treppenhaus 120 m²/Std.
+- Wiederkehrende Leistungen auf Monatsbasis: wöchentlich = 4,33 Einsätze/Monat, 14-täglich = 2, monatlich = 1.
+- Keine Doppelerfassung von Sanitär, Küche oder Flur, wenn bereits in einer Gesamtfläche enthalten.
+- Treppenhaus bei Erwähnung als eigene Position; mindestens 12,50 EUR je Etage.
+- Keine Umsatzsteuer und keine Summenzeile in items.
+- Preise und Mengen auf 2 Nachkommastellen runden.`;
+
+const ITEM_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    description: { type: "string" },
+    quantity: { type: "number" },
+    unit: { type: "string" },
+    unit_price: { type: "number" },
+  },
+  required: ["description", "quantity", "unit", "unit_price"],
+};
+
+const ITEMS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: { items: { type: "array", items: ITEM_SCHEMA } },
+  required: ["items"],
+};
+
+const CALC_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    cleaning_type: { type: "string" },
+    mode: { type: "string" },
+    area_sqm: { type: "number" },
+    hours: { type: "number" },
+    hourly_rate: { type: "number" },
+    price_per_sqm: { type: "number" },
+    frequency: { type: "number" },
+    frequency_unit: { type: "string" },
+    floors: { type: "number" },
+    stairs: { type: "boolean" },
+    travel: { type: "number" },
+    note: { type: "string" },
+    items: { type: "array", items: ITEM_SCHEMA },
+  },
+  required: [
+    "cleaning_type",
+    "mode",
+    "area_sqm",
+    "hours",
+    "hourly_rate",
+    "price_per_sqm",
+    "frequency",
+    "frequency_unit",
+    "floors",
+    "stairs",
+    "travel",
+    "note",
+    "items",
+  ],
+};
+
+function canonicalPrompt(prompt: string): string {
+  return prompt.trim().replace(/\s+/g, " ");
+}
+
+function num(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
+}
+
+function normalizeItems(value: unknown): GeneratedItem[] {
+  const list = Array.isArray(value) ? value : [];
+  return list.slice(0, 12).map((entry) => {
+    const it = (entry ?? {}) as Record<string, unknown>;
+    return {
+      description: String(it["description"] ?? "").trim().slice(0, 200),
+      quantity: num(it["quantity"]) || 1,
+      unit: String(it["unit"] ?? "Std.").trim().slice(0, 20) || "Std.",
+      unit_price: num(it["unit_price"]),
+    };
+  }).filter((item) => item.description);
+}
+
+export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
+  const parsed = await generateGeminiJson({
+    model: process.env["GEMINI_MODEL_CALC"] || "gemini-2.5-flash",
+    system: `${SYSTEM}\nAntworte ausschließlich mit JSON gemäß Schema.`,
+    prompt: `Erstelle 3 bis 10 sinnvolle Angebotspositionen für: ${canonicalPrompt(prompt)}`,
+    schema: ITEMS_SCHEMA,
+  });
+  return normalizeItems(parsed["items"]);
+}
 
 export async function generateCalculation(prompt: string): Promise<GeneratedCalculation> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
-
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      temperature: 0,
-      top_p: 1,
-      seed: 0,
-      messages: [
-        { role: "system", content: CALC_SYSTEM },
-        { role: "user", content: canonicalPrompt(prompt) },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "kalkulation",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              cleaning_type: { type: "string" },
-              mode: { type: "string" },
-              area_sqm: { type: "number" },
-              hours: { type: "number" },
-              hourly_rate: { type: "number" },
-              price_per_sqm: { type: "number" },
-              frequency: { type: "number" },
-              frequency_unit: { type: "string" },
-              floors: { type: "number" },
-              stairs: { type: "boolean" },
-              travel: { type: "number" },
-              note: { type: "string" },
-              items: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    description: { type: "string" },
-                    quantity: { type: "number" },
-                    unit: { type: "string" },
-                    unit_price: { type: "number" },
-                  },
-                  required: ["description", "quantity", "unit", "unit_price"],
-                },
-              },
-            },
-            required: [
-              "cleaning_type",
-              "mode",
-              "area_sqm",
-              "hours",
-              "hourly_rate",
-              "price_per_sqm",
-              "frequency",
-              "frequency_unit",
-              "floors",
-              "stairs",
-              "travel",
-              "note",
-              "items",
-            ],
-          },
-        },
-      },
-    }),
+  const parsed = await generateGeminiJson({
+    model: process.env["GEMINI_MODEL_CALC"] || "gemini-2.5-flash",
+    system: `${SYSTEM}\nAntworte ausschließlich mit JSON gemäß Schema.`,
+    prompt: `Analysiere diese Reinigungsanfrage für die Kalkulation: ${canonicalPrompt(prompt)}\ncleaning_type: unterhalt|grund|bau|glas|treppenhaus|buero. mode: area|hours. frequency_unit: week|month. Unbekannte Werte mit 0 bzw. leerem Text ausgeben.`,
+    schema: CALC_SCHEMA,
   });
 
-  if (res.status === 429) throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
-  if (res.status === 402) throw new Error("KI-Guthaben aufgebraucht.");
-  if (!res.ok) throw new Error(`Analyse fehlgeschlagen (${res.status}).`);
-
-  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const raw = json.choices?.[0]?.message?.content ?? "";
-  const match = raw.match(/\{[\s\S]*\}/);
-  const parsed = match ? (JSON.parse(match[0]) as Record<string, unknown>) : {};
-
   const types = ["unterhalt", "grund", "bau", "glas", "treppenhaus", "buero"];
-  const list = Array.isArray(parsed["items"]) ? (parsed["items"] as unknown[]) : [];
-
+  const cleaningType = String(parsed["cleaning_type"] ?? "");
   return {
-    cleaning_type: types.includes(String(parsed["cleaning_type"]))
-      ? String(parsed["cleaning_type"])
-      : "unterhalt",
+    cleaning_type: types.includes(cleaningType) ? cleaningType : "unterhalt",
     mode: parsed["mode"] === "hours" ? "hours" : "area",
     area_sqm: num(parsed["area_sqm"]),
     hours: num(parsed["hours"]),
@@ -235,15 +144,7 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
     floors: num(parsed["floors"]),
     stairs: Boolean(parsed["stairs"]),
     travel: num(parsed["travel"]),
-    note: String(parsed["note"] ?? "").slice(0, 500),
-    items: list.slice(0, 12).map((entry) => {
-      const it = (entry ?? {}) as Record<string, unknown>;
-      return {
-        description: String(it["description"] ?? "").slice(0, 200),
-        quantity: num(it["quantity"]) || 1,
-        unit: String(it["unit"] ?? "Std.").slice(0, 20) || "Std.",
-        unit_price: num(it["unit_price"]),
-      };
-    }),
+    note: String(parsed["note"] ?? "").trim().slice(0, 500),
+    items: normalizeItems(parsed["items"]),
   };
 }
