@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/fahrtenbuch")({
       { title: "Fahrtenbuch – GebCalc" },
       {
         name: "description",
-        content: "Geschäftliche Fahrten mit Zeit, Fahrtart und Kilometerständen erfassen.",
+        content: "Geschäftliche Fahrten mit Zeit, Fahrtart, Ziel und Kilometerständen erfassen.",
       },
     ],
   }),
@@ -46,6 +46,7 @@ type FahrtenbuchEntry = {
   user_id: string;
   trip_date: string;
   trip_time: string | null;
+  return_time: string | null;
   trip_type: TripType;
   from_location: string;
   customer_id: string | null;
@@ -75,6 +76,7 @@ type FormState = {
   id?: string;
   trip_date: string;
   trip_time: string;
+  return_time: string;
   trip_type: TripType;
   from_location: string;
   customer_id: string;
@@ -97,6 +99,7 @@ const emptyForm = (): FormState => {
   return {
     trip_date: now.date,
     trip_time: now.time,
+    return_time: "",
     trip_type: "one_way",
     from_location: "",
     customer_id: "none",
@@ -193,8 +196,12 @@ function Fahrtenbuch() {
       const startKm = Number(values.start_km);
       const endKm = Number(values.end_km);
       if (!values.trip_date) throw new Error("Bitte Datum eingeben.");
-      if (!values.trip_time) throw new Error("Bitte Uhrzeit eingeben.");
+      if (!values.trip_time) throw new Error("Bitte Startzeit eingeben.");
+      if (values.trip_type === "round_trip" && !values.return_time) {
+        throw new Error("Bitte Rückkehrzeit eingeben.");
+      }
       if (!values.from_location.trim()) throw new Error("Bitte Startpunkt eingeben.");
+      if (!values.customer_name.trim()) throw new Error("Bitte Kunde, Ziel oder Zweck eingeben.");
       if (!values.to_location.trim()) throw new Error("Bitte Zieladresse eingeben.");
       if (!Number.isFinite(startKm) || !Number.isFinite(endKm)) {
         throw new Error("Bitte gültige Kilometerstände eingeben.");
@@ -209,6 +216,7 @@ function Fahrtenbuch() {
       const payload = {
         trip_date: values.trip_date,
         trip_time: values.trip_time,
+        return_time: values.trip_type === "round_trip" ? values.return_time : null,
         trip_type: values.trip_type,
         from_location: values.from_location.trim(),
         customer_id: values.customer_id === "none" ? null : values.customer_id,
@@ -274,6 +282,7 @@ function Fahrtenbuch() {
       id: entry.id,
       trip_date: entry.trip_date,
       trip_time: entry.trip_time?.slice(0, 5) ?? "",
+      return_time: entry.return_time?.slice(0, 5) ?? "",
       trip_type: entry.trip_type ?? "one_way",
       from_location: entry.from_location,
       customer_id: entry.customer_id ?? "none",
@@ -304,7 +313,7 @@ function Fahrtenbuch() {
             <h1 className="text-3xl font-bold">Fahrtenbuch</h1>
           </div>
           <p className="mt-1 text-muted-foreground">
-            Fahrzeit, Fahrtart, Kunde, Adresse und Kilometerstände vollständig erfassen.
+            Geschäftliche Fahrten zu Kunden, Besichtigungen, Einkäufen oder anderen Zielen erfassen.
           </p>
         </div>
         <div className="rounded-lg border bg-card px-4 py-3 text-right">
@@ -317,7 +326,7 @@ function Fahrtenbuch() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">{form.id ? "Fahrt bearbeiten" : "Neue Fahrt"}</h2>
-            <p className="text-sm text-muted-foreground">Zeit, Fahrtart, Start, Kunde, Ziel und Kilometerstand eintragen.</p>
+            <p className="text-sm text-muted-foreground">Zeit, Fahrtart, Ziel/Zweck und Kilometerstand eintragen.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {latestEntry ? (
@@ -336,33 +345,23 @@ function Fahrtenbuch() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="trip_date">Datum</Label>
-            <Input
-              id="trip_date"
-              type="date"
-              value={form.trip_date}
-              onChange={(e) => setForm({ ...form, trip_date: e.target.value })}
-            />
+            <Input id="trip_date" type="date" value={form.trip_date} onChange={(e) => setForm({ ...form, trip_date: e.target.value })} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="trip_time">Uhrzeit</Label>
-            <Input
-              id="trip_time"
-              type="time"
-              value={form.trip_time}
-              onChange={(e) => setForm({ ...form, trip_time: e.target.value })}
-            />
+            <Label htmlFor="trip_time">Startzeit</Label>
+            <Input id="trip_time" type="time" value={form.trip_time} onChange={(e) => setForm({ ...form, trip_time: e.target.value })} />
           </div>
 
           <div className="space-y-2">
             <Label>Fahrtart</Label>
             <Select
               value={form.trip_type}
-              onValueChange={(value) => setForm({ ...form, trip_type: value as TripType })}
+              onValueChange={(value) =>
+                setForm({ ...form, trip_type: value as TripType, return_time: value === "round_trip" ? form.return_time : "" })
+              }
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="one_way">Nur Hinfahrt</SelectItem>
                 <SelectItem value="round_trip">Hin- und Rückfahrt</SelectItem>
@@ -370,100 +369,66 @@ function Fahrtenbuch() {
             </Select>
           </div>
 
+          {form.trip_type === "round_trip" ? (
+            <div className="space-y-2">
+              <Label htmlFor="return_time">Rückkehrzeit</Label>
+              <Input id="return_time" type="time" value={form.return_time} onChange={(e) => setForm({ ...form, return_time: e.target.value })} />
+            </div>
+          ) : null}
+
           <div className="space-y-2 md:col-span-2 lg:col-span-3">
             <Label htmlFor="from_location">Von (Startpunkt)</Label>
-            <Input
-              id="from_location"
-              placeholder="z. B. Betrieb, Lager oder letzter Kunde"
-              value={form.from_location}
-              onChange={(e) => setForm({ ...form, from_location: e.target.value })}
-            />
+            <Input id="from_location" placeholder="z. B. Betrieb, Lager oder letzter Termin" value={form.from_location} onChange={(e) => setForm({ ...form, from_location: e.target.value })} />
           </div>
 
           <div className="space-y-2">
             <Label>Kunde auswählen (optional)</Label>
             <Select value={form.customer_id} onValueChange={selectCustomer}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kunde auswählen" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Kunde auswählen" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Keine Auswahl / manuell</SelectItem>
                 {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customerLabel(customer)}
-                  </SelectItem>
+                  <SelectItem key={customer.id} value={customer.id}>{customerLabel(customer)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2 md:col-span-1 lg:col-span-2">
-            <Label htmlFor="customer_name">Kunde / Firma</Label>
+            <Label htmlFor="customer_name">Kunde / Ziel / Zweck</Label>
             <Input
               id="customer_name"
-              placeholder="Name oder Firma – auch manuell möglich"
+              placeholder="z. B. Kunde Müller, Besichtigung Saarlouis, Materialeinkauf"
               value={form.customer_name}
-              onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+              onChange={(e) => setForm({ ...form, customer_name: e.target.value, customer_id: "none" })}
             />
+            <p className="text-xs text-muted-foreground">Frei eingeben, auch wenn kein Kunde im Kundenstamm vorhanden ist.</p>
           </div>
 
           <div className="space-y-2 md:col-span-2 lg:col-span-3">
             <Label htmlFor="to_location">Nach (Ziel / Adresse)</Label>
-            <Input
-              id="to_location"
-              placeholder="Straße, Hausnummer, PLZ, Ort – frei bearbeitbar"
-              value={form.to_location}
-              onChange={(e) => setForm({ ...form, to_location: e.target.value })}
-            />
-            <p className="text-xs text-muted-foreground">
-              Bei Kundenauswahl wird die Einsatzadresse übernommen. Bei „Hin- und Rückfahrt“ umfasst der Kilometerstand die komplette reale Fahrt bis zur Rückkehr; die Strecke wird nicht künstlich verdoppelt.
-            </p>
+            <Input id="to_location" placeholder="Straße, Hausnummer, PLZ, Ort – frei bearbeitbar" value={form.to_location} onChange={(e) => setForm({ ...form, to_location: e.target.value })} />
+            <p className="text-xs text-muted-foreground">Bei Kundenauswahl wird die Einsatzadresse übernommen. Bei Hin- und Rückfahrt zählt die reale Strecke bis zur Rückkehr.</p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="start_km">Start-km</Label>
-            <Input
-              id="start_km"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.1"
-              placeholder="z. B. 12540"
-              value={form.start_km}
-              onChange={(e) => setForm({ ...form, start_km: e.target.value })}
-            />
+            <Input id="start_km" type="number" inputMode="decimal" min="0" step="0.1" placeholder="z. B. 12540" value={form.start_km} onChange={(e) => setForm({ ...form, start_km: e.target.value })} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="end_km">End-km</Label>
-            <Input
-              id="end_km"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.1"
-              placeholder="z. B. 12558"
-              value={form.end_km}
-              onChange={(e) => setForm({ ...form, end_km: e.target.value })}
-            />
+            <Input id="end_km" type="number" inputMode="decimal" min="0" step="0.1" placeholder="z. B. 12558" value={form.end_km} onChange={(e) => setForm({ ...form, end_km: e.target.value })} />
           </div>
 
           <div className="space-y-2">
             <Label>Strecke (automatisch)</Label>
-            <div className="flex h-9 items-center rounded-md border bg-muted px-3 font-semibold">
-              {formatKm(distance)} km
-            </div>
+            <div className="flex h-9 items-center rounded-md border bg-muted px-3 font-semibold">{formatKm(distance)} km</div>
           </div>
 
           <div className="space-y-2 md:col-span-2 lg:col-span-3">
             <Label htmlFor="notes">Bemerkung (optional)</Label>
-            <Textarea
-              id="notes"
-              rows={2}
-              placeholder="z. B. Kundentermin, Materiallieferung"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
+            <Textarea id="notes" rows={2} placeholder="z. B. Kundentermin, Besichtigung, Materiallieferung" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
         </div>
 
@@ -485,14 +450,15 @@ function Fahrtenbuch() {
           <div className="p-8 text-center text-sm text-muted-foreground">Noch keine Fahrten erfasst.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1180px] text-sm">
+            <table className="w-full min-w-[1280px] text-sm">
               <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">Datum</th>
-                  <th className="px-4 py-3 font-medium">Uhrzeit</th>
+                  <th className="px-4 py-3 font-medium">Startzeit</th>
+                  <th className="px-4 py-3 font-medium">Rückkehr</th>
                   <th className="px-4 py-3 font-medium">Fahrtart</th>
                   <th className="px-4 py-3 font-medium">Von</th>
-                  <th className="px-4 py-3 font-medium">Kunde</th>
+                  <th className="px-4 py-3 font-medium">Kunde / Ziel / Zweck</th>
                   <th className="px-4 py-3 font-medium">Nach / Adresse</th>
                   <th className="px-4 py-3 text-right font-medium">Start-km</th>
                   <th className="px-4 py-3 text-right font-medium">End-km</th>
@@ -506,6 +472,7 @@ function Fahrtenbuch() {
                   <tr key={entry.id} className="align-top">
                     <td className="whitespace-nowrap px-4 py-3 font-medium">{formatDate(entry.trip_date)}</td>
                     <td className="whitespace-nowrap px-4 py-3">{formatTime(entry.trip_time)}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{formatTime(entry.return_time)}</td>
                     <td className="whitespace-nowrap px-4 py-3">{tripTypeLabel(entry.trip_type ?? "one_way")}</td>
                     <td className="px-4 py-3">{entry.from_location}</td>
                     <td className="px-4 py-3">{entry.customer_name || "–"}</td>
@@ -516,12 +483,8 @@ function Fahrtenbuch() {
                     <td className="max-w-52 px-4 py-3 text-muted-foreground">{entry.notes || "–"}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
-                        <Button type="button" variant="ghost" size="icon" onClick={() => editEntry(entry)} aria-label="Fahrt bearbeiten">
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteId(entry.id)} aria-label="Fahrt löschen">
-                          <Trash2 className="size-4 text-destructive" />
-                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => editEntry(entry)} aria-label="Fahrt bearbeiten"><Pencil className="size-4" /></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteId(entry.id)} aria-label="Fahrt löschen"><Trash2 className="size-4 text-destructive" /></Button>
                       </div>
                     </td>
                   </tr>
@@ -540,12 +503,7 @@ function Fahrtenbuch() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteId && remove.mutate(deleteId)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Löschen
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => deleteId && remove.mutate(deleteId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Löschen</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
