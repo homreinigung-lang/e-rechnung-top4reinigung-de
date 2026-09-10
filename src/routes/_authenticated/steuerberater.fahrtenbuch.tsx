@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Download, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { saveFile } from "@/lib/download";
 
 export const Route = createFileRoute("/_authenticated/steuerberater/fahrtenbuch")({
   head: () => ({ meta: [{ title: "Fahrtenbuch – Steuerberater" }] }),
@@ -50,19 +51,14 @@ function csvEscape(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 
-function downloadCsv(name: string, rows: unknown[][]) {
+async function downloadCsv(name: string, rows: unknown[][]) {
   if (rows.length <= 1) {
     toast.error("Keine Fahrten im gewählten Zeitraum.");
     return;
   }
   const csv = "\uFEFF" + rows.map((r) => r.map(csvEscape).join(";")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
+  await saveFile(blob, name);
 }
 
 function SteuerberaterFahrtenbuch() {
@@ -71,7 +67,7 @@ function SteuerberaterFahrtenbuch() {
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const db = supabase as any;
 
-  const { data: trips = [] } = useQuery<Trip[]>({
+  const { data: trips = [], error: tripsError } = useQuery<Trip[]>({
     queryKey: ["stb_fahrtenbuch", from, to],
     queryFn: async () => {
       const { data, error } = await db
@@ -86,23 +82,31 @@ function SteuerberaterFahrtenbuch() {
     },
   });
 
-  const { data: vehicles = [] } = useQuery<Vehicle[]>({
+  const { data: vehicles = [], error: vehiclesError } = useQuery<Vehicle[]>({
     queryKey: ["stb_fahrtenbuch_vehicles"],
     queryFn: async () => {
-      const { data, error } = await db.from("fahrtenbuch_vehicles").select("id,vehicle_name,license_plate").order("vehicle_name");
+      const { data, error } = await db
+        .from("fahrtenbuch_vehicles")
+        .select("id,vehicle_name,license_plate")
+        .order("vehicle_name");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: monthly = [] } = useQuery<Monthly[]>({
+  const { data: monthly = [], error: monthlyError } = useQuery<Monthly[]>({
     queryKey: ["stb_fahrtenbuch_monthly"],
     queryFn: async () => {
-      const { data, error } = await db.from("fahrtenbuch_monthly_odometer").select("*").order("month");
+      const { data, error } = await db
+        .from("fahrtenbuch_monthly_odometer")
+        .select("*")
+        .order("month");
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const loadError = tripsError || vehiclesError || monthlyError;
 
   const totalBusinessKm = useMemo(
     () => trips.reduce((sum, trip) => sum + Number(trip.distance_km || 0), 0),
@@ -126,70 +130,203 @@ function SteuerberaterFahrtenbuch() {
       });
   }, [monthly, vehicles, trips, from, to]);
 
-  function tripCsv() {
+  async function tripCsv() {
     const rows: unknown[][] = [[
-      "Datum", "Startzeit", "Rückkehrzeit", "Fahrtart", "Fahrzeug", "Kennzeichen",
-      "Von", "Kunde / Ziel / Zweck", "Zieladresse", "Start-km", "End-km", "Geschäftliche km", "Bemerkung",
+      "Datum",
+      "Startzeit",
+      "Rückkehrzeit",
+      "Fahrtart",
+      "Fahrzeug",
+      "Kennzeichen",
+      "Von",
+      "Kunde / Ziel / Zweck",
+      "Zieladresse",
+      "Start-km",
+      "End-km",
+      "Geschäftliche km",
+      "Bemerkung",
     ]];
     trips.forEach((trip) => {
       const vehicle = vehicles.find((v) => v.id === trip.vehicle_id);
       rows.push([
-        deDate(trip.trip_date), trip.trip_time?.slice(0, 5) ?? "", trip.return_time?.slice(0, 5) ?? "",
+        deDate(trip.trip_date),
+        trip.trip_time?.slice(0, 5) ?? "",
+        trip.return_time?.slice(0, 5) ?? "",
         trip.trip_type === "round_trip" ? "Hin- und Rückfahrt" : "Nur Hinfahrt",
-        vehicle?.vehicle_name ?? "", vehicle?.license_plate ?? "", trip.from_location,
-        trip.customer_name, trip.to_location, trip.start_km, trip.end_km, trip.distance_km, trip.notes,
+        vehicle?.vehicle_name ?? "",
+        vehicle?.license_plate ?? "",
+        trip.from_location,
+        trip.customer_name,
+        trip.to_location,
+        trip.start_km,
+        trip.end_km,
+        trip.distance_km,
+        trip.notes,
       ]);
     });
-    downloadCsv(`Fahrtenbuch_${from}_${to}.csv`, rows);
+    await downloadCsv(`Fahrtenbuch_${from}_${to}.csv`, rows);
   }
 
-  function monthlyCsv() {
+  async function monthlyCsv() {
     const rows: unknown[][] = [[
-      "Monat", "Fahrzeug", "Kennzeichen", "Km Monatsanfang", "Km Monatsende",
-      "Gesamt gefahren", "Geschäftlich", "Privat / sonstig / nicht erfasst",
+      "Monat",
+      "Fahrzeug",
+      "Kennzeichen",
+      "Km Monatsanfang",
+      "Km Monatsende",
+      "Gesamt gefahren",
+      "Geschäftlich",
+      "Privat / sonstig / nicht erfasst",
     ]];
-    monthSummaries.forEach(({ row, vehicle, total, business, other }) => rows.push([
-      row.month.slice(0, 7), vehicle?.vehicle_name ?? "", vehicle?.license_plate ?? "",
-      row.start_km, row.end_km ?? "", total ?? "", business, other ?? "",
-    ]));
-    downloadCsv(`Fahrtenbuch_Monatsuebersicht_${from}_${to}.csv`, rows);
+    monthSummaries.forEach(({ row, vehicle, total, business, other }) =>
+      rows.push([
+        row.month.slice(0, 7),
+        vehicle?.vehicle_name ?? "",
+        vehicle?.license_plate ?? "",
+        row.start_km,
+        row.end_km ?? "",
+        total ?? "",
+        business,
+        other ?? "",
+      ]),
+    );
+    if (rows.length <= 1) {
+      toast.error("Keine Monatsstände im gewählten Zeitraum.");
+      return;
+    }
+    await downloadCsv(`Fahrtenbuch_Monatsuebersicht_${from}_${to}.csv`, rows);
   }
 
   return (
     <div className="space-y-6">
       <div className="no-print">
         <h1 className="text-2xl font-semibold">Steuerberater · Fahrtenbuch</h1>
-        <p className="text-sm text-muted-foreground">Geschäftliche Fahrten und Monatsabgleich je Fahrzeug für den gewählten Zeitraum.</p>
+        <p className="text-sm text-muted-foreground">
+          Geschäftliche Fahrten und Monatsabgleich je Fahrzeug für den gewählten Zeitraum.
+        </p>
       </div>
 
+      {loadError ? (
+        <div className="no-print rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          Fahrtenbuch-Daten konnten nicht geladen werden: {loadError instanceof Error ? loadError.message : "Unbekannter Fehler"}
+        </div>
+      ) : null}
+
       <section className="no-print grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2">
-        <div className="space-y-1"><Label>Zeitraum von</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-        <div className="space-y-1"><Label>Zeitraum bis</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        <div className="space-y-1">
+          <Label>Zeitraum von</Label>
+          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label>Zeitraum bis</Label>
+          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </div>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <Button onClick={tripCsv}><Download className="size-4" /> Fahrtenbuch CSV</Button>
-          <Button variant="outline" onClick={monthlyCsv}><Download className="size-4" /> Monatsübersicht CSV</Button>
-          <Button variant="outline" onClick={() => window.print()}><FileText className="size-4" /> Als PDF drucken</Button>
+          <Button onClick={() => void tripCsv()}>
+            <Download className="size-4" /> Fahrtenbuch CSV
+          </Button>
+          <Button variant="outline" onClick={() => void monthlyCsv()}>
+            <Download className="size-4" /> Monatsübersicht CSV
+          </Button>
+          <Button variant="outline" onClick={() => window.print()}>
+            <FileText className="size-4" /> Als PDF drucken
+          </Button>
         </div>
       </section>
 
       <section className="print-area rounded-lg border bg-card p-5">
-        <h2 className="text-lg font-semibold">Fahrtenbuch {deDate(from)} – {deDate(to)}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Geschäftlich erfasste Kilometer: <strong>{deKm(totalBusinessKm)} km</strong></p>
+        <h2 className="text-lg font-semibold">
+          Fahrtenbuch {deDate(from)} – {deDate(to)}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Geschäftlich erfasste Kilometer: <strong>{deKm(totalBusinessKm)} km</strong>
+        </p>
+        {trips.length === 0 && !loadError ? (
+          <p className="mt-4 rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
+            Im gewählten Zeitraum sind keine Fahrten erfasst.
+          </p>
+        ) : null}
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[1250px] text-sm">
-            <thead className="bg-muted/50 text-left text-xs"><tr><th className="p-2">Datum</th><th className="p-2">Zeit</th><th className="p-2">Rückkehr</th><th className="p-2">Fahrzeug</th><th className="p-2">Kennzeichen</th><th className="p-2">Fahrtart</th><th className="p-2">Von</th><th className="p-2">Ziel / Zweck</th><th className="p-2">Nach</th><th className="p-2 text-right">Start-km</th><th className="p-2 text-right">End-km</th><th className="p-2 text-right">km</th></tr></thead>
-            <tbody className="divide-y">{trips.map((trip) => { const vehicle = vehicles.find((v) => v.id === trip.vehicle_id); return <tr key={trip.id}><td className="p-2">{deDate(trip.trip_date)}</td><td className="p-2">{trip.trip_time?.slice(0,5) ?? "–"}</td><td className="p-2">{trip.return_time?.slice(0,5) ?? "–"}</td><td className="p-2">{vehicle?.vehicle_name ?? "–"}</td><td className="p-2">{vehicle?.license_plate ?? "–"}</td><td className="p-2">{trip.trip_type === "round_trip" ? "Hin + Rück" : "Hinfahrt"}</td><td className="p-2">{trip.from_location}</td><td className="p-2">{trip.customer_name}</td><td className="p-2">{trip.to_location}</td><td className="p-2 text-right">{deKm(trip.start_km)}</td><td className="p-2 text-right">{deKm(trip.end_km)}</td><td className="p-2 text-right font-semibold">{deKm(trip.distance_km)}</td></tr>; })}</tbody>
+            <thead className="bg-muted/50 text-left text-xs">
+              <tr>
+                <th className="p-2">Datum</th>
+                <th className="p-2">Zeit</th>
+                <th className="p-2">Rückkehr</th>
+                <th className="p-2">Fahrzeug</th>
+                <th className="p-2">Kennzeichen</th>
+                <th className="p-2">Fahrtart</th>
+                <th className="p-2">Von</th>
+                <th className="p-2">Ziel / Zweck</th>
+                <th className="p-2">Nach</th>
+                <th className="p-2 text-right">Start-km</th>
+                <th className="p-2 text-right">End-km</th>
+                <th className="p-2 text-right">km</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {trips.map((trip) => {
+                const vehicle = vehicles.find((v) => v.id === trip.vehicle_id);
+                return (
+                  <tr key={trip.id}>
+                    <td className="p-2">{deDate(trip.trip_date)}</td>
+                    <td className="p-2">{trip.trip_time?.slice(0, 5) ?? "–"}</td>
+                    <td className="p-2">{trip.return_time?.slice(0, 5) ?? "–"}</td>
+                    <td className="p-2">{vehicle?.vehicle_name ?? "–"}</td>
+                    <td className="p-2">{vehicle?.license_plate ?? "–"}</td>
+                    <td className="p-2">{trip.trip_type === "round_trip" ? "Hin + Rück" : "Hinfahrt"}</td>
+                    <td className="p-2">{trip.from_location}</td>
+                    <td className="p-2">{trip.customer_name}</td>
+                    <td className="p-2">{trip.to_location}</td>
+                    <td className="p-2 text-right">{deKm(trip.start_km)}</td>
+                    <td className="p-2 text-right">{deKm(trip.end_km)}</td>
+                    <td className="p-2 text-right font-semibold">{deKm(trip.distance_km)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
           </table>
         </div>
       </section>
 
       <section className="print-area rounded-lg border bg-card p-5">
         <h2 className="text-lg font-semibold">Monatsabgleich je Fahrzeug</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Differenz aus Monatsendstand minus Monatsanfangsstand, abgeglichen mit den geschäftlichen Fahrten.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Differenz aus Monatsendstand minus Monatsanfangsstand, abgeglichen mit den geschäftlichen Fahrten.
+        </p>
+        {monthSummaries.length === 0 && !loadError ? (
+          <p className="mt-4 rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
+            Für den gewählten Zeitraum sind noch keine Monatsstände hinterlegt.
+          </p>
+        ) : null}
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
-            <thead className="bg-muted/50 text-left text-xs"><tr><th className="p-2">Monat</th><th className="p-2">Fahrzeug</th><th className="p-2">Kennzeichen</th><th className="p-2 text-right">Anfang</th><th className="p-2 text-right">Ende</th><th className="p-2 text-right">Gesamt</th><th className="p-2 text-right">Geschäftlich</th><th className="p-2 text-right">Privat / sonstig / nicht erfasst</th></tr></thead>
-            <tbody className="divide-y">{monthSummaries.map(({ row, vehicle, total, business, other }) => <tr key={row.id}><td className="p-2">{row.month.slice(0,7)}</td><td className="p-2">{vehicle?.vehicle_name ?? "–"}</td><td className="p-2">{vehicle?.license_plate ?? "–"}</td><td className="p-2 text-right">{deKm(row.start_km)}</td><td className="p-2 text-right">{row.end_km == null ? "–" : deKm(row.end_km)}</td><td className="p-2 text-right">{total == null ? "–" : `${deKm(total)} km`}</td><td className="p-2 text-right">{deKm(business)} km</td><td className="p-2 text-right">{other == null ? "–" : `${deKm(other)} km`}</td></tr>)}</tbody>
+            <thead className="bg-muted/50 text-left text-xs">
+              <tr>
+                <th className="p-2">Monat</th>
+                <th className="p-2">Fahrzeug</th>
+                <th className="p-2">Kennzeichen</th>
+                <th className="p-2 text-right">Anfang</th>
+                <th className="p-2 text-right">Ende</th>
+                <th className="p-2 text-right">Gesamt</th>
+                <th className="p-2 text-right">Geschäftlich</th>
+                <th className="p-2 text-right">Privat / sonstig / nicht erfasst</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {monthSummaries.map(({ row, vehicle, total, business, other }) => (
+                <tr key={row.id}>
+                  <td className="p-2">{row.month.slice(0, 7)}</td>
+                  <td className="p-2">{vehicle?.vehicle_name ?? "–"}</td>
+                  <td className="p-2">{vehicle?.license_plate ?? "–"}</td>
+                  <td className="p-2 text-right">{deKm(row.start_km)}</td>
+                  <td className="p-2 text-right">{row.end_km == null ? "–" : deKm(row.end_km)}</td>
+                  <td className="p-2 text-right">{total == null ? "–" : `${deKm(total)} km`}</td>
+                  <td className="p-2 text-right">{deKm(business)} km</td>
+                  <td className="p-2 text-right">{other == null ? "–" : `${deKm(other)} km`}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       </section>
