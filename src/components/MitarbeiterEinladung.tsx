@@ -1,11 +1,13 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, RefreshCw } from "lucide-react";
+import { Copy, Mail, RefreshCw } from "lucide-react";
+import { sendEmployeeInvite } from "@/lib/employee-invite.functions";
 
 /** Zufälliger Unternehmens-Code (12 Zeichen, ohne verwechselbare Zeichen). */
 function randomCode(): string {
@@ -22,6 +24,8 @@ function randomCode(): string {
  */
 export function MitarbeiterEinladung() {
   const qc = useQueryClient();
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const sendInviteFn = useServerFn(sendEmployeeInvite);
 
   const { data, isLoading } = useQuery({
     queryKey: ["company_invite_code"],
@@ -59,6 +63,26 @@ export function MitarbeiterEinladung() {
       toast.success("Neuer Unternehmens-Code erstellt. Alte Einladungen sind ungültig.");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const sendInvite = useMutation({
+    mutationFn: async () =>
+      sendInviteFn({
+        data: {
+          email: inviteEmail.trim(),
+          origin: window.location.origin,
+        },
+      }),
+    onSuccess: (res) => {
+      toast.success(`Einladung an ${res.to} versendet.`, {
+        description: res.cc
+          ? `Eine Kopie wurde als Versandbestätigung an ${res.cc} gesendet.`
+          : "Die Einladung wurde vom E-Mail-Dienst angenommen.",
+        duration: 8000,
+      });
+      setInviteEmail("");
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 10000 }),
   });
 
   const code = data?.invite_code ?? "";
@@ -125,6 +149,31 @@ export function MitarbeiterEinladung() {
               <Copy className="size-4" />
             </Button>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-muted/20 p-4">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="space-y-2">
+            <Label htmlFor="employee-invite-email">E-Mail des Mitarbeiters</Label>
+            <Input
+              id="employee-invite-email"
+              type="email"
+              placeholder="mitarbeiter@beispiel.de"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Die Einladung wird direkt per E-Mail gesendet. Die Firmen-E-Mail erhält automatisch eine Kopie als Versandbestätigung.
+            </p>
+          </div>
+          <Button
+            type="button"
+            disabled={!code || !inviteEmail.trim() || sendInvite.isPending}
+            onClick={() => sendInvite.mutate()}
+          >
+            <Mail className="size-4" /> Einladung per E-Mail senden
+          </Button>
         </div>
       </div>
 
