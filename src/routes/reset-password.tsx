@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,43 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  // "checking" = Link wird geprüft, "ready" = gültige Sitzung, "invalid" = Link ungültig/abgelaufen
+  const [linkState, setLinkState] = useState<"checking" | "ready" | "invalid">("checking");
+
+  useEffect(() => {
+    let active = true;
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      if (session && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN")) setLinkState("ready");
+    });
+
+    (async () => {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const errorInUrl = url.searchParams.get("error") ?? hash.get("error");
+
+      if (!errorInUrl && code) {
+        // PKCE-Variante: Code gegen eine Sitzung tauschen.
+        try {
+          await supabase.auth.exchangeCodeForSession(code);
+        } catch {
+          /* unten wird ohnehin auf eine Sitzung geprüft */
+        }
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      setLinkState(data.session ? "ready" : errorInUrl || !window.location.hash ? "invalid" : "invalid");
+    })();
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
