@@ -48,6 +48,7 @@ const ownerMoreGroups: readonly NavGroup[] = [
     { to: "/dashboard", label: "EÜR", icon: BarChart3, hash: "euer" },
     { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
     { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
+    { to: "/steuerberater/fahrtenbuch", label: "Fahrtenbuch für Steuerberater", icon: Car },
   ]},
   { title: "Verwaltung", items: [
     { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
