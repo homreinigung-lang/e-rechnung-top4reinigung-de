@@ -8,20 +8,6 @@ function replaceStrict(source, from, to, label = from.slice(0, 80)) {
   return source.replace(from, to);
 }
 
-function removeBetween(source, start, end, label) {
-  const a = source.indexOf(start);
-  if (a < 0) {
-    console.error(`Abbruch: Startmarker nicht gefunden (${label}).`);
-    process.exit(1);
-  }
-  const b = source.indexOf(end, a);
-  if (b < 0) {
-    console.error(`Abbruch: Endmarker nicht gefunden (${label}).`);
-    process.exit(1);
-  }
-  return source.slice(0, a) + source.slice(b + end.length);
-}
-
 const kalkFile = "src/routes/_authenticated/kalkulation.tsx";
 let source = readFileSync(kalkFile, "utf8");
 
@@ -54,8 +40,8 @@ const replacements = [
     "Positionen des normalen Kundenangebots – automatisch vorgeschlagen oder manuell ergänzt.\n                  Jede Zeile bleibt frei änderbar.",
   ],
   [
-    "Das Leistungsverzeichnis weicht vom aktuellen Vorschlag ab: Bereich\n                      „Kalkulation\" {formatMoney(lvCalcTotal)} statt {formatMoney(suggested)}. Ein\n                      Angebot würde den veralteten Stand übernehmen.",
-    "Die Angebotspositionen weichen vom aktuellen Kalkulationsvorschlag ab: Bereich\n                      „Kalkulation\" {formatMoney(lvCalcTotal)} statt {formatMoney(suggested)}. Bitte\n                      die aktuellen Werte übernehmen, bevor das Angebot erstellt wird.",
+    'Das Leistungsverzeichnis weicht vom aktuellen Vorschlag ab: Bereich\n                      „Kalkulation" {formatMoney(lvCalcTotal)} statt {formatMoney(suggested)}. Ein\n                      Angebot würde den veralteten Stand übernehmen.',
+    'Die Angebotspositionen weichen vom aktuellen Kalkulationsvorschlag ab: Bereich\n                      „Kalkulation" {formatMoney(lvCalcTotal)} statt {formatMoney(suggested)}. Bitte\n                      die aktuellen Werte übernehmen, bevor das Angebot erstellt wird.',
   ],
   ["Grundkalkulation für Angebot übernehmen", "Kalkulationswerte als Angebotspositionen übernehmen"],
   ["Positionen aus Projekt-LV laden", "Positionen aus verknüpftem Projekt laden"],
@@ -80,8 +66,8 @@ const replacements = [
     "Diese Positionen sind ein Vorschlag und gelangen erst nach Ihrer Bestätigung in das Angebot.",
   ],
   [
-    "Im Leistungsverzeichnis steht für diesen Bereich {formatMoney(lvKiTotal)} statt{\" \"}\n                    {formatMoney(kiTotal)}.",
-    "In den Angebotspositionen steht für diesen Bereich {formatMoney(lvKiTotal)} statt{\" \"}\n                    {formatMoney(kiTotal)}.",
+    'Im Leistungsverzeichnis steht für diesen Bereich {formatMoney(lvKiTotal)} statt{" "}\n                    {formatMoney(kiTotal)}.',
+    'In den Angebotspositionen steht für diesen Bereich {formatMoney(lvKiTotal)} statt{" "}\n                    {formatMoney(kiTotal)}.',
   ],
   ['proposalTitle.trim() ? `Ausschreibung: ${proposalTitle.trim()}` : "",', 'proposalTitle.trim() ? `Angebot: ${proposalTitle.trim()}` : "",'],
   ['title: proposalTitle.trim() || `Leistungsverzeichnis ${selected.label}`,', 'title: proposalTitle.trim() || `Angebotspositionen ${selected.label}`,'],
