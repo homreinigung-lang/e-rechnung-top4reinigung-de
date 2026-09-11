@@ -114,7 +114,7 @@ function normalizeItems(value: unknown): GeneratedItem[] {
 
 export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
   const parsed = await generateGeminiJson({
-    model: process.env["GEMINI_MODEL_CALC"] || "gemini-2.5-flash",
+    model: process.env["GEMINI_MODEL_CALC"] || "gemini-3.6-flash",
     system: `${SYSTEM}\nAntworte ausschließlich mit JSON gemäß Schema.`,
     prompt: `Erstelle 3 bis 10 sinnvolle Angebotspositionen für: ${canonicalPrompt(prompt)}`,
     schema: ITEMS_SCHEMA,
@@ -124,7 +124,7 @@ export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
 
 export async function generateCalculation(prompt: string): Promise<GeneratedCalculation> {
   const parsed = await generateGeminiJson({
-    model: process.env["GEMINI_MODEL_CALC"] || "gemini-2.5-flash",
+    model: process.env["GEMINI_MODEL_CALC"] || "gemini-3.6-flash",
     system: `${SYSTEM}\nAntworte ausschließlich mit JSON gemäß Schema.`,
     prompt: `Analysiere diese Reinigungsanfrage für die Kalkulation: ${canonicalPrompt(prompt)}\ncleaning_type: unterhalt|grund|bau|glas|treppenhaus|buero. mode: area|hours. frequency_unit: week|month. Unbekannte Werte mit 0 bzw. leerem Text ausgeben.`,
     schema: CALC_SCHEMA,
