@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "deploy": "bun run build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "finalize:staging": "node scripts/cleanup-kalkulation-ui.mjs && node scripts/finalize-navigation-ui.mjs",
+    "finalize:staging": "node scripts/sync-main-final-fixes.mjs && node scripts/cleanup-kalkulation-ui.mjs && node scripts/finalize-navigation-ui.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
