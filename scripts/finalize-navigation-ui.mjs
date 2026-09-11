@@ -2,8 +2,15 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const appShellFile = "src/components/AppShell.tsx";
 let appShell = readFileSync(appShellFile, "utf8").replace(/\r\n/g, "\n");
+
+// Fahrtenbuch soll nur im Steuerberater-Bereich sichtbar sein. Sowohl alte
+// Bezeichnungen als auch der allgemeine Arbeit-Menüpunkt werden entfernt.
 appShell = appShell.replace(
   '    { to: "/steuerberater/fahrtenbuch", label: "Fahrtenbuch für Steuerberater", icon: Car },\n',
+  "",
+);
+appShell = appShell.replace(
+  '    { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },\n',
   "",
 );
 writeFileSync(appShellFile, appShell, "utf8");
