@@ -147,8 +147,8 @@ async function analyseWithGemini(prompt: string, dataUrl?: string, mimeType?: st
     system: SYSTEM,
     prompt,
     schema: RESPONSE_SCHEMA,
-    dataUrl,
-    mimeType,
+    ...(dataUrl ? { dataUrl } : {}),
+    ...(mimeType ? { mimeType } : {}),
   });
   return normalize(parsed);
 }
