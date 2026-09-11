@@ -1,11 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-function replaceStrict(source, from, to, label = from.slice(0, 80)) {
-  if (!source.includes(from)) {
-    console.error(`Abbruch: erwarteter Text nicht gefunden (${label}).`);
-    process.exit(1);
-  }
-  return source.replace(from, to);
+function replaceSafe(source, from, to, label = from.slice(0, 80)) {
+  if (source.includes(from)) return source.replace(from, to);
+  if (source.includes(to)) return source;
+  console.error(`Abbruch: weder alter noch finaler Text gefunden (${label}).`);
+  process.exit(1);
 }
 
 const kalkFile = "src/routes/_authenticated/kalkulation.tsx";
@@ -77,36 +76,35 @@ const replacements = [
   ['toast.success(`${rows.length} Positionen aus dem Projekt-LV übernommen`);', 'toast.success(`${rows.length} Positionen aus dem verknüpften Projekt übernommen`);'],
 ];
 
-for (const [from, to] of replacements) source = replaceStrict(source, from, to);
+for (const [from, to] of replacements) source = replaceSafe(source, from, to);
 
-source = replaceStrict(
-  source,
-  '  const [tenderDocs, setTenderDocs] = useState<Attachment[]>([]);\n',
-  "",
-  "tenderDocs state",
-);
+const tenderState = '  const [tenderDocs, setTenderDocs] = useState<Attachment[]>([]);\n';
+if (source.includes(tenderState)) source = source.replace(tenderState, "");
 
 const tenderStart = '              <div className="space-y-3 rounded-md border p-3">\n                <div>\n                  <Label>Vergabeunterlagen</Label>';
 const tenderEnd = '              </div>\n            </CardContent>\n          </Card>';
 const startIndex = source.indexOf(tenderStart);
-if (startIndex < 0) {
-  console.error("Abbruch: Vergabeunterlagen-Block nicht gefunden.");
-  process.exit(1);
+if (startIndex >= 0) {
+  const endIndex = source.indexOf(tenderEnd, startIndex);
+  if (endIndex < 0) {
+    console.error("Abbruch: Ende des Vergabeunterlagen-Blocks nicht gefunden.");
+    process.exit(1);
+  }
+  source = source.slice(0, startIndex) + '            </CardContent>\n          </Card>' + source.slice(endIndex + tenderEnd.length);
 }
-const endIndex = source.indexOf(tenderEnd, startIndex);
-if (endIndex < 0) {
-  console.error("Abbruch: Ende des Vergabeunterlagen-Blocks nicht gefunden.");
-  process.exit(1);
-}
-source = source.slice(0, startIndex) + '            </CardContent>\n          </Card>' + source.slice(endIndex + tenderEnd.length);
 
 writeFileSync(kalkFile, source, "utf8");
 
 const stbFile = "src/routes/_authenticated/steuerberater.tsx";
 let stb = readFileSync(stbFile, "utf8").replace(/\r\n/g, "\n");
 const exportMarker = '      <section className="no-print flex flex-wrap gap-2">\n        <Button\n          onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}';
-const exportReplacement = '      <section className="no-print flex flex-wrap gap-2">\n        <Button variant="outline" onClick={() => { window.location.href = "/steuerberater/fahrtenbuch"; }}>\n          <FileText className="size-4" /> Fahrtenbuch für Steuerberater\n        </Button>\n        <Button\n          onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}';
-stb = replaceStrict(stb, exportMarker, exportReplacement, "Steuerberater Fahrtenbuch link");
+const exportReplacement = '      <section className="no-print flex flex-wrap gap-2">\n        <Button variant="outline" onClick={() => { window.location.href = "/steuerberater/fahrtenbuch"; }}>\n          <FileText className="size-4" /> Fahrtenbuch\n        </Button>\n        <Button\n          onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}';
+if (stb.includes(exportMarker)) {
+  stb = stb.replace(exportMarker, exportReplacement);
+} else if (!stb.includes('window.location.href = "/steuerberater/fahrtenbuch"')) {
+  console.error("Abbruch: Steuerberater-Fahrtenbuch-Link weder alt noch final gefunden.");
+  process.exit(1);
+}
 writeFileSync(stbFile, stb, "utf8");
 
-console.log("Staging UI finalisiert: Kalkulation bereinigt und Fahrtenbuch im Steuerberater verlinkt.");
+console.log("Staging UI finalisiert: bereits fertige Änderungen werden sicher übersprungen.");
