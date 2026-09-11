@@ -76,14 +76,17 @@ const fbFile = "src/routes/_authenticated/steuerberater.fahrtenbuch.tsx";
 const fbBefore = readFileSync(fbFile, "utf8").replace(/\r\n/g, "\n");
 let fb = fbBefore;
 
-if (!fb.includes('import { jsPDF } from "jspdf";')) {
+const hasStandalonePdf =
+  fb.includes("async function buildPdf(") || fb.includes("async function fahrtenbuchPdf()");
+
+if (!hasStandalonePdf && !fb.includes('import { jsPDF } from "jspdf";')) {
   fb = fb.replace(
     'import { useMemo, useState } from "react";\n',
     'import { useMemo, useState } from "react";\nimport { jsPDF } from "jspdf";\n',
   );
 }
 
-if (!fb.includes("async function fahrtenbuchPdf()")) {
+if (!hasStandalonePdf) {
   const marker = `  async function monthlyCsv() {`;
   const fn = `  async function fahrtenbuchPdf() {\n    if (trips.length === 0) {\n      toast.error("Keine Fahrten im gewählten Zeitraum.");\n      return;\n    }\n\n    const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });\n    const pageWidth = pdf.internal.pageSize.getWidth();\n    const margin = 10;\n    let y = 12;\n\n    const header = () => {\n      pdf.setFont("helvetica", "bold");\n      pdf.setFontSize(15);\n      pdf.text(\`Fahrtenbuch \${deDate(from)} – \${deDate(to)}\`, margin, y);\n      y += 7;\n      pdf.setFont("helvetica", "normal");\n      pdf.setFontSize(9);\n      pdf.text(\`Geschäftlich erfasste Kilometer: \${deKm(totalBusinessKm)} km\`, margin, y);\n      y += 7;\n      pdf.setFont("helvetica", "bold");\n      pdf.text("Datum | Zeit | Fahrzeug | Kennzeichen | Von | Ziel / Zweck | Nach | Start-km | End-km | km", margin, y);\n      y += 5;\n      pdf.setFont("helvetica", "normal");\n    };\n\n    header();\n    for (const trip of trips) {\n      const vehicle = vehicles.find((v) => v.id === trip.vehicle_id);\n      const line = [\n        deDate(trip.trip_date),\n        trip.trip_time?.slice(0, 5) ?? "–",\n        vehicle?.vehicle_name ?? "–",\n        vehicle?.license_plate ?? "–",\n        trip.from_location || "–",\n        trip.customer_name || "–",\n        trip.to_location || "–",\n        deKm(trip.start_km),\n        deKm(trip.end_km),\n        deKm(trip.distance_km),\n      ].join(" | ");\n      const lines = pdf.splitTextToSize(line, pageWidth - margin * 2);\n      if (y + lines.length * 4 > 195) {\n        pdf.addPage();\n        y = 12;\n        header();\n      }\n      pdf.setFontSize(8);\n      pdf.text(lines, margin, y);\n      y += lines.length * 4 + 2;\n    }\n\n    if (monthSummaries.length) {\n      pdf.addPage();\n      y = 12;\n      pdf.setFont("helvetica", "bold");\n      pdf.setFontSize(14);\n      pdf.text("Monatsabgleich je Fahrzeug", margin, y);\n      y += 8;\n      pdf.setFontSize(9);\n      for (const { row, vehicle, total, business, other } of monthSummaries) {\n        const line = [\n          row.month.slice(0, 7),\n          vehicle?.vehicle_name ?? "–",\n          vehicle?.license_plate ?? "–",\n          \`Anfang: \${deKm(row.start_km)}\`,\n          \`Ende: \${row.end_km == null ? "–" : deKm(row.end_km)}\`,\n          \`Gesamt: \${total == null ? "–" : deKm(total)} km\`,\n          \`Geschäftlich: \${deKm(business)} km\`,\n          \`Privat/sonstig: \${other == null ? "–" : deKm(other)} km\`,\n        ].join(" | ");\n        const lines = pdf.splitTextToSize(line, pageWidth - margin * 2);\n        if (y + lines.length * 4 > 195) {\n          pdf.addPage();\n          y = 12;\n        }\n        pdf.setFont("helvetica", "normal");\n        pdf.text(lines, margin, y);\n        y += lines.length * 4 + 2;\n      }\n    }\n\n    await saveFile(pdf.output("blob"), \`Fahrtenbuch_\${from}_\${to}.pdf\`);\n  }\n\n`;
   if (!fb.includes(marker)) {
