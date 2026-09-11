@@ -20,6 +20,15 @@ function extractText(payload: unknown): string {
   return (json.candidates?.[0]?.content?.parts ?? []).map((part) => part.text ?? "").join("").trim();
 }
 
+function googleErrorMessage(raw: string) {
+  try {
+    const parsed = JSON.parse(raw) as { error?: { message?: string } };
+    return parsed.error?.message?.trim() || raw.trim();
+  } catch {
+    return raw.trim();
+  }
+}
+
 export async function generateGeminiJson({
   model,
   system,
@@ -37,9 +46,10 @@ export async function generateGeminiJson({
     parts.push({ inlineData: { mimeType: mimeType || decoded.mimeType, data: decoded.data } });
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
+  async function request(withSchema: boolean) {
+    return fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
@@ -48,19 +58,36 @@ export async function generateGeminiJson({
         generationConfig: {
           temperature: 0,
           responseMimeType: "application/json",
-          responseSchema: schema,
+          ...(withSchema ? { responseSchema: schema } : {}),
         },
       }),
-    },
-  );
+    });
+  }
+
+  let response = await request(true);
+
+  // Einige Gemini-Endpunkte/Schema-Kombinationen lehnen ein gültiges, aber nicht
+  // unterstütztes responseSchema mit HTTP 400 ab. In diesem Fall fällt der
+  // zentrale Helfer einmal auf JSON-Modus ohne Schema zurück. Die Fachlogik
+  // bleibt unverändert und der Aufrufer erhält weiterhin valides JSON.
+  if (response.status === 400) {
+    const firstDetail = (await response.text()).slice(0, 1000);
+    console.warn(`Gemini schema request rejected [400], retrying JSON mode: ${firstDetail}`);
+    response = await request(false);
+  }
 
   if (response.status === 429) throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
   if (response.status === 401 || response.status === 403)
     throw new Error("KI-Zugang ist nicht korrekt konfiguriert.");
   if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500);
-    console.error(`Gemini request failed [${response.status}]: ${detail}`);
-    throw new Error(`KI-Analyse fehlgeschlagen (${response.status}).`);
+    const raw = (await response.text()).slice(0, 1000);
+    const detail = googleErrorMessage(raw);
+    console.error(`Gemini request failed [${response.status}]: ${raw}`);
+    throw new Error(
+      detail
+        ? `KI-Analyse fehlgeschlagen (${response.status}): ${detail.slice(0, 240)}`
+        : `KI-Analyse fehlgeschlagen (${response.status}).`,
+    );
   }
 
   const raw = extractText(await response.json());
