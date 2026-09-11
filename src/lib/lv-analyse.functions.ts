@@ -143,7 +143,7 @@ function normalize(parsed: Record<string, unknown>): LvAnalyseResponse {
 
 async function analyseWithGemini(prompt: string, dataUrl?: string, mimeType?: string): Promise<LvAnalyseResponse> {
   const parsed = await generateGeminiJson({
-    model: process.env["GEMINI_MODEL_LV"] || "gemini-2.5-flash",
+    model: process.env["GEMINI_MODEL_LV"] || "gemini-3.6-flash",
     system: SYSTEM,
     prompt,
     schema: RESPONSE_SCHEMA,
