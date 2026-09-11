@@ -5,7 +5,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
   "vars": {
-    "SUPABASE_URL": "https://squkjqvofugkanzuqtqn.supabase.co"
+    "SUPABASE_URL": "https://squkjqvofugkanzuqtqn.supabase.co",
+    "PUBLIC_SITE_URL": "https://gebcalc-staging.homreinigung.workers.dev",
+    "RESEND_FROM": "GebCalc <info@top4reinigung.de>"
   },
   "observability": {
     "enabled": true
