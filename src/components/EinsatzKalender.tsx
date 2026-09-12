@@ -541,7 +541,13 @@ export function EinsatzKalender({
   const removePlan = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("time_entries").delete().eq("id", id);
-      if (error) throw error;
+      if (error)
+        throw new Error(
+          friendlyDbError(
+            error,
+            'Einsatz konnte nicht gelöscht werden. Erledigte Einsätze bitte zuerst über "Erledigt zurücknehmen" öffnen.',
+          ),
+        );
     },
     onSuccess: () => {
       toast.success("Einsatz entfernt");
@@ -609,6 +615,24 @@ export function EinsatzKalender({
         .eq("id", id)
         .neq("status", "completed");
       if (error) throw new Error(friendlyDbError(error, "Einsatz konnte nicht verschoben werden."));
+
+      // Teamzuordnung mit dem Haupt-Mitarbeiter synchron halten.
+      if (employeeId && source?.employee_id && source.employee_id !== employeeId) {
+        await supabase
+          .from("time_entry_employees")
+          .delete()
+          .eq("time_entry_id", id)
+          .eq("employee_id", source.employee_id);
+        const others = teamByEntry.get(id) ?? [];
+        if (others.some((m) => m.employeeId !== source.employee_id)) {
+          await supabase
+            .from("time_entry_employees")
+            .upsert(
+              { time_entry_id: id, employee_id: employeeId },
+              { onConflict: "time_entry_id,employee_id", ignoreDuplicates: true },
+            );
+        }
+      }
 
     },
     onSuccess: () => {
