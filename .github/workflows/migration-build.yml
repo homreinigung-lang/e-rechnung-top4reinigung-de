@@ -36,7 +36,11 @@ jobs:
         run: bun run test
 
       - name: Build
-        run: bun run build
+        run: |
+          bun run build
+          test -s dist/server/index.js
+          test -s dist/server/wrangler.json
+          test -d dist/client/assets
 
       - name: Verify build leaves repository unchanged
         run: |
