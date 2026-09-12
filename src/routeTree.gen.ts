@@ -22,8 +22,11 @@ import { Route as AuthenticatedAusgabenRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBankverbindungRouteImport } from './routes/_authenticated/bankverbindung'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEinstellungenRouteImport } from './routes/_authenticated/einstellungen'
+import { Route as AuthenticatedFahrtenbuchRouteImport } from './routes/_authenticated/fahrtenbuch'
+import { Route as AuthenticatedGrundrissReviewRouteImport } from './routes/_authenticated/grundriss-review'
 import { Route as AuthenticatedHilfeRouteImport } from './routes/_authenticated/hilfe'
 import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenticated/kalkulation'
+import { Route as AuthenticatedKalkulationAngebotRouteImport } from './routes/_authenticated/kalkulation-angebot'
 import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/karte'
 import { Route as AuthenticatedLvAnalyseRouteImport } from './routes/_authenticated/lv-analyse'
 import { Route as AuthenticatedMeinPaketRouteImport } from './routes/_authenticated/mein-paket'
@@ -53,6 +56,7 @@ import { Route as AuthenticatedKundenIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedKundenIdRouteImport } from './routes/_authenticated/kunden.$id'
 import { Route as AuthenticatedProjekteIndexRouteImport } from './routes/_authenticated/projekte.index'
 import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authenticated/projekte.$id'
+import { Route as AuthenticatedSteuerberaterFahrtenbuchRouteImport } from './routes/_authenticated/steuerberater.fahrtenbuch'
 import { Route as ApiPublicFotoRetentionRouteImport } from './routes/api/public/foto-retention'
 import { Route as ApiPublicKontoFreigabeRouteImport } from './routes/api/public/konto-freigabe'
 
@@ -123,6 +127,18 @@ const AuthenticatedEinstellungenRoute =
     path: '/einstellungen',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFahrtenbuchRoute =
+  AuthenticatedFahrtenbuchRouteImport.update({
+    id: '/fahrtenbuch',
+    path: '/fahrtenbuch',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedGrundrissReviewRoute =
+  AuthenticatedGrundrissReviewRouteImport.update({
+    id: '/grundriss-review',
+    path: '/grundriss-review',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedHilfeRoute = AuthenticatedHilfeRouteImport.update({
   id: '/hilfe',
   path: '/hilfe',
@@ -132,6 +148,12 @@ const AuthenticatedKalkulationRoute =
   AuthenticatedKalkulationRouteImport.update({
     id: '/kalkulation',
     path: '/kalkulation',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedKalkulationAngebotRoute =
+  AuthenticatedKalkulationAngebotRouteImport.update({
+    id: '/kalkulation-angebot',
+    path: '/kalkulation-angebot',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedKarteRoute = AuthenticatedKarteRouteImport.update({
@@ -291,6 +313,12 @@ const AuthenticatedProjekteIdRoute = AuthenticatedProjekteIdRouteImport.update({
   path: '/projekte/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSteuerberaterFahrtenbuchRoute =
+  AuthenticatedSteuerberaterFahrtenbuchRouteImport.update({
+    id: '/fahrtenbuch',
+    path: '/fahrtenbuch',
+    getParentRoute: () => AuthenticatedSteuerberaterRoute,
+  } as any)
 const ApiPublicFotoRetentionRoute = ApiPublicFotoRetentionRouteImport.update({
   id: '/api/public/foto-retention',
   path: '/api/public/foto-retention',
@@ -315,8 +343,11 @@ export interface FileRoutesByFullPath {
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
+  '/fahrtenbuch': typeof AuthenticatedFahrtenbuchRoute
+  '/grundriss-review': typeof AuthenticatedGrundrissReviewRoute
   '/hilfe': typeof AuthenticatedHilfeRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
+  '/kalkulation-angebot': typeof AuthenticatedKalkulationAngebotRoute
   '/karte': typeof AuthenticatedKarteRoute
   '/lv-analyse': typeof AuthenticatedLvAnalyseRoute
   '/mein-paket': typeof AuthenticatedMeinPaketRoute
@@ -325,7 +356,7 @@ export interface FileRoutesByFullPath {
   '/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
-  '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/steuerberater': typeof AuthenticatedSteuerberaterRouteWithChildren
   '/team': typeof AuthenticatedTeamRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
@@ -342,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/steuerberater/fahrtenbuch': typeof AuthenticatedSteuerberaterFahrtenbuchRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -360,8 +392,11 @@ export interface FileRoutesByTo {
   '/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/einstellungen': typeof AuthenticatedEinstellungenRoute
+  '/fahrtenbuch': typeof AuthenticatedFahrtenbuchRoute
+  '/grundriss-review': typeof AuthenticatedGrundrissReviewRoute
   '/hilfe': typeof AuthenticatedHilfeRoute
   '/kalkulation': typeof AuthenticatedKalkulationRoute
+  '/kalkulation-angebot': typeof AuthenticatedKalkulationAngebotRoute
   '/karte': typeof AuthenticatedKarteRoute
   '/lv-analyse': typeof AuthenticatedLvAnalyseRoute
   '/mein-paket': typeof AuthenticatedMeinPaketRoute
@@ -370,7 +405,7 @@ export interface FileRoutesByTo {
   '/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/profil': typeof AuthenticatedProfilRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
-  '/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/steuerberater': typeof AuthenticatedSteuerberaterRouteWithChildren
   '/team': typeof AuthenticatedTeamRoute
   '/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
@@ -387,6 +422,7 @@ export interface FileRoutesByTo {
   '/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/steuerberater/fahrtenbuch': typeof AuthenticatedSteuerberaterFahrtenbuchRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -409,8 +445,11 @@ export interface FileRoutesById {
   '/_authenticated/bankverbindung': typeof AuthenticatedBankverbindungRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/einstellungen': typeof AuthenticatedEinstellungenRoute
+  '/_authenticated/fahrtenbuch': typeof AuthenticatedFahrtenbuchRoute
+  '/_authenticated/grundriss-review': typeof AuthenticatedGrundrissReviewRoute
   '/_authenticated/hilfe': typeof AuthenticatedHilfeRoute
   '/_authenticated/kalkulation': typeof AuthenticatedKalkulationRoute
+  '/_authenticated/kalkulation-angebot': typeof AuthenticatedKalkulationAngebotRoute
   '/_authenticated/karte': typeof AuthenticatedKarteRoute
   '/_authenticated/lv-analyse': typeof AuthenticatedLvAnalyseRoute
   '/_authenticated/mein-paket': typeof AuthenticatedMeinPaketRoute
@@ -419,7 +458,7 @@ export interface FileRoutesById {
   '/_authenticated/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
   '/_authenticated/sicherheit': typeof AuthenticatedSicherheitRoute
-  '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRoute
+  '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRouteWithChildren
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/wiederkehrend': typeof AuthenticatedWiederkehrendRoute
   '/rechtliches/agb': typeof RechtlichesAgbRoute
@@ -436,6 +475,7 @@ export interface FileRoutesById {
   '/_authenticated/dokumente/$id': typeof AuthenticatedDokumenteIdRoute
   '/_authenticated/kunden/$id': typeof AuthenticatedKundenIdRoute
   '/_authenticated/projekte/$id': typeof AuthenticatedProjekteIdRoute
+  '/_authenticated/steuerberater/fahrtenbuch': typeof AuthenticatedSteuerberaterFahrtenbuchRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -458,8 +498,11 @@ export interface FileRouteTypes {
     | '/bankverbindung'
     | '/dashboard'
     | '/einstellungen'
+    | '/fahrtenbuch'
+    | '/grundriss-review'
     | '/hilfe'
     | '/kalkulation'
+    | '/kalkulation-angebot'
     | '/karte'
     | '/lv-analyse'
     | '/mein-paket'
@@ -485,6 +528,7 @@ export interface FileRouteTypes {
     | '/dokumente/$id'
     | '/kunden/$id'
     | '/projekte/$id'
+    | '/steuerberater/fahrtenbuch'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
     | '/admin/'
@@ -503,8 +547,11 @@ export interface FileRouteTypes {
     | '/bankverbindung'
     | '/dashboard'
     | '/einstellungen'
+    | '/fahrtenbuch'
+    | '/grundriss-review'
     | '/hilfe'
     | '/kalkulation'
+    | '/kalkulation-angebot'
     | '/karte'
     | '/lv-analyse'
     | '/mein-paket'
@@ -530,6 +577,7 @@ export interface FileRouteTypes {
     | '/dokumente/$id'
     | '/kunden/$id'
     | '/projekte/$id'
+    | '/steuerberater/fahrtenbuch'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
     | '/admin'
@@ -551,8 +599,11 @@ export interface FileRouteTypes {
     | '/_authenticated/bankverbindung'
     | '/_authenticated/dashboard'
     | '/_authenticated/einstellungen'
+    | '/_authenticated/fahrtenbuch'
+    | '/_authenticated/grundriss-review'
     | '/_authenticated/hilfe'
     | '/_authenticated/kalkulation'
+    | '/_authenticated/kalkulation-angebot'
     | '/_authenticated/karte'
     | '/_authenticated/lv-analyse'
     | '/_authenticated/mein-paket'
@@ -578,6 +629,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dokumente/$id'
     | '/_authenticated/kunden/$id'
     | '/_authenticated/projekte/$id'
+    | '/_authenticated/steuerberater/fahrtenbuch'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
     | '/_authenticated/admin/'
@@ -692,6 +744,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEinstellungenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/fahrtenbuch': {
+      id: '/_authenticated/fahrtenbuch'
+      path: '/fahrtenbuch'
+      fullPath: '/fahrtenbuch'
+      preLoaderRoute: typeof AuthenticatedFahrtenbuchRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/grundriss-review': {
+      id: '/_authenticated/grundriss-review'
+      path: '/grundriss-review'
+      fullPath: '/grundriss-review'
+      preLoaderRoute: typeof AuthenticatedGrundrissReviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/hilfe': {
       id: '/_authenticated/hilfe'
       path: '/hilfe'
@@ -704,6 +770,13 @@ declare module '@tanstack/react-router' {
       path: '/kalkulation'
       fullPath: '/kalkulation'
       preLoaderRoute: typeof AuthenticatedKalkulationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/kalkulation-angebot': {
+      id: '/_authenticated/kalkulation-angebot'
+      path: '/kalkulation-angebot'
+      fullPath: '/kalkulation-angebot'
+      preLoaderRoute: typeof AuthenticatedKalkulationAngebotRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/karte': {
@@ -909,6 +982,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjekteIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/steuerberater/fahrtenbuch': {
+      id: '/_authenticated/steuerberater/fahrtenbuch'
+      path: '/fahrtenbuch'
+      fullPath: '/steuerberater/fahrtenbuch'
+      preLoaderRoute: typeof AuthenticatedSteuerberaterFahrtenbuchRouteImport
+      parentRoute: typeof AuthenticatedSteuerberaterRoute
+    }
     '/api/public/foto-retention': {
       id: '/api/public/foto-retention'
       path: '/api/public/foto-retention'
@@ -945,6 +1025,21 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
+interface AuthenticatedSteuerberaterRouteChildren {
+  AuthenticatedSteuerberaterFahrtenbuchRoute: typeof AuthenticatedSteuerberaterFahrtenbuchRoute
+}
+
+const AuthenticatedSteuerberaterRouteChildren: AuthenticatedSteuerberaterRouteChildren =
+  {
+    AuthenticatedSteuerberaterFahrtenbuchRoute:
+      AuthenticatedSteuerberaterFahrtenbuchRoute,
+  }
+
+const AuthenticatedSteuerberaterRouteWithChildren =
+  AuthenticatedSteuerberaterRoute._addFileChildren(
+    AuthenticatedSteuerberaterRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAbonnementsRoute: typeof AuthenticatedAbonnementsRoute
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
@@ -952,8 +1047,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBankverbindungRoute: typeof AuthenticatedBankverbindungRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEinstellungenRoute: typeof AuthenticatedEinstellungenRoute
+  AuthenticatedFahrtenbuchRoute: typeof AuthenticatedFahrtenbuchRoute
+  AuthenticatedGrundrissReviewRoute: typeof AuthenticatedGrundrissReviewRoute
   AuthenticatedHilfeRoute: typeof AuthenticatedHilfeRoute
   AuthenticatedKalkulationRoute: typeof AuthenticatedKalkulationRoute
+  AuthenticatedKalkulationAngebotRoute: typeof AuthenticatedKalkulationAngebotRoute
   AuthenticatedKarteRoute: typeof AuthenticatedKarteRoute
   AuthenticatedLvAnalyseRoute: typeof AuthenticatedLvAnalyseRoute
   AuthenticatedMeinPaketRoute: typeof AuthenticatedMeinPaketRoute
@@ -962,7 +1060,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPapierkorbRoute: typeof AuthenticatedPapierkorbRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
   AuthenticatedSicherheitRoute: typeof AuthenticatedSicherheitRoute
-  AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRoute
+  AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRouteWithChildren
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedWiederkehrendRoute: typeof AuthenticatedWiederkehrendRoute
   AuthenticatedDokumenteIdRoute: typeof AuthenticatedDokumenteIdRoute
@@ -980,8 +1078,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBankverbindungRoute: AuthenticatedBankverbindungRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEinstellungenRoute: AuthenticatedEinstellungenRoute,
+  AuthenticatedFahrtenbuchRoute: AuthenticatedFahrtenbuchRoute,
+  AuthenticatedGrundrissReviewRoute: AuthenticatedGrundrissReviewRoute,
   AuthenticatedHilfeRoute: AuthenticatedHilfeRoute,
   AuthenticatedKalkulationRoute: AuthenticatedKalkulationRoute,
+  AuthenticatedKalkulationAngebotRoute: AuthenticatedKalkulationAngebotRoute,
   AuthenticatedKarteRoute: AuthenticatedKarteRoute,
   AuthenticatedLvAnalyseRoute: AuthenticatedLvAnalyseRoute,
   AuthenticatedMeinPaketRoute: AuthenticatedMeinPaketRoute,
@@ -990,7 +1091,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPapierkorbRoute: AuthenticatedPapierkorbRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
   AuthenticatedSicherheitRoute: AuthenticatedSicherheitRoute,
-  AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRoute,
+  AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRouteWithChildren,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedWiederkehrendRoute: AuthenticatedWiederkehrendRoute,
   AuthenticatedDokumenteIdRoute: AuthenticatedDokumenteIdRoute,

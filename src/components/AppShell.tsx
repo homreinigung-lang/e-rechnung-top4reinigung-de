@@ -34,7 +34,6 @@ const quickOwner: readonly NavItem[] = [
 
 const ownerMoreGroups: readonly NavGroup[] = [
   { title: "Arbeit", items: [
-    { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },
     { to: "/team", label: "Control Center", icon: HardHat },
     { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
     { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
