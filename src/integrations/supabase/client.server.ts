@@ -1,6 +1,7 @@
 // Server-side Supabase admin client - bypasses RLS.
 // Use this only for trusted server operations and server routes.
 // For user-authenticated queries (with RLS), use the auth middleware instead.
+import "@tanstack/react-start/server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 

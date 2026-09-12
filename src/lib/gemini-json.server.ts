@@ -1,3 +1,5 @@
+import "@tanstack/react-start/server-only";
+
 type JsonSchema = Record<string, unknown>;
 
 type GeminiJsonOptions = {

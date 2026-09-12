@@ -77,3 +77,4 @@ export async function sendVerifiedEmail(options: SendVerifiedEmailOptions) {
   console.info(`Resend accepted email ${result.id} for ${options.to}.`);
   return { id: result.id, cc: copyTo, from: fromAddress };
 }
+import "@tanstack/react-start/server-only";
