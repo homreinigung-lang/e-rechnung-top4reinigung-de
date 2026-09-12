@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -323,6 +323,9 @@ function SteuerberaterFahrtenbuch() {
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <Button asChild variant="outline">
+            <Link to="/fahrtenbuch">Fahrten und Fahrzeuge verwalten</Link>
+          </Button>
           <Button onClick={() => void tripCsv()}>
             <Download className="size-4" /> Fahrtenbuch CSV
           </Button>

@@ -5,15 +5,16 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig(({ command }) => ({
+export default defineConfig({
   resolve: {
     // Vite 8 reads the @/* alias directly from tsconfig.json.
     tsconfigPaths: true,
   },
   plugins: [
     cloudflare({ viteEnvironment: { name: "ssr" } }),
-    // Generate routes during development; builds consume the reviewed, committed tree.
-    tanstackStart({ router: { enableRouteGeneration: command !== "build" } }),
+    // Start needs its route crawler during builds. Keep the generated tree committed;
+    // CI rejects stale route output instead of committing changes automatically.
+    tanstackStart(),
     viteReact(),
     tailwindcss(),
     VitePWA({
@@ -49,4 +50,4 @@ export default defineConfig(({ command }) => ({
       },
     }),
   ],
-}));
+});
