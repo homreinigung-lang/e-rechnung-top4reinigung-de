@@ -19,6 +19,7 @@ development; CI must never commit them back automatically. Disabling the Start
 route crawler was tested and rejected because the framework requires its crawl
 result during builds.
 
-See `CLEANUP_REPORT.md` and `docs/cleanup/DATABASE_REVIEW.md` before considering any
-database or deployment action. No script or workflow added by this cleanup deploys
+See `../MIGRATION_CLOUDFLARE.md` for the preparation plan and cutover gates.
+That plan is not evidence of completed database or runtime tests; record actual
+test results before any database or deployment action. No script or workflow added by this cleanup deploys
 to Cloudflare or applies SQL.
