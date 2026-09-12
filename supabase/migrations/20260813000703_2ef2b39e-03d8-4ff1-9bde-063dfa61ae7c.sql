@@ -51,7 +51,9 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 SELECT cron.unschedule('foto-retention-taeglich')
   WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'foto-retention-taeglich');
 
-SELECT cron.schedule(
+-- Safety: create the external HTTP job inactive in the same SQL statement.
+-- Activation requires separate explicit approval and target/secret verification.
+SELECT cron.schedule_in_database(
   'foto-retention-taeglich',
   '20 3 * * *',
   $$
@@ -60,5 +62,7 @@ SELECT cron.schedule(
     headers := '{"Content-Type": "application/json", "apikey": "sb_publishable_QoeFZqSj2GBSrAYIZ7NiMw_1uy0OHf9"}'::jsonb,
     body := '{}'::jsonb
   );
-  $$
+ $$,
+  database := current_database(),
+  active := false
 );
