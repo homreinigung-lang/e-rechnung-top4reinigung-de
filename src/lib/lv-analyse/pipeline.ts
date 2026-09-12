@@ -44,14 +44,18 @@ export type AnalyseDeps = {
  * normalisieren → prüfen. Liefert immer ein Ergebnis mit Status und Handlungsempfehlung.
  */
 export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise<LvAnalysisResult> {
-  const analyseText: NonNullable<AnalyseDeps["analyseText"]> = deps.analyseText ?? (async (args) => {
-    const { analyseLvDocument } = await import("@/lib/lv-analyse.functions");
-    return analyseLvDocument(args);
-  });
-  const analyseScan: NonNullable<AnalyseDeps["analyseScan"]> = deps.analyseScan ?? (async (args) => {
-    const { analyseLvScan } = await import("@/lib/lv-analyse.functions");
-    return analyseLvScan(args);
-  });
+  const analyseText: NonNullable<AnalyseDeps["analyseText"]> =
+    deps.analyseText ??
+    (async (args) => {
+      const { analyseLvDocument } = await import("@/lib/lv-analyse.functions");
+      return analyseLvDocument(args);
+    });
+  const analyseScan: NonNullable<AnalyseDeps["analyseScan"]> =
+    deps.analyseScan ??
+    (async (args) => {
+      const { analyseLvScan } = await import("@/lib/lv-analyse.functions");
+      return analyseLvScan(args);
+    });
   const readDocument: ReadDocument = deps.readDocument ?? ((f) => extractDocument(f));
   const steps: LvProcessStep[] = [];
   // Teilfehler (KI, OCR, GAEB) – sie werden dem Nutzer sichtbar gemeldet.

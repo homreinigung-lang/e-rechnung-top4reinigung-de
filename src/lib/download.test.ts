@@ -42,8 +42,10 @@ describe("iOS file downloads", () => {
 
   it("uses native sharing when supported", async () => {
     vi.stubGlobal("navigator", {
-      userAgent: "iPhone", platform: "iPhone",
-      canShare: vi.fn(() => true), share: vi.fn().mockResolvedValue(undefined),
+      userAgent: "iPhone",
+      platform: "iPhone",
+      canShare: vi.fn(() => true),
+      share: vi.fn().mockResolvedValue(undefined),
     });
     const open = vi.fn();
     vi.stubGlobal("window", { open });

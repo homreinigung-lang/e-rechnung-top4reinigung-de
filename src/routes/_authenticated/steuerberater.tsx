@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { fahrtenbuchClient } from "@/lib/fahrtenbuch-client";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -162,7 +163,7 @@ function Steuerberater() {
   const { data: fahrtenbuchEntries = [] } = useQuery({
     queryKey: ["stb_fahrtenbuch_entries", from, to],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await fahrtenbuchClient
         .from("fahrtenbuch_entries")
         .select("*")
         .gte("trip_date", from)
@@ -177,7 +178,7 @@ function Steuerberater() {
   const { data: fahrtenbuchVehicles = [] } = useQuery({
     queryKey: ["stb_fahrtenbuch_vehicles"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await fahrtenbuchClient
         .from("fahrtenbuch_vehicles")
         .select("id,vehicle_name,license_plate")
         .order("vehicle_name");
