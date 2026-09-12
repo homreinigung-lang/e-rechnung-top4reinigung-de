@@ -23,3 +23,28 @@ See `../MIGRATION_CLOUDFLARE.md` for the preparation plan and cutover gates.
 That plan is not evidence of completed database or runtime tests; record actual
 test results before any database or deployment action. No script or workflow added by this cleanup deploys
 to Cloudflare or applies SQL.
+
+## External photo-retention cron safety
+
+The migrations beginning `20260813000703` and `20260831203604` use
+`cron.schedule_in_database(..., database := current_database(), active := false)`.
+The job is created inactive in a single statement, with no committed active window.
+The original schedule and HTTP command are retained; creating the job does not
+execute that command. Neither migration activates it.
+
+Activation is a separate administrative action requiring explicit approval.
+Before activation, verify and replace the historical Lovable URL and verify the
+credentials against the approved target. Do not activate this job during migration
+validation. A successful replay alone does not authorize activation.
+
+Changing these historical files affects fresh replays only; it does not alter jobs
+in databases where the migrations were already applied. No existing project was
+updated by this source change.
+
+Read-only verification after replay:
+```sql
+SELECT jobid, jobname, active
+FROM cron.job
+WHERE jobname = 'foto-retention-taeglich';
+```
+The expected result is one row with `active = false`.
