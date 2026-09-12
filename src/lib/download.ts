@@ -87,11 +87,15 @@ function fallbackDownload(blob: Blob, filename: string) {
  */
 function openOnIos(blob: Blob): boolean {
   const url = URL.createObjectURL(blob);
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  // `noopener` makes window.open return null even when opening succeeds.
+  // Open a same-origin blank page, detach its opener, then navigate to the blob.
+  const opened = window.open("about:blank", "_blank");
   if (!opened) {
     URL.revokeObjectURL(url);
     return false;
   }
+  opened.opener = null;
+  opened.location.replace(url);
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
   return true;
 }

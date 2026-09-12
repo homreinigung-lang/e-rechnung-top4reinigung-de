@@ -43,6 +43,7 @@ const ownerMoreGroups: readonly NavGroup[] = [
     { to: "/lv-analyse", label: "LV-Analyse", icon: FileSearch },
   ]},
   { title: "Buchhaltung", items: [
+    { to: "/dokumente", label: "Rechnungen", icon: FileText, search: { tab: "invoice" } },
     { to: "/wiederkehrend", label: "Wiederkehrende Rechnung", icon: Repeat },
     { to: "/dashboard", label: "EÜR", icon: BarChart3, hash: "euer" },
     { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
@@ -193,7 +194,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <DropdownMenuContent align="end" side="top" className="max-h-[70vh] w-72 overflow-y-auto">
               {moreGroups.map((group, gi) => (
                 <div key={group.title}>{gi > 0 && <DropdownMenuSeparator />}<DropdownMenuLabel>{group.title}</DropdownMenuLabel>{group.items.map((item) => (
-                  <DropdownMenuItem key={`${item.to}-${item.label}`} asChild><Link to={item.to} {...(item.search ? { search: item.search } : {})} className="flex items-center gap-2"><item.icon className="size-4" />{item.label}</Link></DropdownMenuItem>
+                  <DropdownMenuItem key={`${item.to}-${item.label}`} asChild><Link to={item.to} {...(item.hash ? { hash: item.hash } : {})} {...(item.search ? { search: item.search } : {})} className="flex items-center gap-2"><item.icon className="size-4" />{item.label}</Link></DropdownMenuItem>
                 ))}</div>
               ))}
               <DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut className="size-4" />Abmelden</DropdownMenuItem>
