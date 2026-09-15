@@ -10,21 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-.output
-.vinxi
-.tanstack/**
-.nitro
 *.local
-
-# Environment / secrets
-.env
-.env.*
-!.env.example
-
-# Wrangler / Cloudflare
-.wrangler/
-.dev.vars
-.dev.vars.*
 
 # Editor directories and files
 .vscode/*
@@ -36,3 +22,30 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local migration backups and private data
+gebcalc-migration/
+migration-backups/
+backups/
+*.dump
+*.backup
+*.sql.gz
+storage-manifest.json
+operations-manifest.json
+auth-map.json
+checksums.sha256
+
+# Supabase local runtime
+supabase/.branches/
+supabase/.temp/
+
+# Cloudflare local state
+.wrangler/
+.dev.vars
