@@ -1,6 +1,6 @@
 CREATE TABLE public.cron_tokens (
   name text NOT NULL PRIMARY KEY,
-  token text NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  token text NOT NULL DEFAULT encode(extensions.gen_random_bytes(32), 'hex'),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -22,7 +22,9 @@ INSERT INTO public.cron_tokens (name) VALUES ('foto-retention')
 
 SELECT cron.unschedule('foto-retention-taeglich');
 
-SELECT cron.schedule(
+-- Safety: create the external HTTP job inactive in the same SQL statement.
+-- Activation requires separate explicit approval and target/secret verification.
+SELECT cron.schedule_in_database(
   'foto-retention-taeglich',
   '20 3 * * *',
   $$
@@ -34,5 +36,7 @@ SELECT cron.schedule(
     ),
     body := '{}'::jsonb
   );
-  $$
+ $$,
+  database := current_database(),
+  active := false
 );

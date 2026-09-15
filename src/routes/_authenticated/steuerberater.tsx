@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { fahrtenbuchClient } from "@/lib/fahrtenbuch-client";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -159,6 +160,33 @@ function Steuerberater() {
     },
   });
 
+  const { data: fahrtenbuchEntries = [] } = useQuery({
+    queryKey: ["stb_fahrtenbuch_entries", from, to],
+    queryFn: async () => {
+      const { data, error } = await fahrtenbuchClient
+        .from("fahrtenbuch_entries")
+        .select("*")
+        .gte("trip_date", from)
+        .lte("trip_date", to)
+        .order("trip_date")
+        .order("trip_time");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: fahrtenbuchVehicles = [] } = useQuery({
+    queryKey: ["stb_fahrtenbuch_vehicles"],
+    queryFn: async () => {
+      const { data, error } = await fahrtenbuchClient
+        .from("fahrtenbuch_vehicles")
+        .select("id,vehicle_name,license_plate")
+        .order("vehicle_name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const gobdExport = useMutation({
     mutationFn: async () => {
       const blob = await buildGobdExport(from, to);
@@ -305,6 +333,29 @@ function Steuerberater() {
     };
   });
 
+  const fahrtenbuchRows: Row[] = (
+    fahrtenbuchEntries as unknown as Record<string, unknown>[]
+  ).map((trip) => {
+    const vehicle = (fahrtenbuchVehicles as unknown as Record<string, unknown>[]).find(
+      (v) => String(v["id"] ?? "") === String(trip["vehicle_id"] ?? ""),
+    );
+    return {
+      Datum: formatDate(String(trip["trip_date"] ?? "")),
+      Startzeit: String(trip["trip_time"] ?? "").slice(0, 5),
+      Rückkehrzeit: String(trip["return_time"] ?? "").slice(0, 5),
+      Fahrtart: trip["trip_type"] === "round_trip" ? "Hin- und Rückfahrt" : "Nur Hinfahrt",
+      Fahrzeug: String(vehicle?.["vehicle_name"] ?? ""),
+      Kennzeichen: String(vehicle?.["license_plate"] ?? ""),
+      Von: String(trip["from_location"] ?? ""),
+      "Kunde / Ziel / Zweck": String(trip["customer_name"] ?? ""),
+      Zieladresse: String(trip["to_location"] ?? ""),
+      "Start-km": String(trip["start_km"] ?? ""),
+      "End-km": String(trip["end_km"] ?? ""),
+      "Geschäftliche km": String(trip["distance_km"] ?? ""),
+      Bemerkung: String(trip["notes"] ?? ""),
+    };
+  });
+
   const payrollRows: Row[] = Array.from(
     timeList
       .reduce(
@@ -414,6 +465,13 @@ function Steuerberater() {
 
       <section className="no-print flex flex-wrap gap-2">
         <Button
+          type="button"
+          variant="outline"
+          onClick={() => window.location.assign("/steuerberater/fahrtenbuch")}
+        >
+          <FileText className="size-4" /> Fahrtenbuch
+        </Button>
+        <Button
           onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}
         >
           <Download className="size-4" /> DATEV-Export (CSV)
@@ -448,6 +506,7 @@ function Steuerberater() {
             downloadExcel(
               `Steuerauswertung_${period}.xls`,
               [
+                { title: "Fahrtenbuch", rows: fahrtenbuchRows },
                 { title: "Rechnungen", rows: docRows },
                 { title: "Ausgaben", rows: expenseRows },
                 { title: "Stundenzettel", rows: timeRows },

@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "gebcalc-staging",
+  "compatibility_date": "2026-09-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "vars": {
+    "SUPABASE_URL": "https://squkjqvofugkanzuqtqn.supabase.co",
+    "PUBLIC_SITE_URL": "https://e-rechnung.top4reinigung.de",
+    "RESEND_FROM": "GebCalc <info@top4reinigung.de>"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -149,7 +149,6 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
   const glass = input.typeValue === "glas";
 
   if (glass) {
-    // Glas-/Fensterreinigung: fester, höherer Stundensatz.
     const hoursPerVisit =
       input.mode === "hours"
         ? input.hours
@@ -190,8 +189,6 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
   if (input.stairs) {
     const floors = Math.max(1, Math.round(input.floors || 1));
     const rate = round2(input.stairRate > 0 ? input.stairRate : MIN_STAIR_RATE);
-    // Das Treppenhaus hat oft einen eigenen Turnus (z. B. 2× monatlich bei
-    // wöchentlicher Unterhaltsreinigung). Ohne eigene Angabe gilt der Haupt-Turnus.
     const stairVisits =
       Number(input.stairVisitsPerMonth) > 0
         ? Math.max(1, round2(Number(input.stairVisitsPerMonth)))
@@ -232,7 +229,6 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     });
   }
 
-  // Rabatt läuft über die einzige Rabattlogik (Cent-Arithmetik, keine Doppelrundung).
   if (positions.length > 0) {
     const discount = buildDiscountPosition(positions, {
       percent: input.discountPercent || 0,
@@ -247,20 +243,24 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
 
 /**
  * Erzeugt eine ausdrückliche, für den Kunden nachvollziehbare Rabattposition
- * (Prozentsatz und/oder fester Betrag). Es gibt keine stille Ausgleichs-
- * position mehr: Die Gesamtsumme ergibt sich immer aus den Positionen selbst.
+ * (Prozentsatz und/oder fester Betrag). Ein Rabatt darf die positive
+ * Zwischensumme niemals überschreiten; dadurch können Netto- und Bruttosumme
+ * nicht durch einen Rabatt negativ werden.
  */
 export function buildDiscountPosition(
   positions: CalcPosition[],
   discount: { percent: number; amount: number; reason: string },
 ): CalcPosition | null {
-  // Durchgehend in ganzen Cent rechnen: nur eine einzige Rundung am Ende.
-  const baseCents = toCents(positionsTotal(positions));
+  const baseCents = Math.max(0, toCents(positionsTotal(positions)));
+  if (baseCents <= 0) return null;
+
   const pct = Math.min(100, Math.max(0, Number(discount.percent) || 0));
   const fixedCents = Math.max(0, toCents(Number(discount.amount) || 0));
   const percentCents = pct > 0 ? Math.round((baseCents * pct) / 100) : 0;
-  const totalCents = percentCents + fixedCents;
-  if (totalCents <= 0) return null;
+  const requestedCents = percentCents + fixedCents;
+  if (requestedCents <= 0) return null;
+
+  const totalCents = Math.min(baseCents, requestedCents);
   const total = fromCents(totalCents);
 
   const parts: string[] = [];

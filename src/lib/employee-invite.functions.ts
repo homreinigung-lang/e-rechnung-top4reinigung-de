@@ -106,3 +106,69 @@ export const redeemInviteCode = createServerFn({ method: "POST" })
 
     return { ok: true as const, employeeId: created.id, companyName: company.company_name };
   });
+
+/**
+ * Versendet eine Mitarbeiter-Einladung über denselben zentralen Resend-Versand
+ * wie Angebote, Rechnungen und Steuerberater-Einladungen. Die Firmen-E-Mail
+ * erhält automatisch eine Kopie als Versandbestätigung.
+ */
+export const sendEmployeeInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        email: z.string().trim().email(),
+        origin: z.string().trim().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: settings, error } = await context.supabase
+      .from("company_settings")
+      .select("company_name,email,invite_code")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!settings?.invite_code) {
+      throw new Error("Unternehmens-Code fehlt. Bitte zuerst einen Einladungs-Code erzeugen.");
+    }
+
+    const companyName = settings.company_name || "Ihr Arbeitgeber";
+    const companyEmail = settings.email?.trim() || undefined;
+    const origin = /^https?:\/\//.test(data.origin || "")
+      ? String(data.origin).replace(/\/$/, "")
+      : process.env["PUBLIC_SITE_URL"] || "https://e-rechnung.top4reinigung.de";
+    const link = `${origin}/auth?code=${encodeURIComponent(settings.invite_code)}`;
+
+    const subject = `Einladung als Mitarbeiter/in – ${companyName}`;
+    const text = `Guten Tag,\n\n${companyName} lädt Sie zur Mitarbeiter-Nutzung von GebCalc ein.\n\nRegistrierungslink: ${link}\nUnternehmens-Code: ${settings.invite_code}\n\nBitte verwenden Sie für die Registrierung die E-Mail-Adresse, an die diese Einladung gesendet wurde.\n\nMit freundlichen Grüßen\n${companyName}`;
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.6;font-size:15px">
+      <h2 style="margin:0 0 12px">Mitarbeiter-Einladung</h2>
+      <p>Guten Tag,</p>
+      <p><strong>${escapeHtml(companyName)}</strong> lädt Sie zur Mitarbeiter-Nutzung von GebCalc ein.</p>
+      <p style="margin:24px 0"><a href="${escapeHtml(link)}" style="background:#0369a1;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">Registrierung öffnen</a></p>
+      <p>Unternehmens-Code: <strong>${escapeHtml(settings.invite_code)}</strong></p>
+      <p style="color:#64748b;font-size:13px">Bitte verwenden Sie für die Registrierung die E-Mail-Adresse, an die diese Einladung gesendet wurde.</p>
+      <p style="margin-top:28px;color:#64748b;font-size:12px">${escapeHtml(companyName)}</p>
+    </div>`;
+
+    const { sendVerifiedEmail } = await import("./resend-email.server");
+    const result = await sendVerifiedEmail({
+      to: data.email,
+      subject,
+      text,
+      html,
+      companyName,
+      ...(companyEmail ? { companyEmail } : {}),
+    });
+
+    return { accepted: true as const, to: data.email, id: result.id, cc: result.cc };
+  });
+
+function escapeHtml(value: string) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

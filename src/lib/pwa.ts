@@ -1,8 +1,8 @@
 /**
  * Service-Worker-Registrierung mit Schutzmechanismen:
- * In Entwicklungs- und Vorschau-Umgebungen (Lovable-Preview, iframe) wird
- * bewusst NICHT registriert – dort werden bestehende Registrierungen entfernt,
- * damit keine veralteten Seiten aus dem Cache ausgeliefert werden.
+ * In Entwicklungs-, Vorschau- und Staging-Umgebungen wird bewusst NICHT
+ * registriert. Bestehende Registrierungen werden dort entfernt, damit nach
+ * Deploys keine veralteten Bundles aus dem Cache laufen.
  */
 const SW_URL = "/sw.js";
 
@@ -12,6 +12,7 @@ function isBlockedContext(): boolean {
   if (window.self !== window.top) return true;
 
   const host = window.location.hostname;
+  if (host === "gebcalc-staging.homreinigung.workers.dev" || host.startsWith("gebcalc-staging.")) return true;
   if (host.startsWith("id-preview--") || host.startsWith("preview--")) return true;
   if (host === "lovableproject.com" || host.endsWith(".lovableproject.com")) return true;
   if (host === "lovableproject-dev.com" || host.endsWith(".lovableproject-dev.com")) return true;

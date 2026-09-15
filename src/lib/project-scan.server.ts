@@ -1,3 +1,5 @@
+import { generateGeminiJson } from "./gemini-json.server";
+
 export type ScannedRoom = {
   name: string;
   floor: string;
@@ -268,54 +270,19 @@ const TOTALS_SCHEMA = {
   required: ["total_area_sqm", "source"],
 } as const;
 
-/**
- * Zweite Prüfrunde: liest eine im Dokument ausdrücklich genannte Gesamtfläche.
- * Gibt 0 zurück, wenn keine genannt ist oder der Request fehlschlägt.
- */
-async function readStatedTotalArea(
-  apiKey: string,
-  dataUrl: string,
-  mimeType: string,
-): Promise<number> {
-  const prompt =
-    "Nenne ausschließlich die im Dokument ausdrücklich geschriebene Gesamtfläche des Objekts in m² (z. B. 'Gesamtfläche', 'Summe', 'NGF', 'Reinigungsfläche gesamt'). Steht keine Gesamtsumme geschrieben, gib 0 zurück. Niemals schätzen, niemals Räume selbst addieren.";
-  const content =
-    mimeType === "application/pdf"
-      ? [
-          { type: "text", text: prompt },
-          { type: "file", file: { filename: "projekt.pdf", file_data: dataUrl } },
-        ]
-      : [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: dataUrl } },
-        ];
-
+/** Zweite Prüfrunde: liest eine im Dokument ausdrücklich genannte Gesamtfläche. */
+async function readStatedTotalArea(dataUrl: string, mimeType: string): Promise<number> {
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3.1-pro-preview",
-        temperature: 0,
-        messages: [
-          {
-            role: "system",
-            content:
-              'Du prüfst Grundrisse und Raumbücher. Antworte ausschließlich mit reinem JSON. Nur wörtlich im Dokument stehende Werte; sonst 0 und source = "".',
-          },
-          { role: "user", content },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: "gesamtflaeche", strict: true, schema: TOTALS_SCHEMA },
-        },
-      }),
+    const parsed = await generateGeminiJson({
+      model: process.env["GEMINI_MODEL_PROJECT"] || "gemini-3.1-pro-preview",
+      system:
+        'Du prüfst Grundrisse und Raumbücher. Antworte ausschließlich mit reinem JSON. Nur wörtlich im Dokument stehende Werte; sonst 0 und source = "".',
+      prompt:
+        "Nenne ausschließlich die im Dokument ausdrücklich geschriebene Gesamtfläche des Objekts in m² (z. B. 'Gesamtfläche', 'Summe', 'NGF', 'Reinigungsfläche gesamt'). Steht keine Gesamtsumme geschrieben, gib 0 zurück. Niemals schätzen, niemals Räume selbst addieren.",
+      schema: TOTALS_SCHEMA as unknown as Record<string, unknown>,
+      dataUrl,
+      mimeType,
     });
-    if (!res.ok) return 0;
-    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const match = (json.choices?.[0]?.message?.content ?? "").match(/\{[\s\S]*\}/);
-    if (!match) return 0;
-    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
     const total = num(parsed["total_area_sqm"]);
     return total > 0 ? total : 0;
   } catch {
@@ -335,64 +302,28 @@ function buildAreaWarning(roomSum: number, statedTotal: number): string | null {
   return `Achtung: Summe der Räume (${fmtArea(roomSum)} m²) weicht von genannter Gesamtfläche (${fmtArea(statedTotal)} m²) ab – bitte prüfen.`;
 }
 
-/** Analysiert einen Grundriss oder eine Ausschreibung mit dem KI-Gateway. */
+/** Analysiert einen Grundriss oder eine Ausschreibung direkt mit Gemini. */
 export async function analyzeProjectFile(
   fileUrl: string,
   mimeType: string,
   mode: "floorplan" | "tender",
 ): Promise<ScannedProject> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
-
   const dataUrl = await toDataUrl(fileUrl, mimeType);
   const prompt =
     mode === "floorplan"
       ? "Erstelle das vollständige Raumbuch zu diesem Grundriss bzw. dieser Aufnahme, inklusive Bodenbelag je Raum, Stichpunkten (highlights) und erkannten Kundenanforderungen (requirements)."
       : "Analysiere diese Ausschreibung und erstelle das strukturierte Leistungsverzeichnis.";
 
-  const content =
-    mimeType === "application/pdf"
-      ? [
-          { type: "text", text: prompt },
-          { type: "file", file: { filename: "projekt.pdf", file_data: dataUrl } },
-        ]
-      : [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: dataUrl } },
-        ];
-
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-3.1-pro-preview",
-      temperature: 0,
-      messages: [
-        { role: "system", content: mode === "floorplan" ? FLOORPLAN_SYSTEM : TENDER_SYSTEM },
-        { role: "user", content },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: { name: "projekt", strict: true, schema: SCHEMA },
-      },
-    }),
+  const parsed = await generateGeminiJson({
+    model: process.env["GEMINI_MODEL_PROJECT"] || "gemini-3.1-pro-preview",
+    system: mode === "floorplan" ? FLOORPLAN_SYSTEM : TENDER_SYSTEM,
+    prompt,
+    schema: SCHEMA as unknown as Record<string, unknown>,
+    dataUrl,
+    mimeType,
   });
 
-  if (res.status === 429) throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
-  if (res.status === 402) throw new Error("KI-Guthaben aufgebraucht.");
-  if (!res.ok) throw new Error(`Datei konnte nicht analysiert werden (${res.status}).`);
-
-  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const raw = json.choices?.[0]?.message?.content ?? "";
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return EMPTY;
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(match[0]) as Record<string, unknown>;
-  } catch {
-    return EMPTY;
-  }
+  if (!Object.keys(parsed).length) return EMPTY;
 
   const rawRooms = Array.isArray(parsed["rooms"])
     ? (parsed["rooms"] as Record<string, unknown>[]).map((r) => ({
@@ -423,11 +354,10 @@ export async function analyzeProjectFile(
   const finalRooms = rooms.filter((r) => r.name || r.area_sqm > 0);
   const highlights = strList(parsed["highlights"]);
 
-  // Self-Check nur im Grundriss-Modus: genannte Gesamtfläche vs. Summe der Räume.
   if (mode === "floorplan" && finalRooms.length > 0) {
     const roomSum = finalRooms.reduce((sum, r) => sum + r.area_sqm, 0);
     if (roomSum > 0) {
-      const statedTotal = await readStatedTotalArea(apiKey, dataUrl, mimeType);
+      const statedTotal = await readStatedTotalArea(dataUrl, mimeType);
       const warning = buildAreaWarning(roomSum, statedTotal);
       if (warning) highlights.push(warning);
     }

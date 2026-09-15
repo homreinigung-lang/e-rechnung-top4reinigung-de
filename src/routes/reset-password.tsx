@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/PasswordInput";
@@ -29,7 +28,6 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  // "checking" = Link wird geprüft, "ready" = gültige Sitzung, "invalid" = Link ungültig/abgelaufen
   const [linkState, setLinkState] = useState<"checking" | "ready" | "invalid">("checking");
 
   useEffect(() => {
@@ -40,24 +38,23 @@ function ResetPasswordPage() {
       if (session && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN")) setLinkState("ready");
     });
 
-    (async () => {
+    void (async () => {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
       const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
       const errorInUrl = url.searchParams.get("error") ?? hash.get("error");
 
       if (!errorInUrl && code) {
-        // PKCE-Variante: Code gegen eine Sitzung tauschen.
         try {
           await supabase.auth.exchangeCodeForSession(code);
         } catch {
-          /* unten wird ohnehin auf eine Sitzung geprüft */
+          // A final session check below decides whether the link is usable.
         }
       }
 
       const { data } = await supabase.auth.getSession();
       if (!active) return;
-      setLinkState(data.session ? "ready" : errorInUrl || !window.location.hash ? "invalid" : "invalid");
+      setLinkState(data.session ? "ready" : "invalid");
     })();
 
     return () => {
@@ -65,7 +62,6 @@ function ResetPasswordPage() {
       sub.subscription.unsubscribe();
     };
   }, []);
-
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

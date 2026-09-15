@@ -1,3 +1,5 @@
+import { generateGeminiJson } from "./gemini-json.server";
+
 export type ScannedReceipt = {
   supplier: string;
   document_number: string;
@@ -53,82 +55,46 @@ Wenn Netto oder Umsatzsteuer nicht ausgewiesen sind, berechne sie aus dem Brutto
 Kategorie nur aus: Material, Reinigungsmittel, Fahrzeug, Löhne, Miete, Versicherung, Sonstiges.
 Antworte ausschließlich mit reinem JSON ohne Erklärung.`;
 
-/** Extrahiert Belegdaten mit dem KI-Gateway aus PDF- oder Bilddateien. */
+const RECEIPT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    supplier: { type: "string" },
+    document_number: { type: "string" },
+    expense_date: { type: "string" },
+    net_amount: { type: "number" },
+    vat_amount: { type: "number" },
+    gross_amount: { type: "number" },
+    category: { type: "string" },
+    notes: { type: "string" },
+  },
+  required: [
+    "supplier",
+    "document_number",
+    "expense_date",
+    "net_amount",
+    "vat_amount",
+    "gross_amount",
+    "category",
+    "notes",
+  ],
+} as const;
+
+/** Extrahiert Belegdaten direkt mit der Gemini API aus PDF- oder Bilddateien. */
 export async function extractReceipt(dataUrl: string, mimeType: string): Promise<ScannedReceipt> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
-
-  const content =
-    mimeType === "application/pdf"
-      ? [
-          { type: "text", text: "Extrahiere die Belegdaten aus dieser PDF-Rechnung." },
-          { type: "file", file: { filename: "beleg.pdf", file_data: dataUrl } },
-        ]
-      : [
-          { type: "text", text: "Extrahiere die Belegdaten aus diesem Beleg-Foto." },
-          { type: "image_url", image_url: { url: dataUrl } },
-        ];
-
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "beleg",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              supplier: { type: "string" },
-              document_number: { type: "string" },
-              expense_date: { type: "string" },
-              net_amount: { type: "number" },
-              vat_amount: { type: "number" },
-              gross_amount: { type: "number" },
-              category: { type: "string" },
-              notes: { type: "string" },
-            },
-            required: [
-              "supplier",
-              "document_number",
-              "expense_date",
-              "net_amount",
-              "vat_amount",
-              "gross_amount",
-              "category",
-              "notes",
-            ],
-          },
-        },
-      },
-    }),
+  const parsed = await generateGeminiJson({
+    model: process.env["GEMINI_MODEL_RECEIPT"] || "gemini-3.8-flash",
+    system: SYSTEM,
+    prompt:
+      mimeType === "application/pdf"
+        ? "Extrahiere die Belegdaten aus dieser PDF-Rechnung."
+        : "Extrahiere die Belegdaten aus diesem Beleg-Foto.",
+    schema: RECEIPT_SCHEMA as unknown as Record<string, unknown>,
+    dataUrl,
+    mimeType,
   });
 
-  if (res.status === 429) throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
-  if (res.status === 402) throw new Error("KI-Guthaben aufgebraucht.");
-  if (!res.ok) throw new Error(`Beleg konnte nicht gelesen werden (${res.status}).`);
-
-  const json = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const raw = json.choices?.[0]?.message?.content ?? "";
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return EMPTY;
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(match[0]) as Record<string, unknown>;
-  } catch {
-    return EMPTY;
-  }
+  if (!Object.keys(parsed).length) return EMPTY;
 
   let net = num(parsed["net_amount"]);
   let vat = num(parsed["vat_amount"]);

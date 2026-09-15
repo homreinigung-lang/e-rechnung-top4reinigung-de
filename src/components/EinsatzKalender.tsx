@@ -616,8 +616,7 @@ export function EinsatzKalender({
         .neq("status", "completed");
       if (error) throw new Error(friendlyDbError(error, "Einsatz konnte nicht verschoben werden."));
 
-      // Teamzuordnung nachziehen: der bisherige Haupt-Mitarbeiter wird durch den
-      // neuen ersetzt, damit die Karte nicht weiterhin den alten Namen zeigt.
+      // Teamzuordnung mit dem Haupt-Mitarbeiter synchron halten.
       if (employeeId && source?.employee_id && source.employee_id !== employeeId) {
         await supabase
           .from("time_entry_employees")
@@ -634,6 +633,7 @@ export function EinsatzKalender({
             );
         }
       }
+
     },
     onSuccess: () => {
       toast.success("Einsatz verschoben – als neue Aufgabe (offen) angelegt");

@@ -28,7 +28,6 @@ BEGIN
     RETURN OLD;
   END IF;
 
-  -- Wird der Erledigt-Status im selben Update zurückgenommen, ist die Änderung erlaubt.
   IF OLD.status = 'completed' AND NEW.completed_at IS NOT NULL AND (
        NEW.work_date IS DISTINCT FROM OLD.work_date
     OR NEW.start_time IS DISTINCT FROM OLD.start_time
