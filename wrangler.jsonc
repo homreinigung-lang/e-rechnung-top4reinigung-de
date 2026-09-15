@@ -6,7 +6,7 @@
   "main": "@tanstack/react-start/server-entry",
   "vars": {
     "SUPABASE_URL": "https://squkjqvofugkanzuqtqn.supabase.co",
-    "PUBLIC_SITE_URL": "https://gebcalc-staging.homreinigung.workers.dev",
+    "PUBLIC_SITE_URL": "https://e-rechnung.top4reinigung.de",
     "RESEND_FROM": "GebCalc <info@top4reinigung.de>"
   },
   "observability": {
