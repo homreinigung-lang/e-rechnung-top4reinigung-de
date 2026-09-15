@@ -1,51 +1,107 @@
-# Cloudflare + Supabase migration plan
+# GebCalc migration: Cloudflare + Supabase
 
-Status: preparation only. Production (`main`) and the live Lovable deployment must remain unchanged until final verification.
+Status: **cutover preparation only**. Production (`main`), the live Lovable deployment, DNS and the production database remain unchanged until the final cutover is explicitly approved.
 
-## Target
+## Final target
 
-- Hosting/runtime: Cloudflare Workers
-- Backend/Auth/Database/Storage: user-owned Supabase
 - Source control: GitHub
+- Runtime/hosting: Cloudflare Workers
+- Database/Auth/Storage: user-owned Supabase project `squkjqvofugkanzuqtqn` (`Hom.r.ofice`)
+- Email: direct Resend integration
+- AI: independent provider path
+- No Lovable runtime dependency after successful cutover
 
-## Verified current dependencies
+## Current verified code state
 
-1. Core database/auth/storage already use `@supabase/supabase-js`.
-2. Password sign-in, MFA, password reset and most application data access are direct Supabase calls.
-3. Google OAuth currently goes through `@lovable.dev/cloud-auth-js` and must be replaced with direct Supabase OAuth before cutover.
-4. The browser Supabase client contains Lovable preview-session brokerage and must be simplified for independent hosting.
-5. Email delivery currently uses `connector-gateway.lovable.dev/resend` and requires `LOVABLE_API_KEY`; this must be replaced with direct Resend API usage before cutover.
-6. AI document/project/receipt analysis currently uses `ai.gateway.lovable.dev` and `LOVABLE_API_KEY`; this must be replaced with an independent AI provider path before cutover.
-7. Existing Vite configuration is supplied by `@lovable.dev/vite-tanstack-config`; independent Cloudflare configuration must reproduce the required TanStack Start, React, Tailwind, path alias and PWA behavior.
-8. The current custom `src/server.ts` SSR error wrapper must be preserved or equivalently integrated in the Cloudflare Workers runtime.
+The migration branch already uses the independent stack:
 
-## Cloudflare preparation
+- Cloudflare Workers via Wrangler / `@cloudflare/vite-plugin`
+- TanStack Start + React + Tailwind configured directly in the repository
+- Supabase client and server clients configured from environment variables
+- Google OAuth uses Supabase OAuth directly
+- Email delivery is independent of Lovable
+- AI calls use the independent provider path configured by environment variables
+- The SSR error wrapper in `src/server.ts` is retained
+- `supabase/config.toml` points to the final target project
 
-Cloudflare officially supports existing TanStack Start applications on Workers through `@cloudflare/vite-plugin` and Wrangler. The migration branch will add an independent Cloudflare configuration only after the Lovable-provided Vite behavior has been reproduced explicitly.
+Historical migration notes or commit history may still mention Lovable. Those references are not runtime dependencies and must not be used as cutover instructions.
 
-Required runtime configuration (names only; no secrets committed):
+## Runtime configuration
 
+Names only; never commit secrets:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` or an equivalent server-only Supabase secret key
+- `SUPABASE_SECRET_KEY`
+- temporary legacy fallback only if still needed during migration: `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`
 - `RESEND_FROM`
-- independent AI provider key(s), after the replacement provider is selected
+- `GEMINI_API_KEY` (or the selected independent AI key)
+- `PUBLIC_SITE_URL`
+
+## Data migration source-of-truth rule
+
+Until cutover, the live Lovable Supabase project remains the source of truth for ongoing production writes. `Hom.r.ofice` contains divergent historical data and must be reconciled, not blindly overwritten.
+
+Do not use "newer wins" as a merge rule. Preserve soft-deleted records, audit history and explicit business decisions. Auth UUIDs differ between environments and require the established identity mapping; never perform a global UUID replacement.
+
+## Backup package required before merge
+
+Create one complete local migration package containing, for **both source environments**:
+
+1. database/Auth backup or equivalent complete export required for local restore;
+2. private Storage bytes for `firmen-dateien`;
+3. a machine-readable Storage manifest (relative path, source, size, SHA-256);
+4. database backup checksums;
+5. the exact Git commit used for the migration tooling;
+6. a reconciliation/operations manifest describing every intentional insert/update/keep/skip decision.
+
+No password, API key, access token or service-role/secret key belongs in the package or repository.
+
+## Storage rule
+
+`scripts/migrate-storage.mjs` is a historical guarded uploader, not the final two-source merge tool. It contains a fixed owner UUID and fixed historical counts. Do not run it for the final migration unless its manifest is regenerated and reviewed from the actual downloaded Storage bytes.
+
+The final Storage merge must be driven by the actual source manifests and SHA-256 checksums. Existing destination objects must never be overwritten silently.
+
+## Local rehearsal sequence
+
+Use only one local probe at a time:
+
+1. restore the Lovable production backup locally and validate the export;
+2. restore the `Hom.r.ofice` backup locally and validate the export;
+3. build one merged local target using the reviewed operations manifest;
+4. verify data counts, ownership mapping, Auth identities and Storage checksums;
+5. run the rollback rehearsal;
+6. record PASS/FAIL and the exact commit/backup checksums used.
+
+Completed historical tests (build, typecheck, lint, migrations, Fahrtenbuch and RLS checks) are not to be repeated unless a relevant file or migration changed.
 
 ## Cutover gates
 
-Do not disconnect Lovable until all of these pass:
+Do not disconnect Lovable until all of the following are true:
 
-- Supabase Storage contains all 42 historical objects at the remapped owner paths.
-- Owner and employee login succeed against the new Supabase project.
-- RLS and storage access behave correctly for both accounts.
-- Customers, documents, document items, number sequences, expenses, time entries, recurring invoices, roles/subscriptions and GoBD audit behavior are verified.
-- Historical PDFs/files open and download correctly.
-- Google OAuth is either reconfigured and tested or intentionally disabled for the first cutover.
-- Email sending works without Lovable.
-- AI-assisted features work without Lovable or are intentionally disabled for the first cutover.
-- Cloudflare preview deployment builds and runs successfully.
-- Core flows are smoke-tested on the Cloudflare preview.
-- Production environment variables and domain routing are prepared.
+- complete DB/Auth backups from both sources are stored locally and checksum-verified;
+- private Storage bytes from both sources are downloaded and SHA-256 verified;
+- the reviewed local merge rehearsal passes;
+- rollback rehearsal passes;
+- owner and employee Auth mapping is verified in the merged target;
+- historical PDFs/files open from the final Supabase Storage;
+- Google OAuth is enabled and tested on the final Supabase project, or intentionally disabled for the initial cutover;
+- direct email sending works;
+- required AI-assisted features work independently or are explicitly disabled for the initial cutover;
+- Cloudflare staging/runtime validation passes for the exact release commit;
+- production environment variables, Auth redirect URLs and domain routing are prepared.
 
-Only after all gates pass should production DNS/domain routing and the live application be switched.
+Only after these gates pass, and only after explicit approval, may production DNS/domain routing be switched. Keep the old live deployment available as a temporary rollback fallback until production smoke tests pass.
+
+## Final shutdown condition
+
+Lovable may be disabled only when both statements are true:
+
+- `LOVABLE TECHNICAL DEPENDENCY REMAINING: NO`
+- `READY FOR FINAL LOVABLE SHUTDOWN: YES`
+
+Do not assert either flag before the real backup, merge, restore, cutover and post-cutover checks are complete.
