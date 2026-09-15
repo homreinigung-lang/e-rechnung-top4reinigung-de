@@ -1,6 +1,6 @@
 CREATE TABLE public.cron_tokens (
   name text NOT NULL PRIMARY KEY,
-  token text NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  token text NOT NULL DEFAULT encode(extensions.gen_random_bytes(32), 'hex'),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
