@@ -23,28 +23,96 @@ const steuerberaterFile = "src/routes/_authenticated/steuerberater.tsx";
 let steuerberater = readFileSync(steuerberaterFile, "utf8").replace(/\r\n/g, "\n");
 steuerberater = steuerberater.replace(
   '<FileText className="size-4" /> Fahrtenbuch für Steuerberater',
-  '<FileText className="size-4" /> Fahrtenbuch',
+  '<FileText className="size-4" /> Fahrtenbuch PDF',
 );
 
-// Der bisherige verschachtelte Steuerberater-Link rendert wegen fehlendem Outlet
-// wieder die Elternseite. Deshalb führt der Button direkt zum funktionierenden
-// eigenständigen Fahrtenbuch-Bereich.
-steuerberater = steuerberater.replace(
-  'window.location.assign("/steuerberater/fahrtenbuch")',
-  'window.location.assign("/fahrtenbuch")',
-);
+// Im Steuerberater-Bereich soll Fahrtenbuch ausschließlich direkt als PDF
+// heruntergeladen werden. Keine Navigation auf eine Fahrtenbuch-Unterseite.
+const oldButtons = [
+`        <Button
+          type="button"
+          variant="outline"
+          onClick={() => window.location.assign("/steuerberater/fahrtenbuch")}
+        >
+          <FileText className="size-4" /> Fahrtenbuch
+        </Button>`,
+`        <Button
+          type="button"
+          variant="outline"
+          onClick={() => window.location.assign("/fahrtenbuch")}
+        >
+          <FileText className="size-4" /> Fahrtenbuch
+        </Button>`,
+];
 
-if (!steuerberater.includes('window.location.assign("/fahrtenbuch")')) {
-  const marker = `      <section className="no-print flex flex-wrap gap-2">\n        <Button\n          onClick={() => downloadCsv(`;
-  const insertion = `      <section className="no-print flex flex-wrap gap-2">\n        <Button\n          type="button"\n          variant="outline"\n          onClick={() => window.location.assign("/fahrtenbuch")}\n        >\n          <FileText className="size-4" /> Fahrtenbuch\n        </Button>\n        <Button\n          onClick={() => downloadCsv(`;
+const pdfButton = `        <Button
+          type="button"
+          variant="outline"
+          onClick={() =>
+            void (async () => {
+              if (fahrtenbuchRows.length === 0) {
+                toast.error("Keine Fahrten im gewählten Zeitraum.");
+                return;
+              }
+              const { jsPDF } = await import("jspdf");
+              const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+              const margin = 10;
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const pageHeight = doc.internal.pageSize.getHeight();
+              let y = 13;
 
-  if (!steuerberater.includes(marker)) {
-    console.error("Abbruch: Steuerberater-Exportbereich für Fahrtenbuch-Link nicht gefunden.");
-    process.exit(1);
+              const addHeader = () => {
+                doc.setFontSize(15);
+                doc.text(\`Fahrtenbuch \\${formatDate(from)} – \\${formatDate(to)}\`, margin, y);
+                y += 7;
+                doc.setFontSize(7);
+                doc.text(
+                  "Datum | Start | Rückkehr | Fahrzeug | Kennzeichen | Fahrtart | Von | Ziel/Zweck | Nach | Start-km | End-km | km",
+                  margin,
+                  y,
+                );
+                y += 5;
+              };
+
+              addHeader();
+              doc.setFontSize(7);
+              for (const row of fahrtenbuchRows) {
+                if (y > pageHeight - 12) {
+                  doc.addPage();
+                  y = 13;
+                  addHeader();
+                }
+                const line = [
+                  row["Datum"], row["Startzeit"], row["Rückkehrzeit"], row["Fahrzeug"],
+                  row["Kennzeichen"], row["Fahrtart"], row["Von"], row["Kunde / Ziel / Zweck"],
+                  row["Zieladresse"], row["Start-km"], row["End-km"], row["Geschäftliche km"],
+                ].join(" | ");
+                const text = doc.splitTextToSize(line, pageWidth - margin * 2);
+                doc.text(text, margin, y);
+                y += Math.max(5, text.length * 3.5);
+              }
+
+              await saveFile(doc.output("blob"), \`Fahrtenbuch_\\${period}.pdf\`);
+            })()
+          }
+        >
+          <FileText className="size-4" /> Fahrtenbuch PDF
+        </Button>`;
+
+let replaced = false;
+for (const oldButton of oldButtons) {
+  if (steuerberater.includes(oldButton)) {
+    steuerberater = steuerberater.replace(oldButton, pdfButton);
+    replaced = true;
+    break;
   }
-  steuerberater = steuerberater.replace(marker, insertion);
+}
+
+if (!replaced && !steuerberater.includes("Fahrtenbuch PDF")) {
+  console.error("Abbruch: Steuerberater-Fahrtenbuch-Button nicht gefunden.");
+  process.exit(1);
 }
 
 writeFileSync(steuerberaterFile, steuerberater, "utf8");
 
-console.log("Navigation finalisiert: Fahrtenbuch im Hauptmenü und Steuerberater-Link führen zu /fahrtenbuch.");
+console.log("Navigation finalisiert: Fahrtenbuch im Hauptmenü; Steuerberater lädt Fahrtenbuch nur als PDF herunter.");
