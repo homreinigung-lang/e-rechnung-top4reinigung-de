@@ -54,4 +54,5 @@ jobs:
             echo 'No dependency changes produced'; exit 1
           fi
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'security: refresh vulnerable transitive dependencies'
+          git pull --rebase origin release/gobd-fahrtenbuch-20260916
           git push origin HEAD:release/gobd-fahrtenbuch-20260916
