@@ -1,33 +1,25 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const appShellFile = "src/components/AppShell.tsx";
+const steuerberaterFile = "src/routes/_authenticated/steuerberater.tsx";
 let appShell = readFileSync(appShellFile, "utf8").replace(/\r\n/g, "\n");
+let steuerberater = readFileSync(steuerberaterFile, "utf8").replace(/\r\n/g, "\n");
 
-// Fahrtenbuch im Hauptmenü unter "Arbeit" sichtbar machen.
+// Make Fahrtenbuch a standalone item under Arbeit.
 appShell = appShell.replace(
   '    { to: "/steuerberater/fahrtenbuch", label: "Fahrtenbuch für Steuerberater", icon: Car },\n',
   "",
 );
-if (!appShell.includes('{ to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car }')) {
+const navItem = '{ to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car }';
+if (!appShell.includes(navItem)) {
   const marker = '    { to: "/karte", label: "Einsatzkarte", icon: MapIcon },\n';
-  const insertion = `${marker}    { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },\n`;
   if (!appShell.includes(marker)) {
-    console.error("Abbruch: Arbeit-Menü für Fahrtenbuch-Link nicht gefunden.");
-    process.exit(1);
+    throw new Error("Arbeit-Menü für Fahrtenbuch-Link nicht gefunden; no files changed.");
   }
-  appShell = appShell.replace(marker, insertion);
+  appShell = appShell.replace(marker, marker + "    " + navItem + ",\n");
 }
-writeFileSync(appShellFile, appShell, "utf8");
 
-const steuerberaterFile = "src/routes/_authenticated/steuerberater.tsx";
-let steuerberater = readFileSync(steuerberaterFile, "utf8").replace(/\r\n/g, "\n");
-steuerberater = steuerberater.replace(
-  '<FileText className="size-4" /> Fahrtenbuch für Steuerberater',
-  '<FileText className="size-4" /> Fahrtenbuch PDF',
-);
-
-// Im Steuerberater-Bereich soll Fahrtenbuch ausschließlich direkt als PDF
-// heruntergeladen werden. Keine Navigation auf eine Fahrtenbuch-Unterseite.
+// In Steuerberater the button downloads a PDF directly; it must never navigate.
 const oldButtons = [
 `        <Button
           type="button"
@@ -60,10 +52,9 @@ const pdfButton = `        <Button
               const pageWidth = doc.internal.pageSize.getWidth();
               const pageHeight = doc.internal.pageSize.getHeight();
               let y = 13;
-
               const addHeader = () => {
                 doc.setFontSize(15);
-                doc.text(\`Fahrtenbuch \\${formatDate(from)} – \\${formatDate(to)}\`, margin, y);
+                doc.text("Fahrtenbuch " + formatDate(from) + " – " + formatDate(to), margin, y);
                 y += 7;
                 doc.setFontSize(7);
                 doc.text(
@@ -73,7 +64,6 @@ const pdfButton = `        <Button
                 );
                 y += 5;
               };
-
               addHeader();
               doc.setFontSize(7);
               for (const row of fahrtenbuchRows) {
@@ -91,8 +81,7 @@ const pdfButton = `        <Button
                 doc.text(text, margin, y);
                 y += Math.max(5, text.length * 3.5);
               }
-
-              await saveFile(doc.output("blob"), \`Fahrtenbuch_\\${period}.pdf\`);
+              await saveFile(doc.output("blob"), "Fahrtenbuch_" + period + ".pdf");
             })()
           }
         >
@@ -107,12 +96,14 @@ for (const oldButton of oldButtons) {
     break;
   }
 }
-
 if (!replaced && !steuerberater.includes("Fahrtenbuch PDF")) {
-  console.error("Abbruch: Steuerberater-Fahrtenbuch-Button nicht gefunden.");
-  process.exit(1);
+  throw new Error("Steuerberater-Fahrtenbuch-Button nicht gefunden; no files changed.");
+}
+if (!appShell.includes(navItem) || !steuerberater.includes("Fahrtenbuch PDF")) {
+  throw new Error("Fahrtenbuch verification failed; no files changed.");
 }
 
+// Write only after both target files have been validated.
+writeFileSync(appShellFile, appShell, "utf8");
 writeFileSync(steuerberaterFile, steuerberater, "utf8");
-
-console.log("Navigation finalisiert: Fahrtenbuch im Hauptmenü; Steuerberater lädt Fahrtenbuch nur als PDF herunter.");
+console.log("Navigation finalisiert: Fahrtenbuch im Hauptmenü; Steuerberater lädt Fahrtenbuch direkt als PDF herunter.");
