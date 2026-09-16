@@ -2,10 +2,27 @@ import { jsPDF } from "jspdf";
 
 type TripRow = Record<string, string>;
 
-/** Fahrtenbuch-only PDF: a paginated, wrapped table; invoice and quote PDFs are independent. */
-export function buildAccountantFahrtenbuchPdf(rows: TripRow[], from: string, to: string): Blob {
+export type FahrtenbuchBranding = {
+  companyName: string;
+  logoDataUrl: string;
+};
+
+/** Never export missing vehicle identifiers, regardless of the screen initiating the PDF. */
+export function assertFahrtenbuchVehicleData(rows: TripRow[]): void {
+  if (rows.some((row) => !row["Fahrzeug"]?.trim() || !row["Kennzeichen"]?.trim())) {
+    throw new Error("Fahrzeugdaten fehlen oder konnten nicht vollständig geladen werden. Bitte erneut versuchen.");
+  }
+}
+
+/** Shared Fahrtenbuch-only PDF; invoice/quote rendering is intentionally untouched. */
+export function buildAccountantFahrtenbuchPdf(
+  rows: TripRow[],
+  from: string,
+  to: string,
+  branding?: FahrtenbuchBranding,
+): Blob {
+  assertFahrtenbuchVehicleData(rows);
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const left = 11;
   const widths = [23, 23, 30, 26, 30, 35, 45, 26];
@@ -22,8 +39,6 @@ export function buildAccountantFahrtenbuchPdf(rows: TripRow[], from: string, to:
     doc.setDrawColor(185, 197, 209);
     let x = left;
     headers.forEach((header, index) => {
-      // jsPDF can change its active non-stroking color while writing text.
-      // Reset the background before EVERY cell, not only once per row.
       doc.setFillColor(227, 235, 243);
       doc.rect(x, y, widths[index]!, 9, "FD");
       doc.setTextColor(30, 40, 52);
@@ -36,10 +51,27 @@ export function buildAccountantFahrtenbuchPdf(rows: TripRow[], from: string, to:
   const newPage = () => {
     if (page > 0) doc.addPage();
     page++;
-    y = 13;
     doc.setTextColor(30, 40, 52);
+    if (branding) {
+      const logoFormat = /^data:image\/png;base64,/i.test(branding.logoDataUrl)
+        ? "PNG"
+        : /^data:image\/jpe?g;base64,/i.test(branding.logoDataUrl)
+          ? "JPEG"
+          : null;
+      if (!branding.companyName.trim() || !logoFormat) {
+        throw new Error("Firmenname oder Firmenlogo fehlt in den Einstellungen.");
+      }
+      // Logo and company name are repeated on every report page.
+      doc.addImage(branding.logoDataUrl, logoFormat, left, 8, 27, 13, undefined, "FAST");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text(branding.companyName.trim(), left + 31, 16, { maxWidth: tableWidth - 33 });
+      y = 29;
+    } else {
+      y = 13;
+    }
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.text("Fahrtenbuch", left, y);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -57,7 +89,6 @@ export function buildAccountantFahrtenbuchPdf(rows: TripRow[], from: string, to:
   const detail = (label: string, value: string, shade: boolean) => {
     const text = `${label}: ${value || "-"}`;
     const lines = wrap(text, tableWidth);
-    // A very long note can continue on the following page, without clipping.
     for (let start = 0; start < lines.length;) {
       if (y + 5 > bottom) newPage();
       const capacity = Math.max(1, Math.floor((bottom - y - 2) / lineHeight));
@@ -99,9 +130,7 @@ export function buildAccountantFahrtenbuchPdf(rows: TripRow[], from: string, to:
     doc.setDrawColor(207, 216, 225);
     let x = left;
     wrapped.forEach((lines, i) => {
-      // Text rendering changes jsPDF's active fill; restore it for each cell.
-      if (index % 2 === 0) doc.setFillColor(255, 255, 255);
-      else doc.setFillColor(246, 249, 252);
+      doc.setFillColor(index % 2 === 0 ? 255 : 246, index % 2 === 0 ? 255 : 249, index % 2 === 0 ? 255 : 252);
       doc.rect(x, y, widths[i]!, height, "FD");
       doc.setTextColor(30, 40, 52);
       doc.setFont("helvetica", "normal");

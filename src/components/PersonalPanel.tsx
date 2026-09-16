@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoadError, firstError } from "@/components/LoadError";
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fahrtenbuchClient } from "@/lib/fahrtenbuch-client";
+import { saveFile } from "@/lib/download";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ChevronDown, ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
+import { Car, ChevronDown, ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
 import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
@@ -229,6 +231,9 @@ export function Personal() {
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12),
   );
 
+  const reportMonth = `${monthCursor.getFullYear()}-${String(monthCursor.getMonth() + 1).padStart(2, "0")}`;
+  const reportMonthEnd = isoDay(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0, 12));
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["employees"] });
     queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
@@ -278,6 +283,27 @@ export function Personal() {
         .order("work_date", { ascending: false });
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Company Fahrtenbuch is separate from individual payroll: do not attribute trips to employees.
+  const { data: monthTrips = [], error: monthTripsError } = useQuery({
+    queryKey: ["personal_fahrtenbuch", reportMonth],
+    queryFn: async () => {
+      const { data, error } = await fahrtenbuchClient.from("fahrtenbuch_entries")
+        .select("*").gte("trip_date", `${reportMonth}-01`).lte("trip_date", reportMonthEnd)
+        .order("trip_date").order("trip_time");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const { data: monthTripVehicles = [], error: monthTripVehiclesError } = useQuery({
+    queryKey: ["personal_fahrtenbuch_vehicles"],
+    queryFn: async () => {
+      const { data, error } = await fahrtenbuchClient.from("fahrtenbuch_vehicles")
+        .select("id,vehicle_name,license_plate").order("vehicle_name");
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -460,6 +486,41 @@ export function Personal() {
       otherDays: days("other"),
     };
   });
+
+  async function downloadMonthFahrtenbuchPdf() {
+    if (monthTripsError || monthTripVehiclesError) {
+      toast.error("Fahrtenbuch konnte nicht vollständig geladen werden.");
+      return;
+    }
+    if (monthTrips.length === 0) {
+      toast.error("Keine Fahrten im ausgewählten Monat.");
+      return;
+    }
+    try {
+      const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
+      const rows: Record<string, string>[] = monthTrips.map((trip) => {
+        const vehicle = monthTripVehicles.find((v) => v.id === trip.vehicle_id);
+        return {
+          Datum: formatDate(trip.trip_date),
+          Startzeit: String(trip.trip_time ?? "").slice(0, 5),
+          Rückkehrzeit: String(trip.return_time ?? "").slice(0, 5),
+          Fahrtart: trip.trip_type === "round_trip" ? "Hin- und Rückfahrt" : "Nur Hinfahrt",
+          Fahrzeug: vehicle?.vehicle_name ?? "",
+          Kennzeichen: vehicle?.license_plate ?? "",
+          Von: trip.from_location ?? "",
+          "Kunde / Ziel / Zweck": trip.customer_name ?? "",
+          Zieladresse: trip.to_location ?? "",
+          "Start-km": String(trip.start_km ?? ""),
+          "End-km": String(trip.end_km ?? ""),
+          "Geschäftliche km": String(trip.distance_km ?? ""),
+          Bemerkung: trip.notes ?? "",
+        };
+      });
+      await saveFile(await buildBrandedFahrtenbuchPdf(rows, `${reportMonth}-01`, reportMonthEnd), `Fahrtenbuch_${reportMonth}.pdf`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Fahrtenbuch-PDF konnte nicht erstellt werden.");
+    }
+  }
 
   const shiftWeek = (delta: number) => {
     const d = new Date(weekStart);
@@ -733,6 +794,14 @@ export function Personal() {
         )}
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
+        <div>
+          <p className="font-medium">Fahrtenbuch</p>
+          <p className="text-sm text-muted-foreground">Fahrten erfassen und denselben Fahrtenbuch-PDF-Bericht wie beim Steuerberater herunterladen.</p>
+        </div>
+        <Button asChild variant="outline"><Link to="/fahrtenbuch"><Car className="size-4" /> Fahrtenbuch / PDF</Link></Button>
+      </div>
+
       <EinsatzKalender employees={employees} projects={projects} />
 
       {/* Wochenübersicht */}
@@ -921,6 +990,27 @@ export function Personal() {
               </tfoot>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* Firmenfahrten sind ein eigenständiger Bericht, kein Bestandteil der Lohnsumme. */}
+      <section className="surface space-y-3 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Fahrtenbuch – Betriebsfahrten</h2>
+            <p className="text-sm text-muted-foreground">
+              Fahrten für {monthCursor.toLocaleDateString("de-DE", { month: "long", year: "numeric" })}; keine automatische Zuordnung zu Mitarbeitern oder Lohn.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => void downloadMonthFahrtenbuchPdf()}
+            disabled={monthTrips.length === 0 || Boolean(monthTripsError || monthTripVehiclesError)}>
+            <Car className="size-4" /> Fahrtenbuch PDF
+          </Button>
+        </div>
+        {(monthTripsError || monthTripVehiclesError) ? (
+          <p className="text-sm text-destructive">Fahrtenbuch konnte nicht geladen werden.</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">{monthTrips.length} Fahrten im gewählten Monat.</p>
         )}
       </section>
 

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { saveFile } from "@/lib/download";
 import {
   Car,
   Download,
@@ -500,6 +501,42 @@ function Fahrtenbuch() {
     downloadText(`Fahrtenbuch_${now.date}.csv`, csv, "text/csv;charset=utf-8");
   }
 
+  async function exportPdf() {
+            if (entries.length === 0) {
+              toast.error("Keine Fahrten vorhanden.");
+              return;
+            }
+            try {
+              // Same PDF renderer and the same row fields as the Steuerberater export.
+              const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
+              const rows = [...entries].sort((a, b) =>
+                `${a.trip_date} ${a.trip_time ?? ""}`.localeCompare(`${b.trip_date} ${b.trip_time ?? ""}`),
+              ).map((entry) => {
+                const vehicle = vehicles.find((item) => item.id === entry.vehicle_id);
+                return {
+                  Datum: formatDate(entry.trip_date),
+                  Startzeit: String(entry.trip_time ?? "").slice(0, 5),
+                  Rückkehrzeit: String(entry.return_time ?? "").slice(0, 5),
+                  Fahrtart: tripTypeLabel(entry.trip_type),
+                  Fahrzeug: vehicle?.vehicle_name ?? "",
+                  Kennzeichen: vehicle?.license_plate ?? "",
+                  Von: entry.from_location,
+                  "Kunde / Ziel / Zweck": entry.customer_name,
+                  Zieladresse: entry.to_location,
+                  "Start-km": String(entry.start_km),
+                  "End-km": String(entry.end_km),
+                  "Geschäftliche km": String(entry.distance_km),
+                  Bemerkung: entry.notes ?? "",
+                };
+              });
+              const from = rows.length ? [...entries].map((e) => e.trip_date).sort()[0]! : now.date;
+              const to = rows.length ? [...entries].map((e) => e.trip_date).sort().at(-1)! : now.date;
+              await saveFile(await buildBrandedFahrtenbuchPdf(rows, from, to), `Fahrtenbuch_${from}_${to}.pdf`);
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Fahrtenbuch-PDF konnte nicht erstellt werden.");
+            }
+          }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4 no-print">
@@ -516,8 +553,8 @@ function Fahrtenbuch() {
           <Button variant="outline" onClick={exportCsv}>
             <Download className="size-4" /> CSV
           </Button>
-          <Button variant="outline" onClick={() => window.print()}>
-            <FileText className="size-4" /> PDF drucken
+          <Button variant="outline" onClick={() => void exportPdf()} disabled={isLoading || entries.length === 0}>
+            <FileText className="size-4" /> Fahrtenbuch PDF herunterladen
           </Button>
           <div className="rounded-lg border bg-card px-4 py-3 text-right">
             <p className="text-xs text-muted-foreground">Geschäftlich erfasst</p>

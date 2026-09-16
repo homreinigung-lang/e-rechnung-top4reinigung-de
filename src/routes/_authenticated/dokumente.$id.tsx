@@ -863,6 +863,8 @@ function DokumentDetail() {
   const docRecord = doc as unknown as Record<string, unknown>;
   const lockedAt = (docRecord["locked_at"] as string | null) ?? null;
   const locked = Boolean(lockedAt);
+  // A finalized invoice is not proof of successful email delivery.
+  const emailPending = doc.type === "invoice" && locked && !docRecord["sent_at"] && doc.status === "sent";
   const isStorno = Boolean(docRecord["is_storno"]);
   const cancelledBy = (docRecord["cancelled_by_document_id"] as string | null) ?? null;
   const relatedDoc = (data as { related?: Record<string, unknown> | null }).related ?? null;
@@ -1398,7 +1400,7 @@ function DokumentDetail() {
           >
             <Mail className="size-4" /> Per E-Mail senden
           </Button>
-          {doc.status === "draft" && (
+          {doc.status === "draft" && !locked && (
             <Button
               variant="outline"
               title="Beleg als versendet kennzeichnen, ohne eine E-Mail zu verschicken"
@@ -1670,6 +1672,17 @@ function DokumentDetail() {
         </DialogContent>
       </Dialog>
 
+      {emailPending && (
+        <div role="alert" className="no-print rounded-lg border border-amber-500/60 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
+          <strong>Versand ausstehend:</strong> Die Rechnung ist festgeschrieben, aber ein erfolgreicher E-Mail-Versand ist nicht bestätigt. Bitte den Versandstatus prüfen und bei Bedarf über „Per E-Mail senden“ mit der archivierten Original-PDF erneut senden.
+        </div>
+      )}
+      {locked && isInvoice && doc.status === "draft" && (
+        <div className="no-print rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm" role="status">
+          <p className="font-semibold">Versand ausstehend – Rechnung bereits festgeschrieben</p>
+          <p>Die Rechnung ist nicht mehr bearbeitbar. Bitte über „Per E-Mail senden“ mit derselben Rechnungsnummer und dem geprüften Archiv-PDF erneut senden. Bei unklarem E-Mail-Ergebnis zuerst den tatsächlichen Versand prüfen.</p>
+        </div>
+      )}
       {locked && lockedAt && (
         <div className="no-print flex flex-wrap items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
           <ShieldCheck className="mt-0.5 size-5 text-primary" />
@@ -2643,6 +2656,68 @@ function DokumentDetail() {
           companyEmail: String(settings?.["email"] ?? ""),
         }}
         buildPdfBytes={makePdfBytes}
+        beforeSend={async (generatedBytes) => {
+          // Invoice only. Quotes and orders retain their existing sending behavior.
+          if (!isInvoice) return generatedBytes;
+          const { data: live, error: readError } = await supabase
+            .from("documents")
+            .select("id,number,locked_at,pdf_path,pdf_sha256,archived_at")
+            .eq("id", id)
+            .single();
+          if (readError || !live) throw readError ?? new Error("GoBD: Rechnung nicht gefunden.");
+          if (live.number !== docNumber) {
+            throw new Error("GoBD: Rechnungsnummer hat sich geändert. Bitte Seite neu laden und erneut senden.");
+          }
+          // Retry after a failed email uses the actual verified original, not a newly rendered PDF.
+          if (live.pdf_path && live.pdf_sha256 && live.archived_at) {
+            const { FILES_BUCKET } = await import("@/lib/storage");
+            const { sha256Hex } = await import("@/lib/gobd");
+            const { data: archived, error: downloadError } = await supabase.storage
+              .from(FILES_BUCKET).download(live.pdf_path);
+            if (downloadError || !archived) {
+              throw downloadError ?? new Error("GoBD: Archiv-PDF fehlt. E-Mail wurde nicht gesendet.");
+            }
+            const originalBytes = new Uint8Array(await archived.arrayBuffer());
+            if (originalBytes.length < 5 || new TextDecoder().decode(originalBytes.subarray(0, 5)) !== "%PDF-" ||
+                await sha256Hex(originalBytes) !== live.pdf_sha256.toLowerCase()) {
+              throw new Error("GoBD: Archiv-PDF ist beschädigt oder Prüfsumme weicht ab. Kein E-Mail-Versand.");
+            }
+            return originalBytes;
+          }
+          if (live.locked_at) {
+            throw new Error("GoBD: Bereits festgeschriebene Rechnung ohne vollständiges Archiv. Original-PDF zuerst wiederherstellen; kein neuer PDF-Ersatz und kein Versand.");
+          }
+          // Preserve the PDF bytes produced from the final draft; lock, then archive and verify.
+          const finalized = await finalizeDocument(id);
+          if (finalized.number !== docNumber) {
+            throw new Error("GoBD: Rechnungsnummer bei Festschreibung geändert. Kein E-Mail-Versand.");
+          }
+          // The finalization RPC temporarily marks a draft as "sent". That does NOT
+          // mean an email has been sent. Keep it locked, but visibly pending, until
+          // the email provider confirms delivery acceptance below.
+          let archiveFailure: unknown = null;
+          try {
+            await archiveDocumentPdf({ id, number: finalized.number }, generatedBytes);
+          } catch (error) {
+            archiveFailure = error;
+          }
+          const { data: pending, error: pendingError } = await supabase
+            .from("documents")
+            .update({ status: "draft", sent_at: null } as never)
+            .eq("id", id)
+            .eq("number", finalized.number)
+            .eq("status", "sent")
+            .is("sent_at", null)
+            .select("id")
+            .single();
+          if (pendingError || !pending) {
+            throw pendingError ?? new Error("GoBD: Versandstatus konnte nicht als ausstehend gespeichert werden. Keine E-Mail gesendet.");
+          }
+          if (archiveFailure) throw archiveFailure;
+          await queryClient.invalidateQueries({ queryKey: ["document", id] });
+          await queryClient.invalidateQueries({ queryKey: ["documents"] });
+          return generatedBytes;
+        }}
         onSent={async () => {
           // Versand-Status verbindlich in der Datenbank setzen (auch für Angebote),
           // damit der Beleg in der Übersicht als "Versendet" erscheint.
@@ -2653,14 +2728,9 @@ function DokumentDetail() {
             .select("id, status")
             .maybeSingle();
           if (sendError || !updated) {
-            toast.error(
-              `Status konnte nicht auf "Versendet" gesetzt werden: ${
-                sendError?.message ?? "Beleg nicht gefunden"
-              }`,
-            );
-          } else {
-            setField("status", "sent");
+            throw new Error(`E-Mail versendet, aber Versandstatus nicht gespeichert: ${sendError?.message ?? "Beleg nicht gefunden"}. Bitte vor erneutem Senden den Versand prüfen.`);
           }
+          setField("status", "sent");
           try {
             await logAudit("sent", { id, number: docNumber }, { to: mail.to });
           } catch {
@@ -2672,14 +2742,6 @@ function DokumentDetail() {
               await ensureOfficialNumber(id);
             } catch (e) {
               toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
-            }
-          }
-          // Rechnungen werden beim Versand automatisch festgeschrieben (GoBD).
-          if (isInvoice && !locked) {
-            try {
-              await finalize.mutateAsync();
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Festschreiben fehlgeschlagen");
             }
           }
           await queryClient.invalidateQueries({ queryKey: ["document", id] });
