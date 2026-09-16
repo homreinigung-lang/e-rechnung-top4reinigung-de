@@ -25,8 +25,20 @@ jobs:
           bun-version: '1.4.2'
       - name: Install exact committed dependencies
         run: bun install --frozen-lockfile
-      - name: Update only vulnerable transitive packages
-        run: bun update fast-uri brace-expansion nanoid sharp js-yaml
+      - name: Apply minimal sharp security override
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('package.json')
+          pkg = json.loads(path.read_text())
+          pkg.setdefault('overrides', {})['sharp'] = '^0.35.4'
+          path.write_text(json.dumps(pkg, indent=2, ensure_ascii=False) + '\n')
+          PY
+      - name: Update affected transitive packages
+        run: |
+          bun install
+          bun update fast-uri brace-expansion nanoid js-yaml
       - name: Verify dependency graph
         run: bun audit --audit-level=high
       - name: Verify TypeScript tests and build
@@ -34,12 +46,12 @@ jobs:
           bunx tsc --noEmit
           bun run test
           bun run build
-      - name: Commit updated lockfile only on release branch
+          bun install --frozen-lockfile
+      - name: Commit audited manifest and lockfile only on release branch
         run: |
-          git diff --exit-code -- package.json
-          git add bun.lock
+          git add package.json bun.lock
           if git diff --cached --quiet; then
-            echo 'No lockfile change produced'; exit 1
+            echo 'No dependency changes produced'; exit 1
           fi
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'security: refresh vulnerable transitive dependencies'
           git push origin HEAD:release/gobd-fahrtenbuch-20260916
