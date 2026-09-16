@@ -53,11 +53,16 @@ export function buildAccountantFahrtenbuchPdf(
     page++;
     doc.setTextColor(30, 40, 52);
     if (branding) {
-      if (!branding.companyName.trim() || !branding.logoDataUrl.startsWith("data:image/")) {
+      const logoFormat = /^data:image\/png;base64,/i.test(branding.logoDataUrl)
+        ? "PNG"
+        : /^data:image\/jpe?g;base64,/i.test(branding.logoDataUrl)
+          ? "JPEG"
+          : null;
+      if (!branding.companyName.trim() || !logoFormat) {
         throw new Error("Firmenname oder Firmenlogo fehlt in den Einstellungen.");
       }
       // Logo and company name are repeated on every report page.
-      doc.addImage(branding.logoDataUrl, "JPEG", left, 8, 27, 13, undefined, "FAST");
+      doc.addImage(branding.logoDataUrl, logoFormat, left, 8, 27, 13, undefined, "FAST");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.text(branding.companyName.trim(), left + 31, 16, { maxWidth: tableWidth - 33 });
