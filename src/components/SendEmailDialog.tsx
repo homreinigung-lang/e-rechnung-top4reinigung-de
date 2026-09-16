@@ -36,6 +36,7 @@ export function SendEmailDialog({
   onOpenChange,
   defaults,
   buildPdfBytes,
+  beforeSend,
   onSent,
 }: {
   open: boolean;
@@ -47,6 +48,8 @@ export function SendEmailDialog({
    * Es gibt bewusst KEINEN zweiten Render-Pfad für den E-Mail-Versand.
    */
   buildPdfBytes: () => Promise<Uint8Array>;
+  /** Archive/verify the final invoice PDF before a remote email request. */
+  beforeSend?: (originalPdf: Uint8Array) => Promise<Uint8Array>;
   onSent?: () => void | Promise<void>;
 }) {
   const [to, setTo] = useState(defaults.to);
@@ -66,9 +69,9 @@ export function SendEmailDialog({
   }, [open]);
 
   async function buildPdf() {
-    // Identische Engine wie Vorschau und „PDF herunterladen“: A4, feste Ränder,
-    // gleiche Seitenumbrüche, gleiche Kopf-/Fußzeilen.
-    const invoice: Uint8Array = await buildPdfBytes();
+    // The exact invoice bytes are verified/archived BEFORE any email request.
+    const generated: Uint8Array = await buildPdfBytes();
+    const invoice = beforeSend ? await beforeSend(generated) : generated;
     if (attachment && merge) {
       const extra = new Uint8Array(await attachment.arrayBuffer());
       return mergePdfs([invoice, extra]);
@@ -108,11 +111,9 @@ export function SendEmailDialog({
       try {
         await onSent?.();
       } catch (e) {
-        toast.error(
-          e instanceof Error
-            ? `E-Mail versendet, Status konnte aber nicht aktualisiert werden: ${e.message}`
-            : "E-Mail versendet, Status konnte aber nicht aktualisiert werden.",
-        );
+        toast.error(e instanceof Error ? e.message : "E-Mail versendet, aber der Versandstatus ist ungeklärt. Bitte vor erneutem Senden prüfen.", { duration: 12000 });
+        onOpenChange(false);
+        return;
       }
       toast.success(`Die E-Mail wurde erfolgreich an ${to.trim()} gesendet.`, {
         description: `${defaults.companyEmail ? `Kopie an ${defaults.companyEmail} · ` : ""}PDF${
