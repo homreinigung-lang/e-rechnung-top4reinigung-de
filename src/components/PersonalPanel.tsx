@@ -497,7 +497,7 @@ export function Personal() {
       return;
     }
     try {
-      const { buildAccountantFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-accountant-pdf");
+      const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
       const rows: Record<string, string>[] = monthTrips.map((trip) => {
         const vehicle = monthTripVehicles.find((v) => v.id === trip.vehicle_id);
         return {
@@ -516,7 +516,7 @@ export function Personal() {
           Bemerkung: trip.notes ?? "",
         };
       });
-      await saveFile(buildAccountantFahrtenbuchPdf(rows, `${reportMonth}-01`, reportMonthEnd), `Fahrtenbuch_${reportMonth}.pdf`);
+      await saveFile(await buildBrandedFahrtenbuchPdf(rows, `${reportMonth}-01`, reportMonthEnd), `Fahrtenbuch_${reportMonth}.pdf`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Fahrtenbuch-PDF konnte nicht erstellt werden.");
     }

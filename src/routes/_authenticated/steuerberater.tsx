@@ -474,8 +474,8 @@ function Steuerberater() {
                 return;
               }
               try {
-                const { buildAccountantFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-accountant-pdf");
-                await saveFile(buildAccountantFahrtenbuchPdf(fahrtenbuchRows, from, to), `Fahrtenbuch_${period}.pdf`);
+                const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
+                await saveFile(await buildBrandedFahrtenbuchPdf(fahrtenbuchRows, from, to), `Fahrtenbuch_${period}.pdf`);
               } catch (error) {
                 toast.error(error instanceof Error ? error.message : "Fahrtenbuch PDF konnte nicht erstellt werden.");
               }

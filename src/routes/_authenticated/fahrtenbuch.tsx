@@ -508,7 +508,7 @@ function Fahrtenbuch() {
             }
             try {
               // Same PDF renderer and the same row fields as the Steuerberater export.
-              const { buildAccountantFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-accountant-pdf");
+              const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
               const rows = [...entries].sort((a, b) =>
                 `${a.trip_date} ${a.trip_time ?? ""}`.localeCompare(`${b.trip_date} ${b.trip_time ?? ""}`),
               ).map((entry) => {
@@ -531,7 +531,7 @@ function Fahrtenbuch() {
               });
               const from = rows.length ? [...entries].map((e) => e.trip_date).sort()[0]! : now.date;
               const to = rows.length ? [...entries].map((e) => e.trip_date).sort().at(-1)! : now.date;
-              await saveFile(buildAccountantFahrtenbuchPdf(rows, from, to), `Fahrtenbuch_${from}_${to}.pdf`);
+              await saveFile(await buildBrandedFahrtenbuchPdf(rows, from, to), `Fahrtenbuch_${from}_${to}.pdf`);
             } catch (error) {
               toast.error(error instanceof Error ? error.message : "Fahrtenbuch-PDF konnte nicht erstellt werden.");
             }
