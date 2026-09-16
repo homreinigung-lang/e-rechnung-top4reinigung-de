@@ -1,0 +1,46 @@
+name: Dependency vulnerability check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'bun.lock*'
+      - '.github/workflows/security-dependencies.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'bun.lock*'
+      - '.github/workflows/security-dependencies.yml'
+  schedule:
+    - cron: '23 5 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-security-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dependency-audit:
+    name: Audit dependencies (high and critical)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Generate a temporary npm-compatible lockfile for npm audit: the source of
+      # truth remains bun.lock. Do not commit the generated lockfile or run app code.
+      - name: Prepare temporary audit lockfile
+        run: npm install --package-lock-only --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Audit production and development dependencies
+        run: npm audit --package-lock-only --audit-level=high --legacy-peer-deps
+      - name: Verify repository stayed unchanged
+        if: always()
+        run: git diff --exit-code -- package.json bun.lock bun.lockb
