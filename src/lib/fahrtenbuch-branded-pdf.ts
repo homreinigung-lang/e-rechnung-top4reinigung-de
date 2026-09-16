@@ -1,6 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchStoredBlob } from "@/lib/storage";
-import { buildAccountantFahrtenbuchPdf, type FahrtenbuchBranding } from "@/lib/fahrtenbuch-accountant-pdf";
+import {
+  assertFahrtenbuchVehicleData,
+  buildAccountantFahrtenbuchPdf,
+  type FahrtenbuchBranding,
+} from "@/lib/fahrtenbuch-accountant-pdf";
 
 type TripRow = Record<string, string>;
 
@@ -29,8 +33,9 @@ async function logoAsJpeg(pathOrUrl: string): Promise<string> {
   }
 }
 
-/** Get company branding for the signed-in owner, then render the common Fahrtenbuch PDF. */
+/** Validate the trip's vehicle identification before reading account data or rendering a PDF. */
 export async function buildBrandedFahrtenbuchPdf(rows: TripRow[], from: string, to: string): Promise<Blob> {
+  assertFahrtenbuchVehicleData(rows);
   const { data, error } = await supabase
     .from("company_settings")
     .select("company_name,logo_url")
