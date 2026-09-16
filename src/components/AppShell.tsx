@@ -36,6 +36,7 @@ const ownerMoreGroups: readonly NavGroup[] = [
   { title: "Arbeit", items: [
     { to: "/team", label: "Control Center", icon: HardHat },
     { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
+    { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },
     { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
   ]},
   { title: "Projekte & Ausschreibungen", items: [
@@ -197,7 +198,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <DropdownMenuItem key={`${item.to}-${item.label}`} asChild><Link to={item.to} {...(item.hash ? { hash: item.hash } : {})} {...(item.search ? { search: item.search } : {})} className="flex items-center gap-2"><item.icon className="size-4" />{item.label}</Link></DropdownMenuItem>
                 ))}</div>
               ))}
-              <DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut className="size-4" />Abmelden</DropdownMenuItem>
+              <DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut className="size-4" /><span>Abmelden</span></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
