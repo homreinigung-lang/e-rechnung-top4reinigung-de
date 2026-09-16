@@ -2,8 +2,17 @@ import { jsPDF } from "jspdf";
 
 type TripRow = Record<string, string>;
 
+/** Fail closed if a vehicle query is still loading, failed, or lacks a valid vehicle. */
+export function assertFahrtenbuchVehicleData(rows: TripRow[]): void {
+  if (rows.some((row) => !row["Fahrzeug"]?.trim() || !row["Kennzeichen"]?.trim())) {
+    throw new Error("Fahrzeugdaten fehlen oder konnten nicht vollständig geladen werden. Bitte erneut versuchen.");
+  }
+}
+
 /** Fahrtenbuch-only PDF: a paginated, wrapped table; invoice and quote PDFs are independent. */
 export function buildAccountantFahrtenbuchPdf(rows: TripRow[], from: string, to: string): Blob {
+  // Every export path uses this renderer; never silently emit incomplete vehicle records.
+  assertFahrtenbuchVehicleData(rows);
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
