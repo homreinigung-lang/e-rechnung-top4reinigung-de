@@ -467,9 +467,22 @@ function Steuerberater() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => window.location.assign("/steuerberater/fahrtenbuch")}
+          onClick={() =>
+            void (async () => {
+              if (fahrtenbuchRows.length === 0) {
+                toast.error("Keine Fahrten im gewählten Zeitraum.");
+                return;
+              }
+              try {
+                const { buildAccountantFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-accountant-pdf");
+                await saveFile(buildAccountantFahrtenbuchPdf(fahrtenbuchRows, from, to), `Fahrtenbuch_${period}.pdf`);
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Fahrtenbuch PDF konnte nicht erstellt werden.");
+              }
+            })()
+          }
         >
-          <FileText className="size-4" /> Fahrtenbuch
+          <FileText className="size-4" /> Fahrtenbuch PDF
         </Button>
         <Button
           onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}
