@@ -1,0 +1,79 @@
+name: Daily encrypted Supabase database backup
+
+on:
+  schedule:
+    - cron: '15 2 * * *' # 02:15 UTC; GitHub schedules may be delayed or skipped.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: ${{ secrets.SUPABASE_BACKUP_DATABASE_URL }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.SUPABASE_BACKUP_ENCRYPTION_PASSPHRASE }}
+    steps:
+      - name: Verify required secrets are configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$DATABASE_URL" || -z "$BACKUP_ENCRYPTION_PASSPHRASE" ]]; then
+            echo 'Missing backup secrets. Configure SUPABASE_BACKUP_DATABASE_URL and SUPABASE_BACKUP_ENCRYPTION_PASSPHRASE in repository Actions secrets.' >&2
+            exit 1
+          fi
+          if [[ "$DATABASE_URL" != *squkjqvofugkanzuqtqn* ]]; then
+            echo 'Database URL does not identify the intended Hom.r.ofice Supabase project. Aborting.' >&2
+            exit 1
+          fi
+          if (( ${#BACKUP_ENCRYPTION_PASSPHRASE} < 24 )); then
+            echo 'Backup encryption passphrase is too short (minimum 24 characters).' >&2
+            exit 1
+          fi
+
+      - name: Dump database and verify archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/supabase-backup"
+          chmod 700 "$RUNNER_TEMP/supabase-backup"
+          docker run --rm --network host \
+            -e DATABASE_URL \
+            -v "$RUNNER_TEMP/supabase-backup:/backup" \
+            postgres:17 \
+            sh -c 'set -eu; pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-privileges --file=/backup/database.dump; pg_restore --list /backup/database.dump >/dev/null'
+          test -s "$RUNNER_TEMP/supabase-backup/database.dump"
+
+      - name: Encrypt and checksum backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+            -in "$RUNNER_TEMP/supabase-backup/database.dump" \
+            -out "$RUNNER_TEMP/supabase-backup/database.dump.enc" \
+            -pass env:BACKUP_ENCRYPTION_PASSPHRASE
+          test -s "$RUNNER_TEMP/supabase-backup/database.dump.enc"
+          (cd "$RUNNER_TEMP/supabase-backup" && sha256sum database.dump.enc > database.dump.enc.sha256)
+          rm -f "$RUNNER_TEMP/supabase-backup/database.dump"
+
+      - name: Upload encrypted backup only
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-hom-office-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/supabase-backup/database.dump.enc
+            ${{ runner.temp }}/supabase-backup/database.dump.enc.sha256
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Remove temporary backup files
+        if: always()
+        shell: bash
+        run: rm -rf -- "$RUNNER_TEMP/supabase-backup"
