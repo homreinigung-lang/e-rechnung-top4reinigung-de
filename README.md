@@ -23,5 +23,4 @@ git clone <this-repository-url>
 cd <repository-name>
 npm i
 npm run dev
-```
-Deployment test 17.09.2026
+``
