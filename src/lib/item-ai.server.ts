@@ -135,11 +135,31 @@ function explicitArea(prompt: string): number {
 
 function explicitFrequency(prompt: string): { value: number; unit: "week" | "month" } | null {
   const text = normalizedText(prompt).replace(/inderwoche/g, "in der woche");
+  const connector = "(?:pro\\s+|in\\s+der\\s+|inder\\s+|im\\s+)?";
 
-  let match = text.match(/(\d+(?:[.,]\d+)?)\s*(?:x|mal|mall)\s*(?:pro\s+|in\s+der\s+)?woche\b/i);
+  // Deutsche Zahlwörter ("einmal", "zweimal" …) statt Ziffern – z. B. aus
+  // Spracheingabe oder Autokorrektur – müssen exakt wie Ziffern zählen.
+  const wordNumbers: Record<string, number> = {
+    einmal: 1,
+    zweimal: 2,
+    dreimal: 3,
+    viermal: 4,
+    fünfmal: 5,
+    fuenfmal: 5,
+    sechsmal: 6,
+    siebenmal: 7,
+  };
+  for (const [word, value] of Object.entries(wordNumbers)) {
+    if (new RegExp(`\\b${word}\\b\\s*${connector}woche\\b`, "i").test(text)) return { value, unit: "week" };
+  }
+  for (const [word, value] of Object.entries(wordNumbers)) {
+    if (new RegExp(`\\b${word}\\b\\s*${connector}monat\\b`, "i").test(text)) return { value, unit: "month" };
+  }
+
+  let match = text.match(new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:x|mal|mall)\\s*${connector}woche\\b`, "i"));
   if (match) return { value: num(match[1]), unit: "week" };
 
-  match = text.match(/(\d+(?:[.,]\d+)?)\s*(?:x|mal|mall)\s*(?:pro\s+|im\s+)?monat\b/i);
+  match = text.match(new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:x|mal|mall)\\s*${connector}monat\\b`, "i"));
   if (match) return { value: num(match[1]), unit: "month" };
 
   if (/\b(?:wöchentlich|woechentlich|jede\s+woche)\b/i.test(text)) return { value: 1, unit: "week" };
