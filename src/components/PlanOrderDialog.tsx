@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2 } from "lucide-react";
 import { euro, type Plan } from "@/lib/admin";
+import { supabase } from "@/integrations/supabase/client";
 import {
   TRIAL_DAYS,
   calcTotals,
@@ -46,7 +48,26 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
   const [form, setForm] = useState(emptyForm);
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   const [result, setResult] = useState<OrderResult | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const createOrder = useCreatePlanOrder();
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!plan) {
+      setAuthChecked(false);
+      setIsAuthenticated(false);
+      return;
+    }
+    void supabase.auth.getUser().then(({ data }) => {
+      if (cancelled) return;
+      setIsAuthenticated(Boolean(data.user));
+      setAuthChecked(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [plan]);
 
   const set = (key: keyof typeof emptyForm) => (value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -58,6 +79,8 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
       setForm(emptyForm);
       setInterval("monthly");
       setResult(null);
+      setAuthChecked(false);
+      setIsAuthenticated(false);
     }
     onOpenChange(open);
   }
@@ -65,6 +88,10 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!plan) return;
+    if (!isAuthenticated) {
+      toast.error("Bitte zuerst registrieren oder anmelden.");
+      return;
+    }
     if (!form.companyName.trim() || !form.email.trim() || !form.addressLine.trim()) {
       toast.error("Bitte Firma, E-Mail und Adresse ausfüllen.");
       return;
@@ -85,12 +112,50 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
   return (
     <Dialog open={Boolean(plan)} onOpenChange={close}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-        {plan && !result ? (
+        {plan && !authChecked ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Zugang wird geprüft</DialogTitle>
+              <DialogDescription>Bitte einen Moment warten …</DialogDescription>
+            </DialogHeader>
+          </>
+        ) : null}
+
+        {plan && authChecked && !isAuthenticated ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Zuerst kostenlos registrieren</DialogTitle>
+              <DialogDescription>
+                Neue Firmen erhalten automatisch {TRIAL_DAYS} Tage kostenlose Testphase. Ein
+                kostenpflichtiges Paket wird erst danach aus dem angemeldeten Firmenkonto bestellt.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-secondary/40 p-4 text-sm">
+                <p className="font-semibold">Keine Zahlung bei der Registrierung</p>
+                <p className="mt-1 text-muted-foreground">
+                  Sie testen GebCalc zuerst kostenlos. Während oder nach der Testphase können Sie im
+                  Bereich „Mein Paket“ ein kostenpflichtiges Paket auswählen.
+                </p>
+              </div>
+              <Button asChild className="w-full" onClick={() => close(false)}>
+                <Link to="/auth">Kostenlos registrieren</Link>
+              </Button>
+              <Button asChild variant="secondary" className="w-full" onClick={() => close(false)}>
+                <Link to="/auth">Bereits registriert? Anmelden</Link>
+              </Button>
+            </div>
+          </>
+        ) : null}
+
+        {plan && authChecked && isAuthenticated && !result ? (
           <>
             <DialogHeader>
               <DialogTitle>Paket „{plan.name}" bestellen</DialogTitle>
               <DialogDescription>
-                {TRIAL_DAYS} Tage kostenlos testen – die Rechnung folgt erst nach der Testphase.
+                Die Bestellung erfolgt aus Ihrem angemeldeten Firmenkonto. Bei einer aktiven
+                Testphase bleibt die Testphase bis zu ihrem Ablauf bestehen; die Rechnung folgt erst
+                danach.
               </DialogDescription>
             </DialogHeader>
 
@@ -169,17 +234,16 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
               ) : null}
 
               <Button type="submit" className="w-full" disabled={createOrder.isPending}>
-                {createOrder.isPending ? "Wird gesendet …" : "Kostenpflichtig bestellen"}
+                {createOrder.isPending ? "Wird gesendet …" : "Kostenpflichtiges Paket bestellen"}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Die ersten {TRIAL_DAYS} Tage sind kostenlos. Zahlung per Rechnung /
-                SEPA-Überweisung.
+                Zahlung per Rechnung / SEPA-Überweisung. Eine aktive Testphase wird nicht verkürzt.
               </p>
             </form>
           </>
         ) : null}
 
-        {plan && result ? (
+        {plan && authChecked && isAuthenticated && result ? (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -193,10 +257,10 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
             </DialogHeader>
             <div className="space-y-4 text-sm">
               <div className="rounded-lg border bg-secondary/40 p-4">
-                <p className="font-semibold">Kostenlose Testphase</p>
+                <p className="font-semibold">Testphase bleibt bestehen</p>
                 <p className="mt-1 text-muted-foreground">
-                  {TRIAL_DAYS} Tage unverbindlich testen. Die erste Rechnung wird erst nach Ablauf
-                  der Testphase gestellt.
+                  Falls Ihre kostenlose Testphase noch aktiv ist, läuft sie bis zum vorgesehenen
+                  Enddatum weiter. Die kostenpflichtige Abrechnung beginnt anschließend.
                 </p>
               </div>
               <div className="rounded-lg border p-4">
