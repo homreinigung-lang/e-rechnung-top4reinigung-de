@@ -78,7 +78,7 @@ function calculateTotals(
 
 export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ data, context }): Promise<SecureOrderResult> => {
+  .handler(async ({ data }): Promise<SecureOrderResult> => {
     const input = data as CreatePlanOrderInput;
     if (!input?.planId || !input.companyName?.trim() || !input.email?.trim() || !input.addressLine?.trim()) {
       throw new Error("Bitte Firma, E-Mail und Adresse ausfüllen.");
@@ -103,7 +103,6 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
     ).padStart(5, "0")}`;
 
     const { error } = await supabaseAdmin.from("plan_orders").insert({
-      user_id: context.userId,
       order_number: orderNumber,
       plan_id: plan.id,
       plan_code: plan.code,
