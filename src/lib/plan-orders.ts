@@ -1,5 +1,4 @@
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import type { Plan } from "@/lib/admin";
 
 export const VAT_RATE = 0.19;
@@ -99,37 +98,33 @@ export type OrderResult = {
   totals: OrderTotals;
 };
 
-/** Bestellung/Rechnungsanfrage speichern. */
+/**
+ * Bestellung/Rechnungsanfrage speichern.
+ *
+ * Die Bestellung wird absichtlich über eine authentifizierte Server-Funktion
+ * angelegt. Preise und Paketstatus werden dort erneut aus der Datenbank gelesen,
+ * damit der Browser weder Preise noch Besitzer-ID manipulieren kann.
+ */
 export function useCreatePlanOrder() {
   return useMutation({
     mutationFn: async (input: OrderInput): Promise<OrderResult> => {
-      const totals = calcTotals(input.plan, input.billingInterval, input.country, input.vatId);
-      const orderNumber = `BEST-${new Date().getFullYear()}-${String(
-        Math.floor(Math.random() * 100000),
-      ).padStart(5, "0")}`;
-      const { error } = await supabase.from("plan_orders").insert({
-        order_number: orderNumber,
-        plan_id: input.plan.id,
-        plan_code: input.plan.code,
-        plan_name: input.plan.name,
-        billing_interval: input.billingInterval,
-        company_name: input.companyName.trim(),
-        contact_name: input.contactName.trim(),
-        email: input.email.trim(),
-        phone: input.phone.trim(),
-        address_line: input.addressLine.trim(),
-        postal_code: input.postalCode.trim(),
-        city: input.city.trim(),
-        country: (input.country || "DE").trim().toUpperCase(),
-        vat_id: input.vatId.trim(),
-        note: input.note.trim(),
-        net_cents: totals.netCents,
-        vat_cents: totals.vatCents,
-        gross_cents: totals.grossCents,
-        reverse_charge: totals.reverseCharge,
-      });
-      if (error) throw error;
-      return { orderNumber, totals };
+      const { createAuthenticatedPlanOrder } = await import("@/lib/plan-orders.functions");
+      return createAuthenticatedPlanOrder({
+        data: {
+          planId: input.plan.id,
+          billingInterval: input.billingInterval,
+          companyName: input.companyName,
+          contactName: input.contactName,
+          email: input.email,
+          phone: input.phone,
+          addressLine: input.addressLine,
+          postalCode: input.postalCode,
+          city: input.city,
+          country: input.country,
+          vatId: input.vatId,
+          note: input.note,
+        },
+      }) as Promise<OrderResult>;
     },
   });
 }
