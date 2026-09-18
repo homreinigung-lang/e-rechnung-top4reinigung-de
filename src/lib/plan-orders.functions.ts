@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const VAT_RATE = 0.19;
@@ -32,21 +33,6 @@ const EU_COUNTRIES = new Set([
 ]);
 const REVERSE_CHARGE_PLANS = new Set(["pro", "enterprise"]);
 
-type CreatePlanOrderInput = {
-  planId: string;
-  billingInterval: "monthly" | "yearly";
-  companyName: string;
-  contactName: string;
-  email: string;
-  phone: string;
-  addressLine: string;
-  postalCode: string;
-  city: string;
-  country: string;
-  vatId: string;
-  note: string;
-};
-
 export type SecureOrderResult = {
   orderNumber: string;
   totals: {
@@ -78,26 +64,36 @@ function calculateTotals(
 
 export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        planId: z.string().uuid(),
+        billingInterval: z.enum(["monthly", "yearly"]),
+        companyName: z.string().trim().min(1).max(200),
+        contactName: z.string().trim().max(200),
+        email: z.string().trim().email().max(200),
+        phone: z.string().trim().max(80),
+        addressLine: z.string().trim().min(1).max(250),
+        postalCode: z.string().trim().max(40),
+        city: z.string().trim().max(120),
+        country: z.string().trim().min(2).max(2).transform((v) => v.toUpperCase()),
+        vatId: z.string().trim().max(50),
+        note: z.string().trim().max(2000),
+      })
+      .parse(input),
+  )
   .handler(async ({ data }): Promise<SecureOrderResult> => {
-    const input = data as CreatePlanOrderInput;
-    if (!input?.planId || !input.companyName?.trim() || !input.email?.trim() || !input.addressLine?.trim()) {
-      throw new Error("Bitte Firma, E-Mail und Adresse ausfüllen.");
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) {
-      throw new Error("Bitte eine gültige E-Mail-Adresse angeben.");
-    }
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: plan, error: planError } = await supabaseAdmin
       .from("plans")
       .select("id,code,name,price_monthly_cents,price_yearly_cents,active")
-      .eq("id", input.planId)
+      .eq("id", data.planId)
       .eq("active", true)
       .maybeSingle();
     if (planError) throw new Error(planError.message);
     if (!plan) throw new Error("Das gewählte Paket ist nicht mehr verfügbar.");
 
-    const totals = calculateTotals(plan, input.billingInterval, input.country, input.vatId);
+    const totals = calculateTotals(plan, data.billingInterval, data.country, data.vatId);
     const orderNumber = `BEST-${new Date().getFullYear()}-${String(
       Math.floor(Math.random() * 100000),
     ).padStart(5, "0")}`;
@@ -107,17 +103,17 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
       plan_id: plan.id,
       plan_code: plan.code,
       plan_name: plan.name,
-      billing_interval: input.billingInterval,
-      company_name: input.companyName.trim(),
-      contact_name: input.contactName.trim(),
-      email: input.email.trim(),
-      phone: input.phone.trim(),
-      address_line: input.addressLine.trim(),
-      postal_code: input.postalCode.trim(),
-      city: input.city.trim(),
-      country: (input.country || "DE").trim().toUpperCase(),
-      vat_id: input.vatId.trim(),
-      note: input.note.trim(),
+      billing_interval: data.billingInterval,
+      company_name: data.companyName,
+      contact_name: data.contactName,
+      email: data.email,
+      phone: data.phone,
+      address_line: data.addressLine,
+      postal_code: data.postalCode,
+      city: data.city,
+      country: data.country,
+      vat_id: data.vatId,
+      note: data.note,
       net_cents: totals.netCents,
       vat_cents: totals.vatCents,
       gross_cents: totals.grossCents,
