@@ -1,0 +1,25 @@
+name: Source security checks
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '37 5 * * *'
+permissions:
+  contents: read
+jobs:
+  source-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check tracked files for private key headers
+        shell: bash
+        run: |
+          if git grep -n -I -E -- 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- ':!*.lock'; then
+            echo 'Potential private key found in tracked files'
+            exit 1
+          fi
+          echo 'No private-key headers in tracked files'
