@@ -62,7 +62,7 @@ function KalkulationAngebotPage() {
   const [hours, setHours] = useState("4");
   const [hourlyRate, setHourlyRate] = useState(String(selected.hourly));
   const [frequency, setFrequency] = useState("1");
-  const [frequencyUnit, setFrequencyUnit] = useState<"week" | "month">("month");
+  const [frequencyUnit, setFrequencyUnit] = useState<"week" | "month">("week");
   const [travel, setTravel] = useState("0");
   const [extras, setExtras] = useState<string[]>([]);
   const [stairs, setStairs] = useState(false);
