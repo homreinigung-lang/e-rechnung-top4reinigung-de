@@ -6,7 +6,7 @@ import { CheckCircle2, Info, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { usePlans, euro } from "@/lib/admin";
+import { usePlans, euro, type Plan } from "@/lib/admin";
 import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
 import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
 import {
@@ -17,6 +17,7 @@ import {
   PRO_INCLUDED_EMPLOYEES,
 } from "@/lib/plan-orders";
 import { RenewalPaymentDialog, type RenewalPaymentInfo } from "@/components/RenewalPaymentDialog";
+import { PlanOrderDialog } from "@/components/PlanOrderDialog";
 import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/mein-paket")({
@@ -74,12 +75,6 @@ function useMyEmployeeCount() {
   });
 }
 
-const CONTACT = "info@top4reinigung.de";
-
-function requestMail(subject: string, body: string) {
-  return `mailto:${CONTACT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-
 function MeinPaket() {
   const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
   const { data: sub, isLoading } = useMySubscription();
@@ -90,6 +85,7 @@ function MeinPaket() {
     ? Math.ceil((new Date(`${sub.renews_on}T00:00:00`).getTime() - Date.now()) / 86_400_000)
     : null;
   const [payment, setPayment] = useState<RenewalPaymentInfo | null>(null);
+  const [orderPlan, setOrderPlan] = useState<Plan | null>(null);
   const { data: employeeCount = 0 } = useMyEmployeeCount();
   const currentPlan = (plans ?? []).find((p) => p.code === currentCode);
   const extraCount = extraEmployees(currentCode, employeeCount);
@@ -114,7 +110,7 @@ function MeinPaket() {
       <div>
         <h1 className="font-display text-2xl font-bold">Mein Paket</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ihre aktuelle Paket-Auswahl, Laufzeit und mögliche Upgrades.
+          Ihre aktuelle Testphase, Paket-Auswahl, Laufzeit und mögliche Upgrades.
         </p>
       </div>
 
@@ -137,7 +133,9 @@ function MeinPaket() {
               <p className="text-base font-semibold">{formatDate(sub.started_on)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Verlängerung</p>
+              <p className="text-xs text-muted-foreground">
+                {sub.status === "trial" ? "Testphase bis" : "Verlängerung"}
+              </p>
               <p className="text-base font-semibold">
                 {sub.renews_on ? formatDate(sub.renews_on) : "—"}
               </p>
@@ -145,13 +143,15 @@ function MeinPaket() {
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted-foreground">
-            Für Ihr Konto ist derzeit kein Paket hinterlegt. Wählen Sie unten ein Paket aus – wir
-            richten es für Sie ein.
+            Für Ihr Konto ist derzeit kein Paket hinterlegt. Bitte laden Sie die Seite erneut oder
+            wenden Sie sich an den Support.
           </p>
         )}
         {sub && currentPlan ? (
           <div className="mt-6 rounded-md border border-border p-4 text-sm">
-            <p className="font-medium">Monatlicher Preis</p>
+            <p className="font-medium">
+              {sub.status === "trial" ? "Preis nach der Testphase" : "Monatlicher Preis"}
+            </p>
             <p className="mt-1 text-muted-foreground">
               Grundpreis {euro(currentPlan.price_monthly_cents)}
               {currentCode === "pro" ? (
@@ -169,7 +169,7 @@ function MeinPaket() {
             </p>
           </div>
         ) : null}
-        {sub ? (
+        {sub && sub.status !== "trial" ? (
           <Button
             variant="secondary"
             className="mt-6"
@@ -202,41 +202,45 @@ function MeinPaket() {
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {sub.status === "trial"
-                    ? `Sie testen alle Funktionen Ihres Pakets kostenlos bis zum ${sub.renews_on ? formatDate(sub.renews_on) : "—"}. Es erfolgt keine automatische Abbuchung: Zur Weiternutzung senden wir Ihnen eine Rechnung, die Sie bequem per SEPA-Überweisung begleichen. Nach Zahlungseingang schalten wir Ihr Konto manuell frei.`
+                    ? `Sie testen GebCalc kostenlos bis zum ${sub.renews_on ? formatDate(sub.renews_on) : "—"}. Bei der Registrierung wird kein kostenpflichtiges Paket bestellt. Wenn Sie GebCalc danach weiter nutzen möchten, wählen Sie unten Ihr gewünschtes Paket und senden die Bestellung aus diesem Konto.`
                     : "Ihre Verlängerung wird per Rechnung abgerechnet. Bitte überweisen Sie den Betrag per SEPA-Überweisung – nach Zahlungseingang verlängern wir Ihr Abonnement manuell."}
                 </p>
               </div>
 
-              <div className="grid gap-2 text-sm sm:grid-cols-2">
-                <p>
-                  <span className="text-muted-foreground">Empfänger: </span>
-                  {pay.recipient}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">Bank: </span>
-                  {pay.bank}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">IBAN: </span>
-                  {formatIban(pay.iban)}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">BIC: </span>
-                  {pay.bic}
-                </p>
-                <p className="sm:col-span-2 text-muted-foreground">{pay.terms}</p>
-              </div>
+              {sub.status !== "trial" ? (
+                <>
+                  <div className="grid gap-2 text-sm sm:grid-cols-2">
+                    <p>
+                      <span className="text-muted-foreground">Empfänger: </span>
+                      {pay.recipient}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Bank: </span>
+                      {pay.bank}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">IBAN: </span>
+                      {formatIban(pay.iban)}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">BIC: </span>
+                      {pay.bic}
+                    </p>
+                    <p className="sm:col-span-2 text-muted-foreground">{pay.terms}</p>
+                  </div>
 
-              <Button
-                onClick={() =>
-                  openRenewal(
-                    "Zahlungsaufforderung zur Verlängerung",
-                    "Alle Zahlungsdaten auf einen Blick – inklusive Proforma-Rechnung als PDF.",
-                  )
-                }
-              >
-                Rechnung zur Verlängerung anfordern
-              </Button>
+                  <Button
+                    onClick={() =>
+                      openRenewal(
+                        "Zahlungsaufforderung zur Verlängerung",
+                        "Alle Zahlungsdaten auf einen Blick – inklusive Proforma-Rechnung als PDF.",
+                      )
+                    }
+                  >
+                    Rechnung zur Verlängerung anfordern
+                  </Button>
+                </>
+              ) : null}
             </div>
           </div>
         </section>
@@ -244,17 +248,24 @@ function MeinPaket() {
 
       <section>
         <h2 className="text-lg font-semibold">Verfügbare Pakete</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {sub?.status === "trial"
+            ? "Während der Testphase können Sie bereits festlegen, welches Paket Sie danach nutzen möchten."
+            : "Hier können Sie ein anderes Paket auswählen."}
+        </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {activePlans.map((plan) => {
-            const isCurrent = plan.code === currentCode;
+            const isTrialPlan = sub?.status === "trial" && plan.code === currentCode;
+            const isCurrentPaid = sub?.status !== "trial" && plan.code === currentCode;
             return (
               <div
                 key={plan.id}
-                className={`surface flex flex-col p-6 ${isCurrent ? "ring-2 ring-primary" : ""}`}
+                className={`surface flex flex-col p-6 ${isCurrentPaid || isTrialPlan ? "ring-2 ring-primary" : ""}`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-base font-semibold">{plan.name}</h3>
-                  {isCurrent ? <Badge>Ihr Paket</Badge> : null}
+                  {isCurrentPaid ? <Badge>Ihr Paket</Badge> : null}
+                  {isTrialPlan ? <Badge variant="secondary">Testphase</Badge> : null}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
                 <p className="mt-4 text-2xl font-bold">
@@ -274,20 +285,17 @@ function MeinPaket() {
                   ))}
                 </ul>
                 <Button
-                  asChild
                   className="mt-6"
-                  disabled={isCurrent}
-                  variant={isCurrent ? "secondary" : "default"}
+                  disabled={isCurrentPaid}
+                  variant={isCurrentPaid ? "secondary" : "default"}
+                  onClick={() => !isCurrentPaid && setOrderPlan(plan)}
                 >
-                  <a
-                    href={requestMail(
-                      `Upgrade auf Paket ${plan.name}`,
-                      `Guten Tag,\n\nwir möchten auf das Paket "${plan.name}" wechseln.\n\nFirma: ${sub?.company_name ?? ""}\n\nVielen Dank`,
-                    )}
-                  >
-                    <Sparkles className="size-4" />
-                    {isCurrent ? "Aktuell gebucht" : "Upgrade anfragen"}
-                  </a>
+                  <Sparkles className="size-4" />
+                  {isCurrentPaid
+                    ? "Aktuell gebucht"
+                    : sub?.status === "trial"
+                      ? "Paket für danach wählen"
+                      : "Paketwechsel bestellen"}
                 </Button>
               </div>
             );
@@ -302,6 +310,12 @@ function MeinPaket() {
         info={payment}
         onOpenChange={(open) => {
           if (!open) setPayment(null);
+        }}
+      />
+      <PlanOrderDialog
+        plan={orderPlan}
+        onOpenChange={(open) => {
+          if (!open) setOrderPlan(null);
         }}
       />
     </div>
