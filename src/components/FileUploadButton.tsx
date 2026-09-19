@@ -13,7 +13,7 @@ export function FileUploadButton({
   folder: string;
   accept?: string;
   label?: string;
-  onUploaded: (path: string, file: File) => void;
+  onUploaded: (path: string, file: File) => void | Promise<void>;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -23,10 +23,12 @@ export function FileUploadButton({
     setBusy(true);
     try {
       const path = await uploadUserFile(file, folder);
-      onUploaded(path, file);
-      toast.success("Datei hochgeladen");
+      // Upload and document analysis are separate steps. Do not signal a
+      // successful analysis merely because Storage accepted the file.
+      await onUploaded(path, file);
+      toast.success("Datei hochgeladen – bitte erkannte Daten prüfen");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload fehlgeschlagen");
+      toast.error(e instanceof Error ? e.message : "Upload oder Verarbeitung fehlgeschlagen");
     } finally {
       setBusy(false);
     }
