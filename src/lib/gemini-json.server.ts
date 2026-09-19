@@ -45,6 +45,7 @@ export async function generateGeminiJson({
 }: GeminiJsonOptions): Promise<Record<string, unknown>> {
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
+  const headers = { "Content-Type": "application/json", "x-goog-api-key": apiKey };
 
   const parts: Array<Record<string, unknown>> = [{ text: prompt }];
   if (dataUrl) {
@@ -56,7 +57,7 @@ export async function generateGeminiJson({
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
     return fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      headers,
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts }],
