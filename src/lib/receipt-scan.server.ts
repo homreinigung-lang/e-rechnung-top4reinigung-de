@@ -11,17 +11,6 @@ export type ScannedReceipt = {
   notes: string;
 };
 
-const EMPTY: ScannedReceipt = {
-  supplier: "",
-  document_number: "",
-  expense_date: "",
-  net_amount: 0,
-  vat_amount: 0,
-  gross_amount: 0,
-  category: "",
-  notes: "",
-};
-
 function num(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value !== "string") return 0;
@@ -51,7 +40,7 @@ function isoDate(value: unknown): string {
 const SYSTEM = `Du bist ein Buchhaltungs-Assistent für ein deutsches Reinigungsunternehmen.
 Lies den hochgeladenen Beleg bzw. die Eingangsrechnung und extrahiere die Daten exakt so, wie sie auf dem Dokument stehen.
 Beträge als Zahl mit Punkt als Dezimaltrennzeichen. Datum als JJJJ-MM-TT.
-Wenn Netto oder Umsatzsteuer nicht ausgewiesen sind, berechne sie aus dem Bruttobetrag mit 19 % USt.
+Erfinde keine Beträge oder Steuersätze. Wenn die Umsatzsteuer nicht ausgewiesen ist, setze vat_amount auf 0 und erwähne die fehlende Angabe in notes. Wenn der Nettobetrag fehlt, aber Brutto und Umsatzsteuer ausdrücklich ausgewiesen sind, berechne Netto als Brutto minus Umsatzsteuer.
 Kategorie nur aus: Material, Reinigungsmittel, Fahrzeug, Löhne, Miete, Versicherung, Sonstiges.
 Antworte ausschließlich mit reinem JSON ohne Erklärung.`;
 
@@ -94,21 +83,32 @@ export async function extractReceipt(dataUrl: string, mimeType: string): Promise
     mimeType,
   });
 
-  if (!Object.keys(parsed).length) return EMPTY;
-
   let net = num(parsed["net_amount"]);
   let vat = num(parsed["vat_amount"]);
   const gross = num(parsed["gross_amount"]);
-  if (!net && gross) net = Math.round((gross / 1.19) * 100) / 100;
-  if (!vat && gross && net) vat = Math.round((gross - net) * 100) / 100;
+  if (net < 0 || vat < 0 || gross < 0) {
+    throw new Error("Negative Rechnungsbeträge konnten nicht sicher zugeordnet werden. Bitte manuell prüfen.");
+  }
+  if (gross > 0 && net === 0 && vat > 0) net = Math.round((gross - vat) * 100) / 100;
+  if (net === 0 && gross > 0 && vat === 0) net = gross;
+  if (gross === 0 && net === 0) {
+    throw new Error("Kein Rechnungsbetrag erkannt. Bitte die Rechnung prüfen und den Betrag manuell eingeben.");
+  }
+  if (net <= 0 && gross > 0) {
+    throw new Error("Rechnungsbeträge sind nicht plausibel. Bitte manuell prüfen.");
+  }
+  const calculatedGross = Math.round((net + vat) * 100) / 100;
+  if (gross > 0 && Math.abs(calculatedGross - gross) > 0.02) {
+    throw new Error("Netto-, Steuer- und Bruttobetrag stimmen nicht überein. Bitte die Rechnung manuell prüfen.");
+  }
 
   return {
     supplier: String(parsed["supplier"] ?? "").trim(),
     document_number: String(parsed["document_number"] ?? "").trim(),
     expense_date: isoDate(parsed["expense_date"]),
     net_amount: net,
-    vat_amount: vat < 0 ? 0 : vat,
-    gross_amount: gross || Math.round((net + vat) * 100) / 100,
+    vat_amount: vat,
+    gross_amount: gross || calculatedGross,
     category: String(parsed["category"] ?? "").trim(),
     notes: String(parsed["notes"] ?? "").trim(),
   };
