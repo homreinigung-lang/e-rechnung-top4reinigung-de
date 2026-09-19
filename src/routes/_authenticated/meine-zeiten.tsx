@@ -44,6 +44,7 @@ import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
 import { MeinEinsatzkalender, type DayTask } from "@/components/MeinEinsatzkalender";
+import { FahrtenbuchMitarbeiterErfassung } from "@/components/FahrtenbuchMitarbeiterErfassung";
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
   head: () => ({
@@ -474,6 +475,7 @@ function MeineZeiten() {
         )}
       </section>
 
+      <FahrtenbuchMitarbeiterErfassung employeeId={me.id} ownerUserId={me.user_id} />
       <ZeitkontoCard
         employees={[
           {
