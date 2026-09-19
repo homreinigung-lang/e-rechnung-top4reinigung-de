@@ -71,8 +71,7 @@ export async function generateGeminiJson({
 
   // Einige Gemini-Endpunkte/Schema-Kombinationen lehnen ein gültiges, aber nicht
   // unterstütztes responseSchema mit HTTP 400 ab. In diesem Fall fällt der
-  // zentrale Helfer einmal auf JSON-Modus ohne Schema zurück. Die Fachlogik
-  // bleibt unverändert und der Aufrufer erhält weiterhin valides JSON.
+  // zentrale Helfer einmal auf JSON-Modus ohne Schema zurück.
   if (response.status === 400) {
     const firstDetail = (await response.text()).slice(0, 1000);
     console.warn(`Gemini schema request rejected [400], retrying JSON mode: ${firstDetail}`);
@@ -94,16 +93,21 @@ export async function generateGeminiJson({
   }
 
   const raw = extractText(await response.json());
-  if (!raw) return {};
+  if (!raw) throw new Error("Die KI hat keine Rechnungsdaten zurückgegeben. Bitte erneut versuchen oder die Beträge manuell eingeben.");
+  let parsed: unknown;
   try {
-    return JSON.parse(raw) as Record<string, unknown>;
+    parsed = JSON.parse(raw);
   } catch {
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return {};
+    if (!match) throw new Error("Die KI hat keine gültigen Rechnungsdaten zurückgegeben.");
     try {
-      return JSON.parse(match[0]) as Record<string, unknown>;
+      parsed = JSON.parse(match[0]);
     } catch {
-      return {};
+      throw new Error("Die KI hat keine gültigen Rechnungsdaten zurückgegeben.");
     }
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Object.keys(parsed).length) {
+    throw new Error("Die KI hat keine verwertbaren Rechnungsdaten zurückgegeben.");
+  }
+  return parsed as Record<string, unknown>;
 }
