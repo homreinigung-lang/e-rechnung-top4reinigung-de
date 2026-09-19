@@ -31,6 +31,10 @@ function googleErrorMessage(raw: string) {
   }
 }
 
+const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
+const FALLBACK_MODEL = "gemini-3.1-flash-lite";
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export async function generateGeminiJson({
   model,
   system,
@@ -41,7 +45,6 @@ export async function generateGeminiJson({
 }: GeminiJsonOptions): Promise<Record<string, unknown>> {
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
-  const apiKeyValue: string = apiKey;
 
   const parts: Array<Record<string, unknown>> = [{ text: prompt }];
   if (dataUrl) {
@@ -49,12 +52,11 @@ export async function generateGeminiJson({
     parts.push({ inlineData: { mimeType: mimeType || decoded.mimeType, data: decoded.data } });
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-
-  async function request(withSchema: boolean) {
+  async function request(modelName: string, withSchema: boolean): Promise<Response> {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
     return fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKeyValue },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts }],
@@ -67,47 +69,67 @@ export async function generateGeminiJson({
     });
   }
 
-  let response = await request(true);
+  const models = model === FALLBACK_MODEL ? [model] : [model, FALLBACK_MODEL];
+  let lastStatus = 503;
+  for (const [modelIndex, modelName] of models.entries()) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let response: Response;
+      try {
+        response = await request(modelName, true);
+        if (response.status === 400) {
+          // Some models reject a structured response schema but support JSON mode.
+          const detail = (await response.text()).slice(0, 500);
+          console.warn(`Gemini schema rejected for ${modelName}; retrying JSON mode: ${detail}`);
+          response = await request(modelName, false);
+        }
+      } catch (error) {
+        console.warn(`Gemini network request failed for ${modelName}, attempt ${attempt + 1}`, error);
+        if (attempt === 0) {
+          await sleep(1200);
+          continue;
+        }
+        if (modelIndex < models.length - 1) break;
+        throw new Error("KI-Dienst ist momentan nicht erreichbar. Bitte später erneut versuchen.");
+      }
 
-  // Einige Gemini-Endpunkte/Schema-Kombinationen lehnen ein gültiges, aber nicht
-  // unterstütztes responseSchema mit HTTP 400 ab. In diesem Fall fällt der
-  // zentrale Helfer einmal auf JSON-Modus ohne Schema zurück.
-  if (response.status === 400) {
-    const firstDetail = (await response.text()).slice(0, 1000);
-    console.warn(`Gemini schema request rejected [400], retrying JSON mode: ${firstDetail}`);
-    response = await request(false);
-  }
+      if (response.ok) {
+        const raw = extractText(await response.json());
+        if (!raw) throw new Error("Die KI hat keine Rechnungsdaten zurückgegeben. Bitte erneut versuchen oder die Beträge manuell eingeben.");
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (!match) throw new Error("Die KI hat keine gültigen Rechnungsdaten zurückgegeben.");
+          try {
+            parsed = JSON.parse(match[0]);
+          } catch {
+            throw new Error("Die KI hat keine gültigen Rechnungsdaten zurückgegeben.");
+          }
+        }
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Object.keys(parsed).length) {
+          throw new Error("Die KI hat keine verwertbaren Rechnungsdaten zurückgegeben.");
+        }
+        return parsed as Record<string, unknown>;
+      }
 
-  if (response.status === 429) throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
-  if (response.status === 401 || response.status === 403)
-    throw new Error("KI-Zugang ist nicht korrekt konfiguriert.");
-  if (!response.ok) {
-    const raw = (await response.text()).slice(0, 1000);
-    const detail = googleErrorMessage(raw);
-    console.error(`Gemini request failed [${response.status}]: ${raw}`);
-    throw new Error(
-      detail
-        ? `KI-Analyse fehlgeschlagen (${response.status}): ${detail.slice(0, 240)}`
-        : `KI-Analyse fehlgeschlagen (${response.status}).`,
-    );
-  }
-
-  const raw = extractText(await response.json());
-  if (!raw) throw new Error("Die KI hat keine Rechnungsdaten zurückgegeben. Bitte erneut versuchen oder die Beträge manuell eingeben.");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Die KI hat keine gültigen Rechnungsdaten zurückgegeben.");
-    try {
-      parsed = JSON.parse(match[0]);
-    } catch {
-      throw new Error("Die KI hat keine gültigen Rechnungsdaten zurückgegeben.");
+      lastStatus = response.status;
+      const raw = (await response.text()).slice(0, 1000);
+      const detail = googleErrorMessage(raw);
+      console.warn(`Gemini request failed for ${modelName} [${lastStatus}]: ${detail.slice(0, 240)}`);
+      if (lastStatus === 401 || lastStatus === 403) {
+        throw new Error("KI-Zugang ist nicht korrekt konfiguriert.");
+      }
+      if (lastStatus === 429) {
+        throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
+      }
+      // A missing/retired model should switch immediately to the fallback.
+      if (lastStatus === 404 && modelIndex < models.length - 1) break;
+      if (!RETRYABLE_STATUSES.has(lastStatus)) {
+        throw new Error(`KI-Analyse fehlgeschlagen (${lastStatus}): ${detail.slice(0, 240)}`);
+      }
+      if (attempt === 0) await sleep(1200);
     }
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Object.keys(parsed).length) {
-    throw new Error("Die KI hat keine verwertbaren Rechnungsdaten zurückgegeben.");
-  }
-  return parsed as Record<string, unknown>;
+  throw new Error(`KI-Analyse vorübergehend nicht verfügbar (${lastStatus}). Auch das Ersatzmodell konnte die Rechnung nicht lesen. Bitte später erneut versuchen.`);
 }
