@@ -31,18 +31,28 @@ function isoDate(value: unknown): string {
   if (de) {
     const [, d, m, y] = de;
     const year = y!.length === 2 ? `20${y}` : y!;
-    return `${year}-${m!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+    const date = `${year}-${m!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+    return validDate(date) ? date : "";
   }
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return iso ? iso[0]! : "";
+  return iso && validDate(iso[0]!) ? iso[0]! : "";
 }
 
-const SYSTEM = `Du bist ein Buchhaltungs-Assistent für ein deutsches Reinigungsunternehmen.
-Lies den hochgeladenen Beleg bzw. die Eingangsrechnung und extrahiere die Daten exakt so, wie sie auf dem Dokument stehen.
-Beträge als Zahl mit Punkt als Dezimaltrennzeichen. Datum als JJJJ-MM-TT.
-Erfinde keine Beträge oder Steuersätze. Wenn die Umsatzsteuer nicht ausgewiesen ist, setze vat_amount auf 0 und erwähne die fehlende Angabe in notes. Wenn der Nettobetrag fehlt, aber Brutto und Umsatzsteuer ausdrücklich ausgewiesen sind, berechne Netto als Brutto minus Umsatzsteuer.
-Kategorie nur aus: Material, Reinigungsmittel, Fahrzeug, Löhne, Miete, Versicherung, Sonstiges.
-Antworte ausschließlich mit reinem JSON ohne Erklärung.`;
+function validDate(value: string): boolean {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return false;
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+}
+
+const SYSTEM = `Du extrahierst Daten aus einer deutschen EINGANGSRECHNUNG oder einem Kassenbon für die Buchhaltung. Lies ausschließlich die tatsächlich im Dokument erkennbaren Angaben.
+WICHTIG – Rollen unterscheiden:
+- supplier = RECHNUNGSAUSSTELLER/VERKÄUFER/LEISTUNGSERBRINGER (Firma, die die Rechnung ausstellt bzw. auf dem Kassenbon als Händler steht). Übernimm den vollständigen gedruckten Firmennamen einschließlich Rechtsform, wenn lesbar. Nicht die Rechnungsadresse des Empfängers, nicht den Kunden, nicht die eigene Firma Hom Reinigung Service / top4reinigung.de und nicht eine Zahlungsplattform, sofern diese nicht selbst Aussteller ist. Bei mehreren Firmen orientiere dich an 'Rechnung von', Impressum, Verkäufer, USt-IdNr. des Ausstellers; rate bei Unklarheit nicht, sondern gib einen leeren String zurück und schreibe den Grund in notes.
+- document_number = ausdrücklich bezeichnete Rechnungsnummer/Belegnummer; nicht Bestellnummer, Kundennummer, Transaktions-ID, Steuer-ID oder Datum. Wenn nicht eindeutig, leerer String.
+- expense_date = ausdrücklich ausgewiesenes Rechnungsdatum/Belegdatum (bei Kassenbons das Kaufdatum); nicht Zahlungsziel, Leistungszeitraum oder Bestelldatum. Bei fehlendem Datum leerer String. Format YYYY-MM-DD.
+- net_amount, vat_amount, gross_amount = GESAMTBETRÄGE der gesamten Rechnung, keine Einzelpositionen, Zwischensummen, Rückgeld, bezahlten Teilbeträge oder früheren Salden. Berücksichtige ausgewiesene Rabatte. Zahlen mit Punkt als Dezimaltrennzeichen. Erfinde keine Beträge oder Steuersätze. Bei mehreren Umsatzsteuersätzen addiere nur die ausdrücklich ausgewiesenen Steuerbeträge. Wenn die Umsatzsteuer nicht ausgewiesen ist, setze vat_amount auf 0 und vermerke das in notes. Wenn Netto nicht ausgewiesen ist, aber Brutto und Steuer ausdrücklich ausgewiesen sind, berechne Netto als Brutto minus Steuer. Ist nur Brutto ausgewiesen, setze Netto=Brutto und VAT=0, und weise in notes ausdrücklich auf die fehlende Steueraufteilung hin – keine Vorsteuer erfinden.
+- category nur aus: Material, Reinigungsmittel, Fahrzeug, Löhne, Miete, Versicherung, Sonstiges. Wähle nur bei eindeutigem Inhalt; sonst Sonstiges.
+Bei schlechter Bildqualität oder uneindeutigen Feldern nichts erfinden. Erläutere unklare oder fehlende Angaben kurz in notes. Antworte ausschließlich mit reinem JSON gemäß Schema ohne Erklärung.`;
 
 const RECEIPT_SCHEMA = {
   type: "object",
@@ -57,16 +67,7 @@ const RECEIPT_SCHEMA = {
     category: { type: "string" },
     notes: { type: "string" },
   },
-  required: [
-    "supplier",
-    "document_number",
-    "expense_date",
-    "net_amount",
-    "vat_amount",
-    "gross_amount",
-    "category",
-    "notes",
-  ],
+  required: ["supplier", "document_number", "expense_date", "net_amount", "vat_amount", "gross_amount", "category", "notes"],
 } as const;
 
 /** Extrahiert Belegdaten direkt mit der Gemini API aus PDF- oder Bilddateien. */
@@ -74,10 +75,9 @@ export async function extractReceipt(dataUrl: string, mimeType: string): Promise
   const parsed = await generateGeminiJson({
     model: process.env["GEMINI_MODEL_RECEIPT"] || "gemini-3.8-flash",
     system: SYSTEM,
-    prompt:
-      mimeType === "application/pdf"
-        ? "Extrahiere die Belegdaten aus dieser PDF-Rechnung."
-        : "Extrahiere die Belegdaten aus diesem Beleg-Foto.",
+    prompt: mimeType === "application/pdf"
+      ? "Lies alle relevanten Seiten dieser PDF-Eingangsrechnung. Unterscheide Aussteller und Empfänger und entnimm Beträge ausschließlich der Gesamtsumme."
+      : "Lies dieses Belegfoto sorgfältig. Unterscheide Händler und Käufer und entnimm Beträge ausschließlich der Gesamtsumme.",
     schema: RECEIPT_SCHEMA as unknown as Record<string, unknown>,
     dataUrl,
     mimeType,
