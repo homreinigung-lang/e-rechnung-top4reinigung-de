@@ -119,7 +119,7 @@ function explicitArea(prompt: string): number {
 
 function explicitFrequency(prompt: string): { value: number; unit: "week" | "month" } | null {
   const text = normalizedText(prompt).replace(/inderwoche/g, "in der woche");
-  const connector = "(?:pro\\s+|in\\s+der\\s+|inder\\s+|im\\s+)?";
+  const connector = "(?:pro\\s+|in\\s+der\\s+|inder\\s+|im\\s+|die\\s+|je\\s+|/\\s*)?";
 
   const days = text.match(/\b([1-7])\s*(?:tage?n?|einsätze?)\s*(?:pro|in der|je|\/)\s*woche\b/i);
   if (days) return { value: Number(days[1]), unit: "week" };
@@ -169,14 +169,17 @@ function explicitFrequency(prompt: string): { value: number; unit: "week" | "mon
 
   let match = text.match(
     new RegExp(
-      `(\\d+(?:[.,]\\d+)?)\\s*(?:x|mal|mall)\\s*${connector}(?:woche|wöchentlich|woechentlich)\\b`,
+      `(\\d+(?:[.,]\\d+)?)\\s*[-–—]?\\s*(?:x|mal|mall)\\s*${connector}(?:woche|wöchentlich|woechentlich)\\b`,
       "i",
     ),
   );
   if (match) return { value: num(match[1]), unit: "week" };
 
   match = text.match(
-    new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:x|mal|mall)\\s*${connector}(?:monat|monatlich)\\b`, "i"),
+    new RegExp(
+      `(\\d+(?:[.,]\\d+)?)\\s*[-–—]?\\s*(?:x|mal|mall)\\s*${connector}(?:monat|monatlich)\\b`,
+      "i",
+    ),
   );
   if (match) return { value: num(match[1]), unit: "month" };
 

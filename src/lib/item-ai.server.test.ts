@@ -28,6 +28,21 @@ vi.mock("./gemini-json.server", () => ({
 }));
 
 describe("KI-Kalkulation für Praxisreinigung", () => {
+  it.each([
+    ["Praxisreinigung, 200 qm, 3-mal pro Woche", "week", 3, 1040],
+    ["Praxisreinigung, 200 qm, 3 Mal pro Woche", "week", 3, 1040],
+    ["Praxisreinigung, 200 qm, 3x/Woche", "week", 3, 1040],
+    ["Praxisreinigung, 200 qm, dreimal wöchentlich", "week", 3, 1040],
+    ["Praxisreinigung, 200 qm, 3-mal die Woche", "week", 3, 1040],
+    ["Praxisreinigung, 200 qm, 3-mal im Monat", "month", 3, 240],
+  ] as const)("versteht den Turnus in %s", async (prompt, unit, frequency, monthlyPrice) => {
+    const result = await generateCalculation(prompt);
+    expect(result.frequency).toBe(frequency);
+    expect(result.frequency_unit).toBe(unit);
+    expect(result.review_questions).toEqual([]);
+    expect(result.items[0]?.unit_price).toBe(monthlyPrice);
+  });
+
   it("berechnet die Eingabe aus dem Screenshot auch ohne verwertbare KI-Antwort", async () => {
     const gemini = vi.mocked(generateGeminiJson);
     gemini.mockClear();
