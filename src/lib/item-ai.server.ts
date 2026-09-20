@@ -121,7 +121,9 @@ function explicitFrequency(prompt: string): { value: number; unit: "week" | "mon
   const text = normalizedText(prompt).replace(/inderwoche/g, "in der woche");
   const connector = "(?:pro\\s+|in\\s+der\\s+|inder\\s+|im\\s+|die\\s+|je\\s+|/\\s*)?";
 
-  const days = text.match(/\b([1-7])\s*(?:tage?n?|einsätze?)\s*(?:pro|in der|je|\/)\s*woche\b/i);
+  const days = text.match(
+    /\b([1-7])\s*(?:tage?n?|einsätze?)\s*(?:pro|in der|die|je|\/)\s*woche\b/i,
+  );
   if (days) return { value: Number(days[1]), unit: "week" };
   if (
     /\b(?:14[- ]?tägig|14[- ]?taegig|zweiwöchentlich|zweiwoechentlich|alle\s+(?:2|zwei)\s+wochen)\b/i.test(
@@ -183,6 +185,12 @@ function explicitFrequency(prompt: string): { value: number; unit: "week" | "mon
   );
   if (match) return { value: num(match[1]), unit: "month" };
 
+  // Umgangssprachlich wird die Anzahl häufig ohne „mal“ geschrieben.
+  match = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:pro|je|in der|\/)\s*woche\b/i);
+  if (match) return { value: num(match[1]), unit: "week" };
+  match = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:pro|je|im|\/)\s*monat\b/i);
+  if (match) return { value: num(match[1]), unit: "month" };
+
   if (/\b(?:wöchentlich|woechentlich|jede\s+woche)\b/i.test(text))
     return { value: 1, unit: "week" };
   if (/\b(?:monatlich|jeden\s+monat)\b/i.test(text)) return { value: 1, unit: "month" };
@@ -196,11 +204,11 @@ function explicitCleaningType(prompt: string): string | null {
     ["praxis", /\b(?:praxis|praxen|praxisreinigung|arztpraxis|zahnarztpraxis)\b/i],
     ["buero", /\b(?:büro|buero|büroreinigung|bueroreinigung)\b/i],
     ["wohn", /\b(?:wohnung|wohnungsreinigung|haushaltsreinigung|privathaushalt)\b/i],
-    ["grund", /\b(?:grundreinigung|tiefenreinigung)\b/i],
-    ["bau", /\b(?:bauendreinigung|baureinigung)\b/i],
+    ["grund", /\b(?:grund[- ]?reinigung|tiefenreinigung)\b/i],
+    ["bau", /\b(?:bauend[- ]?reinigung|bau[- ]?reinigung)\b/i],
     ["unterhalt", /\b(?:unterhaltsreinigung|unterhalt)\b/i],
     ["treppenhaus", /\b(?:treppenhausreinigung|treppenhaus|treppe)\b/i],
-    ["glas", /\b(?:glasreinigung|fensterreinigung|fenster)\b/i],
+    ["glas", /\b(?:glas[- ]?reinigung|fenster[- ]?reinigung|fenster)\b/i],
   ];
   for (const [type, pattern] of patterns) {
     const index = text.search(pattern);
@@ -311,6 +319,11 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
   const area = statedArea;
 
   const statedFrequency = explicitFrequency(prompt);
+  const annualFrequency =
+    !statedFrequency &&
+    /\b(?:\d+\s*[-–—]?\s*(?:x|mal)\s*(?:(?:pro|im|je)\s*|\/\s*)?jahr|(?:einmal|zweimal|dreimal)\s*(?:pro|im|je)\s*jahr|jährlich|jaehrlich|halbjährlich|halbjaehrlich)\b/i.test(
+      normalizedText(prompt),
+    );
   const ambiguousDaily =
     /\b(?:täglich|taeglich|jeden\s+tag)\b/i.test(normalizedText(prompt)) && !statedFrequency;
   const explicitOnce =
@@ -318,9 +331,10 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
       normalizedText(prompt),
     ) && !statedFrequency;
   const billingPeriod = explicitOnce ? "once" : recurring || statedFrequency ? "month" : "once";
-  const frequency = ambiguousDaily
-    ? 0
-    : (statedFrequency?.value ?? (recurring && !explicitOnce ? 0 : 1));
+  const frequency =
+    ambiguousDaily || annualFrequency
+      ? 0
+      : (statedFrequency?.value ?? (recurring && !explicitOnce ? 0 : 1));
   const frequencyUnit = statedFrequency?.unit ?? "month";
 
   const statedSqmPrice = statedPrice(prompt, "m2");
@@ -340,6 +354,10 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
   if (ambiguousDaily)
     reviewQuestions.push(
       "An welchen Tagen wird gereinigt: Montag bis Freitag, sieben Tage oder ein anderer Turnus?",
+    );
+  else if (annualFrequency)
+    reviewQuestions.push(
+      "Jährlichen Turnus durch 'einmalig' je Einsatz ersetzen oder für eine Monatspauschale die Einsätze pro Monat angeben.",
     );
   else if (frequency <= 0 && recurring) {
     reviewQuestions.push("Wie viele Einsätze pro Woche oder Monat sind vorgesehen?");

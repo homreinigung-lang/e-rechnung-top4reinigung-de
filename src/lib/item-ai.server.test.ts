@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { generateCalculation } from "./item-ai.server";
 import { generateGeminiJson } from "./gemini-json.server";
+import { normalizeItems, positionsTotal } from "./kalkulation-engine";
 
 vi.mock("./gemini-json.server", () => ({
   generateGeminiJson: vi.fn(async () => ({
@@ -96,6 +97,39 @@ describe("KI-Kalkulation für Praxisreinigung", () => {
 });
 
 describe("KI-Kalkulation nach Auftragsart", () => {
+  it.each([
+    ["Glas-Reinigung 80 m²", "glas", 112],
+    ["Grund Reinigung 100 qm einmalig", "grund", 190],
+    ["Bau Reinigung 150 qm", "bau", 390],
+    ["Büroreinigung 200 qm, 3 Tage die Woche", "buero", 1040],
+    ["Unterhaltsreinigung 120 m² 3/Woche", "unterhalt", 546],
+    ["Praxisreinigung 200 qm, 3 pro Woche", "praxis", 1040],
+    ["Praxisreinigung 200 qm, 3/Monat", "praxis", 240],
+  ] as const)("verarbeitet %s bis zur Angebotsposition", async (prompt, type, total) => {
+    const result = await generateCalculation(prompt);
+    expect(result.cleaning_type).toBe(type);
+    expect(result.review_questions).toEqual([]);
+    const positions = normalizeItems(result.items, {
+      hourlyRate: result.hourly_rate,
+      stairRate: 12.5,
+      floors: result.floors,
+    });
+    expect(positions).toHaveLength(1);
+    expect(positionsTotal(positions)).toBe(total);
+  });
+
+  it.each([
+    "Fensterreinigung 100 m², 2x jährlich",
+    "Grundreinigung 100 qm einmal pro Jahr",
+    "Treppenhausreinigung 3 Etagen halbjährlich",
+  ])("fragt bei %s nach der Abrechnung statt einmalig zu kalkulieren", async (prompt) => {
+    const result = await generateCalculation(prompt);
+    expect(result.items).toEqual([]);
+    expect(result.review_questions).toContain(
+      "Jährlichen Turnus durch 'einmalig' je Einsatz ersetzen oder für eine Monatspauschale die Einsätze pro Monat angeben.",
+    );
+  });
+
   it.each([
     ["Büroreinigung 200 m², 2x wöchentlich", "buero", "month", 693.33],
     ["Unterhaltsreinigung 120 qm, zweimal pro Woche", "unterhalt", "month", 364],

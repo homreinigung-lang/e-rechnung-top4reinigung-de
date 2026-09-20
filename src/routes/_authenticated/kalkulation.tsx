@@ -395,9 +395,15 @@ function KalkulationPage() {
       // Leistungsverzeichnis ändert sich erst per bewusstem Klick.
       setKiItems(list);
       setKiOriginalItem(list[0] ?? null);
-      toast.success(
-        `KI-Analyse fertig – ${list.length} Vorschlagspositionen (noch nicht im Angebot)`,
-      );
+      if (list.length === 0 && res.review_questions.length > 0) {
+        toast.info(
+          "Bitte die offenen Angaben ergänzen, damit eine Position berechnet werden kann.",
+        );
+      } else {
+        toast.success(
+          `KI-Analyse fertig – ${list.length} Vorschlagspositionen (noch nicht im Angebot)`,
+        );
+      }
     },
     onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
   });
