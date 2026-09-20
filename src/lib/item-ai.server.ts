@@ -1,4 +1,5 @@
 import { generateGeminiJson } from "./gemini-json.server";
+import { WEEKS_PER_MONTH } from "./constants";
 
 export type GeneratedItem = {
   description: string;
@@ -21,17 +22,19 @@ export type GeneratedCalculation = {
   travel: number;
   note: string;
   items: GeneratedItem[];
+  review_questions: string[];
 };
 
 const SYSTEM = `Du bist Kalkulations-Assistent einer deutschen Gebäudereinigungsfirma im Saarland.
 Erstelle aus der Auftragsbeschreibung eine fachlich plausible, deterministische Kalkulation.
 Regeln:
 - Alle Texte auf Deutsch, knapp und professionell.
-- Stundensätze netto: Unterhalts-/Büro-/Treppenhausreinigung 34–37 EUR/Std.; Grund- und Bauendreinigung 42–45 EUR/Std.; Glas/Fenster 38 EUR/Std.
+- Stundensätze netto: Unterhalts-/Büro-/Praxis-/Treppenhausreinigung 34–37 EUR/Std.; Grund- und Bauendreinigung 42–45 EUR/Std.; Glas/Fenster 38 EUR/Std.
 - Keine erfundenen Kundendaten, Flächen oder Mengen. Unbekannte Zahlen = 0.
 - Explizit genannte Fläche, Häufigkeit und Reinigungsart müssen exakt übernommen werden.
 - Realistische Leistungswerte als Orientierung: Büro 200–250 m²/Std., Flur 300 m²/Std., Sanitär/WC 60 m²/Std., Teeküche 100 m²/Std., Treppenhaus 120 m²/Std.
-- Wiederkehrende Leistungen auf Monatsbasis: wöchentlich = 4,33 Einsätze/Monat, 14-täglich = 2, monatlich = 1.
+- Wiederkehrende Leistungen auf Monatsbasis: wöchentlich = 52/12 Einsätze/Monat, 14-täglich = 2, monatlich = 1. „Täglich“ ohne genannte Arbeitstage ist unklar; keine 5 oder 7 Tage unterstellen.
+- Praxisreinigung als eigene Reinigungsart behandeln. Desinfektion nur aufnehmen, wenn ausdrücklich vereinbart; Fensterreinigung nicht automatisch ergänzen.
 - Keine Doppelerfassung von Sanitär, Küche oder Flur, wenn bereits in einer Gesamtfläche enthalten.
 - Treppenhaus bei Erwähnung als eigene Position; mindestens 12,50 EUR je Etage.
 - Keine Umsatzsteuer und keine Summenzeile in items.
@@ -111,9 +114,14 @@ function normalizeItems(value: unknown): GeneratedItem[] {
     .map((entry) => {
       const it = (entry ?? {}) as Record<string, unknown>;
       return {
-        description: String(it["description"] ?? "").trim().slice(0, 200),
+        description: String(it["description"] ?? "")
+          .trim()
+          .slice(0, 200),
         quantity: num(it["quantity"]) || 1,
-        unit: String(it["unit"] ?? "Std.").trim().slice(0, 20) || "Std.",
+        unit:
+          String(it["unit"] ?? "Std.")
+            .trim()
+            .slice(0, 20) || "Std.",
         unit_price: num(it["unit_price"]),
       };
     })
@@ -121,10 +129,7 @@ function normalizeItems(value: unknown): GeneratedItem[] {
 }
 
 function normalizedText(prompt: string) {
-  return canonicalPrompt(prompt)
-    .toLowerCase()
-    .replace(/²/g, "2")
-    .replace(/\s+/g, " ");
+  return canonicalPrompt(prompt).toLowerCase().replace(/²/g, "2").replace(/\s+/g, " ");
 }
 
 function explicitArea(prompt: string): number {
@@ -136,6 +141,17 @@ function explicitArea(prompt: string): number {
 function explicitFrequency(prompt: string): { value: number; unit: "week" | "month" } | null {
   const text = normalizedText(prompt).replace(/inderwoche/g, "in der woche");
   const connector = "(?:pro\\s+|in\\s+der\\s+|inder\\s+|im\\s+)?";
+
+  const days = text.match(/\b([1-7])\s*(?:tage?n?|einsätze?)\s*(?:pro|in der|je)\s*woche\b/i);
+  if (days) return { value: Number(days[1]), unit: "week" };
+  if (/\b(?:mo\s*[-–]\s*fr|montag\s+bis\s+freitag|werktäglich|werktags)\b/i.test(text)) {
+    return { value: 5, unit: "week" };
+  }
+  if (
+    /\b(?:mo\s*[-–]\s*so|montag\s+bis\s+sonntag|sieben\s+tage\s+(?:pro|die)\s+woche)\b/i.test(text)
+  ) {
+    return { value: 7, unit: "week" };
+  }
 
   // Deutsche Zahlwörter ("einmal", "zweimal" …) statt Ziffern – z. B. aus
   // Spracheingabe oder Autokorrektur – müssen exakt wie Ziffern zählen.
@@ -150,19 +166,26 @@ function explicitFrequency(prompt: string): { value: number; unit: "week" | "mon
     siebenmal: 7,
   };
   for (const [word, value] of Object.entries(wordNumbers)) {
-    if (new RegExp(`\\b${word}\\b\\s*${connector}woche\\b`, "i").test(text)) return { value, unit: "week" };
+    if (new RegExp(`\\b${word}\\b\\s*${connector}woche\\b`, "i").test(text))
+      return { value, unit: "week" };
   }
   for (const [word, value] of Object.entries(wordNumbers)) {
-    if (new RegExp(`\\b${word}\\b\\s*${connector}monat\\b`, "i").test(text)) return { value, unit: "month" };
+    if (new RegExp(`\\b${word}\\b\\s*${connector}monat\\b`, "i").test(text))
+      return { value, unit: "month" };
   }
 
-  let match = text.match(new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:x|mal|mall)\\s*${connector}woche\\b`, "i"));
+  let match = text.match(
+    new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:x|mal|mall)\\s*${connector}woche\\b`, "i"),
+  );
   if (match) return { value: num(match[1]), unit: "week" };
 
-  match = text.match(new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:x|mal|mall)\\s*${connector}monat\\b`, "i"));
+  match = text.match(
+    new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:x|mal|mall)\\s*${connector}monat\\b`, "i"),
+  );
   if (match) return { value: num(match[1]), unit: "month" };
 
-  if (/\b(?:wöchentlich|woechentlich|jede\s+woche)\b/i.test(text)) return { value: 1, unit: "week" };
+  if (/\b(?:wöchentlich|woechentlich|jede\s+woche)\b/i.test(text))
+    return { value: 1, unit: "week" };
   if (/\b(?:monatlich|jeden\s+monat)\b/i.test(text)) return { value: 1, unit: "month" };
   if (/\b(?:14[- ]?tägig|14[- ]?taegig|zweiwöchentlich|zweiwoechentlich)\b/i.test(text)) {
     return { value: 2, unit: "month" };
@@ -172,6 +195,8 @@ function explicitFrequency(prompt: string): { value: number; unit: "week" | "mon
 
 function explicitCleaningType(prompt: string): string | null {
   const text = normalizedText(prompt);
+  if (/\b(?:praxis|praxen|praxisreinigung|arztpraxis|zahnarztpraxis)\b/i.test(text))
+    return "praxis";
   if (/\b(?:büro|buero|büroreinigung|bueroreinigung)\b/i.test(text)) return "buero";
   if (/\b(?:grundreinigung|tiefenreinigung)\b/i.test(text)) return "grund";
   if (/\b(?:bauendreinigung|baureinigung)\b/i.test(text)) return "bau";
@@ -183,6 +208,8 @@ function explicitCleaningType(prompt: string): string | null {
 
 function defaultsFor(type: string) {
   switch (type) {
+    case "praxis":
+      return { pricePerSqm: 0.4, hourlyRate: 35, performance: 0, label: "Praxisreinigung" };
     case "buero":
       return { pricePerSqm: 0.4, hourlyRate: 35, performance: 225, label: "Büroreinigung" };
     case "grund":
@@ -190,7 +217,12 @@ function defaultsFor(type: string) {
     case "bau":
       return { pricePerSqm: 2.6, hourlyRate: 44, performance: 70, label: "Bauendreinigung" };
     case "glas":
-      return { pricePerSqm: 1.4, hourlyRate: 38, performance: 100, label: "Glas- und Fensterreinigung" };
+      return {
+        pricePerSqm: 1.4,
+        hourlyRate: 38,
+        performance: 100,
+        label: "Glas- und Fensterreinigung",
+      };
     case "treppenhaus":
       return { pricePerSqm: 0.6, hourlyRate: 35, performance: 120, label: "Treppenhausreinigung" };
     default:
@@ -207,8 +239,11 @@ function deterministicBaseItem(args: {
 }): GeneratedItem | null {
   if (!(args.area > 0) || !(args.frequency > 0)) return null;
   const defaults = defaultsFor(args.type);
-  const visitsPerMonth = args.frequencyUnit === "week" ? args.frequency * 4.33 : args.frequency;
-  const perVisit = round2(args.area * (args.pricePerSqm > 0 ? args.pricePerSqm : defaults.pricePerSqm));
+  const visitsPerMonth =
+    args.frequencyUnit === "week" ? args.frequency * WEEKS_PER_MONTH : args.frequency;
+  const perVisit = round2(
+    args.area * (args.pricePerSqm > 0 ? args.pricePerSqm : defaults.pricePerSqm),
+  );
   const turnus =
     args.frequencyUnit === "week"
       ? `${args.frequency}× wöchentlich`
@@ -235,26 +270,49 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
   const parsed = await generateGeminiJson({
     model: process.env["GEMINI_MODEL_CALC"] || "gemini-3.6-flash",
     system: `${SYSTEM}\nAntworte ausschließlich mit JSON gemäß Schema.`,
-    prompt: `Analysiere diese Reinigungsanfrage für die Kalkulation: ${canonicalPrompt(prompt)}\ncleaning_type: unterhalt|grund|bau|glas|treppenhaus|buero. mode: area|hours. frequency_unit: week|month. Explizit genannte Fläche und Häufigkeit müssen exakt übernommen werden. Unbekannte Werte mit 0 bzw. leerem Text ausgeben.`,
+    prompt: `Analysiere diese Reinigungsanfrage für die Kalkulation: ${canonicalPrompt(prompt)}\ncleaning_type: unterhalt|grund|bau|glas|treppenhaus|buero|praxis. mode: area|hours. frequency_unit: week|month. Explizit genannte Fläche und Häufigkeit müssen exakt übernommen werden. Unbekannte Werte mit 0 bzw. leerem Text ausgeben.`,
     schema: CALC_SCHEMA,
   });
 
-  const types = ["unterhalt", "grund", "bau", "glas", "treppenhaus", "buero"];
+  const types = ["unterhalt", "grund", "bau", "glas", "treppenhaus", "buero", "praxis"];
   const aiType = String(parsed["cleaning_type"] ?? "");
   const statedType = explicitCleaningType(prompt);
   const cleaningType = statedType ?? (types.includes(aiType) ? aiType : "unterhalt");
   const defaults = defaultsFor(cleaningType);
 
+  const recurring = ["praxis", "buero", "unterhalt"].includes(cleaningType);
   const statedArea = explicitArea(prompt);
-  const area = statedArea > 0 ? statedArea : num(parsed["area_sqm"]);
+  const area = statedArea > 0 ? statedArea : recurring ? 0 : num(parsed["area_sqm"]);
 
   const statedFrequency = explicitFrequency(prompt);
-  const frequency = statedFrequency?.value ?? num(parsed["frequency"]);
-  const frequencyUnit = statedFrequency?.unit ?? (parsed["frequency_unit"] === "week" ? "week" : "month");
+  const ambiguousDaily =
+    /\b(?:täglich|taeglich|jeden\s+tag)\b/i.test(normalizedText(prompt)) && !statedFrequency;
+  const frequency = ambiguousDaily
+    ? 0
+    : (statedFrequency?.value ?? (recurring ? 0 : num(parsed["frequency"])));
+  const frequencyUnit =
+    statedFrequency?.unit ?? (parsed["frequency_unit"] === "week" ? "week" : "month");
 
   const pricePerSqm = num(parsed["price_per_sqm"]) || defaults.pricePerSqm;
   const hourlyRate = num(parsed["hourly_rate"]) || defaults.hourlyRate;
-  const hours = num(parsed["hours"]) || (area > 0 ? round2(area / defaults.performance) : 0);
+  // „21,65 Stunden“ kann sonst eine Monatssumme statt Stunden pro Einsatz sein.
+  // Nur eine explizit genannte Dauer je Einsatz wird in das Stundenfeld übernommen.
+  const hoursMatch = normalizedText(prompt).match(
+    /(\d+(?:[.,]\d+)?)\s*(?:stunden?|std\.?|h)\s*(?:pro|je)\s*(?:einsatz|besuch|reinigung)\b/i,
+  );
+  const hours = hoursMatch ? num(hoursMatch[1]) : area > 0 ? 0 : num(parsed["hours"]);
+
+  const reviewQuestions: string[] = [];
+  if (ambiguousDaily)
+    reviewQuestions.push(
+      "An welchen Tagen wird gereinigt: Montag bis Freitag, sieben Tage oder ein anderer Turnus?",
+    );
+  else if (frequency <= 0 && recurring) {
+    reviewQuestions.push("Wie viele Einsätze pro Woche oder Monat sind vorgesehen?");
+  }
+  if (area <= 0 && recurring) {
+    reviewQuestions.push("Wie groß ist die zu reinigende Fläche in m²?");
+  }
 
   const normalizedAiItems = normalizeItems(parsed["items"]);
   const baseItem = deterministicBaseItem({
@@ -267,15 +325,23 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
 
   // Bei klar angegebenen Fläche + Turnus ist die Hauptposition deterministisch.
   // So kann die KI keine abweichende Fläche, 1 Std. oder falschen Turnus erfinden.
-  const items = baseItem
-    ? [
-        baseItem,
-        ...normalizedAiItems.filter((item) => {
-          const d = item.description.toLowerCase();
-          return !/(büro|buero|unterhalt|grundreinigung|bauendreinigung|glas|fenster|treppenhaus)/i.test(d);
-        }),
-      ].slice(0, 12)
-    : normalizedAiItems;
+  const items =
+    reviewQuestions.length > 0
+      ? []
+      : baseItem
+        ? [
+            baseItem,
+            ...normalizedAiItems.filter((item) => {
+              // In einer Praxis dürfen nicht automatisch zusätzliche Desinfektions-
+              // oder Stundenpositionen mit unklarem Leistungsumfang entstehen.
+              if (cleaningType === "praxis") return false;
+              const d = item.description.toLowerCase();
+              return !/(büro|buero|praxis|unterhalt|grundreinigung|bauendreinigung|glas|fenster|treppenhaus)/i.test(
+                d,
+              );
+            }),
+          ].slice(0, 12)
+        : normalizedAiItems;
 
   return {
     cleaning_type: cleaningType,
@@ -289,7 +355,10 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
     floors: num(parsed["floors"]),
     stairs: Boolean(parsed["stairs"]),
     travel: num(parsed["travel"]),
-    note: String(parsed["note"] ?? "").trim().slice(0, 500),
+    note: String(parsed["note"] ?? "")
+      .trim()
+      .slice(0, 500),
     items,
+    review_questions: reviewQuestions,
   };
 }

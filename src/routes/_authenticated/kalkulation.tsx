@@ -146,6 +146,7 @@ const CLEANING_TYPES: {
   { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 36, range: [34, 37] },
   { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.6, hourly: 35, range: [34, 37] },
   { value: "buero", label: "Büroreinigung", area: 0.4, hourly: 35, range: [34, 37] },
+  { value: "praxis", label: "Praxisreinigung", area: 0.4, hourly: 35, range: [34, 37] },
 ];
 
 const EXTRAS: { key: string; label: string; price: number }[] = [
@@ -285,6 +286,14 @@ function KalkulationPage() {
 
   // ---- KI-Positionsvorschläge (eigener Bereich, kein Zugriff aufs LV) ------
   const [aiPrompt, setAiPrompt] = useState("");
+  const [aiReviewQuestions, setAiReviewQuestions] = useState<string[]>([]);
+  const [kiBasis, setKiBasis] = useState<{
+    type: string;
+    area: number;
+    frequency: number;
+    frequencyUnit: "week" | "month";
+    pricePerSqm: number;
+  } | null>(null);
   /** Vorschläge der KI-/Grundriss-Analyse – reine Vorschau bis zur Übernahme. */
   const [kiItems, setKiItems] = useState<AiItem[]>([]);
   /** Das Leistungsverzeichnis: einzige Quelle für Angebot, PDF und Speicherung. */
@@ -292,7 +301,24 @@ function KalkulationPage() {
   const analyze = useServerFn(analyzeCalculation);
   const aiSuggest = useMutation({
     mutationFn: async () => analyze({ data: { prompt: aiPrompt } }),
+    onMutate: () => {
+      setKiItems([]);
+      setAiReviewQuestions([]);
+      setKiBasis(null);
+    },
     onSuccess: (res) => {
+      setAiReviewQuestions(res.review_questions);
+      setKiBasis(
+        res.items.length > 0
+          ? {
+              type: res.cleaning_type,
+              area: res.area_sqm,
+              frequency: res.frequency,
+              frequencyUnit: res.frequency_unit,
+              pricePerSqm: res.price_per_sqm,
+            }
+          : null,
+      );
       const dec = (v: number) => String(v).replace(".", ",");
       const preset = CLEANING_TYPES.find((t) => t.value === res.cleaning_type);
       if (preset) {
@@ -308,10 +334,10 @@ function KalkulationPage() {
         if (raumbuch.hoursPerVisit > 0) setHours(String(raumbuch.hoursPerVisit).replace(".", ","));
       } else {
         if (res.area_sqm > 0) setArea(dec(res.area_sqm));
-        if (res.hours > 0) setHours(dec(res.hours));
+        setHours(res.hours > 0 ? dec(res.hours) : "0");
       }
 
-      if (res.frequency > 0) setFrequency(dec(res.frequency));
+      setFrequency(res.frequency > 0 ? dec(res.frequency) : "0");
       setFrequencyUnit(res.frequency_unit);
       if (res.travel > 0) setTravel(dec(res.travel));
       // Treppen aus Antwort ODER Freitext erkennen – nie mit 0,00 € anlegen.
@@ -324,7 +350,7 @@ function KalkulationPage() {
       }
       if (res.note.trim()) setNote((prev) => (prev.trim() ? `${prev}\n${res.note}` : res.note));
 
-      const rate = num(hourlyRate) || res.hourly_rate;
+      const rate = res.hourly_rate || num(hourlyRate);
       const cleaned = normalizeItems(res.items, {
         hourlyRate: rate,
         stairRate: num(stairRate),
@@ -598,6 +624,13 @@ function KalkulationPage() {
     [kiItems],
   );
   const kiTotal = useMemo(() => positionsTotal(kiPositions), [kiPositions]);
+  const kiBasisChanged =
+    kiBasis !== null &&
+    (type !== kiBasis.type ||
+      num(area) !== kiBasis.area ||
+      num(frequency) !== kiBasis.frequency ||
+      frequencyUnit !== kiBasis.frequencyUnit ||
+      num(pricePerSqm) !== kiBasis.pricePerSqm);
   const vatRate = vatRateForTaxMode(taxMode);
   const taxNote = taxNoteForTaxMode(taxMode);
   const vatAmount = round2((lvTotal * vatRate) / 100);
@@ -733,6 +766,10 @@ function KalkulationPage() {
 
   /** Übernimmt ausschließlich die Positionen der KI-/Grundriss-Analyse. */
   function applyKiAnalysis() {
+    if (aiReviewQuestions.length > 0 || kiBasisChanged) {
+      toast.error("Bitte die Angaben prüfen und die KI-Kalkulation erneut erstellen.");
+      return;
+    }
     applySource(KI_SECTION, "KI-Analyse", toAiItems(kiPositions, KI_SECTION, "ki"));
   }
 
@@ -1203,11 +1240,11 @@ function KalkulationPage() {
         .join("\n");
 
       // Gleiche Summenlogik wie im Belegeditor (Rabatt steckt bereits als Position).
-      const { netTotal: net, vatAmount: vat, grossTotal } = computeDocumentTotals(
-        positions,
-        0,
-        vatRate,
-      );
+      const {
+        netTotal: net,
+        vatAmount: vat,
+        grossTotal,
+      } = computeDocumentTotals(positions, 0, vatRate);
       const { error: docError } = await supabase
         .from("documents")
         .update({
@@ -1364,6 +1401,21 @@ function KalkulationPage() {
                 <Sparkles className="size-4" />
                 {aiSuggest.isPending ? "Wird kalkuliert…" : "Kalkulation erstellen"}
               </Button>
+              {aiReviewQuestions.length > 0 && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-amber-500/60 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                >
+                  <p className="font-medium">
+                    Bitte Angaben ergänzen und die Kalkulation erneut erstellen:
+                  </p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {aiReviewQuestions.map((question) => (
+                      <li key={question}>{question}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1437,6 +1489,53 @@ function KalkulationPage() {
                     <span>Summe KI-Analyse (netto)</span>
                     <span>{formatMoney(kiTotal)}</span>
                   </div>
+                  {num(area) > 0 && num(frequency) > 0 && (
+                    <div className="rounded-md border p-3 text-xs text-muted-foreground">
+                      <p>
+                        Die wiederkehrende Grundposition gilt für einen Monatsdurchschnitt.
+                        Zusätzliche Einzelpositionen gesondert prüfen.
+                      </p>
+                      <p>
+                        {formatNumber(num(area))} m² × {formatMoney(num(pricePerSqm))}/m² ={" "}
+                        {formatMoney(round2(num(area) * num(pricePerSqm)))} je Einsatz.
+                      </p>
+                      <p>
+                        {formatNumber(num(frequency))} Einsätze{" "}
+                        {frequencyUnit === "week" ? "pro Woche" : "pro Monat"} ={" "}
+                        {formatNumber(visitsPerMonth)} Einsätze im Monatsdurchschnitt (52 Wochen ÷
+                        12 Monate).
+                      </p>
+                      {num(hours) > 0 ? (
+                        <>
+                          <p>
+                            Vergleich nach Stunden: {formatNumber(num(hours))} Std. je Einsatz ×{" "}
+                            {formatMoney(num(hourlyRate))}/Std. ={" "}
+                            {formatMoney(round2(num(hours) * num(hourlyRate)))} je Einsatz. Bitte
+                            Zeitaufwand und enthaltene Leistungen prüfen.
+                          </p>
+                          {Math.abs(num(area) * num(pricePerSqm) - num(hours) * num(hourlyRate)) >
+                            0.2 * num(hours) * num(hourlyRate) && (
+                            <p className="font-medium text-amber-800 dark:text-amber-300">
+                              Flächenpreis und Stundenkalkulation weichen um mehr als 20 % ab. Preis
+                              und Kosten vor der Übernahme prüfen.
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p>
+                          Stunden pro Einsatz fehlen. Für den Vergleich mit den Personalkosten bitte
+                          den tatsächlichen Zeitaufwand erfassen.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {type === "praxis" && (
+                    <p className="text-xs text-muted-foreground">
+                      Praxis: Sanitärbereiche, Desinfektion, Abfall und Materialeinsatz vor dem
+                      Angebot ausdrücklich abstimmen. Fenster nur als gesonderte Leistung
+                      vereinbaren.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1453,12 +1552,24 @@ function KalkulationPage() {
                 </div>
               )}
 
+              {kiBasisChanged && (
+                <p
+                  role="alert"
+                  className="rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                >
+                  Fläche, Turnus, Reinigungstyp oder m²-Preis wurden seit der KI-Analyse geändert.
+                  Bitte die Kalkulation erneut erstellen.
+                </p>
+              )}
+
               <div className="flex justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={kiPositions.length === 0}
+                  disabled={
+                    kiPositions.length === 0 || aiReviewQuestions.length > 0 || kiBasisChanged
+                  }
                   onClick={applyKiAnalysis}
                 >
                   <Sparkles className="size-4" /> KI-Positionen für Angebot übernehmen
