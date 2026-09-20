@@ -56,10 +56,75 @@ describe("KI-Kalkulation für Praxisreinigung", () => {
     expect(result.items).toEqual([
       expect.objectContaining({
         description: expect.stringContaining("Praxisreinigung"),
-        quantity: 21.67,
-        unit: "Einsatz",
-        unit_price: 80,
+        quantity: 1,
+        unit: "Monat",
+        unit_price: 1733.33,
       }),
     ]);
+  });
+});
+
+describe("KI-Kalkulation nach Auftragsart", () => {
+  it.each([
+    ["Büroreinigung 200 m², 2x wöchentlich", "buero", "month", 693.33],
+    ["Unterhaltsreinigung 120 qm, zweimal pro Woche", "unterhalt", "month", 364],
+    ["Grundreinigung 100 m² einmalig", "grund", "once", 190],
+    ["Bauendreinigung 150 qm", "bau", "once", 390],
+    ["Glasreinigung 80 m²", "glas", "once", 112],
+    ["Treppenhausreinigung 3 Etagen, 2x monatlich", "treppenhaus", "month", 75],
+    ["Büroreinigung 200 m², alle 2 Wochen", "buero", "month", 173.33],
+    ["Praxisreinigung 2 Stunden pro Einsatz, 5 Tage pro Woche", "praxis", "month", 1516.67],
+    ["Einmalige Büroreinigung 100 qm", "buero", "once", 40],
+    ["Wohnungsreinigung 110 m² einmalig", "wohn", "once", 44],
+    ["Fensterreinigung 3 Stunden, 40 € pro Std.", "glas", "once", 120],
+    ["Unterhaltsreinigung 2 Std pro Einsatz, 2x pro Woche", "unterhalt", "month", 606.67],
+    ["Grundreinigung 100 m², einmal pro Monat", "grund", "month", 190],
+    ["Büroreinigung 1.200 m², einmalig", "buero", "once", 480],
+    ["Praxisreinigung 200 m² täglich Mo-Sa", "praxis", "month", 2080],
+  ] as const)("berechnet %s", async (prompt, type, period, expected) => {
+    const result = await generateCalculation(prompt);
+    expect(result.cleaning_type).toBe(type);
+    expect(result.billing_period).toBe(period);
+    expect(result.review_questions).toEqual([]);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.unit_price).toBe(expected);
+    expect(result.items[0]?.unit).toBe(period === "once" ? "Pauschal" : "Monat");
+  });
+
+  it("verlangt eine Reinigungsart und eine belastbare Menge, statt KI-Zahlen zu übernehmen", async () => {
+    const result = await generateCalculation("Bitte täglich reinigen");
+    expect(result.items).toEqual([]);
+    expect(result.review_questions).toHaveLength(3);
+    expect(result.area_sqm).toBe(0);
+    expect(result.hours).toBe(0);
+  });
+
+  it("verwendet ausdrücklich vereinbarte Preise und trennt zusätzliche Leistungen", async () => {
+    const result = await generateCalculation(
+      "Büroreinigung 200 m² 5x pro Woche 0,50 € pro m², Fensterreinigung zusätzlich",
+    );
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.unit_price).toBe(2166.67);
+    expect(result.price_source).toBe("stated");
+    expect(result.review_notes).toContain(
+      "Fenster/Glas ist eine weitere Leistung: Umfang und Turnus gesondert kalkulieren.",
+    );
+  });
+
+  it("verlangt Angaben zu mehrdeutigen Arbeitstagen und übernimmt keine geratenen Positionen", async () => {
+    const result = await generateCalculation("Wohnungsreinigung 110 qm täglich");
+    expect(result.review_questions).toContain(
+      "An welchen Tagen wird gereinigt: Montag bis Freitag, sieben Tage oder ein anderer Turnus?",
+    );
+    expect(result.items).toEqual([]);
+  });
+
+  it("führt eine ausdrücklich genannte Zusatzleistung nicht doppelt als Grundposition auf", async () => {
+    const result = await generateCalculation(
+      "Büroreinigung 200 m² 2x pro Woche mit Treppenhausreinigung",
+    );
+    expect(result.cleaning_type).toBe("buero");
+    expect(result.items).toHaveLength(1);
+    expect(result.review_notes.some((note) => note.includes("Treppenhaus"))).toBe(true);
   });
 });
