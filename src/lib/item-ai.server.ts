@@ -63,41 +63,6 @@ const ITEMS_SCHEMA = {
   required: ["items"],
 };
 
-const CALC_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    cleaning_type: { type: "string" },
-    mode: { type: "string" },
-    area_sqm: { type: "number" },
-    hours: { type: "number" },
-    hourly_rate: { type: "number" },
-    price_per_sqm: { type: "number" },
-    frequency: { type: "number" },
-    frequency_unit: { type: "string" },
-    floors: { type: "number" },
-    stairs: { type: "boolean" },
-    travel: { type: "number" },
-    note: { type: "string" },
-    items: { type: "array", items: ITEM_SCHEMA },
-  },
-  required: [
-    "cleaning_type",
-    "mode",
-    "area_sqm",
-    "hours",
-    "hourly_rate",
-    "price_per_sqm",
-    "frequency",
-    "frequency_unit",
-    "floors",
-    "stairs",
-    "travel",
-    "note",
-    "items",
-  ],
-};
-
 function canonicalPrompt(prompt: string): string {
   return prompt.trim().replace(/\s+/g, " ");
 }
@@ -334,17 +299,8 @@ export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
 }
 
 export async function generateCalculation(prompt: string): Promise<GeneratedCalculation> {
-  const parsed = await generateGeminiJson({
-    model: process.env["GEMINI_MODEL_CALC"] || "gemini-3.6-flash",
-    system: `${SYSTEM}\nAntworte ausschließlich mit JSON gemäß Schema.`,
-    prompt: `Analysiere diese Reinigungsanfrage für die Kalkulation: ${canonicalPrompt(prompt)}\ncleaning_type: unterhalt|grund|bau|glas|treppenhaus|buero|praxis|wohn. mode: area|hours. frequency_unit: week|month. Explizit genannte Fläche und Häufigkeit müssen exakt übernommen werden. Unbekannte Werte mit 0 bzw. leerem Text ausgeben.`,
-    schema: CALC_SCHEMA,
-  });
-
-  const types = ["unterhalt", "grund", "bau", "glas", "treppenhaus", "buero", "praxis", "wohn"];
-  const aiType = String(parsed["cleaning_type"] ?? "");
   const statedType = explicitCleaningType(prompt);
-  const cleaningType = statedType ?? (types.includes(aiType) ? aiType : "unterhalt");
+  const cleaningType = statedType ?? "unterhalt";
   const defaults = defaultsFor(cleaningType);
 
   const recurring = ["praxis", "buero", "unterhalt", "treppenhaus"].includes(cleaningType);

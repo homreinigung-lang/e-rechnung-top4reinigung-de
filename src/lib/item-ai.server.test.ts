@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { generateCalculation } from "./item-ai.server";
+import { generateGeminiJson } from "./gemini-json.server";
 
 vi.mock("./gemini-json.server", () => ({
   generateGeminiJson: vi.fn(async () => ({
@@ -27,6 +28,21 @@ vi.mock("./gemini-json.server", () => ({
 }));
 
 describe("KI-Kalkulation für Praxisreinigung", () => {
+  it("berechnet die Eingabe aus dem Screenshot auch ohne verwertbare KI-Antwort", async () => {
+    const gemini = vi.mocked(generateGeminiJson);
+    gemini.mockClear();
+    const result = await generateCalculation(
+      "erstellen angebot praxis reinigung 200 qm 3 mal in der woche",
+    );
+    expect(result.cleaning_type).toBe("praxis");
+    expect(result.area_sqm).toBe(200);
+    expect(result.frequency).toBe(3);
+    expect(result.frequency_unit).toBe("week");
+    expect(result.review_questions).toEqual([]);
+    expect(result.items).toEqual([expect.objectContaining({ unit: "Monat", unit_price: 1040 })]);
+    expect(gemini).not.toHaveBeenCalled();
+  });
+
   it("fragt bei täglicher Reinigung ohne Arbeitstage nach und übernimmt keine erfundene Monatsposition", async () => {
     const result = await generateCalculation("Praxisreinigung, 200 qm, täglich");
     expect(result.cleaning_type).toBe("praxis");
