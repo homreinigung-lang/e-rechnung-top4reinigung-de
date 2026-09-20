@@ -28,6 +28,7 @@ const TYPES = [
   { value: "glas", label: "Glas- und Fensterreinigung", area: 1.4, hourly: 38 },
   { value: "treppenhaus", label: "Treppenhausreinigung", area: 0.6, hourly: 35 },
   { value: "buero", label: "Büroreinigung", area: 0.4, hourly: 35 },
+  { value: "wohn", label: "Wohnungsreinigung", area: 0.4, hourly: 35 },
   { value: "praxis", label: "Praxisreinigung", area: 0.4, hourly: 35 },
 ] as const;
 
