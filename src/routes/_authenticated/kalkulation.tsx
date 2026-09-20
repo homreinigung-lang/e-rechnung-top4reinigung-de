@@ -291,6 +291,7 @@ function KalkulationPage() {
   const [kiBillingPeriod, setKiBillingPeriod] = useState<"once" | "month">("month");
   const [kiPricingBasis, setKiPricingBasis] = useState<"area" | "hours" | "floor">("area");
   const [kiPrompt, setKiPrompt] = useState("");
+  const [kiOriginalItem, setKiOriginalItem] = useState<AiItem | null>(null);
   const [kiBasis, setKiBasis] = useState<{
     type: string;
     mode: Mode;
@@ -315,6 +316,7 @@ function KalkulationPage() {
       setAiReviewNotes([]);
       setKiBasis(null);
       setKiPrompt("");
+      setKiOriginalItem(null);
     },
     onSuccess: (res) => {
       setKiPrompt(aiPrompt.trim());
@@ -392,6 +394,7 @@ function KalkulationPage() {
       // Die KI schreibt ausschließlich in ihren eigenen Bereich – das
       // Leistungsverzeichnis ändert sich erst per bewusstem Klick.
       setKiItems(list);
+      setKiOriginalItem(list[0] ?? null);
       toast.success(
         `KI-Analyse fertig – ${list.length} Vorschlagspositionen (noch nicht im Angebot)`,
       );
@@ -634,6 +637,14 @@ function KalkulationPage() {
     [kiItems],
   );
   const kiTotal = useMemo(() => positionsTotal(kiPositions), [kiPositions]);
+  const currentOriginal = kiOriginalItem && kiItems.find((item) => item.id === kiOriginalItem.id);
+  const kiItemChanged =
+    !!kiOriginalItem &&
+    (!currentOriginal ||
+      currentOriginal.description !== kiOriginalItem.description ||
+      currentOriginal.quantity !== kiOriginalItem.quantity ||
+      currentOriginal.unit !== kiOriginalItem.unit ||
+      currentOriginal.unit_price !== kiOriginalItem.unit_price);
   const kiBasisChanged =
     kiBasis !== null &&
     (type !== kiBasis.type ||
@@ -643,7 +654,7 @@ function KalkulationPage() {
       (mode === "hours" && num(hours) !== kiBasis.hours) ||
       num(frequency) !== kiBasis.frequency ||
       frequencyUnit !== kiBasis.frequencyUnit ||
-      (mode === "area" && num(pricePerSqm) !== kiBasis.pricePerSqm) ||
+      (kiPricingBasis === "area" && num(pricePerSqm) !== kiBasis.pricePerSqm) ||
       (mode === "hours" && num(hourlyRate) !== kiBasis.hourlyRate) ||
       (kiPricingBasis === "floor" && num(floors) !== kiBasis.floors));
   const vatRate = vatRateForTaxMode(taxMode);
@@ -1517,7 +1528,13 @@ function KalkulationPage() {
                     <span>Summe KI-Analyse (netto)</span>
                     <span>{formatMoney(kiTotal)}</span>
                   </div>
-                  {kiBasis !== null && (
+                  {kiItemChanged && (
+                    <p className="text-xs text-muted-foreground">
+                      Die KI-Position wurde manuell geändert. Maßgeblich ist die oben angezeigte
+                      Summe.
+                    </p>
+                  )}
+                  {kiBasis !== null && !kiItemChanged && (
                     <div className="rounded-md border p-3 text-xs text-muted-foreground">
                       <p>
                         {kiBillingPeriod === "once"
