@@ -9,6 +9,8 @@ type GeminiJsonOptions = {
   schema: JsonSchema;
   dataUrl?: string;
   mimeType?: string;
+  validate?: (value: Record<string, unknown>) => boolean;
+  timeoutMs?: number;
 };
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
@@ -18,8 +20,19 @@ function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
 }
 
 function extractText(payload: unknown): string {
-  const json = payload as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-  return (json.candidates?.[0]?.content?.parts ?? []).map((part) => part.text ?? "").join("").trim();
+  const json = payload as {
+    candidates?: Array<{
+      finishReason?: string;
+      content?: { parts?: Array<{ text?: string; thought?: boolean }> };
+    }>;
+  };
+  const candidate = json?.candidates?.[0];
+  if (candidate?.finishReason && candidate.finishReason !== "STOP") return "";
+  return (candidate?.content?.parts ?? [])
+    .filter((part) => !part.thought)
+    .map((part) => part.text ?? "")
+    .join("")
+    .trim();
 }
 
 function googleErrorMessage(raw: string) {
@@ -50,7 +63,8 @@ function parseModelJson(raw: string): Record<string, unknown> | null {
       return null;
     }
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Object.keys(parsed).length) return null;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Object.keys(parsed).length)
+    return null;
   return parsed as Record<string, unknown>;
 }
 
@@ -61,12 +75,16 @@ export async function generateGeminiJson({
   schema,
   dataUrl,
   mimeType,
+  validate,
+  timeoutMs = 60_000,
 }: GeminiJsonOptions): Promise<Record<string, unknown>> {
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
   const headers = { "Content-Type": "application/json", "x-goog-api-key": apiKey };
 
-  const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+  const parts: Array<Record<string, unknown>> = [
+    { text: `${prompt}\nAntwortformat (JSON Schema): ${JSON.stringify(schema)}` },
+  ];
   if (dataUrl) {
     const decoded = parseDataUrl(dataUrl);
     parts.push({ inlineData: { mimeType: mimeType || decoded.mimeType, data: decoded.data } });
@@ -77,13 +95,14 @@ export async function generateGeminiJson({
     return fetch(endpoint, {
       method: "POST",
       headers,
+      signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts }],
         generationConfig: {
           temperature: 0,
           responseMimeType: "application/json",
-          ...(withSchema ? { responseSchema: schema } : {}),
+          ...(withSchema ? { responseJsonSchema: schema } : {}),
         },
       }),
     });
@@ -99,12 +118,18 @@ export async function generateGeminiJson({
         response = await request(modelName, true);
         if (response.status === 400) {
           // Some models reject a structured response schema but support JSON mode.
-          const detail = (await response.text()).slice(0, 500);
-          console.warn(`Gemini schema rejected for ${modelName}; retrying JSON mode: ${detail}`);
-          response = await request(modelName, false);
+          const detail = (await response.clone().text()).slice(0, 1000);
+          if (/response[_ ]?json[_ ]?schema|response[_ ]?schema/i.test(detail)) {
+            // Preserve the field names even when a model rejects schema enforcement.
+            console.warn(`Gemini schema rejected for ${modelName}; retrying JSON mode`);
+            response = await request(modelName, false);
+          }
         }
       } catch (error) {
-        console.warn(`Gemini network request failed for ${modelName}, attempt ${attempt + 1}`, error);
+        console.warn(
+          `Gemini network request failed for ${modelName}, attempt ${attempt + 1}`,
+          error,
+        );
         if (attempt === 0) {
           await sleep(1200);
           continue;
@@ -118,9 +143,12 @@ export async function generateGeminiJson({
         try {
           parsed = parseModelJson(extractText(await response.json()));
         } catch (error) {
-          console.warn(`Gemini response could not be decoded for ${modelName}, attempt ${attempt + 1}`, error);
+          console.warn(
+            `Gemini response could not be decoded for ${modelName}, attempt ${attempt + 1}`,
+            error,
+          );
         }
-        if (parsed) return parsed;
+        if (parsed && (!validate || validate(parsed))) return parsed;
         invalidOutput = true;
         console.warn(`Gemini returned unusable JSON for ${modelName}, attempt ${attempt + 1}`);
         if (attempt === 0) await sleep(1200);
@@ -130,7 +158,9 @@ export async function generateGeminiJson({
       lastStatus = response.status;
       const raw = (await response.text()).slice(0, 1000);
       const detail = googleErrorMessage(raw);
-      console.warn(`Gemini request failed for ${modelName} [${lastStatus}]: ${detail.slice(0, 240)}`);
+      console.warn(
+        `Gemini request failed for ${modelName} [${lastStatus}]: ${detail.slice(0, 240)}`,
+      );
       if (lastStatus === 401 || lastStatus === 403) {
         throw new Error("KI-Zugang ist nicht korrekt konfiguriert.");
       }
@@ -146,7 +176,11 @@ export async function generateGeminiJson({
     }
   }
   if (invalidOutput) {
-    throw new Error("Die KI hat keine verwertbaren Rechnungsdaten zurückgegeben. Bitte die Beträge manuell eingeben.");
+    throw new Error(
+      "Keine verlässlichen Belegdaten erkannt. Der Anhang bleibt erhalten. Bitte erneut auslesen oder die Beträge manuell ergänzen; erneutes Hochladen ist nicht nötig.",
+    );
   }
-  throw new Error(`KI-Analyse vorübergehend nicht verfügbar (${lastStatus}). Auch das Ersatzmodell konnte die Rechnung nicht lesen. Bitte später erneut versuchen.`);
+  throw new Error(
+    `KI-Analyse vorübergehend nicht verfügbar (${lastStatus}). Auch das Ersatzmodell konnte die Rechnung nicht lesen. Bitte später erneut versuchen.`,
+  );
 }

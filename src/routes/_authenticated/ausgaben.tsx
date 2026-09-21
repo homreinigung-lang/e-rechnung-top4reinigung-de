@@ -92,9 +92,12 @@ function Ausgaben() {
   const [scanned, setScanned] = useState(false);
   const [eInvoice, setEInvoice] = useState<IncomingEInvoice | null>(null);
   const [importing, setImporting] = useState(false);
+  const [processingReceipt, setProcessingReceipt] = useState(false);
+  const [receiptToRetry, setReceiptToRetry] = useState<File | null>(null);
 
   /** Eingehende E-Rechnung (XRechnung/ZUGFeRD) einlesen und die Felder vorbelegen. */
   async function handleEInvoice(path: string, file: File) {
+    setReceiptToRetry(null);
     setImporting(true);
     try {
       const inv = await readIncomingEInvoice(file);
@@ -130,6 +133,8 @@ function Ausgaben() {
 
   /** Nimmt den Upload entgegen: Beleg auslesen und Fotos sofort in ein PDF wandeln. */
   async function handleReceipt(path: string, file: File) {
+    setEInvoice(null);
+    setReceiptToRetry(file);
     setForm((f) => ({ ...f, receipt_url: path }));
     const scan = await analyze(file);
     if (!file.type.startsWith("image/")) return;
@@ -161,8 +166,8 @@ function Ausgaben() {
         supplier: r.supplier || f.supplier,
         document_number: r.document_number || f.document_number,
         expense_date: r.expense_date || f.expense_date,
-        net_amount: r.net_amount ? String(r.net_amount.toFixed(2)) : f.net_amount,
-        vat_amount: r.vat_amount ? String(r.vat_amount.toFixed(2)) : f.vat_amount,
+        net_amount: r.net_amount.toFixed(2),
+        vat_amount: r.vat_amount.toFixed(2),
         category: CATEGORIES.includes(r.category) ? r.category : f.category,
         notes: r.notes || f.notes,
       }));
@@ -217,6 +222,7 @@ function Ausgaben() {
       setForm({ ...empty, expense_date: today(), receipt_url: "" });
       setScanned(false);
       setEInvoice(null);
+      setReceiptToRetry(null);
 
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -317,14 +323,35 @@ function Ausgaben() {
             folder="belege"
             accept="image/*,application/pdf"
             label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
-            onUploaded={(path, file) => void handleReceipt(path, file)}
+            onUploaded={handleReceipt}
+            disabled={processingReceipt || add.isPending}
+            onBusyChange={setProcessingReceipt}
           />
           <FileUploadButton
             folder="e-rechnungen"
             accept=".xml,application/xml,text/xml,application/pdf"
             label="E-Rechnung empfangen (XRechnung/ZUGFeRD)"
-            onUploaded={(path, file) => void handleEInvoice(path, file)}
+            onUploaded={handleEInvoice}
+            disabled={processingReceipt || add.isPending}
+            onBusyChange={setProcessingReceipt}
           />
+          {receiptToRetry && !scanned && !processingReceipt && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={add.isPending}
+              onClick={async () => {
+                setProcessingReceipt(true);
+                try {
+                  await analyze(receiptToRetry);
+                } finally {
+                  setProcessingReceipt(false);
+                }
+              }}
+            >
+              <Sparkles className="size-4" /> Erneut auslesen
+            </Button>
+          )}
           {importing && (
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> E-Rechnung wird gelesen…
@@ -361,7 +388,7 @@ function Ausgaben() {
           )}
         </div>
 
-        <Button onClick={() => add.mutate()} disabled={add.isPending}>
+        <Button onClick={() => add.mutate()} disabled={add.isPending || processingReceipt}>
           <Plus className="size-4" /> Ausgabe speichern
         </Button>
       </div>

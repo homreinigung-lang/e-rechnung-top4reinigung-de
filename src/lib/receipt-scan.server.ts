@@ -42,7 +42,11 @@ function validDate(value: string): boolean {
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return false;
   const parsed = new Date(Date.UTC(year, month - 1, day));
-  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
 }
 
 const SYSTEM = `Du extrahierst Daten aus einer deutschen EINGANGSRECHNUNG oder einem Kassenbon für die Buchhaltung. Lies ausschließlich die tatsächlich im Dokument erkennbaren Angaben.
@@ -67,7 +71,16 @@ const RECEIPT_SCHEMA = {
     category: { type: "string" },
     notes: { type: "string" },
   },
-  required: ["supplier", "document_number", "expense_date", "net_amount", "vat_amount", "gross_amount", "category", "notes"],
+  required: [
+    "supplier",
+    "document_number",
+    "expense_date",
+    "net_amount",
+    "vat_amount",
+    "gross_amount",
+    "category",
+    "notes",
+  ],
 } as const;
 
 /** Extrahiert Belegdaten direkt mit der Gemini API aus PDF- oder Bilddateien. */
@@ -75,31 +88,40 @@ export async function extractReceipt(dataUrl: string, mimeType: string): Promise
   const parsed = await generateGeminiJson({
     model: process.env["GEMINI_MODEL_RECEIPT"] || "gemini-3.8-flash",
     system: SYSTEM,
-    prompt: mimeType === "application/pdf"
-      ? "Lies alle relevanten Seiten dieser PDF-Eingangsrechnung. Unterscheide Aussteller und Empfänger und entnimm Beträge ausschließlich der Gesamtsumme."
-      : "Lies dieses Belegfoto sorgfältig. Unterscheide Händler und Käufer und entnimm Beträge ausschließlich der Gesamtsumme.",
+    prompt:
+      mimeType === "application/pdf"
+        ? "Lies alle relevanten Seiten dieser PDF-Eingangsrechnung. Unterscheide Aussteller und Empfänger und entnimm Beträge ausschließlich der Gesamtsumme."
+        : "Lies dieses Belegfoto sorgfältig. Unterscheide Händler und Käufer und entnimm Beträge ausschließlich der Gesamtsumme.",
     schema: RECEIPT_SCHEMA as unknown as Record<string, unknown>,
     dataUrl,
     mimeType,
+    timeoutMs: 20_000,
+    validate: (value) => num(value["net_amount"]) !== 0 || num(value["gross_amount"]) !== 0,
   });
 
   let net = num(parsed["net_amount"]);
-  let vat = num(parsed["vat_amount"]);
+  const vat = num(parsed["vat_amount"]);
   const gross = num(parsed["gross_amount"]);
   if (net < 0 || vat < 0 || gross < 0) {
-    throw new Error("Negative Rechnungsbeträge konnten nicht sicher zugeordnet werden. Bitte manuell prüfen.");
+    throw new Error(
+      "Negative Rechnungsbeträge konnten nicht sicher zugeordnet werden. Bitte manuell prüfen.",
+    );
   }
   if (gross > 0 && net === 0 && vat > 0) net = Math.round((gross - vat) * 100) / 100;
   if (net === 0 && gross > 0 && vat === 0) net = gross;
   if (gross === 0 && net === 0) {
-    throw new Error("Kein Rechnungsbetrag erkannt. Bitte die Rechnung prüfen und den Betrag manuell eingeben.");
+    throw new Error(
+      "Kein Rechnungsbetrag erkannt. Bitte die Rechnung prüfen und den Betrag manuell eingeben.",
+    );
   }
   if (net <= 0 && gross > 0) {
     throw new Error("Rechnungsbeträge sind nicht plausibel. Bitte manuell prüfen.");
   }
   const calculatedGross = Math.round((net + vat) * 100) / 100;
   if (gross > 0 && Math.abs(calculatedGross - gross) > 0.02) {
-    throw new Error("Netto-, Steuer- und Bruttobetrag stimmen nicht überein. Bitte die Rechnung manuell prüfen.");
+    throw new Error(
+      "Netto-, Steuer- und Bruttobetrag stimmen nicht überein. Bitte die Rechnung manuell prüfen.",
+    );
   }
 
   return {
