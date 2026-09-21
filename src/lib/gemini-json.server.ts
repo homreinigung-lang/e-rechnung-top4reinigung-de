@@ -35,6 +35,25 @@ const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
 const FALLBACK_MODEL = "gemini-3.1-flash-lite";
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** A successful HTTP response can still contain empty, truncated or unusable model output. */
+function parseModelJson(raw: string): Record<string, unknown> | null {
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try {
+      parsed = JSON.parse(match[0]);
+    } catch {
+      return null;
+    }
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Object.keys(parsed).length) return null;
+  return parsed as Record<string, unknown>;
+}
+
 export async function generateGeminiJson({
   model,
   system,
@@ -72,6 +91,7 @@ export async function generateGeminiJson({
 
   const models = model === FALLBACK_MODEL ? [model] : [model, FALLBACK_MODEL];
   let lastStatus = 503;
+  let invalidOutput = false;
   for (const [modelIndex, modelName] of models.entries()) {
     for (let attempt = 0; attempt < 2; attempt++) {
       let response: Response;
@@ -94,24 +114,17 @@ export async function generateGeminiJson({
       }
 
       if (response.ok) {
-        const raw = extractText(await response.json());
-        if (!raw) throw new Error("Die KI hat keine Rechnungsdaten zurückgegeben. Bitte erneut versuchen oder die Beträge manuell eingeben.");
-        let parsed: unknown;
+        let parsed: Record<string, unknown> | null = null;
         try {
-          parsed = JSON.parse(raw);
-        } catch {
-          const match = raw.match(/\{[\s\S]*\}/);
-          if (!match) throw new Error("Die KI hat keine gültigen Rechnungsdaten zurückgegeben.");
-          try {
-            parsed = JSON.parse(match[0]);
-          } catch {
-            throw new Error("Die KI hat keine gültigen Rechnungsdaten zurückgegeben.");
-          }
+          parsed = parseModelJson(extractText(await response.json()));
+        } catch (error) {
+          console.warn(`Gemini response could not be decoded for ${modelName}, attempt ${attempt + 1}`, error);
         }
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Object.keys(parsed).length) {
-          throw new Error("Die KI hat keine verwertbaren Rechnungsdaten zurückgegeben.");
-        }
-        return parsed as Record<string, unknown>;
+        if (parsed) return parsed;
+        invalidOutput = true;
+        console.warn(`Gemini returned unusable JSON for ${modelName}, attempt ${attempt + 1}`);
+        if (attempt === 0) await sleep(1200);
+        continue;
       }
 
       lastStatus = response.status;
@@ -131,6 +144,9 @@ export async function generateGeminiJson({
       }
       if (attempt === 0) await sleep(1200);
     }
+  }
+  if (invalidOutput) {
+    throw new Error("Die KI hat keine verwertbaren Rechnungsdaten zurückgegeben. Bitte die Beträge manuell eingeben.");
   }
   throw new Error(`KI-Analyse vorübergehend nicht verfügbar (${lastStatus}). Auch das Ersatzmodell konnte die Rechnung nicht lesen. Bitte später erneut versuchen.`);
 }
