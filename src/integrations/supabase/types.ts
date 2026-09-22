@@ -2240,6 +2240,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_accountant_access: {
+        Args: { _token: string; _candidate_hash: string }
+        Returns: Json
+      }
+      consume_mail_budget: {
+        Args: {
+          _email_hash: string
+          _ip_hash: string
+          _email_limit?: number
+          _email_minutes?: number
+          _ip_limit?: number
+          _ip_minutes?: number
+        }
+        Returns: boolean
+      }
       create_storno: {
         Args: { _id: string; _reason?: string }
         Returns: string

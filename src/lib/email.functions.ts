@@ -13,13 +13,19 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
         body: z.string().min(1).max(20000),
         html: z.string().max(100000).optional(),
         filename: z.string().min(1).max(200),
-        pdfBase64: z.string().min(1),
+        pdfBase64: z
+          .string()
+          .min(1)
+          .max(20_000_000)
+          .regex(/^[A-Za-z0-9+/]+={0,2}$/),
+        requestId: z.string().uuid().optional(),
         companyName: z.string().max(120).optional(),
         companyEmail: z.string().email().optional(),
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    if (!data.pdfBase64.startsWith("JVBERi0")) throw new Error("Ungültige PDF-Datei.");
     const { sendVerifiedEmail } = await import("./resend-email.server");
     const result = await sendVerifiedEmail({
       to: data.to,
@@ -29,6 +35,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
       ...(data.companyName ? { companyName: data.companyName } : {}),
       ...(data.companyEmail ? { companyEmail: data.companyEmail } : {}),
       attachments: [{ filename: data.filename, content: data.pdfBase64 }],
+      ...(data.requestId ? { idempotencyKey: `document/${context.userId}/${data.requestId}` } : {}),
     });
     return { id: result.id, cc: result.cc };
   });

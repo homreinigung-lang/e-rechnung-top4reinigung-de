@@ -1,6 +1,12 @@
 name: Source security checks
+run-name: ${{ inputs.notification_test && 'Security alert delivery test' || 'Source security checks' }}
 on:
   workflow_dispatch:
+    inputs:
+      notification_test:
+        description: 'Send a test failure notification to the configured GitHub notification email'
+        type: boolean
+        default: false
   pull_request:
   push:
     branches: [main]
@@ -9,17 +15,77 @@ on:
 permissions:
   contents: read
 jobs:
-  source-check:
+  database-behavior:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: security_test
+          POSTGRES_DB: security_bootstrap
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U security_test -d security_bootstrap"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SECURITY_PG_BIN: /usr/bin
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: Check tracked files for private key headers
+      - name: Replay migrations into disposable local database
+        run: node scripts/security/replay-local.mjs --initialize
+      - name: Cross-tenant access and protected-record tests
+        run: node scripts/security/test-local.mjs
+      - name: Concurrent numbering and abuse-limit tests
+        run: node scripts/security/concurrency.mjs
+  notification-test:
+    if: github.event_name == 'workflow_dispatch' && inputs.notification_test
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Intentional failure to verify the real notification route
+        run: |
+          echo 'Synthetic security notification test. No vulnerability, customer data, or production change.' >> "$GITHUB_STEP_SUMMARY"
+          echo '::error::Intentional test alert. Confirm receipt at the configured GitHub notification email.'
+          exit 1
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install checksum-verified Gitleaks
         shell: bash
         run: |
-          if git grep -n -I -E -- 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- ':!*.lock'; then
-            echo 'Potential private key found in tracked files'
-            exit 1
-          fi
-          echo 'No private-key headers in tracked files'
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            -o "$RUNNER_TEMP/gitleaks.tar.gz"
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+      - name: Scan reachable history with redacted output
+        run: '"$RUNNER_TEMP/gitleaks" git --redact=100 --no-banner --config .gitleaks.toml --log-opts HEAD .'
+  patterns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SEMGREP_SEND_METRICS: 'off'
+      SEMGREP_ENABLE_VERSION_CHECK: '0'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned local scanner
+        run: |
+          python3 -m venv "$RUNNER_TEMP/semgrep"
+          "$RUNNER_TEMP/semgrep/bin/pip" install --disable-pip-version-check semgrep==1.173.0
+      - name: Test detection rules with synthetic examples
+        run: '"$RUNNER_TEMP/semgrep/bin/semgrep" --test --config .semgrep/security.yml .semgrep/security.ts'
+      - name: Scan application source without uploading code
+        run: '"$RUNNER_TEMP/semgrep/bin/semgrep" scan --config .semgrep/security.yml --error --strict --metrics=off --disable-version-check src'

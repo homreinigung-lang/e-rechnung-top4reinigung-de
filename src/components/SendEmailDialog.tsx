@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +58,8 @@ export function SendEmailDialog({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [merge, setMerge] = useState(true);
   const [busy, setBusy] = useState(false);
+  const sending = useRef(false);
+  const attempt = useRef<{ payload: string; requestId: string } | null>(null);
   const sendEmail = useServerFn(sendInvoiceEmail);
 
   useEffect(() => {
@@ -65,7 +67,6 @@ export function SendEmailDialog({
     setTo(defaults.to);
     setSubject(defaults.subject);
     setBody(defaults.body);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   async function buildPdf() {
@@ -89,13 +90,20 @@ export function SendEmailDialog({
   }
 
   async function handleSend() {
+    if (sending.current) return;
     if (!to.trim()) {
       toast.error("Bitte eine Empfänger-Adresse angeben.");
       return;
     }
+    sending.current = true;
     setBusy(true);
     try {
       const bytes = await buildPdf();
+      const pdfBase64 = toBase64(bytes);
+      const payload = JSON.stringify([to.trim(), subject, body, defaults, pdfBase64]);
+      if (attempt.current?.payload !== payload) {
+        attempt.current = { payload, requestId: crypto.randomUUID() };
+      }
       await sendEmail({
         data: {
           to: to.trim(),
@@ -103,7 +111,8 @@ export function SendEmailDialog({
           body: [body, defaults.signatureText].filter(Boolean).join("\n"),
           html: buildEmailHtml(body, defaults.signatureHtml ?? ""),
           filename: `${defaults.fileBaseName}.pdf`,
-          pdfBase64: toBase64(bytes),
+          pdfBase64,
+          requestId: attempt.current.requestId,
           ...(defaults.companyName ? { companyName: defaults.companyName } : {}),
           ...(defaults.companyEmail ? { companyEmail: defaults.companyEmail } : {}),
         },
@@ -111,7 +120,12 @@ export function SendEmailDialog({
       try {
         await onSent?.();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "E-Mail versendet, aber der Versandstatus ist ungeklärt. Bitte vor erneutem Senden prüfen.", { duration: 12000 });
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : "E-Mail versendet, aber der Versandstatus ist ungeklärt. Bitte vor erneutem Senden prüfen.",
+          { duration: 12000 },
+        );
         onOpenChange(false);
         return;
       }
@@ -122,9 +136,11 @@ export function SendEmailDialog({
         duration: 8000,
       });
       onOpenChange(false);
+      attempt.current = null;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "E-Mail konnte nicht gesendet werden");
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   }

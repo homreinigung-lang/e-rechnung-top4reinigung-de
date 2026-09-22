@@ -3,14 +3,11 @@
  * gegen das Durchprobieren von Codes (Brute-Force).
  *
  * Der Zugangscode wird niemals im Klartext gespeichert, sondern nur als
- * SHA-256-Prüfsumme (mit dem Zugangs-Token als Salz). Der Vergleich erfolgt
- * zeitkonstant, damit sich der Code nicht über Laufzeitunterschiede erraten
- * lässt. Nach mehreren Fehlversuchen wird der Zugang zeitweise gesperrt;
+ * SHA-256-Prüfsumme (mit dem Zugangs-Token als Salz). Prüfung und Zähler werden
+ * in einer gesperrten Datenbanktransaktion aktualisiert, damit parallele
+ * Versuche die Sperre nicht umgehen. Nach mehreren Fehlversuchen wird der Zugang zeitweise gesperrt;
  * erfolgreiche Anmeldungen setzen den Zähler zurück.
  */
-
-const MAX_ATTEMPTS = 5;
-const LOCK_MINUTES = 15;
 
 export type AccountantAccessRow = {
   id: string;
@@ -48,56 +45,26 @@ export async function verifyAccountantAccess(
 ): Promise<AccountantAccessRow> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const { data: access } = await supabaseAdmin
-    .from("accountant_access")
-    .select(
-      "id, user_id, access_code_hash, active, activated_at, failed_attempts, locked_until, expires_at",
-    )
-    .eq("token", token)
-    .maybeSingle();
-
-  if (!access || !access.active) throw new Error("Zugang ungültig.");
-
-  const expiresAt = access.expires_at ? new Date(access.expires_at as string) : null;
-  if (expiresAt && expiresAt.getTime() < Date.now()) {
-    throw new Error("Dieser Zugang ist abgelaufen. Bitte den Mandanten um einen neuen Zugang.");
+  const candidate = await hashAccessCode(token, code);
+  const { data, error } = await supabaseAdmin.rpc("check_accountant_access", {
+    _token: token,
+    _candidate_hash: candidate,
+  });
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Zugang konnte nicht geprüft werden. Bitte später erneut versuchen.");
   }
-
-  const lockedUntil = access.locked_until ? new Date(access.locked_until as string) : null;
-  if (lockedUntil && lockedUntil.getTime() > Date.now()) {
+  if (data["status"] === "expired")
+    throw new Error("Dieser Zugang ist abgelaufen. Bitte den Mandanten um einen neuen Zugang.");
+  if (data["status"] === "locked")
     throw new Error(
       "Zu viele Fehlversuche. Der Zugang ist vorübergehend gesperrt. Bitte später erneut versuchen.",
     );
-  }
-
-  const stored = String(access.access_code_hash ?? "");
-  const candidate = await hashAccessCode(token, code);
-  const ok = stored.length > 0 && timingSafeEqual(stored, candidate);
-
-  if (!ok) {
-    const attempts = Number(access.failed_attempts ?? 0) + 1;
-    const lock =
-      attempts >= MAX_ATTEMPTS ? new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString() : null;
-    await supabaseAdmin
-      .from("accountant_access")
-      .update({
-        failed_attempts: attempts,
-        ...(lock ? { locked_until: lock } : {}),
-      } as never)
-      .eq("id", access.id);
+  if (
+    data["status"] !== "ok" ||
+    typeof data["id"] !== "string" ||
+    typeof data["user_id"] !== "string"
+  ) {
     throw new Error("Zugang ungültig.");
   }
-
-  const now = new Date().toISOString();
-  await supabaseAdmin
-    .from("accountant_access")
-    .update({
-      last_used_at: now,
-      failed_attempts: 0,
-      locked_until: null,
-      ...(access.activated_at ? {} : { activated_at: now }),
-    } as never)
-    .eq("id", access.id);
-
-  return { id: access.id as string, user_id: access.user_id as string };
+  return { id: data["id"], user_id: data["user_id"] };
 }

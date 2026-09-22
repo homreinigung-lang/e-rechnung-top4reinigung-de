@@ -1,0 +1,42 @@
+rules:
+  - id: no-dynamic-code-execution
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Do not execute strings as code; parse data with an explicit schema.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: Function(...)
+  - id: no-disabled-tls-verification
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: TLS certificate verification must remain enabled.
+    pattern-either:
+      - pattern: "{..., rejectUnauthorized: false, ...}"
+      - pattern: process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+      - pattern: process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+  - id: no-user-metadata-authorization
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: User-editable metadata must not grant roles or administrative permissions.
+    pattern-either:
+      - pattern: $USER.user_metadata.role
+      - pattern: $USER.user_metadata.is_admin
+      - pattern: $USER.user_metadata["role"]
+      - pattern: $USER.user_metadata["is_admin"]
+  - id: no-public-privileged-key
+    languages: [generic]
+    severity: ERROR
+    message: Never expose a privileged Supabase key through a public build variable.
+    pattern-regex: '(?i)(?:VITE|NEXT_PUBLIC|PUBLIC)_[A-Z_]*(?:SECRET_KEY|SERVICE_ROLE)[A-Z_]*'
+  - id: no-shell-command-execution
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Server application code must not execute shell commands.
+    pattern-either:
+      - pattern: require("child_process")
+      - pattern: require("node:child_process")
+      - pattern: import $X from "child_process"
+      - pattern: import $X from "node:child_process"
+      - pattern: import { ... } from "child_process"
+      - pattern: import { ... } from "node:child_process"
