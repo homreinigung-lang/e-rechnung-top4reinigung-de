@@ -33,30 +33,21 @@ export async function allowPublicMail(options: ThrottleOptions): Promise<boolean
   const { getRequestHeader } = await import("@tanstack/react-start/server");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const ipRaw = (getRequestHeader("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? "";
+  // Cloudflare sets this header at the edge; X-Forwarded-For is spoofable.
+  const ipRaw = getRequestHeader("cf-connecting-ip")?.trim() ?? "";
   const emailHash = await sha256Hex(`email:${email.trim().toLowerCase()}`);
   const ipHash = ipRaw ? await sha256Hex(`ip:${ipRaw}`) : "";
 
-  const countSince = async (scope: string, keyHash: string, minutes: number) => {
-    const since = new Date(Date.now() - minutes * 60000).toISOString();
-    const { count } = await supabaseAdmin
-      .from("auth_mail_throttle")
-      .select("id", { count: "exact", head: true })
-      .eq("scope", scope)
-      .eq("key_hash", keyHash)
-      .gte("created_at", since);
-    return count ?? 0;
-  };
-
-  const tooManyForEmail = (await countSince("email", emailHash, windowEmailMinutes)) >= limitPerEmail;
-  const tooManyForIp = ipHash
-    ? (await countSince("ip", ipHash, windowIpMinutes)) >= limitPerIp
-    : false;
-  if (tooManyForEmail || tooManyForIp) return false;
-
-  const rows = [{ scope: "email", key_hash: emailHash }];
-  if (ipHash) rows.push({ scope: "ip", key_hash: ipHash });
-  await supabaseAdmin.from("auth_mail_throttle").insert(rows as never);
+  const { data, error } = await supabaseAdmin.rpc("consume_mail_budget", {
+    _email_hash: emailHash,
+    _ip_hash: ipHash,
+    _email_limit: limitPerEmail,
+    _email_minutes: windowEmailMinutes,
+    _ip_limit: limitPerIp,
+    _ip_minutes: windowIpMinutes,
+  });
+  // Database failure must never disable the limit and permit a message.
+  if (error || data !== true) return false;
 
   // Alte Einträge aufräumen, damit die Tabelle klein bleibt.
   await supabaseAdmin

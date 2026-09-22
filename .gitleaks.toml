@@ -1,0 +1,9 @@
+title = "GebCalc secret detection"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Supabase publishable API keys are intentionally public; secret and service-role keys are NOT excluded."
+regexTarget = "secret"
+regexes = ['''^sb_publishable_[A-Za-z0-9_-]+$''']
