@@ -11,6 +11,7 @@ export function FileUploadButton({
   onUploaded,
   disabled = false,
   onBusyChange,
+  showSuccessToast = true,
 }: {
   folder: string;
   accept?: string;
@@ -18,6 +19,7 @@ export function FileUploadButton({
   onUploaded: (path: string, file: File) => void | Promise<void>;
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
+  showSuccessToast?: boolean;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -32,7 +34,7 @@ export function FileUploadButton({
       // Upload and document analysis are separate steps. Do not signal a
       // successful analysis merely because Storage accepted the file.
       await onUploaded(path, file);
-      toast.success("Datei angehängt");
+      if (showSuccessToast) toast.success("Datei angehängt");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload oder Verarbeitung fehlgeschlagen");
     } finally {

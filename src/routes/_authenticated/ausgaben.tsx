@@ -25,6 +25,7 @@ import { downloadStoredFile, uploadUserFile } from "@/lib/storage";
 import { DateiVorschau } from "@/components/DateiVorschau";
 import { WiederkehrendeAusgaben } from "@/components/WiederkehrendeAusgaben";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
+import { receiptFormValues } from "@/lib/receipt-form";
 import { readIncomingEInvoice, type IncomingEInvoice } from "@/lib/e-invoice-import";
 import { Download, Eye, FileCode2, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
 
@@ -94,9 +95,11 @@ function Ausgaben() {
   const [importing, setImporting] = useState(false);
   const [processingReceipt, setProcessingReceipt] = useState(false);
   const [receiptToRetry, setReceiptToRetry] = useState<File | null>(null);
+  const [scanError, setScanError] = useState("");
 
   /** Eingehende E-Rechnung (XRechnung/ZUGFeRD) einlesen und die Felder vorbelegen. */
   async function handleEInvoice(path: string, file: File) {
+    setScanError("");
     setReceiptToRetry(null);
     setImporting(true);
     try {
@@ -146,7 +149,6 @@ function Ausgaben() {
       });
       const pdfPath = await uploadUserFile(pdfFile, "belege");
       setForm((f) => ({ ...f, receipt_url: pdfPath }));
-      toast.success("Beleg-Foto wurde automatisch in ein PDF umgewandelt");
     } catch {
       toast.error("PDF-Umwandlung fehlgeschlagen – das Foto bleibt als Beleg hinterlegt.");
     }
@@ -156,28 +158,33 @@ function Ausgaben() {
   async function analyze(file: File) {
     setScanning(true);
     setScanned(false);
+    setScanError("");
     try {
       const dataUrl = await fileToDataUrl(file);
       const r = await runScan({
         data: { dataUrl, mimeType: file.type || "application/pdf" },
       });
+      const values = receiptFormValues(r);
       setForm((f) => ({
         ...f,
-        supplier: r.supplier || f.supplier,
-        document_number: r.document_number || f.document_number,
-        expense_date: r.expense_date || f.expense_date,
-        net_amount: r.net_amount.toFixed(2),
-        vat_amount: r.vat_amount.toFixed(2),
-        category: CATEGORIES.includes(r.category) ? r.category : f.category,
-        notes: r.notes || f.notes,
+        supplier: values.supplier || f.supplier,
+        document_number: values.document_number || f.document_number,
+        expense_date: values.expense_date || f.expense_date,
+        net_amount: values.net_amount,
+        vat_amount: values.vat_amount,
+        category: CATEGORIES.includes(values.category) ? values.category : f.category,
+        notes: values.notes || f.notes,
       }));
       setScanned(true);
       toast.success("Belegdaten erkannt", {
-        description: "Bitte Beträge und Datum kurz prüfen.",
+        description:
+          "Felder wurden ausgefüllt. Bitte prüfen und mit „Ausgabe speichern“ übernehmen.",
       });
       return r;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Beleg konnte nicht ausgelesen werden.");
+      const message = e instanceof Error ? e.message : "Beleg konnte nicht ausgelesen werden.";
+      setScanError(message);
+      toast.error(message);
       return null;
     } finally {
       setScanning(false);
@@ -223,6 +230,7 @@ function Ausgaben() {
       setScanned(false);
       setEInvoice(null);
       setReceiptToRetry(null);
+      setScanError("");
 
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -324,6 +332,7 @@ function Ausgaben() {
             accept="image/*,application/pdf"
             label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
             onUploaded={handleReceipt}
+            showSuccessToast={false}
             disabled={processingReceipt || add.isPending}
             onBusyChange={setProcessingReceipt}
           />
@@ -332,6 +341,7 @@ function Ausgaben() {
             accept=".xml,application/xml,text/xml,application/pdf"
             label="E-Rechnung empfangen (XRechnung/ZUGFeRD)"
             onUploaded={handleEInvoice}
+            showSuccessToast={false}
             disabled={processingReceipt || add.isPending}
             onBusyChange={setProcessingReceipt}
           />
@@ -370,7 +380,7 @@ function Ausgaben() {
           )}
           {!scanning && form.receipt_url && (
             <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-              <Paperclip className="size-4" /> Beleg angehängt & mit der Ausgabe verknüpft
+              <Paperclip className="size-4" /> Beleg angehängt – Ausgabe noch nicht gespeichert
               <Button
                 variant="ghost"
                 size="sm"
@@ -383,11 +393,17 @@ function Ausgaben() {
           )}
           {!scanning && scanned && (
             <span className="inline-flex items-center gap-1 text-sm text-primary">
-              <Sparkles className="size-4" /> Daten automatisch übernommen – bitte prüfen
+              <Sparkles className="size-4" /> Daten erkannt – bitte prüfen und „Ausgabe speichern“
+              wählen
             </span>
           )}
         </div>
 
+        {scanError && (
+          <p role="alert" className="text-sm text-destructive">
+            {scanError}
+          </p>
+        )}
         <Button onClick={() => add.mutate()} disabled={add.isPending || processingReceipt}>
           <Plus className="size-4" /> Ausgabe speichern
         </Button>
