@@ -24,6 +24,7 @@ export function DatevAccountingSettings() {
   const [stored, setStored] = useState(false);
   const [savedSelection, setSavedSelection] = useState("");
   const [loading, setLoading] = useState(true);
+  const [readiness, setReadiness] = useState<{ has_datev_identifiers: boolean; mapped_accounts: number; document_count: number; expense_count: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -34,14 +35,17 @@ export function DatevAccountingSettings() {
         if (authError) throw authError;
         if (!auth.user) throw new Error("Bitte erneut anmelden.");
         const uid = auth.user.id;
-        const [settings, savedMappings] = await Promise.all([
+        const [settings, savedMappings, status] = await Promise.all([
           db.from("company_accounting_settings").select("*").eq("user_id", uid).maybeSingle(),
           db.from("company_account_mappings").select("*").eq("user_id", uid),
+          db.from("company_datev_readiness").select("*").eq("user_id", uid).maybeSingle(),
         ]);
         if (settings.error) throw settings.error;
         if (savedMappings.error) throw savedMappings.error;
+        if (status.error) throw status.error;
         if (!alive) return;
         setUserId(uid);
+        setReadiness(status.data);
         if (settings.data) {
           setChart(settings.data.chart);
           setYear(settings.data.fiscal_year);
@@ -120,6 +124,12 @@ export function DatevAccountingSettings() {
         Kontenrahmen und Konten werden je Unternehmen gespeichert. Bitte mit Ihrem Steuerberater abstimmen.
         Änderungen am Kontenrahmen sind bei vorhandenen Zuordnungen gesperrt.
       </p>
+      {readiness && <p className="text-sm rounded-md border p-3">
+        DATEV-Stammdaten: {readiness.has_datev_identifiers ? "vorhanden" : "unvollständig"} ·
+        Kontozuordnungen: {readiness.mapped_accounts} ·
+        Dokumente: {readiness.document_count} · Ausgaben: {readiness.expense_count}.
+        Vor dem Import muss der Steuerberater die Zuordnungen und Steuerfälle prüfen.
+      </p>}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1"><Label htmlFor="datev-chart">Kontenrahmen</Label>
           <select id="datev-chart" className="w-full rounded-md border bg-background p-2" value={chart}
