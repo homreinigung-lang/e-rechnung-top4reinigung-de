@@ -313,15 +313,20 @@ function Steuerberater() {
     setBeraternummer(accountingSettings.datev_beraternummer ?? "");
     setMandantennummer(accountingSettings.datev_mandantennummer ?? "");
   }, [accountingSettings]);
+  function automaticExpenseAccount(category: string, selectedChart: DatevChart) {
+    const normalized = category.trim().toLowerCase();
+    if (normalized === "löhne" || normalized === "loehne") return selectedChart === "SKR03" ? "4110" : "6010";
+    if (normalized === "reinigungsmittel") return selectedChart === "SKR03" ? "4250" : "6330";
+    if (normalized === "versicherung" || normalized === "versicherungen") return selectedChart === "SKR03" ? "4360" : "6400";
+    return selectedChart === "SKR03" ? "4900" : "6300";
+  }
   useEffect(() => {
     const next: Record<string, string> = {};
-    for (const row of savedMappings) {
-      if (row.chart === chart && row.fiscal_year === year && row.mapping_key.startsWith("expense:")) {
-        next[row.mapping_key.slice(8)] = row.account_number;
-      }
+    for (const category of expenseCategories) {
+      next[category] = automaticExpenseAccount(category, chart);
     }
     setExpenseMappings(next);
-  }, [savedMappings, chart, year]);
+  }, [chart, year, expenses]);
   const saveDatevSettings = useMutation({
     mutationFn: async () => {
       if (!/^\d{1,7}$/.test(beraternummer) || !/^\d{1,5}$/.test(mandantennummer)) throw new Error("Berater- und Mandantennummer prüfen.");
@@ -547,16 +552,15 @@ function Steuerberater() {
             <Input value={mandantennummer} onChange={e => setMandantennummer(e.target.value)} inputMode="numeric" />
           </label>
         </div>
-        {expenseCategories.map(category => (
-          <label key={category} className="block text-sm">Aufwandskonto: {category || "Ausgabe"}
-            <select className="mt-1 w-full rounded border bg-background p-2" value={expenseMappings[category] ?? ""} onChange={e => setExpenseMappings(prev => ({ ...prev, [category]: e.target.value }))}>
-              <option value="">Bitte wählen</option>
-              {chartAccounts.filter(a => a.chart === chart && a.category === "expense").map(a => (
-                <option key={a.account_number} value={a.account_number}>{a.account_number} – {a.account_name}</option>
-              ))}
-            </select>
-          </label>
-        ))}
+        {expenseCategories.map(category => {
+          const accountNumber = expenseMappings[category] ?? automaticExpenseAccount(category, chart);
+          const account = chartAccounts.find(a => a.chart === chart && a.account_number === accountNumber);
+          return (
+            <label key={category} className="block text-sm">Aufwandskonto: {category || "Ausgabe"}
+              <Input className="mt-1" value={account ? `${account.account_number} – ${account.account_name}` : accountNumber} readOnly />
+            </label>
+          );
+        })}
         <Button type="button" variant="outline" disabled={saveDatevSettings.isPending} onClick={() => saveDatevSettings.mutate()}>DATEV-Einstellungen speichern</Button>
       </section>
 
