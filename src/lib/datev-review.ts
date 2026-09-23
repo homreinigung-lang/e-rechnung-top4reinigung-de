@@ -23,7 +23,8 @@ export function buildDatevReviewCsv(review: DatevReview): string {
     "Beleg vorhanden", "SKR", "Wirtschaftsjahr",
   ];
   const invoiceRows = review.invoices.map((r) => [
-    "Rechnung", r["preparation_status"], r["issue_date"], r["number"], r["document_id"],
+    r["preparation_status"] === "NOT_INVOICE" ? "Kein Rechnungsbeleg" : "Rechnung",
+    r["preparation_status"], r["issue_date"], r["number"], r["document_id"],
     r["customer_number"], r["net_total"], r["vat_amount"], r["total"],
     r["proposed_revenue_account"], "", r["chart"], r["fiscal_year"],
   ]);
