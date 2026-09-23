@@ -41,6 +41,17 @@ describe("DATEV EXTF",()=>{
     expect(()=>buildDatevExtf([], [expense], {...options("SKR03"),expenseAccounts:{}})).toThrow("Kontenzuordnung");
     expect(()=>buildDatevExtf([{...invoice,vat_amount:12}],[],options("SKR03"))).toThrow();
   });
+  it("includes original cancelled invoice and books its linked negative storno as reversal",()=>{
+    const original = {...invoice, status:"cancelled", cancels_document_id:null};
+    const cancellation = {...invoice, number:"ST-1", total:-119, net_total:-100, vat_amount:-19, status:"sent", cancels_document_id:"original-id"};
+    const text=decode(buildDatevExtf([original,cancellation],[],options("SKR03")));
+    const lines=text.trim().split("\r\n");
+    expect(lines).toHaveLength(4);
+    expect(lines[2]).toContain('"S"');
+    expect(lines[3]).toContain('"H"');
+    expect(lines[3]).toContain('119,00');
+    expect(()=>buildDatevExtf([{...cancellation,cancels_document_id:null}],[],options("SKR03"))).toThrow("Stornobeleg");
+  });
   it("does not add Excel-only summaries or UTF-8 BOM",()=>{
     const bytes=buildDatevExtf([invoice],[],options("SKR03"));
     expect(Array.from(bytes.slice(0,3))).not.toEqual([239,187,191]);
