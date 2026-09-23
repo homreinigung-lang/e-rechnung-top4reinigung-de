@@ -43,7 +43,7 @@ export const Route = createFileRoute("/stb/$token")({
       {
         name: "description",
         content:
-          "Geschützter Nur-Lese-Zugang für den Steuerberater: Rechnungen, Ausgaben und Exporte als DATEV-CSV oder Excel.",
+          "Geschützter Nur-Lese-Zugang für den Steuerberater: Rechnungen, Ausgaben, DATEV-Vorprüfung und Excel-Exporte.",
       },
       { property: "og:title", content: "Steuerberater-Zugang" },
       { property: "og:description", content: "Rechnungen und Ausgaben ansehen und exportieren." },
@@ -415,7 +415,7 @@ function AccountantPortal() {
           Steuerberater-Zugang {data?.companyName ? `– ${data.companyName}` : ""}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Nur-Lese-Zugriff auf Rechnungen, Ausgaben und Stundenzettel aller Mitarbeiter inkl. DATEV-
+          Nur-Lese-Zugriff auf Rechnungen, Ausgaben und Stundenzettel aller Mitarbeiter inkl. DATEV-Vorprüfung 
           und Excel-Export.
         </p>
       </header>
