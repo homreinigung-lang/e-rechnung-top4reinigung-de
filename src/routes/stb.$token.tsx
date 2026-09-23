@@ -7,6 +7,8 @@ import {
   getAccountantMonthReceipts,
   getAccountantReceiptUrl,
   getAccountantReport,
+  getAccountantDatevSettings,
+  saveAccountantDatevSettings,
   type Row,
 } from "@/lib/accountant.functions";
 import { Button } from "@/components/ui/button";
@@ -248,9 +250,42 @@ function AccountantPortal() {
   const [from, setFrom] = useState(`${year}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
 
+  const [datevChart, setDatevChart] = useState<"" | "SKR03" | "SKR04">("");
+  const [datevBeraternummer, setDatevBeraternummer] = useState("");
+  const [datevMandantennummer, setDatevMandantennummer] = useState("");
+  const fetchDatevSettings = useServerFn(getAccountantDatevSettings);
+  const saveDatevSettingsRequest = useServerFn(saveAccountantDatevSettings);
+  const datevSettings = useMutation({
+    mutationFn: () => fetchDatevSettings({ data: { token, code } }),
+    onSuccess: (value) => {
+      setDatevChart(value.chart ?? "");
+      setDatevBeraternummer(value.datev_beraternummer);
+      setDatevMandantennummer(value.datev_mandantennummer);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const saveDatevSettings = useMutation({
+    mutationFn: () => saveDatevSettingsRequest({
+      data: {
+        token, code, chart: datevChart,
+        datev_beraternummer: datevBeraternummer,
+        datev_mandantennummer: datevMandantennummer,
+      }
+    }),
+    onSuccess: (value) => {
+      datevSettings.reset();
+      setDatevChart(value.chart ?? "");
+      setDatevBeraternummer(value.datev_beraternummer);
+      setDatevMandantennummer(value.datev_mandantennummer);
+      toast.success("DATEV-Einstellungen gespeichert.");
+      void datevSettings.mutate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const fetchReport = useServerFn(getAccountantReport);
   const report = useMutation({
     mutationFn: () => fetchReport({ data: { token, code, from, to } }),
+    onSuccess: () => datevSettings.mutate(),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -404,8 +439,8 @@ function AccountantPortal() {
           Steuerberater-Zugang {data?.companyName ? `– ${data.companyName}` : ""}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Nur-Lese-Zugriff auf Rechnungen, Ausgaben und Stundenzettel aller Mitarbeiter inkl. DATEV-
-          und Excel-Export.
+          Nur-Lese-Zugriff auf Rechnungen, Ausgaben und Stundenzettel inkl. Exporte.
+          Ausschließlich DATEV-Einstellungen dürfen bearbeitet werden.
         </p>
       </header>
 
@@ -456,6 +491,47 @@ function AccountantPortal() {
 
       {data && (
         <>
+          <section className="no-print space-y-3 rounded-lg border bg-card p-4">
+            <h2 className="font-display text-lg font-semibold">DATEV-Einstellungen</h2>
+            <p className="text-sm text-muted-foreground">
+              Hier dürfen Sie ausschließlich Kontenrahmen, Beraternummer und Mandantennummer
+              für diesen Mandanten pflegen. Alle übrigen Unternehmensdaten bleiben schreibgeschützt.
+            </p>
+            {datevSettings.isPending && !datevSettings.data ? (
+              <p className="text-sm text-muted-foreground">DATEV-Einstellungen werden geladen…</p>
+            ) : datevSettings.isSuccess ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="datev-chart">Kontenrahmen</Label>
+                    <select id="datev-chart" className="w-full rounded-md border bg-background p-2"
+                      value={datevChart} onChange={(e) => setDatevChart(e.target.value as "" | "SKR03" | "SKR04")}>
+                      <option value="">Bitte auswählen</option>
+                      <option value="SKR03">SKR03</option>
+                      <option value="SKR04">SKR04</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="datev-berater">Beraternummer</Label>
+                    <Input id="datev-berater" value={datevBeraternummer} inputMode="numeric" maxLength={7}
+                      onChange={(e) => setDatevBeraternummer(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="datev-mandant">Mandantennummer</Label>
+                    <Input id="datev-mandant" value={datevMandantennummer} inputMode="numeric" maxLength={5}
+                      onChange={(e) => setDatevMandantennummer(e.target.value)} />
+                  </div>
+                </div>
+                <Button type="button" onClick={() => saveDatevSettings.mutate()}
+                  disabled={saveDatevSettings.isPending || !datevChart}>
+                  {saveDatevSettings.isPending ? "Speichert…" : "DATEV-Einstellungen speichern"}
+                </Button>
+              </>
+            ) : (
+              <Button type="button" variant="outline" onClick={() => datevSettings.mutate()}
+                disabled={datevSettings.isPending}>DATEV-Einstellungen erneut laden</Button>
+            )}
+          </section>
           <section className="no-print flex flex-wrap gap-2">
             <Button
               variant="outline"
