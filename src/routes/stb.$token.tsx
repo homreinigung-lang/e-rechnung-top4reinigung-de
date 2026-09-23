@@ -297,6 +297,39 @@ function AccountantPortal() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const reviewPackage = useMutation({
+    mutationFn: async () => {
+      if (from.slice(0, 7) !== to.slice(0, 7)) {
+        throw new Error("DATEV-Prüfpaket mit Belegen ist nur für einen Kalendermonat möglich. Bitte den Zeitraum anpassen.");
+      }
+      const month = from.slice(0, 7);
+      const [review, files] = await Promise.all([
+        fetchDatevReview({ data: { token, code, from, to } }),
+        fetchMonthReceipts({ data: { token, code, month } }),
+      ]);
+      const zip = new JSZip();
+      zip.file("DATEV_Vorpruefung.json", JSON.stringify({ ...review, summary: summarizeDatevReview(review) }, null, 2));
+      zip.file("DATEV_Pruefliste.csv", buildDatevReviewCsv(review));
+      let included = 0;
+      for (const file of files) {
+        let res: Response;
+        try {
+          res = await fetch(file.url);
+        } catch {
+          throw new Error("Belegdownload fehlgeschlagen. Es wurde kein unvollständiges Prüfpaket erzeugt.");
+        }
+        if (!res.ok) throw new Error("Belegdownload fehlgeschlagen. Es wurde kein unvollständiges Prüfpaket erzeugt.");
+        zip.file(`Belege/${file.name}`, await res.blob());
+        included++;
+      }
+      zip.file("HINWEIS.txt", "GebCalc DATEV-Prüfpaket: KEIN importfähiger DATEV-EXTF-Buchungsstapel. Kontierung und Steuerfälle durch den Steuerberater prüfen. Belege sind nach ausgewähltem Kalendermonat zusammengestellt; undatierte Ausgaben erscheinen separat in der Prüfliste.\\r\\n");
+      await saveFile(await zip.generateAsync({ type: "blob" }), `DATEV_Pruefpaket_${month}.zip`);
+      return included;
+    },
+    onSuccess: (count) => toast.success(`DATEV-Prüfpaket mit ${count} Beleg(en) heruntergeladen.`),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const fetchReceipt = useServerFn(getAccountantReceiptUrl);
   /** Lädt den Beleg als Blob und öffnet ihn lokal (kein Adblocker-Problem). */
   function openReceipt(expenseId: string) {
@@ -490,6 +523,10 @@ function AccountantPortal() {
                   .catch((error: Error) => toast.error(error.message));
               }}>
               <Download className="size-4" /> DATEV-Prüfliste (CSV)
+            </Button>
+            <Button variant="outline" disabled={reviewPackage.isPending}
+              onClick={() => reviewPackage.mutate()}>
+              <Download className="size-4" /> DATEV-Prüfpaket mit Belegen (ZIP)
             </Button>
             <Button variant="outline" disabled={datevReview.isPending}
               onClick={() => datevReview.mutate()}>
