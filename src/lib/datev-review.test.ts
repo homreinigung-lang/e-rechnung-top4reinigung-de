@@ -16,6 +16,12 @@ describe("DATEV review CSV (not an EXTF booking batch)", () => {
     expect(csv).toContain("\r\n");
   });
 
+  it("keeps non-invoice documents visibly separate", () => {
+    const csv = buildDatevReviewCsv({ settings: null, invoices: [{ preparation_status: "NOT_INVOICE", number: "A-1" }], expenses: [] });
+    expect(csv).toContain("Kein Rechnungsbeleg");
+    expect(csv).toContain("NOT_INVOICE");
+  });
+
   it("escapes spreadsheet formulas, semicolons and quotes", () => {
     const csv = buildDatevReviewCsv({
       settings: null,
