@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { fahrtenbuchClient } from "@/lib/fahrtenbuch-client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   ShieldOff,
 } from "lucide-react";
+import { buildDatevExtf, type DatevAccount, type DatevChart } from "@/lib/datev-extf";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
@@ -106,6 +107,7 @@ function de(v: number) {
 }
 
 function Steuerberater() {
+  const queryClient = useQueryClient();
   const year = new Date().getFullYear();
   const [from, setFrom] = useState(`${year}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
@@ -274,32 +276,99 @@ function Steuerberater() {
     Notiz: e.notes,
   }));
 
-  // DATEV-kompatibler Buchungsstapel (vereinfacht, EXTF-Spaltennamen).
-  const datevRows: Row[] = [
-    ...documents.map((d) => ({
-      Umsatz: de(num(d.total)),
-      "Soll/Haben-Kennzeichen": "S",
-      "WKZ Umsatz": "EUR",
-      Konto: "10000",
-      "Gegenkonto (ohne BU-Schlüssel)":
-        (d as Record<string, unknown>)["tax_mode"] === "domestic" ? "8400" : "8336",
-      "BU-Schlüssel": "",
-      Belegdatum: formatDate(d.issue_date).slice(0, 5).replace(".", ""),
-      Belegfeld1: d.number,
-      Buchungstext: (d.customer_company || d.customer_name).slice(0, 60),
-    })),
-    ...expenses.map((e) => ({
-      Umsatz: de(num(e.gross_amount)),
-      "Soll/Haben-Kennzeichen": "H",
-      "WKZ Umsatz": "EUR",
-      Konto: "6300",
-      "Gegenkonto (ohne BU-Schlüssel)": "70000",
-      "BU-Schlüssel": num(e.vat_amount) > 0 ? "9" : "",
-      Belegdatum: formatDate(e.expense_date).slice(0, 5).replace(".", ""),
-      Belegfeld1: e.document_number,
-      Buchungstext: e.supplier.slice(0, 60),
-    })),
-  ];
+  // Existing accounting tables are loaded without changing any other application data.
+  const accountingDb = supabase as unknown as import("@supabase/supabase-js").SupabaseClient;
+  const [chart, setChart] = useState<DatevChart>("SKR03");
+  const [beraternummer, setBeraternummer] = useState("");
+  const [mandantennummer, setMandantennummer] = useState("");
+  const [expenseMappings, setExpenseMappings] = useState<Record<string, string>>({});
+  const { data: accountingSettings } = useQuery({
+    queryKey: ["datev_accounting_settings"],
+    queryFn: async () => {
+      const { data, error } = await accountingDb.from("company_accounting_settings").select("*").maybeSingle();
+      if (error) throw error;
+      return data as { chart: DatevChart; fiscal_year: number; datev_beraternummer: string; datev_mandantennummer: string } | null;
+    },
+  });
+  const { data: chartAccounts = [] } = useQuery({
+    queryKey: ["datev_chart_accounts", year],
+    queryFn: async () => {
+      const { data, error } = await accountingDb.from("accounting_chart_accounts").select("chart,fiscal_year,account_number,account_name,category").eq("fiscal_year", year).eq("is_active", true);
+      if (error) throw error;
+      return (data ?? []) as DatevAccount[];
+    },
+  });
+  const { data: savedMappings = [] } = useQuery({
+    queryKey: ["datev_account_mappings"],
+    queryFn: async () => {
+      const { data, error } = await accountingDb.from("company_account_mappings").select("mapping_key,chart,fiscal_year,account_number");
+      if (error) throw error;
+      return (data ?? []) as { mapping_key: string; chart: string; fiscal_year: number; account_number: string }[];
+    },
+  });
+  const expenseCategories = [...new Set(expenses.map(e => String(e.category || "")))].sort();
+  useEffect(() => {
+    if (!accountingSettings) return;
+    setChart(accountingSettings.chart);
+    setBeraternummer(accountingSettings.datev_beraternummer ?? "");
+    setMandantennummer(accountingSettings.datev_mandantennummer ?? "");
+  }, [accountingSettings]);
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    for (const row of savedMappings) {
+      if (row.chart === chart && row.fiscal_year === year && row.mapping_key.startsWith("expense:")) {
+        next[row.mapping_key.slice(8)] = row.account_number;
+      }
+    }
+    setExpenseMappings(next);
+  }, [savedMappings, chart, year]);
+  const saveDatevSettings = useMutation({
+    mutationFn: async () => {
+      if (!/^\\d{1,7}$/.test(beraternummer) || !/^\\d{1,5}$/.test(mandantennummer)) throw new Error("Berater- und Mandantennummer prüfen.");
+      for (const category of expenseCategories) {
+        const account = expenseMappings[category];
+        if (!chartAccounts.some(a => a.chart === chart && a.fiscal_year === year && a.category === "expense" && a.account_number === account)) throw new Error("Bitte Aufwandskonto für " + (category || "Ausgabe") + " wählen.");
+      }
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || !auth.user) throw new Error("Nicht angemeldet.");
+      const { error } = await accountingDb.from("company_accounting_settings").upsert({
+        user_id: auth.user.id, chart, fiscal_year: year, datev_beraternummer: beraternummer, datev_mandantennummer: mandantennummer
+      }, { onConflict: "user_id" });
+      if (error) throw error;
+      for (const category of expenseCategories) {
+        const { error: mappingError } = await accountingDb.from("company_account_mappings").upsert({
+          user_id: auth.user.id, mapping_key: "expense:" + category, chart, fiscal_year: year, account_number: expenseMappings[category]
+        }, { onConflict: "user_id,mapping_key" });
+        if (mappingError) throw mappingError;
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["datev_accounting_settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["datev_account_mappings"] }),
+      ]);
+      toast.success("DATEV-Einstellungen gespeichert.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const datevExport = useMutation({
+    mutationFn: async () => {
+      if (!accountingSettings || accountingSettings.chart !== chart ||
+          accountingSettings.fiscal_year !== year ||
+          accountingSettings.datev_beraternummer !== beraternummer ||
+          accountingSettings.datev_mandantennummer !== mandantennummer ||
+          expenseCategories.some(category => savedMappings.find(m => m.mapping_key === "expense:" + category && m.chart === chart && m.fiscal_year === year)?.account_number !== expenseMappings[category])) {
+        throw new Error("DATEV-Einstellungen zuerst speichern.");
+      }
+      const bytes = buildDatevExtf(documents, expenses, {
+        chart, fiscalYear: year, beraternummer, mandantennummer,
+        expenseAccounts: expenseMappings, from, to, accounts: chartAccounts
+      });
+      await saveFile(new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: "text/csv" }),
+        `EXTF_Buchungsstapel_${from}_${to}.csv`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   /** Lohnart-Kürzel: A = Arbeit, K = Krank, U = Urlaub, F = Feiertag, S = Sonstige. */
   function lohnart(t: Record<string, unknown>) {
@@ -463,6 +532,34 @@ function Steuerberater() {
         </div>
       </section>
 
+      <section className="no-print space-y-3 rounded-lg border bg-card p-4">
+        <h2 className="font-semibold">DATEV-Kontenrahmen und Kontenzuordnung</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-sm">Kontenrahmen
+            <select className="mt-1 w-full rounded border bg-background p-2" value={chart} onChange={e => setChart(e.target.value as DatevChart)}>
+              <option value="SKR03">SKR03</option><option value="SKR04">SKR04</option>
+            </select>
+          </label>
+          <label className="text-sm">Beraternummer
+            <Input value={beraternummer} onChange={e => setBeraternummer(e.target.value)} inputMode="numeric" />
+          </label>
+          <label className="text-sm">Mandantennummer
+            <Input value={mandantennummer} onChange={e => setMandantennummer(e.target.value)} inputMode="numeric" />
+          </label>
+        </div>
+        {expenseCategories.map(category => (
+          <label key={category} className="block text-sm">Aufwandskonto: {category || "Ausgabe"}
+            <select className="mt-1 w-full rounded border bg-background p-2" value={expenseMappings[category] ?? ""} onChange={e => setExpenseMappings(prev => ({ ...prev, [category]: e.target.value }))}>
+              <option value="">Bitte wählen</option>
+              {chartAccounts.filter(a => a.chart === chart && a.category === "expense").map(a => (
+                <option key={a.account_number} value={a.account_number}>{a.account_number} – {a.account_name}</option>
+              ))}
+            </select>
+          </label>
+        ))}
+        <Button type="button" variant="outline" disabled={saveDatevSettings.isPending} onClick={() => saveDatevSettings.mutate()}>DATEV-Einstellungen speichern</Button>
+      </section>
+
       <section className="no-print flex flex-wrap gap-2">
         <Button
           type="button"
@@ -485,7 +582,7 @@ function Steuerberater() {
           <FileText className="size-4" /> Fahrtenbuch PDF
         </Button>
         <Button
-          onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}
+          onClick={() => datevExport.mutate()} disabled={datevExport.isPending}
         >
           <Download className="size-4" /> DATEV-Export (CSV)
         </Button>
