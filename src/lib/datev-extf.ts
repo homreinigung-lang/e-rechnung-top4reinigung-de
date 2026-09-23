@@ -128,7 +128,7 @@ export const DATEV_COLUMNS = [
 ] as const;
 export type DatevChart = "SKR03" | "SKR04";
 export type DatevAccount = { chart: string; fiscal_year: number; account_number: string; category: string; account_name: string };
-export type DatevDocument = { issue_date: string; number: string; total: number | string; net_total?: number | string | null; vat_amount?: number | string | null; tax_mode?: string | null; customer_company?: string | null; customer_name?: string | null; status?: string | null };
+export type DatevDocument = { issue_date: string; number: string; total: number | string; net_total?: number | string | null; vat_amount?: number | string | null; tax_mode?: string | null; customer_company?: string | null; customer_name?: string | null; status?: string | null; cancels_document_id?: string | null };
 export type DatevExpense = { expense_date: string; document_number?: string | null; supplier?: string | null; gross_amount: number | string; category?: string | null; net_amount?: number | string | null; vat_amount?: number | string | null };
 export type DatevOptions = { chart: DatevChart; fiscalYear: number; beraternummer: string; mandantennummer: string; expenseAccounts: Record<string,string>; from: string; to: string; accounts: DatevAccount[] };
 
@@ -175,15 +175,19 @@ export function buildDatevExtf(documents: DatevDocument[], expenses: DatevExpens
   const meta = header.map((v,i)=> [0,3,7,8,9,16].includes(i)?quote(v):v).join(";");
   const lines = [meta,DATEV_COLUMNS.join(";")];
   for (const doc of documents) {
-    const gross = cents(doc.total), vat = cents(doc.vat_amount);
-    const net = doc.net_total == null ? gross-vat : cents(doc.net_total);
-    if (gross<=0 || Math.abs(net+vat-gross)>1) throw new Error("DATEV: Rechnungsbeträge prüfen: " + doc.number);
+    if (doc.status && !["sent", "paid", "cancelled"].includes(doc.status)) throw new Error("DATEV: Nur endgültige Rechnungen exportieren: " + doc.number);
+    const signedGross = cents(doc.total), signedVat = cents(doc.vat_amount);
+    const signedNet = doc.net_total == null ? signedGross-signedVat : cents(doc.net_total);
+    const reversal = signedGross < 0;
+    if (reversal && !doc.cancels_document_id) throw new Error("DATEV: Negativer Betrag ohne zugehörigen Stornobeleg: " + doc.number);
+    if (signedGross===0 || Math.abs(signedNet+signedVat-signedGross)>1 || (reversal && (signedNet>0 || signedVat>0))) throw new Error("DATEV: Rechnungsbeträge prüfen: " + doc.number);
+    const gross = Math.abs(signedGross), vat = Math.abs(signedVat), net = Math.abs(signedNet);
     const reverse = doc.tax_mode === "reverse_charge" || doc.tax_mode === "eu_reverse_charge";
     const rate=reverse?0:taxRate(net,vat);
     if (reverse && vat!==0) throw new Error("DATEV: Reverse-Charge-Rechnung mit Umsatzsteuer: " + doc.number);
     if (!reverse && rate === 0 && doc.tax_mode !== "small_business") throw new Error("DATEV: Steuerfreien Umsatz bitte steuerlich zuordnen: " + doc.number);
     const revenue = doc.tax_mode === "eu_reverse_charge" ? matchAccount(opts.accounts,"revenue_eu_reverse_charge",opts) : reverse?matchAccount(opts.accounts,"revenue_reverse_charge",opts):rate===0?matchAccount(opts.accounts,"small_business_revenue",opts):matchAccount(opts.accounts,"revenue",opts,rate);
-    lines.push(pad({"Umsatz (ohne Soll/Haben-Kz)":fmt(gross/100),"Soll/Haben-Kennzeichen":"S","WKZ Umsatz":"EUR","Konto":"10000","Gegenkonto (ohne BU-Schlüssel)":revenue,"Belegdatum":dateOf(doc.issue_date,opts.from,opts.to),"Belegfeld 1":doc.number.slice(0,36),"Buchungstext":String(doc.customer_company||doc.customer_name||"Rechnung").slice(0,60)}));
+    lines.push(pad({"Umsatz (ohne Soll/Haben-Kz)":fmt(gross/100),"Soll/Haben-Kennzeichen":reversal?"H":"S","WKZ Umsatz":"EUR","Konto":"10000","Gegenkonto (ohne BU-Schlüssel)":revenue,"Belegdatum":dateOf(doc.issue_date,opts.from,opts.to),"Belegfeld 1":doc.number.slice(0,36),"Buchungstext":String(doc.customer_company||doc.customer_name||"Rechnung").slice(0,60)}));
   }
   for (const expense of expenses) {
     const gross=cents(expense.gross_amount),vat=cents(expense.vat_amount);
