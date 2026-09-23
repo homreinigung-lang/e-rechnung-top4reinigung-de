@@ -397,3 +397,35 @@ ${companyName}`;
 
     return { accepted: true as const, to: data.email, messageId: delivery.id };
   });
+
+
+/** Authentifizierte, mandantenbezogene DATEV-Vorprüfung. Keine Buchungen werden verändert. */
+export const getAccountantDatevReview = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; code: string; from: string; to: string }) => data)
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(data.from) ||
+        !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.to) || data.from > data.to) {
+      throw new Error("Ungültiger Zeitraum.");
+    }
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
+    const [settings, invoices, expenses] = await Promise.all([
+      supabaseAdmin.from("company_datev_readiness").select("*")
+        .eq("user_id", access.user_id).maybeSingle(),
+      supabaseAdmin.from("company_datev_invoice_preparation").select("*")
+        .eq("user_id", access.user_id).gte("issue_date", data.from)
+        .lte("issue_date", data.to).order("issue_date"),
+      supabaseAdmin.from("company_datev_expense_preparation").select("*")
+        .eq("user_id", access.user_id).gte("expense_date", data.from)
+        .lte("expense_date", data.to).order("expense_date"),
+    ]);
+    for (const result of [settings, invoices, expenses]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    return {
+      settings: settings.data,
+      invoices: invoices.data ?? [],
+      expenses: expenses.data ?? [],
+    };
+  });
