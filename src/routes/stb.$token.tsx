@@ -273,14 +273,25 @@ function AccountantPortal() {
       const files = await fetchMonthReceipts({ data: { token, code, month: zipMonth } });
       if (files.length === 0) throw new Error("Keine Belege in diesem Monat.");
       const zip = new JSZip();
+      let included = 0;
+      const failures: string[] = [];
       for (const f of files) {
-        const res = await fetch(f.url);
-        if (!res.ok) continue;
-        zip.file(f.name, await res.blob());
+        try {
+          const res = await fetch(f.url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          zip.file(f.name, await res.blob());
+          included++;
+        } catch {
+          failures.push(f.name);
+        }
       }
+      if (failures.length) {
+        throw new Error(`${failures.length} Beleg(e) konnten nicht geladen werden. ZIP nicht erstellt, damit keine unvollständige Übergabe entsteht.`);
+      }
+      if (included === 0) throw new Error("Keine Belege konnten geladen werden.");
       const blob = await zip.generateAsync({ type: "blob" });
       await saveFile(blob, `Belege_${zipMonth}.zip`);
-      return files.length;
+      return included;
     },
     onSuccess: (count) => toast.success(`${count} Belege als ZIP heruntergeladen`),
     onError: (e: Error) => toast.error(e.message),
