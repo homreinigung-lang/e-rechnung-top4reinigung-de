@@ -14,7 +14,7 @@ const options = (chart: "SKR03"|"SKR04"):DatevOptions => ({
   expenseAccounts:{Reinigungsmittel:chart==="SKR03"?"4900":"6300"},
   from:"2026-09-01",to:"2026-09-30",accounts
 });
-const decode = (bytes:Uint8Array) => Array.from(bytes,b=>String.fromCharCode(b)).join("");
+const decode = (bytes:Uint8Array) => new TextDecoder("windows-1252").decode(bytes);
 const invoice = { issue_date:"2026-09-15",number:"RE-1",total:119,net_total:100,vat_amount:19,tax_mode:"domestic",customer_name:"Kunde" };
 const expense = { expense_date:"2026-09-16",document_number:"A-1",supplier:"Firma",gross_amount:119,net_amount:100,vat_amount:19,category:"Reinigungsmittel" };
 
