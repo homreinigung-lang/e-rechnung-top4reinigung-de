@@ -36,3 +36,24 @@ export function buildDatevReviewCsv(review: DatevReview): string {
   const lines = [headers, ...invoiceRows, ...expenseRows];
   return "\uFEFF" + lines.map((line) => line.map(csvCell).join(";")).join("\r\n") + "\r\n";
 }
+
+/** Summary for the accountant: review statuses never imply a booking is approved. */
+export function summarizeDatevReview(review: DatevReview) {
+  const tally = (rows: ReviewRecord[]) => rows.reduce<Record<string, number>>((counts, row) => {
+    const status = String(row["preparation_status"] ?? "UNCLASSIFIED");
+    counts[status] = (counts[status] ?? 0) + 1;
+    return counts;
+  }, {});
+  return {
+    format: "GebCalc DATEV review only; NOT importable EXTF",
+    invoices: review.invoices.length,
+    expenses: review.expenses.length,
+    invoiceStatuses: tally(review.invoices),
+    expenseStatuses: tally(review.expenses),
+    warnings: [
+      "No booking is tax-approved by this report.",
+      "Missing dates are shown as review exceptions, not assigned to a period.",
+      "DATEV account mapping, debtor/creditor accounts and VAT treatment require accountant approval.",
+    ],
+  };
+}
