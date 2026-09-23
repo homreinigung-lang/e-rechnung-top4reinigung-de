@@ -319,7 +319,7 @@ function AccountantPortal() {
           throw new Error("Belegdownload fehlgeschlagen. Es wurde kein unvollständiges Prüfpaket erzeugt.");
         }
         if (!res.ok) throw new Error("Belegdownload fehlgeschlagen. Es wurde kein unvollständiges Prüfpaket erzeugt.");
-        zip.file(`Belege/${file.name}`, await res.blob());
+        zip.file(`Belege/${file.name.replace(/[\\/]/g, "_")}`, await res.blob());
         included++;
       }
       zip.file("HINWEIS.txt", "GebCalc DATEV-Prüfpaket: KEIN importfähiger DATEV-EXTF-Buchungsstapel. Kontierung und Steuerfälle durch den Steuerberater prüfen. Belege sind nach ausgewähltem Kalendermonat zusammengestellt; undatierte Ausgaben erscheinen separat in der Prüfliste.\\r\\n");
