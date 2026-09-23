@@ -229,8 +229,9 @@ export const getAccountantDatevSettings = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AccountantDatevSettings> => {
     const { verifyAccountantAccess } = await import("./accountant-access.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const accountingDb = supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient;
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await accountingDb
       .from("company_accounting_settings")
       .select("chart,fiscal_year,datev_beraternummer,datev_mandantennummer")
       .eq("user_id", access.user_id)
@@ -261,21 +262,22 @@ export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
     }
     const { verifyAccountantAccess } = await import("./accountant-access.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const accountingDb = supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient;
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
-    const { data: existing, error: readError } = await supabaseAdmin
+    const { data: existing, error: readError } = await accountingDb
       .from("company_accounting_settings")
       .select("user_id,fiscal_year")
       .eq("user_id", access.user_id)
       .maybeSingle();
     if (readError) throw new Error("DATEV-Einstellungen konnten nicht geprüft werden.");
-    const values = {
+    const values: Pick<AccountantDatevSettings, "chart" | "datev_beraternummer" | "datev_mandantennummer"> & { chart: "SKR03" | "SKR04" } = {
       chart: data.chart,
       datev_beraternummer: beraternummer,
       datev_mandantennummer: mandantennummer,
     };
     // Preserve the current fiscal year and every field outside DATEV settings.
     if (existing) {
-      const { error } = await supabaseAdmin.from("company_accounting_settings")
+      const { error } = await accountingDb.from("company_accounting_settings")
         .update(values).eq("user_id", access.user_id);
       if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
       return { ...values, fiscal_year: existing.fiscal_year };
@@ -284,7 +286,7 @@ export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
       .select("user_id").eq("user_id", access.user_id).maybeSingle();
     if (companyError || !company) throw new Error("Mandant nicht gefunden.");
     const fiscal_year = new Date().getUTCFullYear();
-    const { error } = await supabaseAdmin.from("company_accounting_settings")
+    const { error } = await accountingDb.from("company_accounting_settings")
       .insert({ ...values, user_id: access.user_id, fiscal_year });
     if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
     return { ...values, fiscal_year };
