@@ -256,7 +256,7 @@ export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
     }
     const beraternummer = String(data.datev_beraternummer ?? "").trim();
     const mandantennummer = String(data.datev_mandantennummer ?? "").trim();
-    if (!/^\\d{1,7}$/.test(beraternummer) || !/^\\d{1,5}$/.test(mandantennummer)) {
+    if (!/^\d{1,7}$/.test(beraternummer) || !/^\d{1,5}$/.test(mandantennummer)) {
       throw new Error("Beraternummer (1–7 Ziffern) und Mandantennummer (1–5 Ziffern) prüfen.");
     }
     const { verifyAccountantAccess } = await import("./accountant-access.server");
