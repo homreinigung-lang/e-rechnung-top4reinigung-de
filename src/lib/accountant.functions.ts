@@ -410,13 +410,14 @@ export const getAccountantDatevReview = createServerFn({ method: "POST" })
       throw new Error("Ungültiger Zeitraum.");
     }
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
+    const datevDb = supabaseAdmin as unknown as { from: (table: string) => any };
     const [settings, invoices, expenses] = await Promise.all([
-      supabaseAdmin.from("company_datev_readiness").select("*")
+      datevDb.from("company_datev_readiness").select("*")
         .eq("user_id", access.user_id).maybeSingle(),
-      supabaseAdmin.from("company_datev_invoice_preparation").select("*")
+      datevDb.from("company_datev_invoice_preparation").select("*")
         .eq("user_id", access.user_id).gte("issue_date", data.from)
         .lte("issue_date", data.to).order("issue_date"),
-      supabaseAdmin.from("company_datev_expense_preparation").select("*")
+      datevDb.from("company_datev_expense_preparation").select("*")
         .eq("user_id", access.user_id).gte("expense_date", data.from)
         .lte("expense_date", data.to).order("expense_date"),
     ]);
