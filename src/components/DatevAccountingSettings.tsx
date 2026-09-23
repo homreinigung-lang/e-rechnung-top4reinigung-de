@@ -144,12 +144,15 @@ export function DatevAccountingSettings() {
               <select id={key} disabled={!stored || saving} className="min-w-0 flex-1 rounded-md border bg-background p-2"
                 value={mappings[key] ?? ""} onChange={(e) => setMappings((prev) => ({ ...prev, [key]: e.target.value }))}>
                 <option value="">Konto auswählen</option>
-                {accounts.map((a) => <option key={a.account_number} value={a.account_number}>
+                {accounts.filter((a) => key === "revenue_domestic_19"
+                  ? a.account_number === (chart === "SKR03" ? "8400" : "4400")
+                  : a.category === "expense").map((a) => <option key={a.account_number} value={a.account_number}>
                   {a.account_number} – {a.account_name}
                 </option>)}
               </select>
               <Button variant="outline" disabled={!stored || saving || !mappings[key] ||
-                !accounts.some((a) => a.account_number === mappings[key])}
+                !accounts.some((a) => a.account_number === mappings[key] &&
+                  (key === "revenue_domestic_19" ? a.account_number === (chart === "SKR03" ? "8400" : "4400") : a.category === "expense"))}
                 onClick={() => void saveMapping(key, mappings[key] ?? "")}>Zuordnen</Button>
             </div>
           </div>
