@@ -22,6 +22,7 @@ export function DatevAccountingSettings() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [mappings, setMappings] = useState<Record<string, string>>({});
   const [stored, setStored] = useState(false);
+  const [savedSelection, setSavedSelection] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -47,6 +48,7 @@ export function DatevAccountingSettings() {
           setBerater(settings.data.datev_beraternummer ?? "");
           setMandant(settings.data.datev_mandantennummer ?? "");
           setStored(true);
+          setSavedSelection(`${settings.data.chart}:${settings.data.fiscal_year}`);
         }
         setMappings(Object.fromEntries((savedMappings.data ?? []).map((m: any) => [m.mapping_key, m.account_number])));
       } catch (error) {
@@ -84,6 +86,7 @@ export function DatevAccountingSettings() {
       }, { onConflict: "user_id" });
       if (error) throw error;
       setStored(true);
+      setSavedSelection(`${chart}:${year}`);
       toast.success("DATEV-Einstellungen gespeichert.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Speichern fehlgeschlagen.");
@@ -91,7 +94,7 @@ export function DatevAccountingSettings() {
   }
 
   async function saveMapping(key: string, number: string) {
-    if (!stored || !userId) return;
+    if (!stored || savedSelection !== `${chart}:${year}` || !userId) return;
     if (!number) {
       toast.error("Bestehende Zuordnungen bleiben erhalten. Wählen Sie ein Konto.");
       return;
@@ -134,6 +137,7 @@ export function DatevAccountingSettings() {
       <Button disabled={saving || !userId || year < 2000 || year > 2200} onClick={() => void saveSettings()}>
         Einstellungen speichern
       </Button>
+      {stored && savedSelection !== `${chart}:${year}` && <p className="text-sm text-amber-700">Bitte zuerst die geänderten Einstellungen speichern. Vorhandene Zuordnungen bleiben erhalten.</p>}
       <div className="space-y-3">
         <h3 className="font-medium">Kontozuordnungen</h3>
         {!stored && <p className="text-sm">Bitte zuerst die Einstellungen speichern.</p>}
@@ -141,7 +145,7 @@ export function DatevAccountingSettings() {
           <div className="space-y-1" key={key}>
             <Label htmlFor={key}>{label}</Label>
             <div className="flex flex-wrap gap-2">
-              <select id={key} disabled={!stored || saving} className="min-w-0 flex-1 rounded-md border bg-background p-2"
+              <select id={key} disabled={!stored || savedSelection !== `${chart}:${year}` || saving} className="min-w-0 flex-1 rounded-md border bg-background p-2"
                 value={mappings[key] ?? ""} onChange={(e) => setMappings((prev) => ({ ...prev, [key]: e.target.value }))}>
                 <option value="">Konto auswählen</option>
                 {accounts.filter((a) => key === "revenue_domestic_19"
@@ -150,7 +154,7 @@ export function DatevAccountingSettings() {
                   {a.account_number} – {a.account_name}
                 </option>)}
               </select>
-              <Button variant="outline" disabled={!stored || saving || !mappings[key] ||
+              <Button variant="outline" disabled={!stored || savedSelection !== `${chart}:${year}` || saving || !mappings[key] ||
                 !accounts.some((a) => a.account_number === mappings[key] &&
                   (key === "revenue_domestic_19" ? a.account_number === (chart === "SKR03" ? "8400" : "4400") : a.category === "expense"))}
                 onClick={() => void saveMapping(key, mappings[key] ?? "")}>Zuordnen</Button>
