@@ -213,6 +213,85 @@ export const getAccountantReport = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Restricted DATEV settings access for the existing password-protected accountant portal.
+ * These endpoints cannot modify any company profile, documents or expense data.
+ */
+export type AccountantDatevSettings = {
+  chart: "SKR03" | "SKR04" | null;
+  fiscal_year: number;
+  datev_beraternummer: string;
+  datev_mandantennummer: string;
+};
+
+export const getAccountantDatevSettings = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; code: string }) => data)
+  .handler(async ({ data }): Promise<AccountantDatevSettings> => {
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const accountingDb = supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient;
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
+    const { data: row, error } = await accountingDb
+      .from("company_accounting_settings")
+      .select("chart,fiscal_year,datev_beraternummer,datev_mandantennummer")
+      .eq("user_id", access.user_id)
+      .maybeSingle();
+    if (error) throw new Error("DATEV-Einstellungen konnten nicht geladen werden.");
+    return {
+      chart: row?.chart === "SKR03" || row?.chart === "SKR04" ? row.chart : null,
+      fiscal_year: row?.fiscal_year ?? new Date().getUTCFullYear(),
+      datev_beraternummer: row?.datev_beraternummer ?? "",
+      datev_mandantennummer: row?.datev_mandantennummer ?? "",
+    };
+  });
+
+export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
+  .inputValidator((data: {
+    token: string; code: string; chart: string;
+    datev_beraternummer: string; datev_mandantennummer: string;
+  }) => data)
+  .handler(async ({ data }): Promise<AccountantDatevSettings> => {
+    // Validate before any privileged database write; accept only the three DATEV fields.
+    if (data.chart !== "SKR03" && data.chart !== "SKR04") {
+      throw new Error("Bitte SKR03 oder SKR04 auswählen.");
+    }
+    const beraternummer = String(data.datev_beraternummer ?? "").trim();
+    const mandantennummer = String(data.datev_mandantennummer ?? "").trim();
+    if (!/^\d{1,7}$/.test(beraternummer) || !/^\d{1,5}$/.test(mandantennummer)) {
+      throw new Error("Beraternummer (1–7 Ziffern) und Mandantennummer (1–5 Ziffern) prüfen.");
+    }
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const accountingDb = supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient;
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
+    const { data: existing, error: readError } = await accountingDb
+      .from("company_accounting_settings")
+      .select("user_id,fiscal_year")
+      .eq("user_id", access.user_id)
+      .maybeSingle();
+    if (readError) throw new Error("DATEV-Einstellungen konnten nicht geprüft werden.");
+    const values: Pick<AccountantDatevSettings, "chart" | "datev_beraternummer" | "datev_mandantennummer"> & { chart: "SKR03" | "SKR04" } = {
+      chart: data.chart,
+      datev_beraternummer: beraternummer,
+      datev_mandantennummer: mandantennummer,
+    };
+    // Preserve the current fiscal year and every field outside DATEV settings.
+    if (existing) {
+      const { error } = await accountingDb.from("company_accounting_settings")
+        .update(values).eq("user_id", access.user_id);
+      if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
+      return { ...values, fiscal_year: existing.fiscal_year };
+    }
+    const { data: company, error: companyError } = await supabaseAdmin.from("company_settings")
+      .select("user_id").eq("user_id", access.user_id).maybeSingle();
+    if (companyError || !company) throw new Error("Mandant nicht gefunden.");
+    const fiscal_year = new Date().getUTCFullYear();
+    const { error } = await accountingDb.from("company_accounting_settings")
+      .insert({ ...values, user_id: access.user_id, fiscal_year });
+    if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
+    return { ...values, fiscal_year };
+  });
+
 /** Liefert eine zeitlich begrenzte Download-Adresse für den Beleg einer Ausgabe. */
 export const getAccountantReceiptUrl = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; expenseId: string }) => data)
@@ -357,7 +436,7 @@ export const sendAccountantInvite = createServerFn({ method: "POST" })
     const subject = `Steuerberater-Zugang von ${companyName}`;
     const text = `Guten Tag,
 
-anbei Ihr persönlicher Nur-Lese-Zugang zu den Rechnungen und Ausgaben von ${companyName} (DATEV- und Excel-Export inklusive).
+anbei Ihr persönlicher Nur-Lese-Zugang zu den Rechnungen und Ausgaben von ${companyName} (DATEV- und Excel-Export inklusive). Die DATEV-Einstellungen (SKR03/SKR04 sowie Berater- und Mandantennummer) dürfen Sie selbst pflegen. Andere Unternehmensdaten bleiben schreibgeschützt.
 
 Zugangs-Link: ${link}
 Passwort: ${accessCode}
@@ -370,7 +449,7 @@ ${companyName}`;
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.6;font-size:15px">
       <h2 style="margin:0 0 12px">Ihr Steuerberater-Zugang</h2>
       <p>Guten Tag,</p>
-      <p>anbei Ihr persönlicher Nur-Lese-Zugang zu den Rechnungen und Ausgaben von <strong>${escapeHtml(companyName)}</strong> (DATEV- und Excel-Export inklusive).</p>
+      <p>anbei Ihr persönlicher Nur-Lese-Zugang zu den Rechnungen und Ausgaben von <strong>${escapeHtml(companyName)}</strong> (DATEV- und Excel-Export inklusive).</p>\n      <p>Sie dürfen ausschließlich die DATEV-Einstellungen (SKR03/SKR04 sowie Berater- und Mandantennummer) selbst pflegen. Andere Unternehmensdaten bleiben schreibgeschützt.</p>
       <p style="margin:24px 0"><a href="${link}" style="background:#0369a1;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">Zugang öffnen</a></p>
       <p>Passwort: <strong>${escapeHtml(accessCode)}</strong></p>
       <p style="color:#64748b;font-size:13px">Falls der Button nicht funktioniert: ${escapeHtml(link)}</p>

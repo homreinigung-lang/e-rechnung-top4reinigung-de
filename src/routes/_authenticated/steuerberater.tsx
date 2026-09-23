@@ -324,7 +324,7 @@ function Steuerberater() {
   }, [savedMappings, chart, year]);
   const saveDatevSettings = useMutation({
     mutationFn: async () => {
-      if (!/^\\d{1,7}$/.test(beraternummer) || !/^\\d{1,5}$/.test(mandantennummer)) throw new Error("Berater- und Mandantennummer prüfen.");
+      if (!/^\d{1,7}$/.test(beraternummer) || !/^\d{1,5}$/.test(mandantennummer)) throw new Error("Berater- und Mandantennummer prüfen.");
       for (const category of expenseCategories) {
         const account = expenseMappings[category];
         if (!chartAccounts.some(a => a.chart === chart && a.fiscal_year === year && a.category === "expense" && a.account_number === account)) throw new Error("Bitte Aufwandskonto für " + (category || "Ausgabe") + " wählen.");
@@ -854,6 +854,7 @@ const STEUERBERATER_RECHTE = [
   { label: "Rechnungen", erlaubt: true },
   { label: "Ausgaben", erlaubt: true },
   { label: "DATEV-Export", erlaubt: true },
+  { label: "DATEV-Einstellungen (SKR, Berater-/Mandantennummer)", erlaubt: true },
   { label: "Excel-Export", erlaubt: true },
   { label: "PDF-Belege", erlaubt: true },
   { label: "Bearbeitung der Unternehmensdaten", erlaubt: false },
