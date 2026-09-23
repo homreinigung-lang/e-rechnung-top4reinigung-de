@@ -213,6 +213,83 @@ export const getAccountantReport = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Restricted DATEV settings access for the existing password-protected accountant portal.
+ * These endpoints cannot modify any company profile, documents or expense data.
+ */
+export type AccountantDatevSettings = {
+  chart: "SKR03" | "SKR04" | null;
+  fiscal_year: number;
+  datev_beraternummer: string;
+  datev_mandantennummer: string;
+};
+
+export const getAccountantDatevSettings = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; code: string }) => data)
+  .handler(async ({ data }): Promise<AccountantDatevSettings> => {
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
+    const { data: row, error } = await supabaseAdmin
+      .from("company_accounting_settings")
+      .select("chart,fiscal_year,datev_beraternummer,datev_mandantennummer")
+      .eq("user_id", access.user_id)
+      .maybeSingle();
+    if (error) throw new Error("DATEV-Einstellungen konnten nicht geladen werden.");
+    return {
+      chart: row?.chart === "SKR03" || row?.chart === "SKR04" ? row.chart : null,
+      fiscal_year: row?.fiscal_year ?? new Date().getUTCFullYear(),
+      datev_beraternummer: row?.datev_beraternummer ?? "",
+      datev_mandantennummer: row?.datev_mandantennummer ?? "",
+    };
+  });
+
+export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
+  .inputValidator((data: {
+    token: string; code: string; chart: string;
+    datev_beraternummer: string; datev_mandantennummer: string;
+  }) => data)
+  .handler(async ({ data }): Promise<AccountantDatevSettings> => {
+    // Validate before any privileged database write; accept only the three DATEV fields.
+    if (data.chart !== "SKR03" && data.chart !== "SKR04") {
+      throw new Error("Bitte SKR03 oder SKR04 auswählen.");
+    }
+    const beraternummer = String(data.datev_beraternummer ?? "").trim();
+    const mandantennummer = String(data.datev_mandantennummer ?? "").trim();
+    if (!/^\\d{1,7}$/.test(beraternummer) || !/^\\d{1,5}$/.test(mandantennummer)) {
+      throw new Error("Beraternummer (1–7 Ziffern) und Mandantennummer (1–5 Ziffern) prüfen.");
+    }
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
+    const { data: existing, error: readError } = await supabaseAdmin
+      .from("company_accounting_settings")
+      .select("user_id,fiscal_year")
+      .eq("user_id", access.user_id)
+      .maybeSingle();
+    if (readError) throw new Error("DATEV-Einstellungen konnten nicht geprüft werden.");
+    const values = {
+      chart: data.chart,
+      datev_beraternummer: beraternummer,
+      datev_mandantennummer: mandantennummer,
+    };
+    // Preserve the current fiscal year and every field outside DATEV settings.
+    if (existing) {
+      const { error } = await supabaseAdmin.from("company_accounting_settings")
+        .update(values).eq("user_id", access.user_id);
+      if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
+      return { ...values, fiscal_year: existing.fiscal_year };
+    }
+    const { data: company, error: companyError } = await supabaseAdmin.from("company_settings")
+      .select("user_id").eq("user_id", access.user_id).maybeSingle();
+    if (companyError || !company) throw new Error("Mandant nicht gefunden.");
+    const fiscal_year = new Date().getUTCFullYear();
+    const { error } = await supabaseAdmin.from("company_accounting_settings")
+      .insert({ ...values, user_id: access.user_id, fiscal_year });
+    if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
+    return { ...values, fiscal_year };
+  });
+
 /** Liefert eine zeitlich begrenzte Download-Adresse für den Beleg einer Ausgabe. */
 export const getAccountantReceiptUrl = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; expenseId: string }) => data)
