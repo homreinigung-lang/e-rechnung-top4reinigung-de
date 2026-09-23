@@ -12,7 +12,7 @@ export type DatevReview = {
 function csvCell(value: unknown): string {
   const raw = value == null ? "" : String(value);
   // Prevent spreadsheet formula injection in accountant-facing exports.
-  const safe = /^[\\s]*[=+@-]/.test(raw) ? "'" + raw : raw;
+  const safe = /^[\s]*[=+@-]/.test(raw) ? "'" + raw : raw;
   return '"' + safe.replace(/"/g, '""') + '"';
 }
 
