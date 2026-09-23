@@ -405,8 +405,8 @@ export const getAccountantDatevReview = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { verifyAccountantAccess } = await import("./accountant-access.server");
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(data.from) ||
-        !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.to) || data.from > data.to) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.from) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(data.to) || data.from > data.to) {
       throw new Error("Ungültiger Zeitraum.");
     }
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
