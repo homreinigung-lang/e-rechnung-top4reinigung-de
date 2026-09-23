@@ -552,15 +552,6 @@ function Steuerberater() {
             <Input value={mandantennummer} onChange={e => setMandantennummer(e.target.value)} inputMode="numeric" />
           </label>
         </div>
-        {expenseCategories.map(category => {
-          const accountNumber = expenseMappings[category] ?? automaticExpenseAccount(category, chart);
-          const account = chartAccounts.find(a => a.chart === chart && a.account_number === accountNumber);
-          return (
-            <label key={category} className="block text-sm">Aufwandskonto: {category || "Ausgabe"}
-              <Input className="mt-1" value={account ? `${account.account_number} – ${account.account_name}` : accountNumber} readOnly />
-            </label>
-          );
-        })}
         <Button type="button" variant="outline" disabled={saveDatevSettings.isPending} onClick={() => saveDatevSettings.mutate()}>DATEV-Einstellungen speichern</Button>
       </section>
 
