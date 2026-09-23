@@ -212,17 +212,19 @@ function Steuerberater() {
       if (!auth.user) throw new Error("Bitte erneut anmelden.");
       const db = supabase as unknown as { from: (table: string) => any };
       const uid = auth.user.id;
-      const [settings, invoices, costs] = await Promise.all([
+      const [settings, invoices, costs, undatedCosts] = await Promise.all([
         db.from("company_datev_readiness").select("*").eq("user_id", uid).maybeSingle(),
         db.from("company_datev_invoice_preparation").select("*").eq("user_id", uid)
           .gte("issue_date", from).lte("issue_date", to).order("issue_date"),
         db.from("company_datev_expense_preparation").select("*").eq("user_id", uid)
           .gte("expense_date", from).lte("expense_date", to).order("expense_date"),
+        db.from("company_datev_expense_preparation").select("*").eq("user_id", uid)
+          .is("expense_date", null),
       ]);
-      for (const result of [settings, invoices, costs]) {
+      for (const result of [settings, invoices, costs, undatedCosts]) {
         if (result.error) throw new Error(result.error.message);
       }
-      const payload = { settings: settings.data, invoices: invoices.data ?? [], expenses: costs.data ?? [] };
+      const payload = { settings: settings.data, invoices: invoices.data ?? [], expenses: [...(costs.data ?? []), ...(undatedCosts.data ?? [])] };
       await saveFile(format === "csv"
         ? new Blob([buildDatevReviewCsv(payload)], { type: "text/csv;charset=utf-8" })
         : new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
