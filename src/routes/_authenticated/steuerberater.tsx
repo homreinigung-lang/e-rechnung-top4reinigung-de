@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
+import { DatevAccountingSettings } from "@/components/DatevAccountingSettings";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { TableSummary } from "@/components/TableSummary";
 import {
@@ -422,6 +423,7 @@ function Steuerberater() {
 
       <div className="no-print">
         <AccountantAccessCard />
+        <DatevAccountingSettings />
       </div>
 
       <section className="no-print grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2">
