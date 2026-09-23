@@ -178,10 +178,11 @@ export function buildDatevExtf(documents: DatevDocument[], expenses: DatevExpens
     const gross = cents(doc.total), vat = cents(doc.vat_amount);
     const net = doc.net_total == null ? gross-vat : cents(doc.net_total);
     if (gross<=0 || Math.abs(net+vat-gross)>1) throw new Error("DATEV: Rechnungsbeträge prüfen: " + doc.number);
-    const reverse = doc.tax_mode === "reverse_charge";
+    const reverse = doc.tax_mode === "reverse_charge" || doc.tax_mode === "eu_reverse_charge";
     const rate=reverse?0:taxRate(net,vat);
     if (reverse && vat!==0) throw new Error("DATEV: Reverse-Charge-Rechnung mit Umsatzsteuer: " + doc.number);
-    const revenue = reverse?matchAccount(opts.accounts,"revenue_reverse_charge",opts):rate===0?matchAccount(opts.accounts,"small_business_revenue",opts):matchAccount(opts.accounts,"revenue",opts,rate);
+    if (!reverse && rate === 0 && doc.tax_mode !== "small_business") throw new Error("DATEV: Steuerfreien Umsatz bitte steuerlich zuordnen: " + doc.number);
+    const revenue = doc.tax_mode === "eu_reverse_charge" ? matchAccount(opts.accounts,"revenue_eu_reverse_charge",opts) : reverse?matchAccount(opts.accounts,"revenue_reverse_charge",opts):rate===0?matchAccount(opts.accounts,"small_business_revenue",opts):matchAccount(opts.accounts,"revenue",opts,rate);
     lines.push(pad({"Umsatz (ohne Soll/Haben-Kz)":fmt(gross/100),"Soll/Haben-Kennzeichen":"S","WKZ Umsatz":"EUR","Konto":"10000","Gegenkonto (ohne BU-Schlüssel)":revenue,"Belegdatum":dateOf(doc.issue_date,opts.from,opts.to),"Belegfeld 1":doc.number.slice(0,36),"Buchungstext":String(doc.customer_company||doc.customer_name||"Rechnung").slice(0,60)}));
   }
   for (const expense of expenses) {
