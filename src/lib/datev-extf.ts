@@ -129,8 +129,8 @@ export const DATEV_COLUMNS = [
 export type DatevChart = "SKR03" | "SKR04";
 export type DatevAccount = { chart: string; fiscal_year: number; account_number: string; category: string; account_name: string };
 export type DatevDocument = { issue_date: string; number: string; total: number | string; net_total?: number | string | null; vat_amount?: number | string | null; tax_mode?: string | null; customer_company?: string | null; customer_name?: string | null; status?: string | null };
-export type DatevExpense = { expense_date: string; document_number?: string | null; supplier?: string | null; gross_amount: number | string; net_amount?: number | string | null; vat_amount?: number | string | null };
-export type DatevOptions = { chart: DatevChart; fiscalYear: number; beraternummer: string; mandantennummer: string; expenseAccount: string; from: string; to: string; accounts: DatevAccount[] };
+export type DatevExpense = { expense_date: string; document_number?: string | null; supplier?: string | null; gross_amount: number | string; category?: string | null; net_amount?: number | string | null; vat_amount?: number | string | null };
+export type DatevOptions = { chart: DatevChart; fiscalYear: number; beraternummer: string; mandantennummer: string; expenseAccounts: Record<string,string>; from: string; to: string; accounts: DatevAccount[] };
 
 const quote = (text: unknown) => '"' + String(text ?? "").replace(/"/g, '""').replace(/[\r\n]+/g, " ") + '"';
 const fmt = (amount: number) => amount.toFixed(2).replace(".", ",");
@@ -167,7 +167,7 @@ export function cp1252(text: string): Uint8Array {
 export function buildDatevExtf(documents: DatevDocument[], expenses: DatevExpense[], opts: DatevOptions, now = new Date()): Uint8Array {
   if (!["SKR03","SKR04"].includes(opts.chart) || !/^\d{1,7}$/.test(opts.beraternummer) || !/^\d{1,5}$/.test(opts.mandantennummer)) throw new Error("DATEV: Berater- und Mandantennummer eintragen.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(opts.from) || !/^\d{4}-\d{2}-\d{2}$/.test(opts.to) || opts.from > opts.to || opts.from.slice(0,4) !== String(opts.fiscalYear) || opts.to.slice(0,4) !== String(opts.fiscalYear)) throw new Error("DATEV: Buchungszeitraum muss innerhalb eines Wirtschaftsjahrs liegen.");
-  if (!opts.accounts.some(a=>a.chart===opts.chart && a.fiscal_year===opts.fiscalYear && a.account_number===opts.expenseAccount && a.category==="expense")) throw new Error("DATEV: Aufwandskonto muss zum gewählten Kontenrahmen gehören.");
+
   const yearStart = String(opts.fiscalYear) + "0101";
   const stamp = [now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0"),String(now.getHours()).padStart(2,"0"),String(now.getMinutes()).padStart(2,"0"),String(now.getSeconds()).padStart(2,"0"),String(now.getMilliseconds()).padStart(3,"0")].join("");
   const header = ["EXTF","700","21","Buchungsstapel","13",stamp,"","RE","Hom Reinigung","",""+Number(opts.beraternummer),""+Number(opts.mandantennummer),yearStart,"4",ymd(opts.from),ymd(opts.to),"Buchungen","","1","0","0","EUR","","","","",opts.chart==="SKR03"?"3":"4","","","",""];
@@ -189,7 +189,9 @@ export function buildDatevExtf(documents: DatevDocument[], expenses: DatevExpens
     const net=expense.net_amount==null?gross-vat:cents(expense.net_amount);
     if(gross<=0 || Math.abs(net+vat-gross)>1) throw new Error("DATEV: Ausgabenbeträge prüfen: " + (expense.document_number||expense.supplier));
     const rate=taxRate(net,vat);
-    lines.push(pad({"Umsatz (ohne Soll/Haben-Kz)":fmt(gross/100),"Soll/Haben-Kennzeichen":"S","WKZ Umsatz":"EUR","Konto":opts.expenseAccount,"Gegenkonto (ohne BU-Schlüssel)":"70000","BU-Schlüssel":rate===19?"9":rate===7?"8":"","Belegdatum":dateOf(expense.expense_date,opts.from,opts.to),"Belegfeld 1":String(expense.document_number||"").slice(0,36),"Buchungstext":String(expense.supplier||"Ausgabe").slice(0,60)}));
+    const expenseAccount = opts.expenseAccounts[String(expense.category ?? "")];
+    if (!expenseAccount || !opts.accounts.some(a=>a.chart===opts.chart && a.fiscal_year===opts.fiscalYear && a.account_number===expenseAccount && a.category==="expense")) throw new Error("DATEV: Kontenzuordnung fehlt für " + (expense.category || "Ausgabe") + ".");
+    lines.push(pad({"Umsatz (ohne Soll/Haben-Kz)":fmt(gross/100),"Soll/Haben-Kennzeichen":"S","WKZ Umsatz":"EUR","Konto":expenseAccount,"Gegenkonto (ohne BU-Schlüssel)":"70000","BU-Schlüssel":rate===19?"9":rate===7?"8":"","Belegdatum":dateOf(expense.expense_date,opts.from,opts.to),"Belegfeld 1":String(expense.document_number||"").slice(0,36),"Buchungstext":String(expense.supplier||"Ausgabe").slice(0,60)}));
   }
   if (lines.length===2) throw new Error("DATEV: Keine Buchungen im ausgewählten Zeitraum.");
   return cp1252(lines.join("\r\n")+"\r\n");
