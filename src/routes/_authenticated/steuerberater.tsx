@@ -487,9 +487,10 @@ function Steuerberater() {
           <FileText className="size-4" /> Fahrtenbuch PDF
         </Button>
         <Button
-          onClick={() => downloadCsv(`DATEV_Buchungsstapel_${period}.csv`, datevRows, { from, to })}
+          disabled
+          title="Der bisherige CSV-Export ist kein geprüfter DATEV-EXTF-Buchungsstapel."
         >
-          <Download className="size-4" /> DATEV-Export (CSV)
+          <Download className="size-4" /> DATEV-Export (in Vorbereitung)
         </Button>
         <Button
           variant="outline"
