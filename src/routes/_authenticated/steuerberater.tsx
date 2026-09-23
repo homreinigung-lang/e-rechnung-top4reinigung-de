@@ -854,6 +854,7 @@ const STEUERBERATER_RECHTE = [
   { label: "Rechnungen", erlaubt: true },
   { label: "Ausgaben", erlaubt: true },
   { label: "DATEV-Export", erlaubt: true },
+  { label: "DATEV-Einstellungen (SKR, Berater-/Mandantennummer)", erlaubt: true },
   { label: "Excel-Export", erlaubt: true },
   { label: "PDF-Belege", erlaubt: true },
   { label: "Bearbeitung der Unternehmensdaten", erlaubt: false },
