@@ -107,6 +107,7 @@ function de(v: number) {
 }
 
 function Steuerberater() {
+  const queryClient = useQueryClient();
   const year = new Date().getFullYear();
   const [from, setFrom] = useState(`${year}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
