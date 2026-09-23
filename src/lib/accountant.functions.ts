@@ -411,7 +411,7 @@ export const getAccountantDatevReview = createServerFn({ method: "POST" })
     }
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
     const datevDb = supabaseAdmin as unknown as { from: (table: string) => any };
-    const [settings, invoices, expenses] = await Promise.all([
+    const [settings, invoices, expenses, undatedExpenses] = await Promise.all([
       datevDb.from("company_datev_readiness").select("*")
         .eq("user_id", access.user_id).maybeSingle(),
       datevDb.from("company_datev_invoice_preparation").select("*")
@@ -420,13 +420,15 @@ export const getAccountantDatevReview = createServerFn({ method: "POST" })
       datevDb.from("company_datev_expense_preparation").select("*")
         .eq("user_id", access.user_id).gte("expense_date", data.from)
         .lte("expense_date", data.to).order("expense_date"),
+      datevDb.from("company_datev_expense_preparation").select("*")
+        .eq("user_id", access.user_id).is("expense_date", null),
     ]);
-    for (const result of [settings, invoices, expenses]) {
+    for (const result of [settings, invoices, expenses, undatedExpenses]) {
       if (result.error) throw new Error(result.error.message);
     }
     return {
       settings: settings.data,
       invoices: invoices.data ?? [],
-      expenses: expenses.data ?? [],
+      expenses: [...(expenses.data ?? []), ...(undatedExpenses.data ?? [])],
     };
   });
