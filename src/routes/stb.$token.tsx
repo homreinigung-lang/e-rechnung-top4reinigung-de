@@ -273,12 +273,10 @@ function AccountantPortal() {
       }
     }),
     onSuccess: (value) => {
-      datevSettings.reset();
       setDatevChart(value.chart ?? "");
       setDatevBeraternummer(value.datev_beraternummer);
       setDatevMandantennummer(value.datev_mandantennummer);
       toast.success("DATEV-Einstellungen gespeichert.");
-      void datevSettings.mutate();
     },
     onError: (e: Error) => toast.error(e.message),
   });
