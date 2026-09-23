@@ -225,9 +225,10 @@ function Steuerberater() {
         if (result.error) throw new Error(result.error.message);
       }
       const payload = { settings: settings.data, invoices: invoices.data ?? [], expenses: [...(costs.data ?? []), ...(undatedCosts.data ?? [])] };
+      const review = { ...payload, summary: summarizeDatevReview(payload) };
       await saveFile(format === "csv"
         ? new Blob([buildDatevReviewCsv(payload)], { type: "text/csv;charset=utf-8" })
-        : new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+        : new Blob([JSON.stringify(review, null, 2)], { type: "application/json" }),
         format === "csv" ? `DATEV_Pruefliste_${from}_${to}.csv` : `DATEV_Vorpruefung_${from}_${to}.json`);
     },
     onSuccess: () => toast.success("DATEV-Vorprüfung heruntergeladen; kein DATEV-Importformat."),
