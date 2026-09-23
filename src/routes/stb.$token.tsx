@@ -7,6 +7,7 @@ import {
   getAccountantMonthReceipts,
   getAccountantReceiptUrl,
   getAccountantReport,
+  getAccountantDatevReview,
   type Row,
 } from "@/lib/accountant.functions";
 import { Button } from "@/components/ui/button";
@@ -248,6 +249,16 @@ function AccountantPortal() {
   const [from, setFrom] = useState(`${year}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
 
+  const fetchDatevReview = useServerFn(getAccountantDatevReview);
+  const datevReview = useMutation({
+    mutationFn: () => fetchDatevReview({ data: { token, code, from, to } }),
+    onSuccess: (result) => {
+      const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+      void saveFile(blob, `DATEV_Vorpruefung_${from}_${to}.json`);
+      toast.success("DATEV-Vorprüfung heruntergeladen. Nicht als Buchungsstapel importieren.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
   const fetchReport = useServerFn(getAccountantReport);
   const report = useMutation({
     mutationFn: () => fetchReport({ data: { token, code, from, to } }),
@@ -457,6 +468,10 @@ function AccountantPortal() {
       {data && (
         <>
           <section className="no-print flex flex-wrap gap-2">
+            <Button variant="outline" disabled={datevReview.isPending}
+              onClick={() => datevReview.mutate()}>
+              <Download className="size-4" /> DATEV-Vorprüfung (JSON)
+            </Button>
             <Button
               variant="outline"
               onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows, { from, to })}
