@@ -28,7 +28,7 @@ import {
 
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
-import { buildDatevReviewCsv } from "@/lib/datev-review";
+import { buildDatevReviewCsv, summarizeDatevReview } from "@/lib/datev-review";
 import { TableSummary } from "@/components/TableSummary";
 import {
   buildCsvBlob,
@@ -254,7 +254,7 @@ function AccountantPortal() {
   const datevReview = useMutation({
     mutationFn: () => fetchDatevReview({ data: { token, code, from, to } }),
     onSuccess: (result) => {
-      const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify({ ...result, summary: summarizeDatevReview(result) }, null, 2)], { type: "application/json" });
       void saveFile(blob, `DATEV_Vorpruefung_${from}_${to}.json`);
       toast.success("DATEV-Vorprüfung heruntergeladen. Nicht als Buchungsstapel importieren.");
     },
