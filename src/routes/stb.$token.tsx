@@ -28,6 +28,7 @@ import {
 
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
+import { buildDatevReviewCsv } from "@/lib/datev-review";
 import { TableSummary } from "@/components/TableSummary";
 import {
   buildCsvBlob,
@@ -468,6 +469,17 @@ function AccountantPortal() {
       {data && (
         <>
           <section className="no-print flex flex-wrap gap-2">
+            <Button variant="outline" disabled={datevReview.isPending}
+              onClick={() => {
+                fetchDatevReview({ data: { token, code, from, to } })
+                  .then((result) => saveFile(
+                    new Blob([buildDatevReviewCsv(result)], { type: "text/csv;charset=utf-8" }),
+                    `DATEV_Pruefliste_${from}_${to}.csv`,
+                  ))
+                  .catch((error: Error) => toast.error(error.message));
+              }}>
+              <Download className="size-4" /> DATEV-Prüfliste (CSV)
+            </Button>
             <Button variant="outline" disabled={datevReview.isPending}
               onClick={() => datevReview.mutate()}>
               <Download className="size-4" /> DATEV-Vorprüfung (JSON)
