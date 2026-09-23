@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { buildGobdExport, downloadBlob } from "@/lib/gobd";
 import { saveFile } from "@/lib/download";
-import { buildDatevReviewCsv } from "@/lib/datev-review";
+import { buildDatevReviewCsv, summarizeDatevReview } from "@/lib/datev-review";
 import {
   Archive,
   Calculator,
