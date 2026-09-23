@@ -204,6 +204,31 @@ function Steuerberater() {
     },
   });
 
+  const datevReviewExport = useMutation({
+    mutationFn: async () => {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth.user) throw new Error("Bitte erneut anmelden.");
+      const db = supabase as unknown as { from: (table: string) => any };
+      const uid = auth.user.id;
+      const [settings, invoices, costs] = await Promise.all([
+        db.from("company_datev_readiness").select("*").eq("user_id", uid).maybeSingle(),
+        db.from("company_datev_invoice_preparation").select("*").eq("user_id", uid)
+          .gte("issue_date", from).lte("issue_date", to).order("issue_date"),
+        db.from("company_datev_expense_preparation").select("*").eq("user_id", uid)
+          .gte("expense_date", from).lte("expense_date", to).order("expense_date"),
+      ]);
+      for (const result of [settings, invoices, costs]) {
+        if (result.error) throw new Error(result.error.message);
+      }
+      const payload = { settings: settings.data, invoices: invoices.data ?? [], expenses: costs.data ?? [] };
+      await saveFile(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+        `DATEV_Vorpruefung_${from}_${to}.json`);
+    },
+    onSuccess: () => toast.success("DATEV-Vorprüfung heruntergeladen; kein DATEV-Importformat."),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const euer = useMemo(
     () =>
       computeEuer(
@@ -491,6 +516,10 @@ function Steuerberater() {
           title="Der bisherige CSV-Export ist kein geprüfter DATEV-EXTF-Buchungsstapel."
         >
           <Download className="size-4" /> DATEV-Export (in Vorbereitung)
+        </Button>
+        <Button variant="outline" disabled={datevReviewExport.isPending}
+          onClick={() => datevReviewExport.mutate()}>
+          <Download className="size-4" /> DATEV-Vorprüfung (JSON)
         </Button>
         <Button
           variant="outline"
