@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { buildGobdExport, downloadBlob } from "@/lib/gobd";
 import { saveFile } from "@/lib/download";
+import { buildDatevReviewCsv } from "@/lib/datev-review";
 import {
   Archive,
   Calculator,
@@ -205,7 +206,7 @@ function Steuerberater() {
   });
 
   const datevReviewExport = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (format: "json" | "csv") => {
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
       if (!auth.user) throw new Error("Bitte erneut anmelden.");
@@ -222,8 +223,10 @@ function Steuerberater() {
         if (result.error) throw new Error(result.error.message);
       }
       const payload = { settings: settings.data, invoices: invoices.data ?? [], expenses: costs.data ?? [] };
-      await saveFile(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
-        `DATEV_Vorpruefung_${from}_${to}.json`);
+      await saveFile(format === "csv"
+        ? new Blob([buildDatevReviewCsv(payload)], { type: "text/csv;charset=utf-8" })
+        : new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+        format === "csv" ? `DATEV_Pruefliste_${from}_${to}.csv` : `DATEV_Vorpruefung_${from}_${to}.json`);
     },
     onSuccess: () => toast.success("DATEV-Vorprüfung heruntergeladen; kein DATEV-Importformat."),
     onError: (error: Error) => toast.error(error.message),
@@ -518,8 +521,12 @@ function Steuerberater() {
           <Download className="size-4" /> DATEV-Export (in Vorbereitung)
         </Button>
         <Button variant="outline" disabled={datevReviewExport.isPending}
-          onClick={() => datevReviewExport.mutate()}>
+          onClick={() => datevReviewExport.mutate("json")}>
           <Download className="size-4" /> DATEV-Vorprüfung (JSON)
+        </Button>
+        <Button variant="outline" disabled={datevReviewExport.isPending}
+          onClick={() => datevReviewExport.mutate("csv")}>
+          <Download className="size-4" /> DATEV-Prüfliste (CSV)
         </Button>
         <Button
           variant="outline"
