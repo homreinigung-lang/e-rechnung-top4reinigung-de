@@ -193,6 +193,18 @@ function Ausgaben() {
     }
   }
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects", "expense-picker"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,city,status")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: rows = [] } = useQuery({
     queryKey: ["expenses"],
     queryFn: async () => {
@@ -223,12 +235,13 @@ function Ausgaben() {
         gross_amount: net + vat,
         notes: form.notes,
         receipt_url: form.receipt_url,
-      });
+        project_id: form.project_id || null,
+      } as never);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Ausgabe erfasst");
-      setForm({ ...empty, expense_date: today(), receipt_url: "" });
+      setForm({ ...empty, expense_date: today(), receipt_url: "", project_id: "" });
       setScanned(false);
       setEInvoice(null);
       setReceiptToRetry(null);
