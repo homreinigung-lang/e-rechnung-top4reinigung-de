@@ -44,6 +44,7 @@ import {
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { modeLabel } from "./projekte.index";
+import { plannedHoursForMonth, revenueForMonth } from "@/lib/object-controlling";
 
 export const Route = createFileRoute("/_authenticated/projekte/$id")({
   head: () => ({
@@ -231,11 +232,9 @@ function ProjektDetail() {
     queryFn: async () => {
       const { data, error } = await db
         .from("documents")
-        .select("id,type,status,issue_date,net_total,total,is_storno,project_id,customer_id")
+        .select("id,type,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id")
         .eq("type", "invoice")
-        .is("deleted_at", null)
-        .gte("issue_date", trendStart)
-        .lte("issue_date", monthEnd);
+        .is("deleted_at", null);
       if (error) throw error;
       return data ?? [];
     },
@@ -472,22 +471,11 @@ function ProjektDetail() {
     0,
   );
 
-  const datedAssignments = assignments.filter((a) => Boolean(a.start_date));
-  const plannedHours =
-    datedAssignments.length > 0
-      ? datedAssignments
-          .filter((a) => {
-            const start = String(a.start_date ?? "");
-            const end = String(a.end_date ?? a.start_date ?? "");
-            return start <= monthEnd && end >= monthStart;
-          })
-          .reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0)
-      : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
+  const plannedHours = plannedHoursForMonth(assignments, controllingMonth);
 
   const uniqueCustomerObject =
     Boolean(customerId) && customerProjects.length === 1 && customerProjects[0]?.id === id;
   const revenueNet = controllingDocuments
-    .filter((d) => String(d.issue_date).startsWith(controllingMonth))
     .filter((d) => {
       const sameCustomer = Boolean(customerId) && d.customer_id === customerId;
       const linkedToObject = d.project_id === id && sameCustomer;
@@ -499,7 +487,7 @@ function ProjektDetail() {
         !d.is_storno
       );
     })
-    .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
+    .reduce((sum, d) => sum + revenueForMonth(d, controllingMonth), 0);
   const materialAndOtherCosts = controllingExpenses
     .filter((e) => String(e.expense_date).startsWith(controllingMonth))
     .reduce((sum, e) => sum + Number(e.net_amount ?? 0), 0);
@@ -530,7 +518,6 @@ function ProjektDetail() {
   });
   const trendRows = trendMonths.map((month) => {
     const monthRevenue = controllingDocuments
-      .filter((d) => String(d.issue_date).startsWith(month))
       .filter((d) => {
         const sameCustomer = Boolean(customerId) && d.customer_id === customerId;
         const direct = d.project_id === id && sameCustomer;
@@ -541,7 +528,7 @@ function ProjektDetail() {
           !d.is_storno
         );
       })
-      .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
+      .reduce((sum, d) => sum + revenueForMonth(d, month), 0);
     const monthEntriesForTrend = timeEntries.filter(
       (t) =>
         String(t.work_date).startsWith(month) &&
