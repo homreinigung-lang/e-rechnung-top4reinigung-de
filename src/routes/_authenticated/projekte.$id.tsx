@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -41,7 +42,7 @@ import {
   Users,
 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
-import { formatDate, formatNumber } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { modeLabel } from "./projekte.index";
 
 export const Route = createFileRoute("/_authenticated/projekte/$id")({
@@ -105,6 +106,8 @@ function ProjektDetail() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmployee, setAssignEmployee] = useState("");
   const [assignRole, setAssignRole] = useState("Reinigungskraft");
+  const [controllingMonth, setControllingMonth] = useState(new Date().toISOString().slice(0, 7));
+  const db = supabase as SupabaseClient;
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["project", id] });
@@ -176,11 +179,50 @@ function ProjektDetail() {
       const { data, error } = await supabase
         .from("time_entries")
         .select(
-          "id,hours,work_date,entry_type,approval_status,completed_at,employee_name,start_time,end_time,note",
+          "id,hours,hourly_rate,work_date,entry_type,approval_status,completed_at,employee_name,start_time,end_time,note",
         )
         .eq("project_id", id);
       if (error) throw error;
       return data;
+    },
+  });
+
+  const monthStart = `${controllingMonth}-01`;
+  const monthDate = new Date(`${monthStart}T12:00:00`);
+  const monthEnd = new Date(
+    Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 0),
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: controllingDocuments = [] } = useQuery({
+    queryKey: ["project_controlling_documents", id, controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("documents")
+        .select("id,type,status,issue_date,net_total,total,is_storno")
+        .eq("project_id", id)
+        .eq("type", "invoice")
+        .is("deleted_at", null)
+        .gte("issue_date", monthStart)
+        .lte("issue_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingExpenses = [] } = useQuery({
+    queryKey: ["project_controlling_expenses", id, controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("expenses")
+        .select("id,expense_date,net_amount,gross_amount,category")
+        .eq("project_id", id)
+        .is("deleted_at", null)
+        .gte("expense_date", monthStart)
+        .lte("expense_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
