@@ -672,8 +672,9 @@ function ProjektDetail() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Nur dem Objekt zugeordnete Rechnungen und Ausgaben werden berücksichtigt. Alte Rechnungen
-          mit eindeutig nur einem Kundenobjekt werden bei der Migration automatisch zugeordnet.
+          Zugeordnete Rechnungen und Ausgaben werden direkt berücksichtigt. Historische,
+          festgeschriebene Rechnungen bleiben GoBD-konform unverändert und werden nur dann
+          rechnerisch zugeordnet, wenn der Kunde eindeutig genau ein Objekt hat.
         </p>
       </section>
 
