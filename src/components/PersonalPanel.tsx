@@ -5,6 +5,8 @@ import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fahrtenbuchClient } from "@/lib/fahrtenbuch-client";
 import { saveFile } from "@/lib/download";
+import { buildPayrollSummary } from "@/lib/payroll-export";
+import { buildCsvBlob } from "@/lib/table-summary";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Car, ChevronDown, ChevronLeft, ChevronRight, HeartPulse, Plus, Trash2 } from "lucide-react";
+import { Car, ChevronDown, ChevronLeft, ChevronRight, Download, HeartPulse, Plus, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { EinsatzKalender } from "@/components/EinsatzKalender";
 import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
@@ -487,6 +489,38 @@ export function Personal() {
     };
   });
 
+  const payrollExportRows = buildPayrollSummary(
+    entries
+      .filter((t) => String(t.work_date).startsWith(monthPrefix))
+      .map((t) => {
+        const employee = employees.find((e) => e.id === t.employee_id);
+        return {
+          employee_id: String(t.employee_id ?? ""),
+          employee_name: String(t.employee_name || employee?.name || "Ohne Zuordnung"),
+          personnel_number: String(employee?.personnel_number ?? ""),
+          contract_type: String(employee?.contract_type ?? ""),
+          weekly_hours: Number(employee?.weekly_hours ?? 0),
+          hourly_rate: Number(t.hourly_rate ?? employee?.hourly_rate ?? 0),
+          work_date: String(t.work_date ?? ""),
+          hours: Number(t.hours ?? 0),
+          entry_type: String(t.entry_type ?? "work"),
+          absence_reason: String(t.absence_reason ?? ""),
+          approval_status: String(t.approval_status ?? "approved"),
+        };
+      }),
+  );
+
+  async function downloadPayrollPreparationCsv() {
+    const blob = buildCsvBlob(payrollExportRows, {
+      title: `Lohnvorbereitung ${monthPrefix}`,
+    });
+    if (!blob) {
+      toast.error("Keine bestätigten Lohndaten im ausgewählten Monat.");
+      return;
+    }
+    await saveFile(blob, `Lohnvorbereitung_${monthPrefix}.csv`);
+  }
+
   async function downloadMonthFahrtenbuchPdf() {
     if (monthTripsError || monthTripVehiclesError) {
       toast.error("Fahrtenbuch konnte nicht vollständig geladen werden.");
@@ -899,12 +933,19 @@ export function Personal() {
       <section className="surface space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Monatsabrechnung</h2>
+            <h2 className="text-lg font-semibold">Lohnvorbereitung</h2>
             <p className="text-sm text-muted-foreground">
-              Arbeitsstunden und Lohn je Mitarbeiter – Urlaub und Krankheit separat ausgewiesen.
+              Bestätigte Arbeitsstunden, Personalnummern und Abwesenheiten als vorbereiteter Monats-Export für die Lohnabrechnung.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => void downloadPayrollPreparationCsv()}
+              disabled={payrollExportRows.length === 0}
+            >
+              <Download className="size-4" /> Lohnvorbereitung CSV
+            </Button>
             <Button
               variant="outline"
               size="icon"
