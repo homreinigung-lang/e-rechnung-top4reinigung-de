@@ -52,7 +52,7 @@ export const createAccountantAccess = createServerFn({ method: "POST" })
 
     const { hashAccessCode } = await import("./accountant-access.server");
 
-    const { error } = await context.supabase.from("accountant_access").insert({
+    const { data: created, error } = await context.supabase.from("accountant_access").insert({
       user_id: context.userId,
       email: data.email,
       token,
@@ -60,10 +60,10 @@ export const createAccountantAccess = createServerFn({ method: "POST" })
       access_code: "",
       access_code_hash: await hashAccessCode(token, accessCode),
       expires_at: expiryFrom(data.validDays),
-    });
+    }).select("id").single();
     if (error) throw new Error(error.message);
 
-    return { token, accessCode };
+    return { id: created.id as string, token, accessCode };
   });
 
 /** Setzt ein selbst gewähltes Passwort für einen bestehenden Zugang. */
@@ -588,5 +588,5 @@ ${companyName}`;
         .eq("user_id", context.userId);
     }
 
-    return { accepted: true as const, to: data.email, messageId: delivery.id };
+    return { accepted: true as const, to: data.email, messageId: delivery.id, accessCode, link };
   });
