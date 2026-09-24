@@ -187,6 +187,19 @@ function ProjektDetail() {
     },
   });
 
+  const { data: qmCases = [] } = useQuery({
+    queryKey: ["project_qm_cases", id],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("qm_cases")
+        .select("id,title,status,priority,due_date,occurred_at")
+        .eq("project_id", id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const monthStart = `${controllingMonth}-01`;
   const monthDate = new Date(`${monthStart}T12:00:00`);
   const monthEnd = new Date(
@@ -661,6 +674,53 @@ function ProjektDetail() {
               project.source_file_name
             )}
           </p>
+        )}
+      </section>
+
+      <section className="surface space-y-3 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">QM / Reklamationen</h2>
+            <p className="text-sm text-muted-foreground">
+              Qualitätsfälle und Reklamationen für dieses Objekt.
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/qm-reklamationen">
+              QM öffnen
+            </Link>
+          </Button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border p-3">
+            <div className="text-xs text-muted-foreground">Offen</div>
+            <div className="mt-1 text-xl font-semibold">
+              {qmCases.filter((item) => item.status !== "erledigt").length}
+            </div>
+          </div>
+          <div className="rounded-lg border p-3">
+            <div className="text-xs text-muted-foreground">Hohe Priorität offen</div>
+            <div className="mt-1 text-xl font-semibold text-destructive">
+              {qmCases.filter((item) => item.status !== "erledigt" && item.priority === "hoch").length}
+            </div>
+          </div>
+          <div className="rounded-lg border p-3">
+            <div className="text-xs text-muted-foreground">Gesamt</div>
+            <div className="mt-1 text-xl font-semibold">{qmCases.length}</div>
+          </div>
+        </div>
+        {qmCases.length > 0 && (
+          <div className="space-y-1 text-sm">
+            {qmCases.slice(0, 3).map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+                <span className="font-medium">{item.title}</span>
+                <span className="text-xs text-muted-foreground">
+                  {item.status === "erledigt" ? "Erledigt" : item.status === "in_bearbeitung" ? "In Bearbeitung" : "Neu"}
+                  {item.due_date ? ` · Frist ${formatDate(item.due_date)}` : ""}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
