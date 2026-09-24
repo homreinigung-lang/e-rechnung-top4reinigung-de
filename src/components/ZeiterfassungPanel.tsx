@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
 import { filterRowsByDateRange, summaryLines } from "@/lib/table-summary";
-import { buildPayrollSummary, payrollCode, type PayrollEntry } from "@/lib/payroll-export";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -225,68 +224,6 @@ export function Zeiterfassung() {
     return { hours, amount, perEmployee: [...perEmployee.entries()] };
   }, [monthEntries]);
 
-  const payrollEntries = useMemo<PayrollEntry[]>(
-    () =>
-      monthEntries.map((entry) => {
-        const employee = employees.find((item) => item.id === entry.employee_id);
-        return {
-          employee_id: (entry.employee_id as string | null) ?? null,
-          employee_name:
-            employee?.name || (entry.employee_name as string | null) || "Ohne Zuordnung",
-          personnel_number: employee?.personnel_number ?? "",
-          contract_type: employee?.contract_type ?? "",
-          weekly_hours: employee?.weekly_hours ?? 0,
-          hourly_rate: Number(entry.hourly_rate ?? employee?.hourly_rate ?? 0),
-          work_date: (entry.work_date as string | null) ?? null,
-          hours: Number(entry.hours ?? 0),
-          lohnart: (entry.lohnart as string | null) ?? null,
-          entry_type: (entry.entry_type as string | null) ?? "work",
-          absence_reason: (entry.absence_reason as string | null) ?? null,
-          approval_status: (entry.approval_status as string | null) ?? "approved",
-        };
-      }),
-    [monthEntries, employees],
-  );
-
-  const payrollRows = useMemo(() => buildPayrollSummary(payrollEntries), [payrollEntries]);
-
-  const payrollQuality = useMemo(() => {
-    const approved = payrollEntries.filter(
-      (entry) => String(entry.approval_status ?? "approved") === "approved",
-    );
-    const pending = payrollEntries.filter(
-      (entry) => String(entry.approval_status ?? "approved") === "pending",
-    ).length;
-    const rejected = payrollEntries.filter(
-      (entry) => String(entry.approval_status ?? "approved") === "rejected",
-    ).length;
-    const missingPersonnel = employees.filter(
-      (employee) => employee.active && !employee.personnel_number?.trim(),
-    );
-    const missingRate = employees.filter(
-      (employee) => employee.active && Number(employee.hourly_rate ?? 0) <= 0,
-    );
-    const approvedWorkHours = approved
-      .filter((entry) => payrollCode(entry) === "A")
-      .reduce((sum, entry) => sum + Number(entry.hours ?? 0), 0);
-    const approvedWage = approved
-      .filter((entry) => payrollCode(entry) === "A")
-      .reduce(
-        (sum, entry) =>
-          sum + Number(entry.hours ?? 0) * Number(entry.hourly_rate ?? 0),
-        0,
-      );
-    return {
-      approvedCount: approved.length,
-      pending,
-      rejected,
-      missingPersonnel,
-      missingRate,
-      approvedWorkHours,
-      approvedWage,
-    };
-  }, [payrollEntries, employees]);
-
   const saveEmployee = useMutation({
     mutationFn: async (values: typeof emptyEmployee) => {
       const userId = await requireUserId();
@@ -469,85 +406,6 @@ export function Zeiterfassung() {
     toast.success("CSV-Export erstellt");
   };
 
-  const exportPayrollCsv = () => {
-    if (payrollEntries.length === 0) {
-      toast.error("Keine Einträge in diesem Monat.");
-      return;
-    }
-
-    const approvedEntries = payrollEntries.filter(
-      (entry) => String(entry.approval_status ?? "approved") === "approved",
-    );
-    if (approvedEntries.length === 0) {
-      toast.error("Keine freigegebenen Einträge für die Lohnvorbereitung.");
-      return;
-    }
-
-    const summaryHeaders = payrollRows.length > 0 ? Object.keys(payrollRows[0]!) : [];
-    const detailHeaders = [
-      "Personal-Nr.",
-      "Mitarbeiter",
-      "Vertragsart",
-      "Datum",
-      "Lohnart",
-      "Stunden",
-      "Stundensatz",
-      "Betrag",
-      "Status",
-    ];
-
-    const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-    const lines: string[] = [];
-    lines.push(escape(`Lohnvorbereitung ${month}`));
-    lines.push(
-      [escape("Freigegebene Arbeitsstunden"), escape(de(payrollQuality.approvedWorkHours))].join(";"),
-    );
-    lines.push(
-      [escape("Arbeitslohn"), escape(de(payrollQuality.approvedWage))].join(";"),
-    );
-    lines.push(
-      [escape("Offene Einträge"), escape(String(payrollQuality.pending))].join(";"),
-    );
-    lines.push("");
-
-    if (summaryHeaders.length > 0) {
-      lines.push(summaryHeaders.map(escape).join(";"));
-      for (const row of payrollRows) {
-        lines.push(summaryHeaders.map((header) => escape(row[header as keyof typeof row])).join(";"));
-      }
-      lines.push("");
-    }
-
-    lines.push("Einzelnachweis");
-    lines.push(detailHeaders.map(escape).join(";"));
-    for (const entry of approvedEntries) {
-      const code = payrollCode(entry);
-      const hours = code === "A" ? Number(entry.hours ?? 0) : 0;
-      const rate = Number(entry.hourly_rate ?? 0);
-      lines.push(
-        [
-          entry.personnel_number ?? "",
-          entry.employee_name ?? "",
-          entry.contract_type ?? "",
-          formatDate(String(entry.work_date ?? "")),
-          code,
-          de(hours),
-          de(rate),
-          de(hours * rate),
-          "Freigegeben",
-        ]
-          .map(escape)
-          .join(";"),
-      );
-    }
-
-    downloadBlob(
-      new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }),
-      `Lohnvorbereitung_${month}.csv`,
-    );
-    toast.success("Lohnvorbereitung erstellt");
-  };
-
   const exportPdf = async () => {
     // Sicherheitsnetz: PDF nutzt dieselbe strikte Datumsfilterung wie CSV/Excel.
     const pdfFrom = `${month}-01`;
@@ -715,9 +573,6 @@ export function Zeiterfassung() {
           </Button>
           <Button variant="outline" onClick={exportPdf}>
             <FileText className="size-4" /> Stundenzettel-PDF
-          </Button>
-          <Button variant="outline" onClick={exportPayrollCsv}>
-            <Download className="size-4" /> Lohnvorbereitung-CSV
           </Button>
 
           <AbwesenheitZeitraum employees={employees.map((e) => ({ id: e.id, name: e.name }))} />
@@ -1104,62 +959,6 @@ export function Zeiterfassung() {
           <div className="mt-2 text-2xl font-bold">{formatMoney(totals.amount)}</div>
         </div>
       </div>
-
-      <section className="surface space-y-4 p-5">
-        <div>
-          <h2 className="text-lg font-semibold">Lohnvorbereitung</h2>
-          <p className="text-sm text-muted-foreground">
-            Nur freigegebene Einträge werden für Stunden und Lohn berücksichtigt.
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border p-3">
-            <div className="text-xs text-muted-foreground">Freigegebene Stunden</div>
-            <div className="mt-1 text-xl font-semibold">
-              {payrollQuality.approvedWorkHours.toFixed(2)} Std.
-            </div>
-          </div>
-          <div className="rounded-lg border p-3">
-            <div className="text-xs text-muted-foreground">Arbeitslohn</div>
-            <div className="mt-1 text-xl font-semibold">
-              {formatMoney(payrollQuality.approvedWage)}
-            </div>
-          </div>
-          <div className="rounded-lg border p-3">
-            <div className="text-xs text-muted-foreground">Offene Einträge</div>
-            <div className="mt-1 text-xl font-semibold">{payrollQuality.pending}</div>
-          </div>
-          <div className="rounded-lg border p-3">
-            <div className="text-xs text-muted-foreground">Abgelehnt</div>
-            <div className="mt-1 text-xl font-semibold">{payrollQuality.rejected}</div>
-          </div>
-        </div>
-
-        {(payrollQuality.missingPersonnel.length > 0 || payrollQuality.missingRate.length > 0) && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-            <div className="font-medium text-amber-700">Stammdaten prüfen</div>
-            {payrollQuality.missingPersonnel.length > 0 && (
-              <p className="mt-1 text-muted-foreground">
-                Personalnummer fehlt bei:{" "}
-                {payrollQuality.missingPersonnel.map((employee) => employee.name).join(", ")}
-              </p>
-            )}
-            {payrollQuality.missingRate.length > 0 && (
-              <p className="mt-1 text-muted-foreground">
-                Stundensatz fehlt bei:{" "}
-                {payrollQuality.missingRate.map((employee) => employee.name).join(", ")}
-              </p>
-            )}
-          </div>
-        )}
-
-        {payrollQuality.pending > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Offene Einträge werden nicht exportiert, bis sie freigegeben sind.
-          </p>
-        )}
-      </section>
 
       {totals.perEmployee.length > 0 && (
         <div className="surface p-5">
