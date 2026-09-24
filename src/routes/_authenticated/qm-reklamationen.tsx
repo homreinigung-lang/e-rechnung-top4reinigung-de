@@ -113,7 +113,7 @@ function QmReklamationen() {
     queryFn: async () => {
       const { data, error } = await supabase.from("customers").select("id,name,company").order("name");
       if (error) throw error;
-      return (data ?? []) as QmEvent[];
+      return data ?? [];
     },
   });
 
