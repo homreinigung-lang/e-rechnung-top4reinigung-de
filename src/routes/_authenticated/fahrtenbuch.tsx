@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -178,7 +179,7 @@ function downloadText(name: string, content: string, type: string) {
 
 function Fahrtenbuch() {
   const queryClient = useQueryClient();
-  const db = supabase as any;
+  const db = supabase as SupabaseClient;
   const now = localDateTime();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [vehicleName, setVehicleName] = useState("");
