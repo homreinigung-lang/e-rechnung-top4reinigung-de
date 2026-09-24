@@ -12,6 +12,8 @@ import {
   ChevronRight,
   CalendarDays,
   CheckCircle2,
+  AlertTriangle,
+  Copy,
   Send,
   Save,
 } from "lucide-react";
@@ -212,6 +214,21 @@ export function Arbeitsplanung() {
         .eq("start_date", weekStart);
       if (error) throw error;
       return data as Assignment[];
+    },
+  });
+
+  const { data: absences = [], error: absencesError } = useQuery({
+    queryKey: ["planning_absences", weekStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("id,employee_id,work_date,absence_reason,approval_status,entry_type")
+        .eq("entry_type", "absence")
+        .eq("approval_status", "approved")
+        .gte("work_date", weekStart)
+        .lte("work_date", weekEnd);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
