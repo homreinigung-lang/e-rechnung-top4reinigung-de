@@ -12,6 +12,8 @@ import {
   ChevronRight,
   CalendarDays,
   CheckCircle2,
+  AlertTriangle,
+  Copy,
   Send,
   Save,
 } from "lucide-react";
@@ -215,6 +217,21 @@ export function Arbeitsplanung() {
     },
   });
 
+  const { data: absences = [], error: absencesError } = useQuery({
+    queryKey: ["planning_absences", weekStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("id,employee_id,work_date,absence_reason,approval_status,entry_type")
+        .eq("entry_type", "absence")
+        .eq("approval_status", "approved")
+        .gte("work_date", weekStart)
+        .lte("work_date", weekEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: release, isLoading: releaseLoading } = useQuery({
     queryKey: ["plan_release", weekStart],
     queryFn: async () => {
@@ -352,6 +369,36 @@ export function Arbeitsplanung() {
       [key(e, p)]: Array.from({ length: 7 }, () => ({ ...EMPTY_DAY_TIME })),
     }));
 
+  const copyPreviousWeek = useMutation({
+    mutationFn: async () => {
+      const previousStart = isoDay(addDays(monday, -7));
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .select("project_id,employee_id,day_times")
+        .eq("start_date", previousStart);
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: (rows) => {
+      if (rows.length === 0) {
+        toast.info("In der Vorwoche gibt es keine Planung zum Kopieren.");
+        return;
+      }
+      setDraft((current) => {
+        const next = { ...current };
+        for (const row of rows) {
+          const k = key(row.employee_id, row.project_id);
+          if (!map.has(k) && !next[k]) {
+            next[k] = normalizeDayTimes(row.day_times);
+          }
+        }
+        return next;
+      });
+      toast.success("Vorwoche als Entwurf übernommen. Bitte prüfen und speichern.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const dirtyKeys = React.useMemo(
     () =>
       Object.keys(draft).filter((k) => {
@@ -479,7 +526,79 @@ export function Arbeitsplanung() {
 
   const grandTotal = employees.reduce((s, e) => s + employeeTotal(e.id), 0);
 
-  const loadError = firstError(employeesError, projectsError, customersError, assignmentsError);
+  const approvedAbsence = (employeeId: string, dayIndex: number) => {
+    const date = isoDay(addDays(monday, dayIndex));
+    return absences.find((a) => a.employee_id === employeeId && a.work_date === date) ?? null;
+  };
+
+  const toMinutes = (value: string) => {
+    const [h, m] = value.split(":").map(Number);
+    return (h ?? 0) * 60 + (m ?? 0);
+  };
+
+  const planningConflicts = React.useMemo(() => {
+    const conflicts: { employeeId: string; dayIndex: number; message: string }[] = [];
+    for (const employee of employees) {
+      for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+        const scheduled = objects
+          .map((object) => ({
+            object,
+            time: cellTimes(employee.id, object.id)[dayIndex],
+            hours: cellDayHours(employee.id, object.id)[dayIndex] ?? 0,
+          }))
+          .filter((item) => item.hours > 0);
+
+        const absence = approvedAbsence(employee.id, dayIndex);
+        if (absence && scheduled.length > 0) {
+          conflicts.push({
+            employeeId: employee.id,
+            dayIndex,
+            message: `${DAY_LABELS[dayIndex]}: Abwesenheit und Einsatz gleichzeitig geplant.`,
+          });
+        }
+
+        const withTimes = scheduled.filter((item) => item.time?.start && item.time?.end);
+        for (let i = 0; i < withTimes.length; i += 1) {
+          for (let j = i + 1; j < withTimes.length; j += 1) {
+            const a = withTimes[i]!;
+            const b = withTimes[j]!;
+            const aStart = toMinutes(a.time!.start);
+            let aEnd = toMinutes(a.time!.end);
+            const bStart = toMinutes(b.time!.start);
+            let bEnd = toMinutes(b.time!.end);
+            if (aEnd <= aStart) aEnd += 1440;
+            if (bEnd <= bStart) bEnd += 1440;
+            if (Math.max(aStart, bStart) < Math.min(aEnd, bEnd)) {
+              conflicts.push({
+                employeeId: employee.id,
+                dayIndex,
+                message: `${DAY_LABELS[dayIndex]}: Zeitüberschneidung zwischen ${a.object.name || "Objekt"} und ${b.object.name || "Objekt"}.`,
+              });
+            }
+          }
+        }
+      }
+    }
+    return conflicts;
+    // cellTimes/cellDayHours intentionally depend on draft/map through this render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees, objects, absences, draft, map, weekStart]);
+
+  const overtimeWarnings = employees
+    .map((employee) => {
+      const planned = employeeTotal(employee.id);
+      const target = Number(employee.weekly_hours ?? 0);
+      return { employee, planned, target, over: target > 0 ? planned - target : 0 };
+    })
+    .filter((item) => item.over > 0.01);
+
+  const loadError = firstError(
+    employeesError,
+    projectsError,
+    customersError,
+    assignmentsError,
+    absencesError,
+  );
   const cellErrorList = Object.entries(cellErrors);
 
   return (
@@ -606,6 +725,15 @@ export function Arbeitsplanung() {
           <Button
             type="button"
             variant="outline"
+            onClick={() => copyPreviousWeek.mutate()}
+            disabled={copyPreviousWeek.isPending}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            Vorwoche kopieren
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => saveAll.mutate()}
             disabled={saveAll.isPending || dirtyKeys.length === 0}
           >
@@ -625,16 +753,73 @@ export function Arbeitsplanung() {
           <Button
             type="button"
             onClick={async () => {
+              if (planningConflicts.length > 0) {
+                toast.error("Woche kann wegen Planungs-Konflikten nicht freigegeben werden.");
+                return;
+              }
               if (dirtyKeys.length > 0) await saveAll.mutateAsync();
               releaseWeek.mutate();
             }}
-            disabled={releaseLoading || releaseWeek.isPending || saveAll.isPending}
+            disabled={
+              releaseLoading ||
+              releaseWeek.isPending ||
+              saveAll.isPending ||
+              planningConflicts.length > 0
+            }
           >
             <Send className="mr-2 h-4 w-4" />
             {release ? "Erneut freigeben" : "Woche freigeben"}
           </Button>
         </div>
       </div>
+
+      {(planningConflicts.length > 0 || overtimeWarnings.length > 0) && (
+        <div className="space-y-2">
+          {planningConflicts.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+              <div className="flex items-center gap-2 font-semibold text-destructive">
+                <AlertTriangle className="h-4 w-4" />
+                {planningConflicts.length} Planungs-Konflikt
+                {planningConflicts.length === 1 ? "" : "e"}
+              </div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                {planningConflicts.slice(0, 8).map((conflict, index) => {
+                  const employee =
+                    employees.find((item) => item.id === conflict.employeeId)?.name ??
+                    "Mitarbeiter";
+                  return (
+                    <li key={conflict.employeeId + "-" + conflict.dayIndex + "-" + index}>
+                      <span className="font-medium">{employee}:</span> {conflict.message}
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Freigabe ist gesperrt, bis Überschneidungen oder Einsätze während genehmigter
+                Abwesenheiten korrigiert sind.
+              </p>
+            </div>
+          )}
+
+          {overtimeWarnings.length > 0 && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              <div className="flex items-center gap-2 font-semibold text-amber-700">
+                <AlertTriangle className="h-4 w-4" />
+                Sollstunden überschritten
+              </div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                {overtimeWarnings.map(({ employee, planned, target, over }) => (
+                  <li key={employee.id}>
+                    <span className="font-medium">{employee.name}:</span>{" "}
+                    {planned.toFixed(1)} / {target.toFixed(1)} Std. (+
+                    {over.toFixed(1)} Std.)
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       <section className="surface overflow-x-auto p-0">
         {employees.length === 0 || visibleProjects.length === 0 ? (
