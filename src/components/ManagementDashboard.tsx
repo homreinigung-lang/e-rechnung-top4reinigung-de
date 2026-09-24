@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
+import { revenueForMonth } from "@/lib/object-controlling";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -51,11 +52,9 @@ export function ManagementDashboard() {
           .select("id,name,customer_id,customer_name,city,status"),
         db
           .from("documents")
-          .select("id,type,status,issue_date,net_total,total,is_storno,project_id,customer_id")
+          .select("id,type,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id")
           .eq("type", "invoice")
-          .is("deleted_at", null)
-          .gte("issue_date", start)
-          .lte("issue_date", end),
+          .is("deleted_at", null),
         db
           .from("expenses")
           .select("id,project_id,expense_date,net_amount")
@@ -134,7 +133,7 @@ export function ManagementDashboard() {
           customerProjectCount.get(project.customer_id!) === 1;
         return direct || historical;
       })
-      .reduce((sum, doc) => sum + Number(doc.net_total ?? doc.total ?? 0), 0);
+      .reduce((sum, doc) => sum + revenueForMonth(doc, month), 0);
 
     const entries = workEntries.filter((entry) => entry.project_id === project.id);
     const hours = entries.reduce((sum, entry) => sum + Number(entry.hours ?? 0), 0);
