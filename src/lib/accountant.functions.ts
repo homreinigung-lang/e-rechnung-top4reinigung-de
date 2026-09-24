@@ -10,6 +10,8 @@ export type AccountantReport = {
   expenses: Row[];
   timeEntries: Row[];
   adjustments: Row[];
+  fahrtenbuchEntries: Row[];
+  fahrtenbuchVehicles: Row[];
 };
 
 /** Kein Ablaufdatum: Zugang gilt dauerhaft. */
@@ -115,7 +117,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
 
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
-    const [documents, expenses, timeEntries, employees, adjustments, settings] = await Promise.all([
+    const [documents, expenses, timeEntries, employees, adjustments, settings, fahrtenbuchEntries, fahrtenbuchVehicles] = await Promise.all([
       supabaseAdmin
         .from("documents")
         .select("*")
@@ -163,6 +165,19 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .select("company_name")
         .eq("user_id", access.user_id)
         .maybeSingle(),
+      (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
+        .from("fahrtenbuch_entries")
+        .select("*")
+        .eq("user_id", access.user_id)
+        .gte("trip_date", data.from)
+        .lte("trip_date", data.to)
+        .order("trip_date")
+        .order("trip_time"),
+      (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
+        .from("fahrtenbuch_vehicles")
+        .select("id,vehicle_name,license_plate")
+        .eq("user_id", access.user_id)
+        .order("vehicle_name"),
     ]);
 
     const empById = new Map(
@@ -211,6 +226,8 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       expenses: (expenses.data ?? []) as unknown as Row[],
       timeEntries: enrichedTime as unknown as Row[],
       adjustments: (adjustments.data ?? []) as unknown as Row[],
+      fahrtenbuchEntries: (fahrtenbuchEntries.data ?? []) as unknown as Row[],
+      fahrtenbuchVehicles: (fahrtenbuchVehicles.data ?? []) as unknown as Row[],
     };
   });
 

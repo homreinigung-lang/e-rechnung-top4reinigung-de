@@ -348,6 +348,8 @@ function AccountantPortal() {
   const documents: Row[] = data?.documents ?? [];
   const expenses: Row[] = data?.expenses ?? [];
   const timeEntries: Row[] = data?.timeEntries ?? [];
+  const fahrtenbuchEntries: Row[] = data?.fahrtenbuchEntries ?? [];
+  const fahrtenbuchVehicles: Row[] = data?.fahrtenbuchVehicles ?? [];
 
   const docRows: Table[] = documents.map((d) => ({
     Belegdatum: formatDate(String(d["issue_date"] ?? "")),
@@ -370,6 +372,27 @@ function AccountantPortal() {
     Vorsteuer: de(num(e["vat_amount"])),
     Brutto: de(num(e["gross_amount"])),
   }));
+
+  const fahrtenbuchRows: Table[] = fahrtenbuchEntries.map((trip) => {
+    const vehicle = fahrtenbuchVehicles.find(
+      (v) => String(v["id"] ?? "") === String(trip["vehicle_id"] ?? ""),
+    );
+    return {
+      Datum: formatDate(String(trip["trip_date"] ?? "")),
+      Startzeit: String(trip["trip_time"] ?? "").slice(0, 5),
+      Rückkehrzeit: String(trip["return_time"] ?? "").slice(0, 5),
+      Fahrtart: trip["trip_type"] === "round_trip" ? "Hin- und Rückfahrt" : "Nur Hinfahrt",
+      Fahrzeug: String(vehicle?.["vehicle_name"] ?? ""),
+      Kennzeichen: String(vehicle?.["license_plate"] ?? ""),
+      Von: String(trip["from_location"] ?? ""),
+      "Kunde / Ziel / Zweck": String(trip["customer_name"] ?? ""),
+      Zieladresse: String(trip["to_location"] ?? ""),
+      "Start-km": String(trip["start_km"] ?? ""),
+      "End-km": String(trip["end_km"] ?? ""),
+      "Geschäftliche km": String(trip["distance_km"] ?? ""),
+      Bemerkung: String(trip["notes"] ?? ""),
+    };
+  });
 
   /** Nur bestätigte Einträge fließen in Stunden-, Lohn- und Tagessummen ein. */
   const isConfirmed = (t: Row) => String(t["approval_status"] ?? "approved") === "approved";
@@ -544,6 +567,34 @@ function AccountantPortal() {
           </section>
           <section className="no-print flex flex-wrap gap-2">
             <Button
+              variant="outline"
+              onClick={() =>
+                void (async () => {
+                  if (fahrtenbuchRows.length === 0) {
+                    toast.error("Keine Fahrten im gewählten Zeitraum.");
+                    return;
+                  }
+                  try {
+                    const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
+                    await saveFile(
+                      await buildBrandedFahrtenbuchPdf(fahrtenbuchRows, from, to),
+                      `Fahrtenbuch_${period}.pdf`,
+                    );
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Fahrtenbuch PDF konnte nicht erstellt werden.");
+                  }
+                })()
+              }
+            >
+              <FileText className="size-4" /> Fahrtenbuch PDF
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => downloadCsv(`Fahrtenbuch_${period}.csv`, fahrtenbuchRows, { from, to })}
+            >
+              <Download className="size-4" /> Fahrtenbuch (CSV)
+            </Button>
+            <Button
               onClick={() => datevExport.mutate()}
               disabled={datevExport.isPending || !datevSettings.isSuccess}
             >
@@ -594,6 +645,7 @@ function AccountantPortal() {
                 downloadExcel(
                   `Steuerauswertung_${period}.xls`,
                   [
+                    { title: "Fahrtenbuch", rows: fahrtenbuchRows },
                     { title: "Rechnungen", rows: docRows },
                     { title: "Ausgaben", rows: expenseRows },
                     { title: "Stundenzettel", rows: timeRows },
