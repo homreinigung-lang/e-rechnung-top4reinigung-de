@@ -194,11 +194,12 @@ const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedQmReklamationenRoute = AuthenticatedQmReklamationenRouteImport.update({
-  id: '/qm-reklamationen',
-  path: '/qm-reklamationen',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
+const AuthenticatedQmReklamationenRoute =
+  AuthenticatedQmReklamationenRouteImport.update({
+    id: '/qm-reklamationen',
+    path: '/qm-reklamationen',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSicherheitRoute = AuthenticatedSicherheitRouteImport.update({
   id: '/sicherheit',
   path: '/sicherheit',
