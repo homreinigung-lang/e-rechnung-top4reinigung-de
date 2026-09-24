@@ -526,7 +526,79 @@ export function Arbeitsplanung() {
 
   const grandTotal = employees.reduce((s, e) => s + employeeTotal(e.id), 0);
 
-  const loadError = firstError(employeesError, projectsError, customersError, assignmentsError);
+  const approvedAbsence = (employeeId: string, dayIndex: number) => {
+    const date = isoDay(addDays(monday, dayIndex));
+    return absences.find((a) => a.employee_id === employeeId && a.work_date === date) ?? null;
+  };
+
+  const toMinutes = (value: string) => {
+    const [h, m] = value.split(":").map(Number);
+    return (h ?? 0) * 60 + (m ?? 0);
+  };
+
+  const planningConflicts = React.useMemo(() => {
+    const conflicts: { employeeId: string; dayIndex: number; message: string }[] = [];
+    for (const employee of employees) {
+      for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+        const scheduled = objects
+          .map((object) => ({
+            object,
+            time: cellTimes(employee.id, object.id)[dayIndex],
+            hours: cellDayHours(employee.id, object.id)[dayIndex] ?? 0,
+          }))
+          .filter((item) => item.hours > 0);
+
+        const absence = approvedAbsence(employee.id, dayIndex);
+        if (absence && scheduled.length > 0) {
+          conflicts.push({
+            employeeId: employee.id,
+            dayIndex,
+            message: `${DAY_LABELS[dayIndex]}: Abwesenheit und Einsatz gleichzeitig geplant.`,
+          });
+        }
+
+        const withTimes = scheduled.filter((item) => item.time?.start && item.time?.end);
+        for (let i = 0; i < withTimes.length; i += 1) {
+          for (let j = i + 1; j < withTimes.length; j += 1) {
+            const a = withTimes[i]!;
+            const b = withTimes[j]!;
+            let aStart = toMinutes(a.time!.start);
+            let aEnd = toMinutes(a.time!.end);
+            let bStart = toMinutes(b.time!.start);
+            let bEnd = toMinutes(b.time!.end);
+            if (aEnd <= aStart) aEnd += 1440;
+            if (bEnd <= bStart) bEnd += 1440;
+            if (Math.max(aStart, bStart) < Math.min(aEnd, bEnd)) {
+              conflicts.push({
+                employeeId: employee.id,
+                dayIndex,
+                message: `${DAY_LABELS[dayIndex]}: Zeitüberschneidung zwischen ${a.object.name || "Objekt"} und ${b.object.name || "Objekt"}.`,
+              });
+            }
+          }
+        }
+      }
+    }
+    return conflicts;
+    // cellTimes/cellDayHours intentionally depend on draft/map through this render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees, objects, absences, draft, map, weekStart]);
+
+  const overtimeWarnings = employees
+    .map((employee) => {
+      const planned = employeeTotal(employee.id);
+      const target = Number(employee.weekly_hours ?? 0);
+      return { employee, planned, target, over: target > 0 ? planned - target : 0 };
+    })
+    .filter((item) => item.over > 0.01);
+
+  const loadError = firstError(
+    employeesError,
+    projectsError,
+    customersError,
+    assignmentsError,
+    absencesError,
+  );
   const cellErrorList = Object.entries(cellErrors);
 
   return (
