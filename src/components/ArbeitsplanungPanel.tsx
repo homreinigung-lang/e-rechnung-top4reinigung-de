@@ -879,6 +879,83 @@ export function Arbeitsplanung() {
         </div>
       </div>
 
+      {absenceAssignments.length > 0 && (
+        <section className="surface space-y-3 p-5">
+          <div>
+            <h2 className="font-semibold">Vertretung / Springer</h2>
+            <p className="text-sm text-muted-foreground">
+              Für Einsätze während genehmigter Abwesenheit werden verfügbare Mitarbeitende vorgeschlagen. Springer werden bevorzugt.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {absenceAssignments.map((item) => {
+              const candidates = replacementCandidates(
+                item.employee.id,
+                item.dayIndex,
+                item.time,
+                item.hours,
+              ).slice(0, 3);
+              return (
+                <div
+                  key={item.employee.id + "-" + item.object.id + "-" + item.dayIndex}
+                  className="rounded-lg border p-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="font-medium">
+                        {item.employee.name} · {item.object.name || "Objekt"}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {DAY_LABELS[item.dayIndex]} · {item.absenceReason} ·{" "}
+                        {formatDayTime(item.time) || item.hours.toFixed(2) + " Std."}
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
+                      Vertretung nötig
+                    </span>
+                  </div>
+                  {candidates.length === 0 ? (
+                    <p className="mt-3 text-sm text-destructive">
+                      Keine konfliktfreie Vertretung gefunden.
+                    </p>
+                  ) : (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {candidates.map(({ candidate, remaining, springer, enoughCapacity }) => (
+                        <Button
+                          key={candidate.id}
+                          type="button"
+                          variant={springer ? "default" : "outline"}
+                          size="sm"
+                          onClick={() =>
+                            applyReplacement(
+                              item.employee.id,
+                              candidate.id,
+                              item.object.id,
+                              item.dayIndex,
+                              item.time,
+                            )
+                          }
+                        >
+                          {candidate.name}
+                          {springer ? " · Springer" : ""}
+                          {Number.isFinite(remaining)
+                            ? " · " + Math.max(0, remaining).toFixed(1) + " Std. frei"
+                            : ""}
+                          {!enoughCapacity ? " · Soll überschritten" : ""}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Ein Vorschlag wird zunächst nur in den Entwurf übernommen. Danach „Speichern“ und erst anschließend die Woche freigeben.
+          </p>
+        </section>
+      )}
+
       {(planningConflicts.length > 0 || overtimeWarnings.length > 0) && (
         <div className="space-y-2">
           {planningConflicts.length > 0 && (
