@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -166,7 +167,7 @@ function SteuerberaterFahrtenbuch() {
   const year = new Date().getFullYear();
   const [from, setFrom] = useState(`${year}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
-  const db = supabase as any;
+  const db = supabase as SupabaseClient;
 
   const { data: trips = [], error: tripsError } = useQuery<Trip[]>({
     queryKey: ["stb_fahrtenbuch", from, to],
