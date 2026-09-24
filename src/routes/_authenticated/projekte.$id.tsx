@@ -476,9 +476,10 @@ function ProjektDetail() {
   const revenueNet = controllingDocuments
     .filter((d) => String(d.issue_date).startsWith(controllingMonth))
     .filter((d) => {
-      const linkedToObject = d.project_id === id;
+      const sameCustomer = Boolean(customerId) && d.customer_id === customerId;
+      const linkedToObject = d.project_id === id && sameCustomer;
       const historicalUniqueCustomerMatch =
-        !d.project_id && uniqueCustomerObject && d.customer_id === customerId;
+        !d.project_id && sameCustomer && uniqueCustomerObject;
       return (
         (linkedToObject || historicalUniqueCustomerMatch) &&
         String(d.status ?? "") !== "cancelled" &&
@@ -518,9 +519,9 @@ function ProjektDetail() {
     const monthRevenue = controllingDocuments
       .filter((d) => String(d.issue_date).startsWith(month))
       .filter((d) => {
-        const direct = d.project_id === id;
-        const historical =
-          !d.project_id && uniqueCustomerObject && d.customer_id === customerId;
+        const sameCustomer = Boolean(customerId) && d.customer_id === customerId;
+        const direct = d.project_id === id && sameCustomer;
+        const historical = !d.project_id && sameCustomer && uniqueCustomerObject;
         return (
           (direct || historical) &&
           String(d.status ?? "") !== "cancelled" &&
