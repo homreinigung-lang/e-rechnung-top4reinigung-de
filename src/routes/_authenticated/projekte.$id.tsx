@@ -455,7 +455,7 @@ function ProjektDetail() {
       : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
 
   const revenueNet = controllingDocuments
-    .filter((d) => String(d.status ?? "") !== "cancelled" && !Boolean(d.is_storno))
+    .filter((d) => String(d.status ?? "") !== "cancelled" && !d.is_storno)
     .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
   const materialAndOtherCosts = controllingExpenses.reduce(
     (sum, e) => sum + Number(e.net_amount ?? 0),
