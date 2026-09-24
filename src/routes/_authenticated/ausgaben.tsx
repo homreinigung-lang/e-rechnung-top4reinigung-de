@@ -313,6 +313,23 @@ function Ausgaben() {
             </select>
           </div>
           <div className="space-y-2">
+            <Label htmlFor="project_id">Objekt / Projekt</Label>
+            <select
+              id="project_id"
+              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              value={form.project_id}
+              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+            >
+              <option value="">Nicht zugeordnet</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name || "Ohne Namen"}
+                  {p.city ? ` · ${p.city}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="document_number">Belegnummer</Label>
             <Input
               id="document_number"
