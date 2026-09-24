@@ -723,6 +723,55 @@ function ProjektDetail() {
           </div>
         </div>
 
+        <div className="space-y-2">
+          <div>
+            <h3 className="font-medium">6-Monats-Vergleich</h3>
+            <p className="text-xs text-muted-foreground">
+              Entwicklung von Umsatz, Kosten, Deckungsbeitrag und Marge.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[620px] text-sm">
+              <thead className="bg-muted/40 text-left">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Monat</th>
+                  <th className="px-3 py-2 text-right font-medium">Umsatz</th>
+                  <th className="px-3 py-2 text-right font-medium">Kosten</th>
+                  <th className="px-3 py-2 text-right font-medium">DB</th>
+                  <th className="px-3 py-2 text-right font-medium">Marge</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {trendRows.map((row) => {
+                  const marginClass =
+                    row.margin == null
+                      ? "text-muted-foreground"
+                      : row.margin >= 25
+                        ? "text-emerald-700"
+                        : row.margin >= 10
+                          ? "text-amber-700"
+                          : "text-destructive";
+                  const label = new Date(`${row.month}-01T12:00:00`).toLocaleDateString(
+                    "de-DE-u-ca-gregory-nu-latn",
+                    { month: "short", year: "numeric" },
+                  );
+                  return (
+                    <tr key={row.month}>
+                      <td className="px-3 py-2 font-medium">{label}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.revenue)}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.costs)}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.contribution)}</td>
+                      <td className={`px-3 py-2 text-right font-semibold ${marginClass}`}>
+                        {row.margin == null ? "–" : `${formatNumber(row.margin)} %`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <p className="text-xs text-muted-foreground">
           Zugeordnete Rechnungen und Ausgaben werden direkt berücksichtigt. Historische,
           festgeschriebene Rechnungen bleiben GoBD-konform unverändert und werden nur dann
