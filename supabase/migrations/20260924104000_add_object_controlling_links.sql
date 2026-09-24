@@ -12,7 +12,7 @@ create index if not exists expenses_project_id_idx on public.expenses(project_id
 -- Safe historical backfill: only documents whose customer belongs to exactly one
 -- project of the same tenant can be assigned unambiguously.
 with unique_customer_project as (
-  select user_id, customer_id, min(id) as project_id
+  select user_id, customer_id, min(id::text)::uuid as project_id
   from public.projects
   where customer_id is not null
   group by user_id, customer_id
