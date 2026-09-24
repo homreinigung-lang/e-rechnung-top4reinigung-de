@@ -430,6 +430,30 @@ function ProjektDetail() {
     )
     .sort((a, b) => String(b.work_date).localeCompare(String(a.work_date)));
 
+  const monthEntries = timeEntries.filter(
+    (t) =>
+      String(t.work_date).startsWith(controllingMonth) &&
+      (t.entry_type ?? "work") === "work" &&
+      (t.approval_status ?? "approved") !== "rejected",
+  );
+  const actualHours = monthEntries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
+  const wageCosts = monthEntries.reduce(
+    (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
+    0,
+  );
+
+  const datedAssignments = assignments.filter((a) => Boolean(a.start_date));
+  const plannedHours =
+    datedAssignments.length > 0
+      ? datedAssignments
+          .filter((a) => {
+            const start = String(a.start_date ?? "");
+            const end = String(a.end_date ?? a.start_date ?? "");
+            return start <= monthEnd && end >= monthStart;
+          })
+          .reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0)
+      : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
+
   // Automatisch abgeleitete Eckdaten aus dem Raumbuch (Ergänzung zur KI-Zusammenfassung)
   const coveringTotals = new Map<string, number>();
   const usageTotals = new Map<string, number>();
