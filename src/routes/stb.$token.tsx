@@ -31,6 +31,7 @@ import {
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
 import { TableSummary } from "@/components/TableSummary";
+import { buildPayrollSummary } from "@/lib/payroll-export";
 import {
   buildCsvBlob,
   filterRowsByDateRange,
