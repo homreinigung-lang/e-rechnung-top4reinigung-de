@@ -30,6 +30,7 @@ import {
 import { STAIR_RATE_PER_FLOOR, WEEKS_PER_MONTH, WEEKS_PER_MONTH_LABEL } from "@/lib/constants";
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
+import { clearLvKalkulationHandoff, readLvKalkulationHandoff } from "@/lib/lv-kalkulation-handoff";
 import { saveFile } from "@/lib/download";
 import { useRaumbuch } from "@/lib/raumbuch";
 import { computeDocumentTotals } from "@/lib/document-totals";
@@ -192,6 +193,8 @@ type AiItem = {
 const KALK_SECTION = "Kalkulation";
 /** Bereich für Positionen, die aus der KI-/Grundriss-Analyse übernommen wurden. */
 const KI_SECTION = "KI-Analyse";
+/** Bereich für freigegebene Positionen aus der eigenständigen LV-Analyse. */
+const LV_ANALYSE_SECTION = "LV-Analyse";
 
 function KalkulationPage() {
   const navigate = useNavigate();
@@ -307,6 +310,46 @@ function KalkulationPage() {
   const [kiItems, setKiItems] = useState<AiItem[]>([]);
   /** Das Leistungsverzeichnis: einzige Quelle für Angebot, PDF und Speicherung. */
   const [lvItems, setLvItems] = useState<AiItem[]>([]);
+
+  // Direkte Übergabe aus der LV-Analyse: nur dort bewusst freigegebene und
+  // kalkulierte Positionen werden einmalig als neuer LV-Bereich übernommen.
+  useEffect(() => {
+    const handoff = readLvKalkulationHandoff();
+    if (!handoff || handoff.items.length === 0) return;
+
+    const stamp = Date.now();
+    const imported: AiItem[] = handoff.items.map((item, index) => ({
+      id: `lv-analysis-${stamp}-${index}`,
+      description: [
+        item.sourceItemNumber ? `Pos. ${item.sourceItemNumber}` : "",
+        item.description,
+        item.frequencyLabel ? `Intervall: ${item.frequencyLabel}` : "",
+      ]
+        .filter(Boolean)
+        .join(" – "),
+      quantity: String(item.quantity).replace(".", ","),
+      unit: item.unit || "Pauschal",
+      unit_price: String(item.unitPrice).replace(".", ","),
+      section: LV_ANALYSE_SECTION,
+      sourceLvItemId: null,
+    }));
+
+    setLvItems(imported);
+    const sourceTitle = handoff.sourceFile.replace(/\.[^.]+$/, "").trim();
+    if (sourceTitle) {
+      setCalcTitle((current) => current || `LV ${sourceTitle}`);
+      setProposalTitle((current) => current || sourceTitle);
+    }
+    setNote((current) => {
+      const line = `Quelle: LV-Analyse · ${handoff.sourceFile}`;
+      return current.includes(line) ? current : current.trim() ? `${current}\n${line}` : line;
+    });
+    clearLvKalkulationHandoff();
+    toast.success("LV-Analyse übernommen", {
+      description: `${imported.length} freigegebene Positionen stehen jetzt im Leistungsverzeichnis.`,
+    });
+  }, []);
+
   const analyze = useServerFn(analyzeCalculation);
   const aiSuggest = useMutation({
     mutationFn: async () => analyze({ data: { prompt: aiPrompt } }),
@@ -993,7 +1036,7 @@ function KalkulationPage() {
                 project_id: projectId,
                 user_id: userId,
                 position: index + 1,
-                section: KALK_SECTION,
+                section: pos.section || KALK_SECTION,
                 title: pos.description.slice(0, 120),
                 description: pos.description,
                 quantity: pos.quantity,
