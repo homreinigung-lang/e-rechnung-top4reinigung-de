@@ -725,6 +725,15 @@ export function Arbeitsplanung() {
           <Button
             type="button"
             variant="outline"
+            onClick={() => copyPreviousWeek.mutate()}
+            disabled={copyPreviousWeek.isPending}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            Vorwoche kopieren
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => saveAll.mutate()}
             disabled={saveAll.isPending || dirtyKeys.length === 0}
           >
