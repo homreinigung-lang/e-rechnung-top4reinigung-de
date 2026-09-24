@@ -93,7 +93,7 @@ function KartePage() {
           .order("name"),
         supabase
           .from("projects")
-          .select("id, name, customer_name, status, address_line, postal_code, city"),
+          .select("id, name, customer_id, customer_name, status, address_line, postal_code, city"),
         supabase
           .from("time_entries")
           .select("id, employee_name, work_date, location, project_id, entry_type, customer_id")
@@ -192,7 +192,13 @@ function KartePage() {
     }
 
     for (const p of data.projects) {
-      const address = buildAddress([p.address_line, p.postal_code, p.city]);
+      const customer = p.customer_id ? customerById.get(p.customer_id) : undefined;
+      // Auf der Karte ist der tatsächliche Einsatzort maßgeblich. Bei
+      // verknüpften Kunden wird deshalb der gepflegte Einsatzort genutzt;
+      // nur wenn keiner vorhanden ist, bleibt die Projektadresse der Fallback.
+      const customerSite = customer ? serviceAddress(customer) : "";
+      const address =
+        customerSite || buildAddress([p.address_line, p.postal_code, p.city]);
       if (!address) continue;
       list.push({
         id: `p-${p.id}`,
