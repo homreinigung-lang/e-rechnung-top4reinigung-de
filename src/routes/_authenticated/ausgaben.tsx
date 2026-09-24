@@ -63,6 +63,7 @@ type Form = {
   vat_amount: string;
   notes: string;
   receipt_url: string;
+  project_id: string;
 };
 
 const empty: Form = {
@@ -74,6 +75,7 @@ const empty: Form = {
   vat_amount: "",
   notes: "",
   receipt_url: "",
+  project_id: "",
 };
 
 function fileToDataUrl(file: File) {
