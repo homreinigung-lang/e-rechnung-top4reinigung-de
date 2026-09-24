@@ -9,7 +9,7 @@ import type { MapPoint } from "@/components/EinsatzKarte";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
-import { serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
+import { effectiveProjectAddress, serviceAddress } from "@/lib/maps";
 import { toast } from "sonner";
 import { MapPin, Users, FolderKanban, HardHat, Navigation, Plus, Trash2 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
@@ -193,12 +193,10 @@ function KartePage() {
 
     for (const p of data.projects) {
       const customer = p.customer_id ? customerById.get(p.customer_id) : undefined;
-      // Auf der Karte ist der tatsächliche Einsatzort maßgeblich. Bei
-      // verknüpften Kunden wird deshalb der gepflegte Einsatzort genutzt;
-      // nur wenn keiner vorhanden ist, bleibt die Projektadresse der Fallback.
-      const customerSite = customer ? serviceAddress(customer) : "";
-      const address =
-        customerSite || buildAddress([p.address_line, p.postal_code, p.city]);
+      // Jedes Projekt kann einen eigenen Einsatzort haben (z. B. mehrere
+      // Häuser derselben Hausverwaltung). Nur leere bzw. alte, aus der
+      // Rechnungsadresse kopierte Projektadressen fallen auf den Kundeneinsatzort zurück.
+      const address = effectiveProjectAddress(p, customer);
       if (!address) continue;
       list.push({
         id: `p-${p.id}`,
@@ -213,17 +211,15 @@ function KartePage() {
       if (e.entry_type && e.entry_type !== "work") continue;
       const project = e.project_id ? projectById.get(e.project_id) : undefined;
       const customer = e.customer_id ? customerById.get(e.customer_id) : undefined;
-      // Priorität: Einsatzort des Kunden (wie im Einsatz-Kalender) → Projektadresse → Freitext
-      const customerSite = customer ? serviceAddressOrBilling(customer) : "";
-      const address =
-        customerSite ||
-        (project
-          ? buildAddress([project.address_line, project.postal_code, project.city])
-          : buildAddress([e.location]));
+      // Für geplante Einsätze ist der Projekt-/Objektstandort maßgeblich.
+      // So bleiben mehrere Häuser eines Kunden sauber getrennt.
+      const projectSite = project ? effectiveProjectAddress(project, customer) : "";
+      const customerSite = customer ? serviceAddress(customer) : "";
+      const address = projectSite || customerSite || buildAddress([e.location]);
       if (!address) continue;
       const siteLabel =
-        (customer && serviceAddress(customer) && customer.service_note?.trim()) ||
         project?.name ||
+        (customerSite && customer?.service_note?.trim()) ||
         e.location ||
         customer?.company ||
         customer?.name ||
