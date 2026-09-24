@@ -312,6 +312,88 @@ function ProjekteIndex() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const projectCountByCustomer = new Map<string, number>();
+  for (const p of projects) {
+    if (!p.customer_id) continue;
+    projectCountByCustomer.set(
+      p.customer_id,
+      (projectCountByCustomer.get(p.customer_id) ?? 0) + 1,
+    );
+  }
+
+  const controllingRows = projects
+    .map((p) => {
+      const entries = controllingTimeEntries.filter(
+        (t) =>
+          t.project_id === p.id &&
+          (t.entry_type ?? "work") === "work" &&
+          (t.approval_status ?? "approved") !== "rejected",
+      );
+      const actualHours = entries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
+      const wageCosts = entries.reduce(
+        (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
+        0,
+      );
+      const directCosts = controllingExpenses
+        .filter((e) => e.project_id === p.id)
+        .reduce((sum, e) => sum + Number(e.net_amount || 0), 0);
+
+      const revenue = controllingDocuments
+        .filter((d) => {
+          const direct = d.project_id === p.id;
+          const historical =
+            !d.project_id &&
+            Boolean(p.customer_id) &&
+            d.customer_id === p.customer_id &&
+            projectCountByCustomer.get(p.customer_id!) === 1;
+          return direct || historical;
+        })
+        .filter((d) => String(d.status ?? "") !== "cancelled" && !d.is_storno)
+        .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
+
+      const assignments = controllingAssignments.filter((a) => a.project_id === p.id);
+      const datedAssignments = assignments.filter((a) => Boolean(a.start_date));
+      const plannedHours =
+        datedAssignments.length > 0
+          ? datedAssignments
+              .filter((a) => {
+                const start = String(a.start_date ?? "");
+                const end = String(a.end_date ?? a.start_date ?? "");
+                return start <= monthEnd && end >= monthStart;
+              })
+              .reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0)
+          : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
+
+      const totalCosts = wageCosts + directCosts;
+      const contribution = revenue - totalCosts;
+      const margin = revenue > 0 ? (contribution / revenue) * 100 : null;
+
+      return {
+        id: p.id,
+        name: p.name || "Ohne Namen",
+        customer: p.customer_name || "",
+        city: p.city || "",
+        revenue,
+        plannedHours,
+        actualHours,
+        totalCosts,
+        contribution,
+        margin,
+      };
+    })
+    .sort((a, b) => {
+      if (a.margin == null && b.margin == null) return b.revenue - a.revenue;
+      if (a.margin == null) return 1;
+      if (b.margin == null) return -1;
+      return b.margin - a.margin;
+    });
+
+  const portfolioRevenue = controllingRows.reduce((sum, r) => sum + r.revenue, 0);
+  const portfolioCosts = controllingRows.reduce((sum, r) => sum + r.totalCosts, 0);
+  const portfolioContribution = portfolioRevenue - portfolioCosts;
+  const portfolioMargin =
+    portfolioRevenue > 0 ? (portfolioContribution / portfolioRevenue) * 100 : null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
