@@ -24,6 +24,13 @@ export const Route = createFileRoute("/_authenticated/qm-reklamationen")({
   component: QmReklamationen,
 });
 
+type QmEvent = {
+  id: number;
+  event_type: string;
+  created_at: string;
+  details: Record<string, unknown>;
+};
+
 type QmCase = {
   id: string;
   customer_id: string | null;
@@ -106,7 +113,7 @@ function QmReklamationen() {
     queryFn: async () => {
       const { data, error } = await supabase.from("customers").select("id,name,company").order("name");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as QmEvent[];
     },
   });
 
@@ -134,7 +141,7 @@ function QmReklamationen() {
     queryFn: async () => {
       const { data, error } = await db.from("qm_case_events").select("*").eq("case_id", form.id).order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as QmEvent[];
     },
   });
 
@@ -483,7 +490,7 @@ function QmReklamationen() {
                 <p className="text-sm text-muted-foreground">Noch keine Verlaufseinträge.</p>
               ) : (
                 <div className="space-y-2">
-                  {events.slice(0, 12).map((event: any) => (
+                  {events.slice(0, 12).map((event) => (
                     <div key={event.id} className="text-sm">
                       <span className="font-medium">{event.event_type}</span>{" "}
                       <span className="text-muted-foreground">
