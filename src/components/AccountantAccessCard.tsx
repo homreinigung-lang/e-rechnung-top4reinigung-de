@@ -34,6 +34,7 @@ export function AccountantAccessCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [oneTimeCredential, setOneTimeCredential] = useState<{ accessId: string; accessCode: string; link: string } | null>(null);
   const createAccess = useServerFn(createAccountantAccess);
   const savePassword = useServerFn(setAccountantPassword);
   const sendInviteFn = useServerFn(sendAccountantInvite);
@@ -41,9 +42,10 @@ export function AccountantAccessCard() {
   const sendInvite = useMutation({
     mutationFn: async (vars: { id: string; email: string; password?: string }) =>
       sendInviteFn({ data: { ...vars, origin: window.location.origin } }),
-    onSuccess: async (res) => {
+    onSuccess: async (res, vars) => {
       await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
       setPassword("");
+      setOneTimeCredential({ accessId: vars.id, accessCode: res.accessCode, link: res.link });
       toast.info(`Versandauftrag für ${res.to} angenommen.`, {
         description: `Resend-ID: ${res.messageId}. Die Annahme bestätigt noch nicht die Zustellung; bitte auch den Spam-Ordner prüfen.`,
         duration: 12000,
@@ -71,9 +73,10 @@ export function AccountantAccessCard() {
 
   const create = useMutation({
     mutationFn: async () => createAccess({ data: { email, password } }),
-    onSuccess: async ({ token, accessCode }) => {
+    onSuccess: async ({ id, token, accessCode }) => {
       await queryClient.invalidateQueries({ queryKey: ["accountant_access"] });
       setPassword("");
+      setOneTimeCredential({ accessId: id, accessCode, link: linkFor(token) });
       try {
         await navigator.clipboard.writeText(linkFor(token));
       } catch {
@@ -153,6 +156,37 @@ export function AccountantAccessCard() {
           />
         </div>
       </div>
+
+      {oneTimeCredential && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+          <div className="font-medium">Passwort nur jetzt sichtbar</div>
+          <div className="mt-1 break-all font-mono text-lg">{oneTimeCredential.accessCode}</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => copy(oneTimeCredential.accessCode, "Passwort kopiert.")}
+            >
+              <Copy className="size-4" /> Passwort kopieren
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => copy(oneTimeCredential.link, "Link kopiert.")}
+            >
+              <Copy className="size-4" /> Link kopieren
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setOneTimeCredential(null)}>
+              Ausblenden
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Nach dem Ausblenden kann dieses Passwort nicht erneut aus der Datenbank gelesen werden.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => create.mutate()} disabled={create.isPending}>
