@@ -122,7 +122,7 @@ function downloadExcel(
   );
 }
 
-/** Erstellt eine druckfertige Stundenliste als PDF für die Lohnabrechnung. */
+/** Erstellt eine druckfertige Stundenliste als PDF für die Lohnvorbereitung. */
 async function exportHoursPdf(
   filename: string,
   title: string,
@@ -427,37 +427,23 @@ function AccountantPortal() {
   const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
   const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
 
-  /** Lohn-Sammelzeile je Mitarbeiter: Ist-Stunden, K- und U-Tage. */
-  const payrollRows: Table[] = Array.from(
-    timeEntries
-      .reduce((acc, t) => {
-        const name = String(t["employee_name"] || "Ohne Zuordnung");
-        const code = String(t["lohnart"] ?? "A");
-        const cur = acc.get(name) ?? {
-          Mitarbeiter: name,
-          "Personal-Nr.": String(t["personnel_number"] ?? ""),
-          Stunden: 0,
-          Lohn: 0,
-          "Kranktage (K)": 0,
-          "Urlaubstage (U)": 0,
-        };
-        if (code === "A" && isConfirmed(t)) {
-          cur["Stunden"] = (cur["Stunden"] as number) + num(t["hours"]);
-          cur["Lohn"] = (cur["Lohn"] as number) + num(t["hours"]) * num(t["hourly_rate"]);
-        }
-        if (isConfirmed(t) && code === "K")
-          cur["Kranktage (K)"] = (cur["Kranktage (K)"] as number) + 1;
-        if (isConfirmed(t) && code === "U")
-          cur["Urlaubstage (U)"] = (cur["Urlaubstage (U)"] as number) + 1;
-        acc.set(name, cur);
-        return acc;
-      }, new Map<string, Record<string, string | number>>())
-      .values(),
-  ).map((r) => ({
-    ...r,
-    Stunden: de(r["Stunden"] as number),
-    Lohn: de(r["Lohn"] as number),
-  })) as Table[];
+  /** Professionelle Lohnvorbereitung je Mitarbeiter. */
+  const payrollRows: Table[] = buildPayrollSummary(
+    timeEntries.map((t) => ({
+      employee_id: String(t["employee_id"] ?? ""),
+      employee_name: String(t["employee_name"] ?? ""),
+      personnel_number: String(t["personnel_number"] ?? ""),
+      contract_type: String(t["contract_type"] ?? ""),
+      weekly_hours: Number(t["weekly_hours"] ?? 0),
+      hourly_rate: Number(t["hourly_rate"] ?? 0),
+      work_date: String(t["work_date"] ?? ""),
+      hours: Number(t["hours"] ?? 0),
+      lohnart: String(t["lohnart"] ?? "A"),
+      entry_type: String(t["entry_type"] ?? "work"),
+      absence_reason: String(t["absence_reason"] ?? ""),
+      approval_status: String(t["approval_status"] ?? "approved"),
+    })),
+  );
 
   const netTotal = documents.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const vatTotal = documents.reduce((s, d) => s + num(d["vat_amount"]), 0);
@@ -664,9 +650,9 @@ function AccountantPortal() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows, { from, to })}
+              onClick={() => downloadCsv(`Lohnvorbereitung_${period}.csv`, payrollRows, { from, to })}
             >
-              <Download className="size-4" /> Lohnabrechnung (CSV)
+              <Download className="size-4" /> Lohnvorbereitung (CSV)
             </Button>
 
             <Button
@@ -679,7 +665,7 @@ function AccountantPortal() {
                     { title: "Rechnungen", rows: docRows },
                     { title: "Ausgaben", rows: expenseRows },
                     { title: "Stundenzettel", rows: timeRows },
-                    { title: "Lohnabrechnung", rows: payrollRows },
+                    { title: "Lohnvorbereitung", rows: payrollRows },
                   ],
                   { from, to },
                 )
@@ -777,7 +763,7 @@ function AccountantPortal() {
             <h3 className="mt-6 font-display text-sm font-semibold">Ausgaben</h3>
             <DataTable rows={expenseRows} empty="Keine Ausgaben im Zeitraum." />
             <h3 className="mt-6 font-display text-sm font-semibold">
-              Lohnabrechnung je Mitarbeiter
+              Lohnvorbereitung je Mitarbeiter
             </h3>
             <DataTable rows={payrollRows} empty="Keine Arbeitszeiten im Zeitraum." />
 
