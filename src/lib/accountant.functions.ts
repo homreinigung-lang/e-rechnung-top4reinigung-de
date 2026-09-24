@@ -133,6 +133,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .from("expenses")
         .select("*")
         .eq("user_id", access.user_id)
+        .is("deleted_at", null)
         .gte("expense_date", data.from)
         .lte("expense_date", data.to)
         .order("expense_date"),
