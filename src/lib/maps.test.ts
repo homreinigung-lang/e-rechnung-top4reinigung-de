@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { effectiveProjectAddress, effectiveProjectAddressParts } from "@/lib/maps";
+import { effectiveProjectAddress, effectiveProjectAddressParts, normalizeAddressKey } from "@/lib/maps";
 
 describe("effectiveProjectAddress", () => {
   const customer = {
@@ -35,5 +35,20 @@ describe("effectiveProjectAddress", () => {
 
   it("uses the customer service address only when the project has no own address", () => {
     expect(effectiveProjectAddress({}, customer)).toBe("Objektweg 10, 54321 Einsatzstadt");
+  });
+});
+
+
+describe("normalizeAddressKey", () => {
+  it("treats the same German address with or without country as identical", () => {
+    expect(normalizeAddressKey("Rossenstr 11, 66111 Saarbrücken, Deutschland")).toBe(
+      normalizeAddressKey("Rossenstr 11, 66111 Saarbrücken"),
+    );
+  });
+
+  it("normalizes common Straße variants", () => {
+    expect(normalizeAddressKey("Musterstraße 5, 66111 Saarbrücken")).toBe(
+      normalizeAddressKey("Musterstr. 5, 66111 Saarbrücken"),
+    );
   });
 });
