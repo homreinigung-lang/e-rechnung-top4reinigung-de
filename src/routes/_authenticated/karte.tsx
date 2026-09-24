@@ -236,7 +236,19 @@ function KartePage() {
         address,
       });
     }
-    return list;
+    // Ein physischer Einsatzort soll in der Standortliste nur einmal
+    // erscheinen – auch wenn Kunde, Projekt und Einsatz auf dieselbe Adresse
+    // verweisen. Die zuerst erzeugte, kanonische Standortzeile bleibt erhalten.
+    const uniqueByAddress = new Map<string, Omit<MapPoint, "lat" | "lon">>();
+    for (const point of list) {
+      const key = point.address
+        .trim()
+        .toLocaleLowerCase("de-DE")
+        .replace(/\\s+/g, " ")
+        .replace(/\\s*,\\s*/g, ",");
+      if (!uniqueByAddress.has(key)) uniqueByAddress.set(key, point);
+    }
+    return [...uniqueByAddress.values()];
   }, [data]);
 
   const addresses = useMemo(
