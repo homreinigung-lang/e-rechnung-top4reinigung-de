@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  Calculator,
   CheckCircle2,
   FileSearch,
   Loader2,
@@ -63,6 +65,7 @@ import {
   summarizeOwnCalculation,
 } from "@/lib/lv-analyse/calculation";
 import { LvPositionenTabelle } from "@/components/lv-analyse/LvPositionenTabelle";
+import { buildLvKalkulationHandoff, writeLvKalkulationHandoff } from "@/lib/lv-kalkulation-handoff";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import {
   buildCsv,
@@ -98,6 +101,7 @@ const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS) as LvItemCategory[];
 
 
 export default function LvAnalyse() {
+  const navigate = useNavigate();
   const runText = useServerFn(analyseLvDocument);
   const runScan = useServerFn(analyseLvScan);
 
@@ -340,6 +344,29 @@ export default function LvAnalyse() {
   const updateCalc = (item: LvNormalizedItem, patch: Partial<LvNormalizedItem["calculation"]>) =>
     update(item.id, { calculation: { ...item.calculation, ...patch } });
 
+  const transferToCalculation = () => {
+    if (!result || exportItems.length === 0) {
+      toast.error("Keine freigegebenen Positionen", {
+        description:
+          "Bitte zuerst die gewünschten LV-Positionen kalkulieren und freigeben.",
+      });
+      return;
+    }
+    const payload = buildLvKalkulationHandoff(result.fileName, exportItems);
+    if (payload.items.length === 0) {
+      toast.error("Keine kalkulierbaren Positionen", {
+        description:
+          "Für die Übergabe benötigt jede Position Menge und einen eigenen kalkulierten Preis.",
+      });
+      return;
+    }
+    writeLvKalkulationHandoff(payload);
+    toast.success("LV für Kalkulation vorbereitet", {
+      description: `${payload.items.length} Positionen werden in die Kalkulation übernommen.`,
+    });
+    void navigate({ to: "/kalkulation" });
+  };
+
   const runExport = async (kind: "csv" | "xlsx" | "pdf") => {
     if (!result) return;
     if (!exportReady) {
@@ -466,6 +493,13 @@ export default function LvAnalyse() {
                 onClick={() => void runExport("pdf")}
               >
                 <FileText className="mr-1 size-4" /> PDF-Bericht
+              </Button>
+              <Button
+                size="sm"
+                disabled={exportItems.length === 0 || exporting}
+                onClick={transferToCalculation}
+              >
+                <Calculator className="mr-1 size-4" /> In Kalkulation übernehmen
               </Button>
               {exporting && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
             </div>
