@@ -515,6 +515,36 @@ function AccountantPortal() {
             className="w-full"
           />
         </div>
+        <div className="flex flex-wrap gap-2 sm:col-span-3">
+          {[1, 2, 3, 4].map((q) => (
+            <Button
+              key={q}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const startMonth = (q - 1) * 3;
+                const start = new Date(Date.UTC(year, startMonth, 1));
+                const end = new Date(Date.UTC(year, startMonth + 3, 0));
+                setFrom(start.toISOString().slice(0, 10));
+                setTo(end.toISOString().slice(0, 10));
+              }}
+            >
+              Q{q} {year}
+            </Button>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setFrom(`${year}-01-01`);
+              setTo(`${year}-12-31`);
+            }}
+          >
+            Gesamtes Jahr {year}
+          </Button>
+        </div>
         <div className="sm:col-span-3">
           <Button onClick={() => report.mutate()} disabled={report.isPending || !code}>
             <Lock className="size-4" /> {report.isPending ? "Lädt…" : "Daten laden"}
