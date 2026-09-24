@@ -48,3 +48,60 @@ export function serviceAddressOrBilling(c: ServiceLocationSource | null | undefi
     })
   );
 }
+
+
+export type ProjectLocationSource = {
+  address_line?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+};
+
+/**
+ * Effektiver Arbeitsort eines Projekts.
+ *
+ * Regeln:
+ * - Eine explizit gepflegte Projektadresse hat Vorrang. So kann z. B. eine
+ *   Hausverwaltung mehrere Häuser mit unterschiedlichen Einsatzorten haben.
+ * - Alte Projekte, deren Adresse noch exakt der Rechnungsadresse des Kunden
+ *   entspricht, dürfen auf den separat gepflegten Kundeneinsatzort fallen.
+ * - Fehlt jede Projektadresse, dient der Kundeneinsatzort als Fallback.
+ */
+export function effectiveProjectAddressParts(
+  project: ProjectLocationSource | null | undefined,
+  customer: ServiceLocationSource | null | undefined,
+): ProjectLocationSource {
+  const p = {
+    address_line: project?.address_line ?? "",
+    postal_code: project?.postal_code ?? "",
+    city: project?.city ?? "",
+  };
+  const hasProjectAddress = Boolean(p.address_line || p.postal_code || p.city);
+  if (!customer) return p;
+
+  const billing = {
+    address_line: customer.address_line ?? "",
+    postal_code: customer.postal_code ?? "",
+    city: customer.city ?? "",
+  };
+  const service = {
+    address_line: customer.service_address_line ?? "",
+    postal_code: customer.service_postal_code ?? "",
+    city: customer.service_city ?? "",
+  };
+  const hasService = Boolean(service.address_line || service.postal_code || service.city);
+  const matchesOldBilling =
+    hasProjectAddress &&
+    p.address_line === billing.address_line &&
+    p.postal_code === billing.postal_code &&
+    p.city === billing.city;
+
+  if ((!hasProjectAddress || matchesOldBilling) && hasService) return service;
+  return p;
+}
+
+export function effectiveProjectAddress(
+  project: ProjectLocationSource | null | undefined,
+  customer: ServiceLocationSource | null | undefined,
+) {
+  return projectAddress(effectiveProjectAddressParts(project, customer));
+}

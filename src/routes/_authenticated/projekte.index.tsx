@@ -70,6 +70,9 @@ function ProjekteIndex() {
   const [name, setName] = useState("");
   const [mode, setMode] = useState<string>("floorplan");
   const [customerId, setCustomerId] = useState<string>("none");
+  const [projectAddressLine, setProjectAddressLine] = useState("");
+  const [projectPostalCode, setProjectPostalCode] = useState("");
+  const [projectCity, setProjectCity] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [step, setStep] = useState("");
@@ -164,9 +167,6 @@ function ProjekteIndex() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       const customer = customers.find((c) => c.id === customerId);
-      const hasServiceAddress = Boolean(
-        customer?.service_address_line || customer?.service_postal_code || customer?.service_city,
-      );
       setStep("Projekt wird angelegt …");
       const { data, error } = await supabase
         .from("projects")
@@ -178,15 +178,11 @@ function ProjekteIndex() {
           customer_name: customer ? customer.company || customer.name : "",
           contact_email: customer?.email ?? "",
           contact_phone: customer?.phone ?? "",
-          // Projektadresse = tatsächlicher Einsatzort. Nur wenn kein separater
-          // Einsatzort gepflegt ist, bleibt die Rechnungsadresse der Fallback.
-          address_line: hasServiceAddress
-            ? (customer?.service_address_line ?? "")
-            : (customer?.address_line ?? ""),
-          postal_code: hasServiceAddress
-            ? (customer?.service_postal_code ?? "")
-            : (customer?.postal_code ?? ""),
-          city: hasServiceAddress ? (customer?.service_city ?? "") : (customer?.city ?? ""),
+          // Eigener Objekt-/Einsatzort pro Projekt. Dadurch können Kunden wie
+          // Hausverwaltungen beliebig viele Häuser mit eigenen Adressen haben.
+          address_line: projectAddressLine.trim(),
+          postal_code: projectPostalCode.trim(),
+          city: projectCity.trim(),
         })
         .select("id")
         .single();
@@ -227,6 +223,9 @@ function ProjekteIndex() {
       setOpen(false);
       setName("");
       setCustomerId("none");
+      setProjectAddressLine("");
+      setProjectPostalCode("");
+      setProjectCity("");
       setFile(null);
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       if (scan) {
@@ -439,7 +438,16 @@ function ProjekteIndex() {
               </div>
               <div className="space-y-2">
                 <Label>Kunde (optional)</Label>
-                <Select value={customerId} onValueChange={setCustomerId}>
+                <Select
+                  value={customerId}
+                  onValueChange={(value) => {
+                    setCustomerId(value);
+                    const customer = customers.find((item) => item.id === value);
+                    setProjectAddressLine(customer?.service_address_line ?? "");
+                    setProjectPostalCode(customer?.service_postal_code ?? "");
+                    setProjectCity(customer?.service_city ?? "");
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Kunde wählen" />
                   </SelectTrigger>
@@ -452,6 +460,41 @@ function ProjekteIndex() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="rounded-md border p-3">
+                <p className="mb-3 text-sm font-semibold">Einsatzort dieses Projekts / Objekts</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="p-address">Straße und Hausnummer</Label>
+                    <Input
+                      id="p-address"
+                      value={projectAddressLine}
+                      onChange={(e) => setProjectAddressLine(e.target.value)}
+                      placeholder="z. B. Saarstahl Völklingen Tor 1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="p-postal">PLZ</Label>
+                    <Input
+                      id="p-postal"
+                      value={projectPostalCode}
+                      onChange={(e) => setProjectPostalCode(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="p-city">Ort</Label>
+                    <Input
+                      id="p-city"
+                      value={projectCity}
+                      onChange={(e) => setProjectCity(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Der Einsatzort wird pro Projekt gespeichert. So können z. B. bei einer
+                  Hausverwaltung mehrere Häuser mit unterschiedlichen Adressen angelegt werden.
+                </p>
               </div>
 
               <div className="space-y-2">

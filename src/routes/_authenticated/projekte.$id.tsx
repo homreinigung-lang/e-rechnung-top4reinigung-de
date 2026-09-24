@@ -45,6 +45,7 @@ import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { modeLabel } from "./projekte.index";
 import { plannedHoursForMonth, revenueForMonth } from "@/lib/object-controlling";
+import { effectiveProjectAddressParts } from "@/lib/maps";
 
 export const Route = createFileRoute("/_authenticated/projekte/$id")({
   head: () => ({
@@ -461,32 +462,7 @@ function ProjektDetail() {
 
   if (!project) return <p className="text-muted-foreground">Projekt wird geladen …</p>;
 
-  const customerHasServiceAddress = Boolean(
-    projectCustomer?.service_address_line ||
-      projectCustomer?.service_postal_code ||
-      projectCustomer?.service_city,
-  );
-  const projectStillUsesBillingAddress =
-    Boolean(projectCustomer) &&
-    String(project.address_line ?? "") === String(projectCustomer?.address_line ?? "") &&
-    String(project.postal_code ?? "") === String(projectCustomer?.postal_code ?? "") &&
-    String(project.city ?? "") === String(projectCustomer?.city ?? "");
-
-  // Bestehende Projekte, die noch exakt die alte Kunden-Rechnungsadresse
-  // enthalten, zeigen den bereits gepflegten Einsatzort. Eine bewusst
-  // abweichende Projektadresse bleibt unverändert.
-  const effectiveProjectAddress =
-    customerHasServiceAddress && projectStillUsesBillingAddress
-      ? {
-          address_line: projectCustomer?.service_address_line ?? "",
-          postal_code: projectCustomer?.service_postal_code ?? "",
-          city: projectCustomer?.service_city ?? "",
-        }
-      : {
-          address_line: project.address_line ?? "",
-          postal_code: project.postal_code ?? "",
-          city: project.city ?? "",
-        };
+  const effectiveProjectAddress = effectiveProjectAddressParts(project, projectCustomer);
 
   const isTender = project.mode === "tender";
   const totalSqm = rooms.reduce((sum, r) => sum + Number(r.area_sqm || 0), 0);
