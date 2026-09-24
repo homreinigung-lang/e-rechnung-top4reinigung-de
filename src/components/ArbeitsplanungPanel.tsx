@@ -753,10 +753,19 @@ export function Arbeitsplanung() {
           <Button
             type="button"
             onClick={async () => {
+              if (planningConflicts.length > 0) {
+                toast.error("Woche kann wegen Planungs-Konflikten nicht freigegeben werden.");
+                return;
+              }
               if (dirtyKeys.length > 0) await saveAll.mutateAsync();
               releaseWeek.mutate();
             }}
-            disabled={releaseLoading || releaseWeek.isPending || saveAll.isPending}
+            disabled={
+              releaseLoading ||
+              releaseWeek.isPending ||
+              saveAll.isPending ||
+              planningConflicts.length > 0
+            }
           >
             <Send className="mr-2 h-4 w-4" />
             {release ? "Erneut freigeben" : "Woche freigeben"}
