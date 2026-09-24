@@ -955,8 +955,10 @@ function DokumentDetail() {
       ...f,
       customer_id: c.id,
       project_id:
-        data!.projects.some((p) => p.id === f["project_id"] && p.customer_id === c.id)
-          ? f["project_id"]
+        data!.projects.some(
+          (p) => p.id === String(f["project_id"] ?? "") && p.customer_id === c.id,
+        )
+          ? String(f["project_id"] ?? "")
           : null,
       customer_type: c.company?.trim() ? "firma" : "privat",
       customer_number: (c as { customer_number?: string }).customer_number ?? "",
