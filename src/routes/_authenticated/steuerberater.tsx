@@ -23,6 +23,7 @@ import {
   ShieldOff,
 } from "lucide-react";
 import { buildDatevExtf, type DatevAccount, type DatevChart } from "@/lib/datev-extf";
+import { automaticExpenseAccount } from "@/lib/datev-account-mapping";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
@@ -313,13 +314,6 @@ function Steuerberater() {
     setBeraternummer(accountingSettings.datev_beraternummer ?? "");
     setMandantennummer(accountingSettings.datev_mandantennummer ?? "");
   }, [accountingSettings]);
-  function automaticExpenseAccount(category: string, selectedChart: DatevChart) {
-    const normalized = category.trim().toLowerCase();
-    if (normalized === "löhne" || normalized === "loehne") return selectedChart === "SKR03" ? "4110" : "6010";
-    if (normalized === "reinigungsmittel") return selectedChart === "SKR03" ? "4250" : "6330";
-    if (normalized === "versicherung" || normalized === "versicherungen") return selectedChart === "SKR03" ? "4360" : "6400";
-    return selectedChart === "SKR03" ? "4900" : "6300";
-  }
   useEffect(() => {
     const next: Record<string, string> = {};
     for (const category of expenseCategories) {

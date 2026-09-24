@@ -8,6 +8,7 @@ import {
   getAccountantReceiptUrl,
   getAccountantReport,
   getAccountantDatevSettings,
+  getAccountantDatevExport,
   saveAccountantDatevSettings,
   type Row,
 } from "@/lib/accountant.functions";
@@ -280,6 +281,17 @@ function AccountantPortal() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const fetchDatevExport = useServerFn(getAccountantDatevExport);
+  const datevExport = useMutation({
+    mutationFn: () => fetchDatevExport({ data: { token, code, from, to } }),
+    onSuccess: async (value) => {
+      const binary = atob(value.base64);
+      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+      await saveFile(new Blob([buffer], { type: "text/csv" }), value.filename);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const fetchReport = useServerFn(getAccountantReport);
   const report = useMutation({
     mutationFn: () => fetchReport({ data: { token, code, from, to } }),
@@ -531,6 +543,13 @@ function AccountantPortal() {
             )}
           </section>
           <section className="no-print flex flex-wrap gap-2">
+            <Button
+              onClick={() => datevExport.mutate()}
+              disabled={datevExport.isPending || !datevSettings.isSuccess}
+            >
+              {datevExport.isPending ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              DATEV-Export (EXTF)
+            </Button>
             <Button
               variant="outline"
               onClick={() => downloadCsv(`Rechnungen_${period}.csv`, docRows, { from, to })}
