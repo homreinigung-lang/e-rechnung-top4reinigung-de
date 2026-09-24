@@ -251,7 +251,7 @@ export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
     datev_beraternummer: string; datev_mandantennummer: string;
   }) => data)
   .handler(async ({ data }): Promise<AccountantDatevSettings> => {
-    // Validate before any privileged database write; accept only the three DATEV fields.
+    // Validate before any privileged database write; accept only the three visible DATEV fields.
     if (data.chart !== "SKR03" && data.chart !== "SKR04") {
       throw new Error("Bitte SKR03 oder SKR04 auswählen.");
     }
@@ -262,6 +262,7 @@ export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
     }
     const { verifyAccountantAccess } = await import("./accountant-access.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { buildAutomaticExpenseMappings } = await import("./datev-account-mapping");
     const accountingDb = supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient;
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
     const { data: existing, error: readError } = await accountingDb
@@ -270,26 +271,138 @@ export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
       .eq("user_id", access.user_id)
       .maybeSingle();
     if (readError) throw new Error("DATEV-Einstellungen konnten nicht geprüft werden.");
+
     const values: Pick<AccountantDatevSettings, "chart" | "datev_beraternummer" | "datev_mandantennummer"> & { chart: "SKR03" | "SKR04" } = {
       chart: data.chart,
       datev_beraternummer: beraternummer,
       datev_mandantennummer: mandantennummer,
     };
-    // Preserve the current fiscal year and every field outside DATEV settings.
+
+    let fiscal_year: number;
     if (existing) {
+      fiscal_year = existing.fiscal_year;
       const { error } = await accountingDb.from("company_accounting_settings")
         .update(values).eq("user_id", access.user_id);
       if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
-      return { ...values, fiscal_year: existing.fiscal_year };
+    } else {
+      const { data: company, error: companyError } = await supabaseAdmin.from("company_settings")
+        .select("user_id").eq("user_id", access.user_id).maybeSingle();
+      if (companyError || !company) throw new Error("Mandant nicht gefunden.");
+      fiscal_year = new Date().getUTCFullYear();
+      const { error } = await accountingDb.from("company_accounting_settings")
+        .insert({ ...values, user_id: access.user_id, fiscal_year });
+      if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
     }
-    const { data: company, error: companyError } = await supabaseAdmin.from("company_settings")
-      .select("user_id").eq("user_id", access.user_id).maybeSingle();
-    if (companyError || !company) throw new Error("Mandant nicht gefunden.");
-    const fiscal_year = new Date().getUTCFullYear();
-    const { error } = await accountingDb.from("company_accounting_settings")
-      .insert({ ...values, user_id: access.user_id, fiscal_year });
-    if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
+
+    // Account mapping stays invisible in the portal: selecting SKR03/SKR04 creates/updates it automatically.
+    const { data: expenseCategories, error: expenseError } = await supabaseAdmin
+      .from("expenses")
+      .select("category")
+      .eq("user_id", access.user_id)
+      .is("deleted_at", null);
+    if (expenseError) throw new Error("DATEV-Kontenzuordnung konnte nicht ermittelt werden.");
+
+    const categories = [...new Set((expenseCategories ?? []).map((row) => String(row.category ?? "")))];
+    const automaticMappings = buildAutomaticExpenseMappings(categories, data.chart);
+    if (categories.length > 0) {
+      const { error: mappingError } = await accountingDb.from("company_account_mappings").upsert(
+        categories.map((category) => ({
+          user_id: access.user_id,
+          mapping_key: "expense:" + category,
+          chart: data.chart,
+          fiscal_year,
+          account_number: automaticMappings[category],
+        })),
+        { onConflict: "user_id,mapping_key" },
+      );
+      if (mappingError) throw new Error("DATEV-Kontenzuordnung konnte nicht gespeichert werden.");
+    }
+
     return { ...values, fiscal_year };
+  });
+
+export type AccountantDatevExport = {
+  filename: string;
+  base64: string;
+};
+
+export const getAccountantDatevExport = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; code: string; from: string; to: string }) => data)
+  .handler(async ({ data }): Promise<AccountantDatevExport> => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.from) || !/^\d{4}-\d{2}-\d{2}$/.test(data.to) || data.from > data.to) {
+      throw new Error("Ungültiger DATEV-Zeitraum.");
+    }
+
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { buildDatevExtf } = await import("./datev-extf");
+    const { buildAutomaticExpenseMappings } = await import("./datev-account-mapping");
+    const accountingDb = supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient;
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
+
+    const { data: settings, error: settingsError } = await accountingDb
+      .from("company_accounting_settings")
+      .select("chart,fiscal_year,datev_beraternummer,datev_mandantennummer")
+      .eq("user_id", access.user_id)
+      .maybeSingle();
+    if (settingsError) throw new Error("DATEV-Einstellungen konnten nicht geladen werden.");
+    if (!settings || (settings.chart !== "SKR03" && settings.chart !== "SKR04")) {
+      throw new Error("DATEV-Einstellungen zuerst speichern.");
+    }
+
+    const [documents, expenses, accounts] = await Promise.all([
+      supabaseAdmin
+        .from("documents")
+        .select("issue_date,number,total,net_total,vat_amount,tax_mode,customer_company,customer_name,status,cancels_document_id")
+        .eq("user_id", access.user_id)
+        .eq("type", "invoice")
+        .is("deleted_at", null)
+        .in("status", ["sent", "paid", "cancelled"])
+        .gte("issue_date", data.from)
+        .lte("issue_date", data.to)
+        .order("issue_date"),
+      supabaseAdmin
+        .from("expenses")
+        .select("expense_date,document_number,supplier,gross_amount,category,net_amount,vat_amount")
+        .eq("user_id", access.user_id)
+        .is("deleted_at", null)
+        .gte("expense_date", data.from)
+        .lte("expense_date", data.to)
+        .order("expense_date"),
+      accountingDb
+        .from("accounting_chart_accounts")
+        .select("chart,fiscal_year,account_number,category,account_name")
+        .eq("chart", settings.chart)
+        .eq("fiscal_year", settings.fiscal_year)
+        .eq("is_active", true),
+    ]);
+    if (documents.error || expenses.error || accounts.error) {
+      throw new Error("DATEV-Daten konnten nicht geladen werden.");
+    }
+
+    const categories = [...new Set((expenses.data ?? []).map((row) => String(row.category ?? "")))];
+    const expenseAccounts = buildAutomaticExpenseMappings(categories, settings.chart);
+    const bytes = buildDatevExtf(
+      (documents.data ?? []) as unknown as Parameters<typeof buildDatevExtf>[0],
+      (expenses.data ?? []) as unknown as Parameters<typeof buildDatevExtf>[1],
+      {
+        chart: settings.chart,
+        fiscalYear: settings.fiscal_year,
+        beraternummer: settings.datev_beraternummer ?? "",
+        mandantennummer: settings.datev_mandantennummer ?? "",
+        expenseAccounts,
+        from: data.from,
+        to: data.to,
+        accounts: (accounts.data ?? []) as unknown as Parameters<typeof buildDatevExtf>[2]["accounts"],
+      },
+    );
+
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return {
+      filename: `EXTF_Buchungsstapel_${data.from}_${data.to}.csv`,
+      base64: btoa(binary),
+    };
   });
 
 /** Liefert eine zeitlich begrenzte Download-Adresse für den Beleg einer Ausgabe. */
