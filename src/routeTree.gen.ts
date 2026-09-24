@@ -34,6 +34,7 @@ import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenti
 import { Route as AuthenticatedNachrichtenRouteImport } from './routes/_authenticated/nachrichten'
 import { Route as AuthenticatedPapierkorbRouteImport } from './routes/_authenticated/papierkorb'
 import { Route as AuthenticatedProfilRouteImport } from './routes/_authenticated/profil'
+import { Route as AuthenticatedQmReklamationenRouteImport } from './routes/_authenticated/qm-reklamationen'
 import { Route as AuthenticatedSicherheitRouteImport } from './routes/_authenticated/sicherheit'
 import { Route as AuthenticatedSteuerberaterRouteImport } from './routes/_authenticated/steuerberater'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
@@ -193,6 +194,12 @@ const AuthenticatedProfilRoute = AuthenticatedProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedQmReklamationenRoute =
+  AuthenticatedQmReklamationenRouteImport.update({
+    id: '/qm-reklamationen',
+    path: '/qm-reklamationen',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSicherheitRoute = AuthenticatedSicherheitRouteImport.update({
   id: '/sicherheit',
   path: '/sicherheit',
@@ -355,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/profil': typeof AuthenticatedProfilRoute
+  '/qm-reklamationen': typeof AuthenticatedQmReklamationenRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRouteWithChildren
   '/team': typeof AuthenticatedTeamRoute
@@ -404,6 +412,7 @@ export interface FileRoutesByTo {
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/profil': typeof AuthenticatedProfilRoute
+  '/qm-reklamationen': typeof AuthenticatedQmReklamationenRoute
   '/sicherheit': typeof AuthenticatedSicherheitRoute
   '/steuerberater': typeof AuthenticatedSteuerberaterRouteWithChildren
   '/team': typeof AuthenticatedTeamRoute
@@ -457,6 +466,7 @@ export interface FileRoutesById {
   '/_authenticated/nachrichten': typeof AuthenticatedNachrichtenRoute
   '/_authenticated/papierkorb': typeof AuthenticatedPapierkorbRoute
   '/_authenticated/profil': typeof AuthenticatedProfilRoute
+  '/_authenticated/qm-reklamationen': typeof AuthenticatedQmReklamationenRoute
   '/_authenticated/sicherheit': typeof AuthenticatedSicherheitRoute
   '/_authenticated/steuerberater': typeof AuthenticatedSteuerberaterRouteWithChildren
   '/_authenticated/team': typeof AuthenticatedTeamRoute
@@ -510,6 +520,7 @@ export interface FileRouteTypes {
     | '/nachrichten'
     | '/papierkorb'
     | '/profil'
+    | '/qm-reklamationen'
     | '/sicherheit'
     | '/steuerberater'
     | '/team'
@@ -559,6 +570,7 @@ export interface FileRouteTypes {
     | '/nachrichten'
     | '/papierkorb'
     | '/profil'
+    | '/qm-reklamationen'
     | '/sicherheit'
     | '/steuerberater'
     | '/team'
@@ -611,6 +623,7 @@ export interface FileRouteTypes {
     | '/_authenticated/nachrichten'
     | '/_authenticated/papierkorb'
     | '/_authenticated/profil'
+    | '/_authenticated/qm-reklamationen'
     | '/_authenticated/sicherheit'
     | '/_authenticated/steuerberater'
     | '/_authenticated/team'
@@ -826,6 +839,13 @@ declare module '@tanstack/react-router' {
       path: '/profil'
       fullPath: '/profil'
       preLoaderRoute: typeof AuthenticatedProfilRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/qm-reklamationen': {
+      id: '/_authenticated/qm-reklamationen'
+      path: '/qm-reklamationen'
+      fullPath: '/qm-reklamationen'
+      preLoaderRoute: typeof AuthenticatedQmReklamationenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sicherheit': {
@@ -1059,6 +1079,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNachrichtenRoute: typeof AuthenticatedNachrichtenRoute
   AuthenticatedPapierkorbRoute: typeof AuthenticatedPapierkorbRoute
   AuthenticatedProfilRoute: typeof AuthenticatedProfilRoute
+  AuthenticatedQmReklamationenRoute: typeof AuthenticatedQmReklamationenRoute
   AuthenticatedSicherheitRoute: typeof AuthenticatedSicherheitRoute
   AuthenticatedSteuerberaterRoute: typeof AuthenticatedSteuerberaterRouteWithChildren
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
@@ -1090,6 +1111,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNachrichtenRoute: AuthenticatedNachrichtenRoute,
   AuthenticatedPapierkorbRoute: AuthenticatedPapierkorbRoute,
   AuthenticatedProfilRoute: AuthenticatedProfilRoute,
+  AuthenticatedQmReklamationenRoute: AuthenticatedQmReklamationenRoute,
   AuthenticatedSicherheitRoute: AuthenticatedSicherheitRoute,
   AuthenticatedSteuerberaterRoute: AuthenticatedSteuerberaterRouteWithChildren,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,

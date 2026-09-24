@@ -46,6 +46,7 @@ jobs:
         run: |
           if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
             git status --short
+            git diff -- src/routeTree.gen.ts || true
             echo "Build or install changed repository files. Commit generated routes during development."
             exit 1
           fi
