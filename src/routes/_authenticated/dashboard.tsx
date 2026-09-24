@@ -14,6 +14,7 @@ import { computeEuer } from "@/lib/euer";
 import { fetchEuerDocuments, fetchEuerExpenses } from "@/lib/euer-data";
 import { EuerChart } from "@/components/EuerChart";
 import { FinanzDashboard } from "@/components/FinanzDashboard";
+import { ManagementDashboard } from "@/components/ManagementDashboard";
 import { EinsaetzeHeute } from "@/components/EinsaetzeHeute";
 import { TrialBanner } from "@/components/TrialBanner";
 import { createDocument } from "@/lib/create-document";
@@ -358,6 +359,8 @@ function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      <ManagementDashboard />
 
       {/* 2. Operativer Bereich: heutige Einsätze */}
       <EinsaetzeHeute />
