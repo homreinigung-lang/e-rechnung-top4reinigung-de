@@ -562,9 +562,9 @@ export function Arbeitsplanung() {
           for (let j = i + 1; j < withTimes.length; j += 1) {
             const a = withTimes[i]!;
             const b = withTimes[j]!;
-            let aStart = toMinutes(a.time!.start);
+            const aStart = toMinutes(a.time!.start);
             let aEnd = toMinutes(a.time!.end);
-            let bStart = toMinutes(b.time!.start);
+            const bStart = toMinutes(b.time!.start);
             let bEnd = toMinutes(b.time!.end);
             if (aEnd <= aStart) aEnd += 1440;
             if (bEnd <= bStart) bEnd += 1440;
