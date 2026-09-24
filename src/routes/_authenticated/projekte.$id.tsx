@@ -194,6 +194,10 @@ function ProjektDetail() {
   )
     .toISOString()
     .slice(0, 10);
+  const trendStartDate = new Date(
+    Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() - 5, 1),
+  );
+  const trendStart = trendStartDate.toISOString().slice(0, 10);
 
   const customerId = project?.customer_id ?? null;
   const { data: customerProjects = [] } = useQuery({
@@ -217,7 +221,7 @@ function ProjektDetail() {
         .select("id,type,status,issue_date,net_total,total,is_storno,project_id,customer_id")
         .eq("type", "invoice")
         .is("deleted_at", null)
-        .gte("issue_date", monthStart)
+        .gte("issue_date", trendStart)
         .lte("issue_date", monthEnd);
       if (error) throw error;
       return data ?? [];
@@ -232,7 +236,7 @@ function ProjektDetail() {
         .select("id,expense_date,net_amount,gross_amount,category")
         .eq("project_id", id)
         .is("deleted_at", null)
-        .gte("expense_date", monthStart)
+        .gte("expense_date", trendStart)
         .lte("expense_date", monthEnd);
       if (error) throw error;
       return data ?? [];
@@ -470,6 +474,7 @@ function ProjektDetail() {
   const uniqueCustomerObject =
     Boolean(customerId) && customerProjects.length === 1 && customerProjects[0]?.id === id;
   const revenueNet = controllingDocuments
+    .filter((d) => String(d.issue_date).startsWith(controllingMonth))
     .filter((d) => {
       const linkedToObject = d.project_id === id;
       const historicalUniqueCustomerMatch =
@@ -481,10 +486,9 @@ function ProjektDetail() {
       );
     })
     .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
-  const materialAndOtherCosts = controllingExpenses.reduce(
-    (sum, e) => sum + Number(e.net_amount ?? 0),
-    0,
-  );
+  const materialAndOtherCosts = controllingExpenses
+    .filter((e) => String(e.expense_date).startsWith(controllingMonth))
+    .reduce((sum, e) => sum + Number(e.net_amount ?? 0), 0);
   const totalCosts = wageCosts + materialAndOtherCosts;
   const contribution = revenueNet - totalCosts;
   const marginPercent = revenueNet > 0 ? (contribution / revenueNet) * 100 : null;
@@ -499,6 +503,54 @@ function ProjektDetail() {
         : marginPercent >= 10
           ? { label: "Gelb · 10–25 %", className: "text-amber-700" }
           : { label: "Rot · < 10 %", className: "text-destructive" };
+
+  const trendMonths = Array.from({ length: 6 }, (_, index) => {
+    const d = new Date(
+      Date.UTC(
+        monthDate.getUTCFullYear(),
+        monthDate.getUTCMonth() - (5 - index),
+        1,
+      ),
+    );
+    return d.toISOString().slice(0, 7);
+  });
+  const trendRows = trendMonths.map((month) => {
+    const monthRevenue = controllingDocuments
+      .filter((d) => String(d.issue_date).startsWith(month))
+      .filter((d) => {
+        const direct = d.project_id === id;
+        const historical =
+          !d.project_id && uniqueCustomerObject && d.customer_id === customerId;
+        return (
+          (direct || historical) &&
+          String(d.status ?? "") !== "cancelled" &&
+          !d.is_storno
+        );
+      })
+      .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
+    const monthEntriesForTrend = timeEntries.filter(
+      (t) =>
+        String(t.work_date).startsWith(month) &&
+        (t.entry_type ?? "work") === "work" &&
+        (t.approval_status ?? "approved") !== "rejected",
+    );
+    const monthWageCosts = monthEntriesForTrend.reduce(
+      (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
+      0,
+    );
+    const monthOtherCosts = controllingExpenses
+      .filter((e) => String(e.expense_date).startsWith(month))
+      .reduce((sum, e) => sum + Number(e.net_amount ?? 0), 0);
+    const costs = monthWageCosts + monthOtherCosts;
+    const contributionValue = monthRevenue - costs;
+    return {
+      month,
+      revenue: monthRevenue,
+      costs,
+      contribution: contributionValue,
+      margin: monthRevenue > 0 ? (contributionValue / monthRevenue) * 100 : null,
+    };
+  });
 
   // Automatisch abgeleitete Eckdaten aus dem Raumbuch (Ergänzung zur KI-Zusammenfassung)
   const coveringTotals = new Map<string, number>();
@@ -668,6 +720,55 @@ function ProjektDetail() {
           <div className="rounded-lg border p-4">
             <div className="text-xs text-muted-foreground">Umsatz / Ist-Stunde</div>
             <div className="mt-1 text-2xl font-semibold">{formatMoney(revenuePerHour)}</div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div>
+            <h3 className="font-medium">6-Monats-Vergleich</h3>
+            <p className="text-xs text-muted-foreground">
+              Entwicklung von Umsatz, Kosten, Deckungsbeitrag und Marge.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[620px] text-sm">
+              <thead className="bg-muted/40 text-left">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Monat</th>
+                  <th className="px-3 py-2 text-right font-medium">Umsatz</th>
+                  <th className="px-3 py-2 text-right font-medium">Kosten</th>
+                  <th className="px-3 py-2 text-right font-medium">DB</th>
+                  <th className="px-3 py-2 text-right font-medium">Marge</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {trendRows.map((row) => {
+                  const marginClass =
+                    row.margin == null
+                      ? "text-muted-foreground"
+                      : row.margin >= 25
+                        ? "text-emerald-700"
+                        : row.margin >= 10
+                          ? "text-amber-700"
+                          : "text-destructive";
+                  const label = new Date(`${row.month}-01T12:00:00`).toLocaleDateString(
+                    "de-DE-u-ca-gregory-nu-latn",
+                    { month: "short", year: "numeric" },
+                  );
+                  return (
+                    <tr key={row.month}>
+                      <td className="px-3 py-2 font-medium">{label}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.revenue)}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.costs)}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.contribution)}</td>
+                      <td className={`px-3 py-2 text-right font-semibold ${marginClass}`}>
+                        {row.margin == null ? "–" : `${formatNumber(row.margin)} %`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 

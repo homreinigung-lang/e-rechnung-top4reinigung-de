@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -27,7 +28,7 @@ import {
 import { toast } from "sonner";
 import { FileText, FolderKanban, Loader2, Plus, Upload, X } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/projekte/")({
   head: () => ({
@@ -73,6 +74,8 @@ function ProjekteIndex() {
   const [step, setStep] = useState("");
   const [scanResult, setScanResult] = useState<ScannedProject | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [controllingMonth, setControllingMonth] = useState(new Date().toISOString().slice(0, 7));
+  const db = supabase as SupabaseClient;
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -92,6 +95,67 @@ function ProjekteIndex() {
       const { data, error } = await supabase.from("customers").select("*").order("name");
       if (error) throw error;
       return data;
+    },
+  });
+
+  const monthStart = `${controllingMonth}-01`;
+  const monthDate = new Date(`${monthStart}T12:00:00`);
+  const monthEnd = new Date(
+    Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 0),
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: controllingDocuments = [] } = useQuery({
+    queryKey: ["projects_controlling_documents", controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("documents")
+        .select("id,status,issue_date,net_total,total,is_storno,project_id,customer_id")
+        .eq("type", "invoice")
+        .is("deleted_at", null)
+        .gte("issue_date", monthStart)
+        .lte("issue_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingExpenses = [] } = useQuery({
+    queryKey: ["projects_controlling_expenses", controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("expenses")
+        .select("id,expense_date,net_amount,project_id")
+        .is("deleted_at", null)
+        .gte("expense_date", monthStart)
+        .lte("expense_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingTimeEntries = [] } = useQuery({
+    queryKey: ["projects_controlling_time_entries", controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("id,project_id,work_date,hours,hourly_rate,entry_type,approval_status")
+        .gte("work_date", monthStart)
+        .lte("work_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingAssignments = [] } = useQuery({
+    queryKey: ["projects_controlling_assignments", controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .select("id,project_id,hours_per_week,start_date,end_date");
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -248,6 +312,88 @@ function ProjekteIndex() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const projectCountByCustomer = new Map<string, number>();
+  for (const p of projects) {
+    if (!p.customer_id) continue;
+    projectCountByCustomer.set(
+      p.customer_id,
+      (projectCountByCustomer.get(p.customer_id) ?? 0) + 1,
+    );
+  }
+
+  const controllingRows = projects
+    .map((p) => {
+      const entries = controllingTimeEntries.filter(
+        (t) =>
+          t.project_id === p.id &&
+          (t.entry_type ?? "work") === "work" &&
+          (t.approval_status ?? "approved") !== "rejected",
+      );
+      const actualHours = entries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
+      const wageCosts = entries.reduce(
+        (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
+        0,
+      );
+      const directCosts = controllingExpenses
+        .filter((e) => e.project_id === p.id)
+        .reduce((sum, e) => sum + Number(e.net_amount || 0), 0);
+
+      const revenue = controllingDocuments
+        .filter((d) => {
+          const direct = d.project_id === p.id;
+          const historical =
+            !d.project_id &&
+            Boolean(p.customer_id) &&
+            d.customer_id === p.customer_id &&
+            projectCountByCustomer.get(p.customer_id!) === 1;
+          return direct || historical;
+        })
+        .filter((d) => String(d.status ?? "") !== "cancelled" && !d.is_storno)
+        .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
+
+      const assignments = controllingAssignments.filter((a) => a.project_id === p.id);
+      const datedAssignments = assignments.filter((a) => Boolean(a.start_date));
+      const plannedHours =
+        datedAssignments.length > 0
+          ? datedAssignments
+              .filter((a) => {
+                const start = String(a.start_date ?? "");
+                const end = String(a.end_date ?? a.start_date ?? "");
+                return start <= monthEnd && end >= monthStart;
+              })
+              .reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0)
+          : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
+
+      const totalCosts = wageCosts + directCosts;
+      const contribution = revenue - totalCosts;
+      const margin = revenue > 0 ? (contribution / revenue) * 100 : null;
+
+      return {
+        id: p.id,
+        name: p.name || "Ohne Namen",
+        customer: p.customer_name || "",
+        city: p.city || "",
+        revenue,
+        plannedHours,
+        actualHours,
+        totalCosts,
+        contribution,
+        margin,
+      };
+    })
+    .sort((a, b) => {
+      if (a.margin == null && b.margin == null) return b.revenue - a.revenue;
+      if (a.margin == null) return 1;
+      if (b.margin == null) return -1;
+      return b.margin - a.margin;
+    });
+
+  const portfolioRevenue = controllingRows.reduce((sum, r) => sum + r.revenue, 0);
+  const portfolioCosts = controllingRows.reduce((sum, r) => sum + r.totalCosts, 0);
+  const portfolioContribution = portfolioRevenue - portfolioCosts;
+  const portfolioMargin =
+    portfolioRevenue > 0 ? (portfolioContribution / portfolioRevenue) * 100 : null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -384,6 +530,107 @@ function ProjekteIndex() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <section className="surface space-y-4 p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Objekt-Controlling · Gesamtübersicht</h2>
+            <p className="text-sm text-muted-foreground">
+              Vergleich aller Objekte nach Marge und Deckungsbeitrag.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="portfolio-controlling-month">Monat</Label>
+            <Input
+              id="portfolio-controlling-month"
+              type="month"
+              value={controllingMonth}
+              onChange={(e) => setControllingMonth(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Umsatz netto</div>
+            <div className="mt-1 text-xl font-semibold">{formatMoney(portfolioRevenue)}</div>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Gesamtkosten</div>
+            <div className="mt-1 text-xl font-semibold">{formatMoney(portfolioCosts)}</div>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Deckungsbeitrag</div>
+            <div className="mt-1 text-xl font-semibold">{formatMoney(portfolioContribution)}</div>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Marge gesamt</div>
+            <div className="mt-1 text-xl font-semibold">
+              {portfolioMargin == null ? "–" : `${formatNumber(portfolioMargin)} %`}
+            </div>
+          </div>
+        </div>
+
+        {controllingRows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Keine Objekte vorhanden.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead className="bg-muted/40 text-left">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Objekt</th>
+                  <th className="px-3 py-2 text-right font-medium">Umsatz</th>
+                  <th className="px-3 py-2 text-right font-medium">Plan</th>
+                  <th className="px-3 py-2 text-right font-medium">Ist</th>
+                  <th className="px-3 py-2 text-right font-medium">Kosten</th>
+                  <th className="px-3 py-2 text-right font-medium">DB</th>
+                  <th className="px-3 py-2 text-right font-medium">Marge</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {controllingRows.map((row) => {
+                  const marginClass =
+                    row.margin == null
+                      ? "text-muted-foreground"
+                      : row.margin >= 25
+                        ? "text-emerald-700"
+                        : row.margin >= 10
+                          ? "text-amber-700"
+                          : "text-destructive";
+                  return (
+                    <tr key={row.id} className="hover:bg-muted/20">
+                      <td className="px-3 py-2">
+                        <Link
+                          to="/projekte/$id"
+                          params={{ id: row.id }}
+                          className="font-medium hover:underline"
+                        >
+                          {row.name}
+                        </Link>
+                        <div className="text-xs text-muted-foreground">
+                          {[row.customer, row.city].filter(Boolean).join(" · ")}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.revenue)}</td>
+                      <td className="px-3 py-2 text-right">
+                        {formatNumber(row.plannedHours)} Std.
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {formatNumber(row.actualHours)} Std.
+                      </td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.totalCosts)}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.contribution)}</td>
+                      <td className={`px-3 py-2 text-right font-semibold ${marginClass}`}>
+                        {row.margin == null ? "–" : `${formatNumber(row.margin)} %`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <div className="surface overflow-hidden">
         {projects.length === 0 ? (
