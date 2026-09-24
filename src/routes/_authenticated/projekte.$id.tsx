@@ -587,6 +587,72 @@ function ProjektDetail() {
         )}
       </section>
 
+      <section className="surface space-y-4 p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Objekt-Controlling / Marge</h2>
+            <p className="text-sm text-muted-foreground">
+              Umsatz, Plan/Ist-Stunden und direkte Objektkosten im gewählten Monat.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="controlling-month">Monat</Label>
+            <Input
+              id="controlling-month"
+              type="month"
+              value={controllingMonth}
+              onChange={(e) => setControllingMonth(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ["Umsatz netto", formatMoney(revenueNet)],
+            ["Planstunden", `${formatNumber(plannedHours)} Std.`],
+            ["Ist-Stunden", `${formatNumber(actualHours)} Std.`],
+            [
+              "Abweichung",
+              `${hourVariance >= 0 ? "+" : ""}${formatNumber(hourVariance)} Std.`,
+            ],
+            ["Lohnkosten", formatMoney(wageCosts)],
+            ["Weitere Objektkosten", formatMoney(materialAndOtherCosts)],
+            ["Gesamtkosten", formatMoney(totalCosts)],
+            ["Deckungsbeitrag", formatMoney(contribution)],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border bg-muted/20 p-4">
+              <div className="text-xs text-muted-foreground">{label}</div>
+              <div className="mt-1 text-xl font-semibold">{value}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Marge</div>
+            <div className="mt-1 text-2xl font-semibold">
+              {marginPercent == null ? "–" : `${formatNumber(marginPercent)} %`}
+            </div>
+            <div className={`mt-1 text-sm font-medium ${marginStatus.className}`}>
+              {marginStatus.label}
+            </div>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Kosten / Ist-Stunde</div>
+            <div className="mt-1 text-2xl font-semibold">{formatMoney(costPerHour)}</div>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Umsatz / Ist-Stunde</div>
+            <div className="mt-1 text-2xl font-semibold">{formatMoney(revenuePerHour)}</div>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Nur dem Objekt zugeordnete Rechnungen und Ausgaben werden berücksichtigt. Alte Rechnungen
+          mit eindeutig nur einem Kundenobjekt werden bei der Migration automatisch zugeordnet.
+        </p>
+      </section>
+
       {/* KI-Analyse: Eckdaten & Anforderungen */}
       {hasAnalysis && (
         <section className="surface space-y-4 p-5">
