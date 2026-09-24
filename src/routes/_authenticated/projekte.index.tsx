@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -27,7 +28,7 @@ import {
 import { toast } from "sonner";
 import { FileText, FolderKanban, Loader2, Plus, Upload, X } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/projekte/")({
   head: () => ({
@@ -73,6 +74,8 @@ function ProjekteIndex() {
   const [step, setStep] = useState("");
   const [scanResult, setScanResult] = useState<ScannedProject | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [controllingMonth, setControllingMonth] = useState(new Date().toISOString().slice(0, 7));
+  const db = supabase as SupabaseClient;
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -92,6 +95,67 @@ function ProjekteIndex() {
       const { data, error } = await supabase.from("customers").select("*").order("name");
       if (error) throw error;
       return data;
+    },
+  });
+
+  const monthStart = `${controllingMonth}-01`;
+  const monthDate = new Date(`${monthStart}T12:00:00`);
+  const monthEnd = new Date(
+    Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 0),
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: controllingDocuments = [] } = useQuery({
+    queryKey: ["projects_controlling_documents", controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("documents")
+        .select("id,status,issue_date,net_total,total,is_storno,project_id,customer_id")
+        .eq("type", "invoice")
+        .is("deleted_at", null)
+        .gte("issue_date", monthStart)
+        .lte("issue_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingExpenses = [] } = useQuery({
+    queryKey: ["projects_controlling_expenses", controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("expenses")
+        .select("id,expense_date,net_amount,project_id")
+        .is("deleted_at", null)
+        .gte("expense_date", monthStart)
+        .lte("expense_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingTimeEntries = [] } = useQuery({
+    queryKey: ["projects_controlling_time_entries", controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("id,project_id,work_date,hours,hourly_rate,entry_type,approval_status")
+        .gte("work_date", monthStart)
+        .lte("work_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingAssignments = [] } = useQuery({
+    queryKey: ["projects_controlling_assignments", controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .select("id,project_id,hours_per_week,start_date,end_date");
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
