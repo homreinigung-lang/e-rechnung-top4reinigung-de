@@ -165,7 +165,7 @@ function DokumentDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["document", id],
     queryFn: async () => {
-      const [doc, items, settings, customers] = await Promise.all([
+      const [doc, items, settings, customers, projects] = await Promise.all([
         supabase.from("documents").select("*").eq("id", id).single(),
         supabase
           .from("document_items")
@@ -174,6 +174,10 @@ function DokumentDetail() {
           .order("position", { ascending: true }),
         supabase.from("company_settings").select("*").maybeSingle(),
         supabase.from("customers").select("*").order("company", { ascending: true }),
+        supabase
+          .from("projects")
+          .select("id,name,city,customer_id,status")
+          .order("name", { ascending: true }),
       ]);
       if (doc.error) throw doc.error;
       // Zugehöriger Storno-/Originalbeleg: Nummer und Stornogrund für Hinweis und PDF.
@@ -215,6 +219,7 @@ function DokumentDetail() {
         items: (items.data ?? []) as Item[],
         settings: settings.data,
         customers: customers.data ?? [],
+        projects: projects.data ?? [],
       };
     },
   });
@@ -258,6 +263,7 @@ function DokumentDetail() {
       service_period: String(d["service_period"] ?? ""),
       tax_mode: String(d["tax_mode"] ?? "eu_reverse_charge"),
       customer_id: (d["customer_id"] as string) ?? null,
+      project_id: (d["project_id"] as string) ?? null,
       customer_type: String(d["customer_type"] ?? "firma"),
       customer_number: String(d["customer_number"] ?? ""),
 
@@ -948,6 +954,12 @@ function DokumentDetail() {
     setForm((f) => ({
       ...f,
       customer_id: c.id,
+      project_id:
+        data!.projects.some(
+          (p) => p.id === String(f["project_id"] ?? "") && p.customer_id === c.id,
+        )
+          ? String(f["project_id"] ?? "")
+          : null,
       customer_type: c.company?.trim() ? "firma" : "privat",
       customer_number: (c as { customer_number?: string }).customer_number ?? "",
 
@@ -1987,6 +1999,36 @@ function DokumentDetail() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Objekt / Projekt</Label>
+            <Select
+              value={String(form["project_id"] ?? "")}
+              onValueChange={(value) => setField("project_id", value === "__none__" ? null : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Objekt zuordnen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nicht zugeordnet</SelectItem>
+                {data.projects
+                  .filter(
+                    (p) =>
+                      !form["customer_id"] ||
+                      !p.customer_id ||
+                      p.customer_id === String(form["customer_id"]),
+                  )
+                  .map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name || "Ohne Namen"}
+                      {p.city ? ` · ${p.city}` : ""}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Die Zuordnung wird für Objekt-Controlling und Marge verwendet.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Kundentyp</Label>

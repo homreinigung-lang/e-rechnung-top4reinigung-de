@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -41,7 +42,7 @@ import {
   Users,
 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
-import { formatDate, formatNumber } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { modeLabel } from "./projekte.index";
 
 export const Route = createFileRoute("/_authenticated/projekte/$id")({
@@ -105,6 +106,8 @@ function ProjektDetail() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmployee, setAssignEmployee] = useState("");
   const [assignRole, setAssignRole] = useState("Reinigungskraft");
+  const [controllingMonth, setControllingMonth] = useState(new Date().toISOString().slice(0, 7));
+  const db = supabase as SupabaseClient;
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["project", id] });
@@ -176,11 +179,63 @@ function ProjektDetail() {
       const { data, error } = await supabase
         .from("time_entries")
         .select(
-          "id,hours,work_date,entry_type,approval_status,completed_at,employee_name,start_time,end_time,note",
+          "id,hours,hourly_rate,work_date,entry_type,approval_status,completed_at,employee_name,start_time,end_time,note",
         )
         .eq("project_id", id);
       if (error) throw error;
       return data;
+    },
+  });
+
+  const monthStart = `${controllingMonth}-01`;
+  const monthDate = new Date(`${monthStart}T12:00:00`);
+  const monthEnd = new Date(
+    Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 0),
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  const customerId = project?.customer_id ?? null;
+  const { data: customerProjects = [] } = useQuery({
+    queryKey: ["customer_projects_for_controlling", customerId],
+    enabled: Boolean(customerId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("customer_id", customerId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingDocuments = [] } = useQuery({
+    queryKey: ["project_controlling_documents", id, controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("documents")
+        .select("id,type,status,issue_date,net_total,total,is_storno,project_id,customer_id")
+        .eq("type", "invoice")
+        .is("deleted_at", null)
+        .gte("issue_date", monthStart)
+        .lte("issue_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: controllingExpenses = [] } = useQuery({
+    queryKey: ["project_controlling_expenses", id, controllingMonth],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("expenses")
+        .select("id,expense_date,net_amount,gross_amount,category")
+        .eq("project_id", id)
+        .is("deleted_at", null)
+        .gte("expense_date", monthStart)
+        .lte("expense_date", monthEnd);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -388,6 +443,63 @@ function ProjektDetail() {
     )
     .sort((a, b) => String(b.work_date).localeCompare(String(a.work_date)));
 
+  const monthEntries = timeEntries.filter(
+    (t) =>
+      String(t.work_date).startsWith(controllingMonth) &&
+      (t.entry_type ?? "work") === "work" &&
+      (t.approval_status ?? "approved") !== "rejected",
+  );
+  const actualHours = monthEntries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
+  const wageCosts = monthEntries.reduce(
+    (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
+    0,
+  );
+
+  const datedAssignments = assignments.filter((a) => Boolean(a.start_date));
+  const plannedHours =
+    datedAssignments.length > 0
+      ? datedAssignments
+          .filter((a) => {
+            const start = String(a.start_date ?? "");
+            const end = String(a.end_date ?? a.start_date ?? "");
+            return start <= monthEnd && end >= monthStart;
+          })
+          .reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0)
+      : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
+
+  const uniqueCustomerObject =
+    Boolean(customerId) && customerProjects.length === 1 && customerProjects[0]?.id === id;
+  const revenueNet = controllingDocuments
+    .filter((d) => {
+      const linkedToObject = d.project_id === id;
+      const historicalUniqueCustomerMatch =
+        !d.project_id && uniqueCustomerObject && d.customer_id === customerId;
+      return (
+        (linkedToObject || historicalUniqueCustomerMatch) &&
+        String(d.status ?? "") !== "cancelled" &&
+        !d.is_storno
+      );
+    })
+    .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
+  const materialAndOtherCosts = controllingExpenses.reduce(
+    (sum, e) => sum + Number(e.net_amount ?? 0),
+    0,
+  );
+  const totalCosts = wageCosts + materialAndOtherCosts;
+  const contribution = revenueNet - totalCosts;
+  const marginPercent = revenueNet > 0 ? (contribution / revenueNet) * 100 : null;
+  const hourVariance = actualHours - plannedHours;
+  const costPerHour = actualHours > 0 ? totalCosts / actualHours : 0;
+  const revenuePerHour = actualHours > 0 ? revenueNet / actualHours : 0;
+  const marginStatus =
+    marginPercent == null
+      ? { label: "Keine Umsatzbasis", className: "text-muted-foreground" }
+      : marginPercent >= 25
+        ? { label: "Grün · ≥ 25 %", className: "text-emerald-700" }
+        : marginPercent >= 10
+          ? { label: "Gelb · 10–25 %", className: "text-amber-700" }
+          : { label: "Rot · < 10 %", className: "text-destructive" };
+
   // Automatisch abgeleitete Eckdaten aus dem Raumbuch (Ergänzung zur KI-Zusammenfassung)
   const coveringTotals = new Map<string, number>();
   const usageTotals = new Map<string, number>();
@@ -497,6 +609,73 @@ function ProjektDetail() {
             )}
           </p>
         )}
+      </section>
+
+      <section className="surface space-y-4 p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Objekt-Controlling / Marge</h2>
+            <p className="text-sm text-muted-foreground">
+              Umsatz, Plan/Ist-Stunden und direkte Objektkosten im gewählten Monat.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="controlling-month">Monat</Label>
+            <Input
+              id="controlling-month"
+              type="month"
+              value={controllingMonth}
+              onChange={(e) => setControllingMonth(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ["Umsatz netto", formatMoney(revenueNet)],
+            ["Planstunden", `${formatNumber(plannedHours)} Std.`],
+            ["Ist-Stunden", `${formatNumber(actualHours)} Std.`],
+            [
+              "Abweichung",
+              `${hourVariance >= 0 ? "+" : ""}${formatNumber(hourVariance)} Std.`,
+            ],
+            ["Lohnkosten", formatMoney(wageCosts)],
+            ["Weitere Objektkosten", formatMoney(materialAndOtherCosts)],
+            ["Gesamtkosten", formatMoney(totalCosts)],
+            ["Deckungsbeitrag", formatMoney(contribution)],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border bg-muted/20 p-4">
+              <div className="text-xs text-muted-foreground">{label}</div>
+              <div className="mt-1 text-xl font-semibold">{value}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Marge</div>
+            <div className="mt-1 text-2xl font-semibold">
+              {marginPercent == null ? "–" : `${formatNumber(marginPercent)} %`}
+            </div>
+            <div className={`mt-1 text-sm font-medium ${marginStatus.className}`}>
+              {marginStatus.label}
+            </div>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Kosten / Ist-Stunde</div>
+            <div className="mt-1 text-2xl font-semibold">{formatMoney(costPerHour)}</div>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="text-xs text-muted-foreground">Umsatz / Ist-Stunde</div>
+            <div className="mt-1 text-2xl font-semibold">{formatMoney(revenuePerHour)}</div>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Zugeordnete Rechnungen und Ausgaben werden direkt berücksichtigt. Historische,
+          festgeschriebene Rechnungen bleiben GoBD-konform unverändert und werden nur dann
+          rechnerisch zugeordnet, wenn der Kunde eindeutig genau ein Objekt hat.
+        </p>
       </section>
 
       {/* KI-Analyse: Eckdaten & Anforderungen */}

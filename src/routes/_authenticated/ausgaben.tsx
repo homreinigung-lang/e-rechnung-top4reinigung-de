@@ -63,6 +63,7 @@ type Form = {
   vat_amount: string;
   notes: string;
   receipt_url: string;
+  project_id: string;
 };
 
 const empty: Form = {
@@ -74,6 +75,7 @@ const empty: Form = {
   vat_amount: "",
   notes: "",
   receipt_url: "",
+  project_id: "",
 };
 
 function fileToDataUrl(file: File) {
@@ -191,6 +193,18 @@ function Ausgaben() {
     }
   }
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects", "expense-picker"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,city,status")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: rows = [] } = useQuery({
     queryKey: ["expenses"],
     queryFn: async () => {
@@ -221,12 +235,13 @@ function Ausgaben() {
         gross_amount: net + vat,
         notes: form.notes,
         receipt_url: form.receipt_url,
-      });
+        project_id: form.project_id || null,
+      } as never);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Ausgabe erfasst");
-      setForm({ ...empty, expense_date: today(), receipt_url: "" });
+      setForm({ ...empty, expense_date: today(), receipt_url: "", project_id: "" });
       setScanned(false);
       setEInvoice(null);
       setReceiptToRetry(null);
@@ -293,6 +308,23 @@ function Ausgaben() {
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="project_id">Objekt / Projekt</Label>
+            <select
+              id="project_id"
+              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              value={form.project_id}
+              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+            >
+              <option value="">Nicht zugeordnet</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name || "Ohne Namen"}
+                  {p.city ? ` · ${p.city}` : ""}
                 </option>
               ))}
             </select>
