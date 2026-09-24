@@ -536,6 +536,112 @@ export function Arbeitsplanung() {
     return (h ?? 0) * 60 + (m ?? 0);
   };
 
+  const timesOverlap = (a: DayTime | undefined, b: DayTime | undefined) => {
+    if (!a?.start || !a?.end || !b?.start || !b?.end) return false;
+    const aStart = toMinutes(a.start);
+    let aEnd = toMinutes(a.end);
+    const bStart = toMinutes(b.start);
+    let bEnd = toMinutes(b.end);
+    if (aEnd <= aStart) aEnd += 1440;
+    if (bEnd <= bStart) bEnd += 1440;
+    return Math.max(aStart, bStart) < Math.min(aEnd, bEnd);
+  };
+
+  const absenceAssignments = React.useMemo(() => {
+    const rows: {
+      employee: Employee;
+      object: GridObject;
+      dayIndex: number;
+      time: DayTime;
+      hours: number;
+      absenceReason: string;
+    }[] = [];
+    for (const employee of employees) {
+      for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+        const absence = approvedAbsence(employee.id, dayIndex);
+        if (!absence) continue;
+        for (const object of objects) {
+          const time = cellTimes(employee.id, object.id)[dayIndex] ?? EMPTY_DAY_TIME;
+          const hours = cellDayHours(employee.id, object.id)[dayIndex] ?? 0;
+          if (hours <= 0) continue;
+          rows.push({
+            employee,
+            object,
+            dayIndex,
+            time,
+            hours,
+            absenceReason:
+              absence.absence_reason === "vacation"
+                ? "Urlaub"
+                : absence.absence_reason === "sick"
+                  ? "Krankheit"
+                  : "Abwesenheit",
+          });
+        }
+      }
+    }
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees, objects, absences, draft, map, weekStart]);
+
+  const replacementCandidates = (
+    absentEmployeeId: string,
+    dayIndex: number,
+    targetTime: DayTime,
+    targetHours: number,
+  ) =>
+    employees
+      .filter((candidate) => candidate.id !== absentEmployeeId)
+      .filter((candidate) => !approvedAbsence(candidate.id, dayIndex))
+      .map((candidate) => {
+        const candidateTimes = objects
+          .map((object) => cellTimes(candidate.id, object.id)[dayIndex])
+          .filter((time) => time?.start && time?.end);
+        const overlap = targetTime.start && targetTime.end
+          ? candidateTimes.some((time) => timesOverlap(time, targetTime))
+          : false;
+        const planned = employeeTotal(candidate.id);
+        const target = Number(candidate.weekly_hours ?? 0);
+        const remaining = target > 0 ? target - planned : Number.POSITIVE_INFINITY;
+        return {
+          candidate,
+          overlap,
+          planned,
+          remaining,
+          enoughCapacity: !Number.isFinite(remaining) || remaining + 0.01 >= targetHours,
+          springer: candidate.role?.toLowerCase() === "springer",
+        };
+      })
+      .filter((item) => !item.overlap)
+      .sort((a, b) => {
+        if (a.springer !== b.springer) return a.springer ? -1 : 1;
+        if (a.enoughCapacity !== b.enoughCapacity) return a.enoughCapacity ? -1 : 1;
+        return b.remaining - a.remaining;
+      });
+
+  const applyReplacement = (
+    absentEmployeeId: string,
+    replacementEmployeeId: string,
+    projectId: string,
+    dayIndex: number,
+    time: DayTime,
+  ) => {
+    setDraft((current) => {
+      const next = { ...current };
+      const absentKey = key(absentEmployeeId, projectId);
+      const replacementKey = key(replacementEmployeeId, projectId);
+      const absentTimes = [...(next[absentKey] ?? savedTimes(absentEmployeeId, projectId))];
+      const replacementTimes = [
+        ...(next[replacementKey] ?? savedTimes(replacementEmployeeId, projectId)),
+      ];
+      absentTimes[dayIndex] = { ...EMPTY_DAY_TIME };
+      replacementTimes[dayIndex] = { ...time };
+      next[absentKey] = absentTimes;
+      next[replacementKey] = replacementTimes;
+      return next;
+    });
+  };
+
   const planningConflicts = React.useMemo(() => {
     const conflicts: { employeeId: string; dayIndex: number; message: string }[] = [];
     for (const employee of employees) {
