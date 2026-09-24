@@ -9,7 +9,7 @@ import type { MapPoint } from "@/components/EinsatzKarte";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
-import { effectiveProjectAddress, serviceAddress } from "@/lib/maps";
+import { effectiveProjectAddress, normalizeAddressKey, serviceAddress } from "@/lib/maps";
 import { toast } from "sonner";
 import { MapPin, Users, FolderKanban, HardHat, Navigation, Plus, Trash2 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
@@ -237,11 +237,7 @@ function KartePage() {
     // verweisen. Die zuerst erzeugte, kanonische Standortzeile bleibt erhalten.
     const uniqueByAddress = new Map<string, Omit<MapPoint, "lat" | "lon">>();
     for (const point of list) {
-      const key = point.address
-        .trim()
-        .toLocaleLowerCase("de-DE")
-        .replace(/\\s+/g, " ")
-        .replace(/\\s*,\\s*/g, ",");
+      const key = normalizeAddressKey(point.address);
       if (!uniqueByAddress.has(key)) uniqueByAddress.set(key, point);
     }
     return [...uniqueByAddress.values()];

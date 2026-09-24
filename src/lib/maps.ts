@@ -105,3 +105,20 @@ export function effectiveProjectAddress(
 ) {
   return projectAddress(effectiveProjectAddressParts(project, customer));
 }
+
+
+/** Normalisiert eine Adresse für Vergleiche/Deduplizierung auf der Einsatzkarte. */
+export function normalizeAddressKey(address: string): string {
+  return address
+    .normalize("NFKC")
+    .trim()
+    .toLocaleLowerCase("de-DE")
+    .replace(/\b(deutschland|germany)\b/g, "")
+    .replace(/straße/g, "str")
+    .replace(/strasse/g, "str")
+    .replace(/str\./g, "str")
+    .replace(/\s*,\s*/g, ",")
+    .replace(/,+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
