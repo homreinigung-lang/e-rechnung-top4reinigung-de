@@ -773,6 +773,54 @@ export function Arbeitsplanung() {
         </div>
       </div>
 
+      {(planningConflicts.length > 0 || overtimeWarnings.length > 0) && (
+        <div className="space-y-2">
+          {planningConflicts.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+              <div className="flex items-center gap-2 font-semibold text-destructive">
+                <AlertTriangle className="h-4 w-4" />
+                {planningConflicts.length} Planungs-Konflikt
+                {planningConflicts.length === 1 ? "" : "e"}
+              </div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                {planningConflicts.slice(0, 8).map((conflict, index) => {
+                  const employee =
+                    employees.find((item) => item.id === conflict.employeeId)?.name ??
+                    "Mitarbeiter";
+                  return (
+                    <li key={conflict.employeeId + "-" + conflict.dayIndex + "-" + index}>
+                      <span className="font-medium">{employee}:</span> {conflict.message}
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Freigabe ist gesperrt, bis Überschneidungen oder Einsätze während genehmigter
+                Abwesenheiten korrigiert sind.
+              </p>
+            </div>
+          )}
+
+          {overtimeWarnings.length > 0 && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              <div className="flex items-center gap-2 font-semibold text-amber-700">
+                <AlertTriangle className="h-4 w-4" />
+                Sollstunden überschritten
+              </div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                {overtimeWarnings.map(({ employee, planned, target, over }) => (
+                  <li key={employee.id}>
+                    <span className="font-medium">{employee.name}:</span>{" "}
+                    {planned.toFixed(1)} / {target.toFixed(1)} Std. (+
+                    {over.toFixed(1)} Std.)
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       <section className="surface overflow-x-auto p-0">
         {employees.length === 0 || visibleProjects.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">
