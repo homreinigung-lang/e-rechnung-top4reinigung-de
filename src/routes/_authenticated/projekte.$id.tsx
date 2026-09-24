@@ -195,13 +195,26 @@ function ProjektDetail() {
     .toISOString()
     .slice(0, 10);
 
+  const customerId = project?.customer_id ?? null;
+  const { data: customerProjects = [] } = useQuery({
+    queryKey: ["customer_projects_for_controlling", customerId],
+    enabled: Boolean(customerId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("customer_id", customerId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: controllingDocuments = [] } = useQuery({
     queryKey: ["project_controlling_documents", id, controllingMonth],
     queryFn: async () => {
       const { data, error } = await db
         .from("documents")
-        .select("id,type,status,issue_date,net_total,total,is_storno")
-        .eq("project_id", id)
+        .select("id,type,status,issue_date,net_total,total,is_storno,project_id,customer_id")
         .eq("type", "invoice")
         .is("deleted_at", null)
         .gte("issue_date", monthStart)
