@@ -194,6 +194,10 @@ function ProjektDetail() {
   )
     .toISOString()
     .slice(0, 10);
+  const trendStartDate = new Date(
+    Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() - 5, 1),
+  );
+  const trendStart = trendStartDate.toISOString().slice(0, 10);
 
   const customerId = project?.customer_id ?? null;
   const { data: customerProjects = [] } = useQuery({
@@ -217,7 +221,7 @@ function ProjektDetail() {
         .select("id,type,status,issue_date,net_total,total,is_storno,project_id,customer_id")
         .eq("type", "invoice")
         .is("deleted_at", null)
-        .gte("issue_date", monthStart)
+        .gte("issue_date", trendStart)
         .lte("issue_date", monthEnd);
       if (error) throw error;
       return data ?? [];
@@ -232,7 +236,7 @@ function ProjektDetail() {
         .select("id,expense_date,net_amount,gross_amount,category")
         .eq("project_id", id)
         .is("deleted_at", null)
-        .gte("expense_date", monthStart)
+        .gte("expense_date", trendStart)
         .lte("expense_date", monthEnd);
       if (error) throw error;
       return data ?? [];
