@@ -165,7 +165,7 @@ function DokumentDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["document", id],
     queryFn: async () => {
-      const [doc, items, settings, customers] = await Promise.all([
+      const [doc, items, settings, customers, projects] = await Promise.all([
         supabase.from("documents").select("*").eq("id", id).single(),
         supabase
           .from("document_items")
@@ -174,6 +174,10 @@ function DokumentDetail() {
           .order("position", { ascending: true }),
         supabase.from("company_settings").select("*").maybeSingle(),
         supabase.from("customers").select("*").order("company", { ascending: true }),
+        supabase
+          .from("projects")
+          .select("id,name,city,customer_id,status")
+          .order("name", { ascending: true }),
       ]);
       if (doc.error) throw doc.error;
       // Zugehöriger Storno-/Originalbeleg: Nummer und Stornogrund für Hinweis und PDF.
@@ -215,6 +219,7 @@ function DokumentDetail() {
         items: (items.data ?? []) as Item[],
         settings: settings.data,
         customers: customers.data ?? [],
+        projects: projects.data ?? [],
       };
     },
   });
@@ -258,6 +263,7 @@ function DokumentDetail() {
       service_period: String(d["service_period"] ?? ""),
       tax_mode: String(d["tax_mode"] ?? "eu_reverse_charge"),
       customer_id: (d["customer_id"] as string) ?? null,
+      project_id: (d["project_id"] as string) ?? null,
       customer_type: String(d["customer_type"] ?? "firma"),
       customer_number: String(d["customer_number"] ?? ""),
 
