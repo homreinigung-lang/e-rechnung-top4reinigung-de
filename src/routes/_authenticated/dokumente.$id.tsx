@@ -954,6 +954,10 @@ function DokumentDetail() {
     setForm((f) => ({
       ...f,
       customer_id: c.id,
+      project_id:
+        data!.projects.some((p) => p.id === f["project_id"] && p.customer_id === c.id)
+          ? f["project_id"]
+          : null,
       customer_type: c.company?.trim() ? "firma" : "privat",
       customer_number: (c as { customer_number?: string }).customer_number ?? "",
 
@@ -1993,6 +1997,36 @@ function DokumentDetail() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Objekt / Projekt</Label>
+            <Select
+              value={String(form["project_id"] ?? "")}
+              onValueChange={(value) => setField("project_id", value === "__none__" ? null : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Objekt zuordnen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nicht zugeordnet</SelectItem>
+                {data.projects
+                  .filter(
+                    (p) =>
+                      !form["customer_id"] ||
+                      !p.customer_id ||
+                      p.customer_id === String(form["customer_id"]),
+                  )
+                  .map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name || "Ohne Namen"}
+                      {p.city ? ` · ${p.city}` : ""}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Die Zuordnung wird für Objekt-Controlling und Marge verwendet.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Kundentyp</Label>
