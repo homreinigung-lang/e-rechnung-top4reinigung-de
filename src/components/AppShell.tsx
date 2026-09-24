@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
-  ArrowLeft, BadgeCheck, BarChart3, Calculator, Car, Clock, FileSearch,
+  ArrowLeft, BadgeCheck, BarChart3, Calculator, Car, ClipboardCheck, Clock, FileSearch,
   FileSignature, FileText, FolderKanban, HardHat, Landmark, LayoutDashboard,
   LifeBuoy, LogOut, Map as MapIcon, MessageSquare, MoreHorizontal, MoreVertical,
   Repeat, Settings, ShieldCheck, Star, Trash2, TrendingDown, UserCircle, Users,
@@ -37,6 +37,7 @@ const ownerMoreGroups: readonly NavGroup[] = [
     { to: "/team", label: "Control Center", icon: HardHat },
     { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
     { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },
+    { to: "/qm-reklamationen", label: "QM / Reklamationen", icon: ClipboardCheck },
     { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
   ]},
   { title: "Projekte & Ausschreibungen", items: [
