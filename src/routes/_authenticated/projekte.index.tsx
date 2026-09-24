@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { FileText, FolderKanban, Loader2, Plus, Upload, X } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
+import { plannedHoursForMonth, revenueForMonth } from "@/lib/object-controlling";
 
 export const Route = createFileRoute("/_authenticated/projekte/")({
   head: () => ({
@@ -111,11 +112,9 @@ function ProjekteIndex() {
     queryFn: async () => {
       const { data, error } = await db
         .from("documents")
-        .select("id,status,issue_date,net_total,total,is_storno,project_id,customer_id")
+        .select("id,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id")
         .eq("type", "invoice")
-        .is("deleted_at", null)
-        .gte("issue_date", monthStart)
-        .lte("issue_date", monthEnd);
+        .is("deleted_at", null);
       if (error) throw error;
       return data ?? [];
     },
@@ -153,7 +152,7 @@ function ProjekteIndex() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("project_assignments")
-        .select("id,project_id,hours_per_week,start_date,end_date");
+        .select("id,project_id,hours_per_week,start_date,end_date,day_hours,day_times");
       if (error) throw error;
       return data ?? [];
     },
@@ -350,20 +349,10 @@ function ProjekteIndex() {
           return direct || historical;
         })
         .filter((d) => String(d.status ?? "") !== "cancelled" && !d.is_storno)
-        .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
+        .reduce((sum, d) => sum + revenueForMonth(d, controllingMonth), 0);
 
       const assignments = controllingAssignments.filter((a) => a.project_id === p.id);
-      const datedAssignments = assignments.filter((a) => Boolean(a.start_date));
-      const plannedHours =
-        datedAssignments.length > 0
-          ? datedAssignments
-              .filter((a) => {
-                const start = String(a.start_date ?? "");
-                const end = String(a.end_date ?? a.start_date ?? "");
-                return start <= monthEnd && end >= monthStart;
-              })
-              .reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0)
-          : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
+      const plannedHours = plannedHoursForMonth(assignments, controllingMonth);
 
       const totalCosts = wageCosts + directCosts;
       const contribution = revenue - totalCosts;
