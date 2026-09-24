@@ -340,11 +340,12 @@ function ProjekteIndex() {
 
       const revenue = controllingDocuments
         .filter((d) => {
-          const direct = d.project_id === p.id;
+          const sameCustomer =
+            Boolean(p.customer_id) && d.customer_id === p.customer_id;
+          const direct = d.project_id === p.id && sameCustomer;
           const historical =
             !d.project_id &&
-            Boolean(p.customer_id) &&
-            d.customer_id === p.customer_id &&
+            sameCustomer &&
             projectCountByCustomer.get(p.customer_id!) === 1;
           return direct || historical;
         })
