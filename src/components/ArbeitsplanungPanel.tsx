@@ -369,6 +369,36 @@ export function Arbeitsplanung() {
       [key(e, p)]: Array.from({ length: 7 }, () => ({ ...EMPTY_DAY_TIME })),
     }));
 
+  const copyPreviousWeek = useMutation({
+    mutationFn: async () => {
+      const previousStart = isoDay(addDays(monday, -7));
+      const { data, error } = await supabase
+        .from("project_assignments")
+        .select("project_id,employee_id,day_times")
+        .eq("start_date", previousStart);
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: (rows) => {
+      if (rows.length === 0) {
+        toast.info("In der Vorwoche gibt es keine Planung zum Kopieren.");
+        return;
+      }
+      setDraft((current) => {
+        const next = { ...current };
+        for (const row of rows) {
+          const k = key(row.employee_id, row.project_id);
+          if (!map.has(k) && !next[k]) {
+            next[k] = normalizeDayTimes(row.day_times);
+          }
+        }
+        return next;
+      });
+      toast.success("Vorwoche als Entwurf übernommen. Bitte prüfen und speichern.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const dirtyKeys = React.useMemo(
     () =>
       Object.keys(draft).filter((k) => {
