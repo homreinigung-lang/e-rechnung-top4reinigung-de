@@ -454,6 +454,28 @@ function ProjektDetail() {
           .reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0)
       : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
 
+  const revenueNet = controllingDocuments
+    .filter((d) => String(d.status ?? "") !== "cancelled" && !Boolean(d.is_storno))
+    .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
+  const materialAndOtherCosts = controllingExpenses.reduce(
+    (sum, e) => sum + Number(e.net_amount ?? 0),
+    0,
+  );
+  const totalCosts = wageCosts + materialAndOtherCosts;
+  const contribution = revenueNet - totalCosts;
+  const marginPercent = revenueNet > 0 ? (contribution / revenueNet) * 100 : null;
+  const hourVariance = actualHours - plannedHours;
+  const costPerHour = actualHours > 0 ? totalCosts / actualHours : 0;
+  const revenuePerHour = actualHours > 0 ? revenueNet / actualHours : 0;
+  const marginStatus =
+    marginPercent == null
+      ? { label: "Keine Umsatzbasis", className: "text-muted-foreground" }
+      : marginPercent >= 25
+        ? { label: "Grün · ≥ 25 %", className: "text-emerald-700" }
+        : marginPercent >= 10
+          ? { label: "Gelb · 10–25 %", className: "text-amber-700" }
+          : { label: "Rot · < 10 %", className: "text-destructive" };
+
   // Automatisch abgeleitete Eckdaten aus dem Raumbuch (Ergänzung zur KI-Zusammenfassung)
   const coveringTotals = new Map<string, number>();
   const usageTotals = new Map<string, number>();
