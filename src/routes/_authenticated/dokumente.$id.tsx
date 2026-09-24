@@ -383,6 +383,17 @@ function DokumentDetail() {
       const number = String((data?.doc as { number?: string } | undefined)?.number ?? "").trim();
       if (!number) throw new Error("Beleg konnte nicht geladen werden.");
 
+      const selectedProjectId = String(form["project_id"] ?? "").trim();
+      if (selectedProjectId) {
+        const selectedProject = data?.projects.find((p) => p.id === selectedProjectId);
+        const selectedCustomerId = String(form["customer_id"] ?? "").trim();
+        if (!selectedProject || !selectedCustomerId || selectedProject.customer_id !== selectedCustomerId) {
+          throw new Error(
+            "Das gewählte Objekt gehört nicht zu diesem Kunden. Bitte Kunde und Objekt korrekt zuordnen.",
+          );
+        }
+      }
+
       if (String(current?.["type"] ?? "") === "invoice") {
         // 1. Rechnungsdatum darf nicht vor dem Leistungszeitraum liegen.
         const check = checkInvoiceDates(
@@ -2007,15 +2018,18 @@ function DokumentDetail() {
               onValueChange={(value) => setField("project_id", value === "__none__" ? null : value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Objekt zuordnen" />
+                <SelectValue
+                  placeholder={
+                    form["customer_id"] ? "Objekt zuordnen" : "Zuerst Kunde auswählen"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">Nicht zugeordnet</SelectItem>
                 {data.projects
                   .filter(
                     (p) =>
-                      !form["customer_id"] ||
-                      !p.customer_id ||
+                      Boolean(form["customer_id"]) &&
                       p.customer_id === String(form["customer_id"]),
                   )
                   .map((p) => (
