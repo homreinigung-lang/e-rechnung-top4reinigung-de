@@ -165,7 +165,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .select("company_name")
         .eq("user_id", access.user_id)
         .maybeSingle(),
-      supabaseAdmin
+      (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
         .from("fahrtenbuch_entries")
         .select("*")
         .eq("user_id", access.user_id)
@@ -173,7 +173,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .lte("trip_date", data.to)
         .order("trip_date")
         .order("trip_time"),
-      supabaseAdmin
+      (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
         .from("fahrtenbuch_vehicles")
         .select("id,vehicle_name,license_plate")
         .eq("user_id", access.user_id)
