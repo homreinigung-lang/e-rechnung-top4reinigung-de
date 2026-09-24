@@ -23,6 +23,7 @@ import {
   ShieldOff,
 } from "lucide-react";
 import { buildDatevExtf, type DatevAccount, type DatevChart } from "@/lib/datev-extf";
+import { buildPayrollSummary } from "@/lib/payroll-export";
 import { automaticExpenseAccount } from "@/lib/datev-account-mapping";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
@@ -152,7 +153,7 @@ function Steuerberater() {
         .from("time_entries")
         // Ohne photo_paths: Fotos bleiben ausschließlich intern (Verwaltung).
         .select(
-          "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at, employees(name, personnel_number)",
+          "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at, employees(name, personnel_number, contract_type, weekly_hours, hourly_rate)",
         )
         .gte("work_date", from)
         .lte("work_date", to)
@@ -424,56 +425,30 @@ function Steuerberater() {
     };
   });
 
-  const payrollRows: Row[] = Array.from(
-    timeList
-      .reduce(
-        (acc, t) => {
-          const emp = (t["employees"] ?? null) as {
-            name?: string;
-            personnel_number?: string;
-          } | null;
-          const name = String(t["employee_name"] || emp?.name || "Ohne Zuordnung");
-          const code = lohnart(t);
-          // Nur bestätigte Einträge zählen für Stunden und Lohn.
-          const confirmed = String(t["approval_status"] ?? "approved") === "approved";
-          const cur = acc.get(name) ?? {
-            name,
-            pnr: String(emp?.personnel_number ?? ""),
-            hours: 0,
-            amount: 0,
-            sick: 0,
-            vacation: 0,
-          };
-          if (code === "A" && confirmed) {
-            cur.hours += num(t["hours"]);
-            cur.amount += num(t["hours"]) * num(t["hourly_rate"]);
-          }
-          if (confirmed && code === "K") cur.sick += 1;
-          if (confirmed && code === "U") cur.vacation += 1;
-          acc.set(name, cur);
-          return acc;
-        },
-        new Map<
-          string,
-          {
-            name: string;
-            pnr: string;
-            hours: number;
-            amount: number;
-            sick: number;
-            vacation: number;
-          }
-        >(),
-      )
-      .values(),
-  ).map((v) => ({
-    Mitarbeiter: v.name,
-    "Personal-Nr.": v.pnr,
-    Stunden: de(v.hours),
-    Lohn: de(v.amount),
-    "Kranktage (K)": String(v.sick),
-    "Urlaubstage (U)": String(v.vacation),
-  }));
+  const payrollRows: Row[] = buildPayrollSummary(
+    timeList.map((t) => {
+      const emp = (t["employees"] ?? null) as {
+        name?: string;
+        personnel_number?: string;
+        contract_type?: string;
+        weekly_hours?: number;
+        hourly_rate?: number;
+      } | null;
+      return {
+        employee_id: String(t["employee_id"] ?? ""),
+        employee_name: String(t["employee_name"] || emp?.name || "Ohne Zuordnung"),
+        personnel_number: String(emp?.personnel_number ?? ""),
+        contract_type: String(emp?.contract_type ?? ""),
+        weekly_hours: Number(emp?.weekly_hours ?? 0),
+        hourly_rate: Number(t["hourly_rate"] ?? emp?.hourly_rate ?? 0),
+        work_date: String(t["work_date"] ?? ""),
+        hours: Number(t["hours"] ?? 0),
+        entry_type: String(t["entry_type"] ?? "work"),
+        absence_reason: String(t["absence_reason"] ?? ""),
+        approval_status: String(t["approval_status"] ?? "approved"),
+      };
+    }),
+  );
 
   const period = `${from}_${to}`;
 
@@ -595,9 +570,9 @@ function Steuerberater() {
         </Button>
         <Button
           variant="outline"
-          onClick={() => downloadCsv(`Lohnabrechnung_${period}.csv`, payrollRows, { from, to })}
+          onClick={() => downloadCsv(`Lohnvorbereitung_${period}.csv`, payrollRows, { from, to })}
         >
-          <Download className="size-4" /> Lohnabrechnung (CSV)
+          <Download className="size-4" /> Lohnvorbereitung (CSV)
         </Button>
         <Button
           variant="outline"
@@ -609,7 +584,7 @@ function Steuerberater() {
                 { title: "Rechnungen", rows: docRows },
                 { title: "Ausgaben", rows: expenseRows },
                 { title: "Stundenzettel", rows: timeRows },
-                { title: "Lohnabrechnung", rows: payrollRows },
+                { title: "Lohnvorbereitung", rows: payrollRows },
               ],
               { from, to },
             )
@@ -623,9 +598,9 @@ function Steuerberater() {
       </section>
 
       <section className="print-area rounded-lg border bg-card p-6">
-        <h2 className="font-display text-lg font-semibold">Lohnabrechnung je Mitarbeiter</h2>
+        <h2 className="font-display text-lg font-semibold">Lohnvorbereitung je Mitarbeiter</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bestätigte Ist-Stunden aus dem Control Center inkl. Kranktagen (K) und Urlaubstagen (U).
+          Bestätigte Ist-Stunden mit Personalnummer, Vertragsart, Stundensatz sowie Krank- und Urlaubstagen als Vorbereitung für die Lohnabrechnung.
         </p>
         <Table rows={payrollRows} empty="Keine Arbeitszeiten im Zeitraum." />
       </section>
