@@ -47,7 +47,7 @@ export function buildLvKalkulationHandoff(
           item.quantity > 0 &&
           Number.isFinite(item.unitPrice) &&
           item.unitPrice > 0,
-      );
+      ),
   };
 }
 
