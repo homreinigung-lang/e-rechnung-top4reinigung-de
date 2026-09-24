@@ -164,6 +164,9 @@ function ProjekteIndex() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       const customer = customers.find((c) => c.id === customerId);
+      const hasServiceAddress = Boolean(
+        customer?.service_address_line || customer?.service_postal_code || customer?.service_city,
+      );
       setStep("Projekt wird angelegt …");
       const { data, error } = await supabase
         .from("projects")
@@ -175,9 +178,15 @@ function ProjekteIndex() {
           customer_name: customer ? customer.company || customer.name : "",
           contact_email: customer?.email ?? "",
           contact_phone: customer?.phone ?? "",
-          address_line: customer?.address_line ?? "",
-          postal_code: customer?.postal_code ?? "",
-          city: customer?.city ?? "",
+          // Projektadresse = tatsächlicher Einsatzort. Nur wenn kein separater
+          // Einsatzort gepflegt ist, bleibt die Rechnungsadresse der Fallback.
+          address_line: hasServiceAddress
+            ? (customer?.service_address_line ?? "")
+            : (customer?.address_line ?? ""),
+          postal_code: hasServiceAddress
+            ? (customer?.service_postal_code ?? "")
+            : (customer?.postal_code ?? ""),
+          city: hasServiceAddress ? (customer?.service_city ?? "") : (customer?.city ?? ""),
         })
         .select("id")
         .single();

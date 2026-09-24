@@ -126,6 +126,22 @@ function ProjektDetail() {
     },
   });
 
+  const { data: projectCustomer } = useQuery({
+    queryKey: ["project_customer_location", project?.customer_id],
+    enabled: Boolean(project?.customer_id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select(
+          "id,address_line,postal_code,city,service_address_line,service_postal_code,service_city,service_note",
+        )
+        .eq("id", project!.customer_id!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: rooms = [] } = useQuery({
     queryKey: ["project_rooms", id],
     queryFn: async () => {
@@ -445,6 +461,33 @@ function ProjektDetail() {
 
   if (!project) return <p className="text-muted-foreground">Projekt wird geladen …</p>;
 
+  const customerHasServiceAddress = Boolean(
+    projectCustomer?.service_address_line ||
+      projectCustomer?.service_postal_code ||
+      projectCustomer?.service_city,
+  );
+  const projectStillUsesBillingAddress =
+    Boolean(projectCustomer) &&
+    String(project.address_line ?? "") === String(projectCustomer?.address_line ?? "") &&
+    String(project.postal_code ?? "") === String(projectCustomer?.postal_code ?? "") &&
+    String(project.city ?? "") === String(projectCustomer?.city ?? "");
+
+  // Bestehende Projekte, die noch exakt die alte Kunden-Rechnungsadresse
+  // enthalten, zeigen den bereits gepflegten Einsatzort. Eine bewusst
+  // abweichende Projektadresse bleibt unverändert.
+  const effectiveProjectAddress =
+    customerHasServiceAddress && projectStillUsesBillingAddress
+      ? {
+          address_line: projectCustomer?.service_address_line ?? "",
+          postal_code: projectCustomer?.service_postal_code ?? "",
+          city: projectCustomer?.service_city ?? "",
+        }
+      : {
+          address_line: project.address_line ?? "",
+          postal_code: project.postal_code ?? "",
+          city: project.city ?? "",
+        };
+
   const isTender = project.mode === "tender";
   const totalSqm = rooms.reduce((sum, r) => sum + Number(r.area_sqm || 0), 0);
   const confirmedRooms = rooms.filter((r) => r.confirmed).length;
@@ -629,19 +672,30 @@ function ProjektDetail() {
             ["customer_name", "Kunde"],
             ["contact_email", "E-Mail"],
             ["contact_phone", "Telefon"],
-            ["address_line", "Straße und Hausnummer"],
-            ["postal_code", "PLZ"],
-            ["city", "Ort"],
-          ].map(([key, label]) => (
-            <div key={key} className="space-y-2">
-              <Label htmlFor={`h-${key}`}>{label}</Label>
-              <Input
-                id={`h-${key}`}
-                defaultValue={String((project as Record<string, unknown>)[key!] ?? "")}
-                onBlur={(e) => patchProject.mutate({ [key!]: e.target.value })}
-              />
-            </div>
-          ))}
+            ["address_line", "Einsatzort – Straße und Hausnummer"],
+            ["postal_code", "Einsatzort – PLZ"],
+            ["city", "Einsatzort – Ort"],
+          ].map(([key, label]) => {
+            const addressValue =
+              key === "address_line"
+                ? effectiveProjectAddress.address_line
+                : key === "postal_code"
+                  ? effectiveProjectAddress.postal_code
+                  : key === "city"
+                    ? effectiveProjectAddress.city
+                    : String((project as Record<string, unknown>)[key!] ?? "");
+            return (
+              <div key={key} className="space-y-2">
+                <Label htmlFor={`h-${key}`}>{label}</Label>
+                <Input
+                  id={`h-${key}`}
+                  key={`${key}-${addressValue}`}
+                  defaultValue={String(addressValue ?? "")}
+                  onBlur={(e) => patchProject.mutate({ [key!]: e.target.value })}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {project.source_file_name && (
