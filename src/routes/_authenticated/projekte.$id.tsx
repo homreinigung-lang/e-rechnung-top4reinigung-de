@@ -467,8 +467,19 @@ function ProjektDetail() {
           .reduce((sum, a) => sum + Number(a.hours_per_week || 0), 0)
       : assignments.reduce((sum, a) => sum + Number(a.hours_per_week || 0) * 4.33, 0);
 
+  const uniqueCustomerObject =
+    Boolean(customerId) && customerProjects.length === 1 && customerProjects[0]?.id === id;
   const revenueNet = controllingDocuments
-    .filter((d) => String(d.status ?? "") !== "cancelled" && !d.is_storno)
+    .filter((d) => {
+      const linkedToObject = d.project_id === id;
+      const historicalUniqueCustomerMatch =
+        !d.project_id && uniqueCustomerObject && d.customer_id === customerId;
+      return (
+        (linkedToObject || historicalUniqueCustomerMatch) &&
+        String(d.status ?? "") !== "cancelled" &&
+        !d.is_storno
+      );
+    })
     .reduce((sum, d) => sum + Number(d.net_total ?? d.total ?? 0), 0);
   const materialAndOtherCosts = controllingExpenses.reduce(
     (sum, e) => sum + Number(e.net_amount ?? 0),
