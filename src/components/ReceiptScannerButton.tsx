@@ -127,6 +127,16 @@ export function ReceiptScannerButton({
       sourceHeight = Math.min(video.videoHeight, visibleSourceHeight);
       sourceX = Math.max(0, (video.videoWidth - sourceWidth) / 2);
       sourceY = Math.max(0, (video.videoHeight - sourceHeight) / 2);
+
+      // The dashed guide is inset by 4% horizontally and 3% vertically.
+      // Apply the same inset to the actual capture so only the guided area
+      // is passed to document detection and PDF creation.
+      const guideInsetX = sourceWidth * 0.04;
+      const guideInsetY = sourceHeight * 0.03;
+      sourceX += guideInsetX;
+      sourceY += guideInsetY;
+      sourceWidth -= guideInsetX * 2;
+      sourceHeight -= guideInsetY * 2;
     }
 
     const canvas = document.createElement("canvas");
