@@ -27,7 +27,7 @@ type NavGroup = { title: string; items: readonly NavItem[] };
 const quickOwner: readonly NavItem[] = [
   { to: "/dashboard", label: "Startseite", icon: LayoutDashboard },
   { to: "/kunden", label: "Kunden", icon: Users },
-  { to: "/kalkulation-angebot", label: "Angebot", icon: FileSignature },
+  { to: "/dokumente", label: "Angebot", icon: FileSignature, search: { tab: "quote" } },
   { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
   { to: "/dokumente", label: "Rechnungen", icon: FileText, search: { tab: "invoice" } },
 ];
