@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Upload } from "lucide-react";
+import { Camera, Loader2, Upload } from "lucide-react";
 import { uploadUserFile } from "@/lib/storage";
 import { toast } from "sonner";
 
@@ -12,6 +12,8 @@ export function FileUploadButton({
   disabled = false,
   onBusyChange,
   showSuccessToast = true,
+  capture,
+  prepareFile,
 }: {
   folder: string;
   accept?: string;
@@ -20,6 +22,8 @@ export function FileUploadButton({
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
   showSuccessToast?: boolean;
+  capture?: "user" | "environment";
+  prepareFile?: (file: File) => File | Promise<File>;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,10 +34,11 @@ export function FileUploadButton({
     setBusy(true);
     onBusyChange?.(true);
     try {
-      const path = await uploadUserFile(file, folder);
+      const preparedFile = prepareFile ? await prepareFile(file) : file;
+      const path = await uploadUserFile(preparedFile, folder);
       // Upload and document analysis are separate steps. Do not signal a
       // successful analysis merely because Storage accepted the file.
-      await onUploaded(path, file);
+      await onUploaded(path, preparedFile);
       if (showSuccessToast) toast.success("Datei angehängt");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload oder Verarbeitung fehlgeschlagen");
@@ -51,7 +56,13 @@ export function FileUploadButton({
         disabled={busy || disabled}
         onClick={() => inputRef.current?.click()}
       >
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+        {busy ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : capture ? (
+          <Camera className="size-4" />
+        ) : (
+          <Upload className="size-4" />
+        )}
         {label}
       </Button>
       <input
@@ -59,6 +70,7 @@ export function FileUploadButton({
         ref={inputRef}
         type="file"
         {...(accept ? { accept } : {})}
+        {...(capture ? { capture } : {})}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
