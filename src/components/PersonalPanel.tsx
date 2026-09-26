@@ -1,15 +1,19 @@
-import { Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LoadError, firstError } from "@/components/LoadError";
 import * as React from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fahrtenbuchClient } from "@/lib/fahrtenbuch-client";
-import { saveFile } from "@/lib/download";
-import { buildPayrollSummary } from "@/lib/payroll-export";
-import { buildCsvBlob } from "@/lib/table-summary";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,14 +26,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -37,315 +33,188 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Car, ChevronDown, ChevronLeft, ChevronRight, Download, HeartPulse, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import { EinsatzKalender } from "@/components/EinsatzKalender";
-import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
-
-import {
-  absenceClasses,
-  absenceLabel,
-  absenceReason,
-  absenceShort,
-  countsForPayroll,
-  isAbsence,
-  isEffective,
-} from "@/lib/absence";
 
 const ROLES = ["Reinigungskraft", "Vorarbeiter", "Objektleiter", "Springer", "Verwaltung"];
-const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-const NO_PROJECT = "__none__";
+const CONTRACT_TYPES = [
+  "Vollzeit",
+  "Teilzeit",
+  "Minijob",
+  "Werkstudent",
+  "Ausbildung",
+  "Befristet",
+  "Unbefristet",
+  "Sonstiges",
+];
 
-type EmployeeForm = {
+type Employee = import("@/integrations/supabase/types").Tables<"employees">;
+
+type PersonnelForm = {
+  id?: string;
   name: string;
-  role: string;
+  birth_date: string;
   email: string;
   phone: string;
   personnel_number: string;
-  hourly_rate: number;
+  address_line: string;
+  postal_code: string;
+  city: string;
+  role: string;
+  contract_type: string;
+  contract_start: string;
+  contract_end: string;
+  weekly_hours: string;
+  hourly_rate: string;
+  vacation_days_per_year: string;
+  vacation_carryover_days: string;
+  has_driving_license: boolean;
+  driving_license_classes: string;
+  qualification: string;
+  has_experience_certificate: boolean;
+  experience_details: string;
+  personnel_notes: string;
+  active: boolean;
 };
 
-const empty: EmployeeForm = {
+const empty: PersonnelForm = {
   name: "",
-  role: "Reinigungskraft",
+  birth_date: "",
   email: "",
   phone: "",
   personnel_number: "",
-  hourly_rate: 0,
+  address_line: "",
+  postal_code: "",
+  city: "",
+  role: "Reinigungskraft",
+  contract_type: "",
+  contract_start: "",
+  contract_end: "",
+  weekly_hours: "0",
+  hourly_rate: "0",
+  vacation_days_per_year: "0",
+  vacation_carryover_days: "0",
+  has_driving_license: false,
+  driving_license_classes: "",
+  qualification: "",
+  has_experience_certificate: false,
+  experience_details: "",
+  personnel_notes: "",
+  active: true,
 };
 
-/** Montag der Woche zum übergebenen Datum. */
-function mondayOf(date: Date) {
-  const d = new Date(date);
-  const day = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - day);
-  d.setHours(12, 0, 0, 0);
-  return d;
+function num(value: string) {
+  const n = Number(String(value).replace(",", ".").trim());
+  return Number.isFinite(n) ? n : 0;
 }
 
-function isoDay(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function toNumber(value: string) {
-  return Number(String(value).replace(",", ".").trim()) || 0;
-}
-
-/**
- * Ein einziges kombiniertes Einsatzort-Feld:
- * Beim Klick/Tippen öffnet sich sofort eine Vorschlagsliste aller Projekte.
- * Freitext, der zu keinem Projekt passt, wird direkt übernommen.
- */
-function EinsatzortCell({
-  projects,
-  projectId,
-  freeText,
-  onSelectProject,
-  onFreeText,
-}: {
-  projects: { id: string; name: string | null; city?: string | null }[];
-  projectId: string | null;
-  freeText: string;
-  onSelectProject: (projectId: string | null) => void;
-  onFreeText: (value: string) => void;
-}) {
-  const selected = projects.find((p) => p.id === projectId) ?? null;
-  const shown = selected ? selected.name || "Ohne Namen" : freeText;
-
-  const [openList, setOpenList] = React.useState(false);
-  const [text, setText] = React.useState(shown);
-  const lastShown = React.useRef(shown);
-  if (lastShown.current !== shown) {
-    lastShown.current = shown;
-    if (text !== shown) setText(shown);
-  }
-
-  const q = text.trim().toLowerCase();
-  const matches = projects.filter((p) =>
-    q ? `${p.name ?? ""} ${p.city ?? ""}`.toLowerCase().includes(q) : true,
-  );
-
-  const commitFreeText = (value: string) => {
-    const v = value.trim();
-    if (v === shown) return;
-    onFreeText(v);
+function fromEmployee(employee: Employee): PersonnelForm {
+  return {
+    id: employee.id,
+    name: employee.name ?? "",
+    birth_date: employee.birth_date ?? "",
+    email: employee.email ?? "",
+    phone: employee.phone ?? "",
+    personnel_number: employee.personnel_number ?? "",
+    address_line: employee.address_line ?? "",
+    postal_code: employee.postal_code ?? "",
+    city: employee.city ?? "",
+    role: employee.role || "Reinigungskraft",
+    contract_type: employee.contract_type ?? "",
+    contract_start: employee.contract_start ?? "",
+    contract_end: employee.contract_end ?? "",
+    weekly_hours: String(employee.weekly_hours ?? 0),
+    hourly_rate: String(employee.hourly_rate ?? 0),
+    vacation_days_per_year: String(employee.vacation_days_per_year ?? 0),
+    vacation_carryover_days: String(employee.vacation_carryover_days ?? 0),
+    has_driving_license: Boolean(employee.has_driving_license),
+    driving_license_classes: employee.driving_license_classes ?? "",
+    qualification: employee.qualification ?? "",
+    has_experience_certificate: Boolean(employee.has_experience_certificate),
+    experience_details: employee.experience_details ?? "",
+    personnel_notes: employee.personnel_notes ?? "",
+    active: Boolean(employee.active),
   };
+}
 
-  return (
-    <div className="relative">
-      <Input
-        value={text}
-        placeholder="Einsatzort eintippen oder Projekt wählen"
-        className="h-9 pr-9"
-        onFocus={() => setOpenList(true)}
-        onClick={() => setOpenList(true)}
-        onChange={(ev) => {
-          setText(ev.target.value);
-          setOpenList(true);
-        }}
-        onKeyDown={(ev) => {
-          if (ev.key === "Enter") {
-            ev.currentTarget.blur();
-          } else if (ev.key === "Escape") {
-            setOpenList(false);
-          }
-        }}
-        onBlur={(ev) => {
-          // Klick auf einen Vorschlag zuerst verarbeiten lassen
-          const next = ev.relatedTarget as HTMLElement | null;
-          if (next?.dataset?.["einsatzortOption"]) return;
-          setOpenList(false);
-          commitFreeText(text);
-        }}
-      />
-      <button
-        type="button"
-        aria-label="Projekte anzeigen"
-        className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center text-muted-foreground"
-        onMouseDown={(ev) => ev.preventDefault()}
-        onClick={() => setOpenList((v) => !v)}
-      >
-        <ChevronDown className="size-4" />
-      </button>
-
-      {openList && (
-        <div className="absolute left-0 top-10 z-50 max-h-64 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md">
-          {selected && (
-            <button
-              type="button"
-              data-einsatzort-option="1"
-              className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
-              onClick={() => {
-                setOpenList(false);
-                setText("");
-                onSelectProject(null);
-              }}
-            >
-              Projekt-Zuordnung entfernen
-            </button>
-          )}
-          {matches.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              data-einsatzort-option="1"
-              className="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
-              onClick={() => {
-                setOpenList(false);
-                setText(p.name || "Ohne Namen");
-                onSelectProject(p.id);
-              }}
-            >
-              {p.name || "Ohne Namen"}
-              {p.city ? ` · ${p.city}` : ""}
-            </button>
-          ))}
-          {matches.length === 0 && (
-            <button
-              type="button"
-              data-einsatzort-option="1"
-              className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
-              onClick={() => {
-                setOpenList(false);
-                commitFreeText(text);
-              }}
-            >
-              „{text.trim()}" als Freitext übernehmen
-            </button>
-          )}
-          {projects.length === 0 && (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">
-              Noch keine Projekte angelegt – Freitext eintippen.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
+function valueOrDash(value: string | null | undefined) {
+  const v = String(value ?? "").trim();
+  return v || "—";
 }
 
 export function Personal() {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
-  const [form, setForm] = React.useState<EmployeeForm>(empty);
-  const [weekStart, setWeekStart] = React.useState(() => mondayOf(new Date()));
-  const [monthCursor, setMonthCursor] = React.useState(
-    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12),
-  );
+  const [form, setForm] = React.useState<PersonnelForm>(empty);
 
-  const reportMonth = `${monthCursor.getFullYear()}-${String(monthCursor.getMonth() + 1).padStart(2, "0")}`;
-  const reportMonthEnd = isoDay(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0, 12));
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["employees"] });
-    queryClient.invalidateQueries({ queryKey: ["project_assignments"] });
-  };
-
-  const { data: employees = [], error: employeesError } = useQuery({
-    queryKey: ["employees"],
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees", "personnel-master"],
     queryFn: async () => {
       const { data, error } = await supabase.from("employees").select("*").order("name");
       if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: assignments = [], error: assignmentsError } = useQuery({
-    queryKey: ["project_assignments"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("project_assignments").select("*");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Eigener Query-Key: verhindert Kollision mit anders geformten "projects"-Caches
-  // (Zeiterfassung/Projektliste) und lädt die Objektliste bei jedem Aufruf frisch.
-  const { data: projects = [], error: projectsError } = useQuery({
-    queryKey: ["projects", "personal-picker"],
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id,name,city,status")
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: entries = [], error: entriesError } = useQuery({
-    queryKey: ["time_entries"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        .select("*")
-        .order("work_date", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Company Fahrtenbuch is separate from individual payroll: do not attribute trips to employees.
-  const { data: monthTrips = [], error: monthTripsError } = useQuery({
-    queryKey: ["personal_fahrtenbuch", reportMonth],
-    queryFn: async () => {
-      const { data, error } = await fahrtenbuchClient.from("fahrtenbuch_entries")
-        .select("*").gte("trip_date", `${reportMonth}-01`).lte("trip_date", reportMonthEnd)
-        .order("trip_date").order("trip_time");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-  const { data: monthTripVehicles = [], error: monthTripVehiclesError } = useQuery({
-    queryKey: ["personal_fahrtenbuch_vehicles"],
-    queryFn: async () => {
-      const { data, error } = await fahrtenbuchClient.from("fahrtenbuch_vehicles")
-        .select("id,vehicle_name,license_plate").order("vehicle_name");
-      if (error) throw error;
       return data ?? [];
     },
   });
 
-  const createEmployee = useMutation({
-    mutationFn: async (values: EmployeeForm) => {
+  const save = useMutation({
+    mutationFn: async (values: PersonnelForm) => {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
-      const { error } = await supabase.from("employees").insert({ ...values, user_id: userId });
-      if (error) throw error;
+
+      const payload = {
+        name: values.name.trim(),
+        birth_date: values.birth_date || null,
+        email: values.email.trim(),
+        phone: values.phone.trim(),
+        personnel_number: values.personnel_number.trim(),
+        address_line: values.address_line.trim(),
+        postal_code: values.postal_code.trim(),
+        city: values.city.trim(),
+        role: values.role,
+        contract_type: values.contract_type,
+        contract_start: values.contract_start || null,
+        contract_end: values.contract_end || null,
+        weekly_hours: num(values.weekly_hours),
+        hourly_rate: num(values.hourly_rate),
+        vacation_days_per_year: num(values.vacation_days_per_year),
+        vacation_carryover_days: num(values.vacation_carryover_days),
+        has_driving_license: values.has_driving_license,
+        driving_license_classes: values.has_driving_license
+          ? values.driving_license_classes.trim()
+          : "",
+        qualification: values.qualification.trim(),
+        has_experience_certificate: values.has_experience_certificate,
+        experience_details: values.has_experience_certificate
+          ? values.experience_details.trim()
+          : "",
+        personnel_notes: values.personnel_notes.trim(),
+        active: values.active,
+      };
+
+      if (!payload.name) throw new Error("Bitte den Namen des Mitarbeiters eintragen.");
+      if (
+        values.contract_start &&
+        values.contract_end &&
+        values.contract_end < values.contract_start
+      ) {
+        throw new Error("Das Vertragsende darf nicht vor dem Vertragsbeginn liegen.");
+      }
+
+      if (values.id) {
+        const { error } = await supabase.from("employees").update(payload).eq("id", values.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("employees").insert({ ...payload, user_id: userId });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
-      toast.success("Mitarbeiter angelegt");
+      toast.success(form.id ? "Mitarbeiterdaten aktualisiert" : "Mitarbeiter angelegt");
       setOpen(false);
       setForm(empty);
       queryClient.invalidateQueries({ queryKey: ["employees"] });
     },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const patchEmployee = useMutation({
-    mutationFn: async ({
-      id,
-      patch,
-    }: {
-      id: string;
-      patch: {
-        name?: string;
-        role?: string;
-        hourly_rate?: number;
-        weekly_hours?: number;
-        work_location?: string;
-        vacation_days_per_year?: number;
-        vacation_carryover_days?: number;
-      };
-    }) => {
-      const { error } = await supabase.from("employees").update(patch).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["employees"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -356,309 +225,209 @@ export function Personal() {
     },
     onSuccess: () => {
       toast.success("Mitarbeiter gelöscht");
-      invalidate();
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  /** Primäre Zuordnung (Einsatzort) eines Mitarbeiters. */
-  const primaryAssignment = (employeeId: string) =>
-    assignments.find((a) => a.employee_id === employeeId) ?? null;
-
-  const setEinsatzort = useMutation({
-    mutationFn: async ({ employeeId, projectId }: { employeeId: string; projectId: string }) => {
-      const current = primaryAssignment(employeeId);
-      if (projectId === NO_PROJECT) {
-        if (current) {
-          const { error } = await supabase
-            .from("project_assignments")
-            .delete()
-            .eq("id", current.id);
-          if (error) throw error;
-        }
-        return;
-      }
-      if (current) {
-        const { error } = await supabase
-          .from("project_assignments")
-          .update({ project_id: projectId })
-          .eq("id", current.id);
-        if (error) throw error;
-        return;
-      }
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth.user?.id;
-      if (!userId) throw new Error("Nicht angemeldet");
-      const employee = employees.find((e) => e.id === employeeId);
-      const { error } = await supabase.from("project_assignments").insert({
-        project_id: projectId,
-        employee_id: employeeId,
-        user_id: userId,
-        assignment_role: employee?.role || "Reinigungskraft",
-        hours_per_week: 0,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project_assignments"] }),
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const setWeeklyHours = useMutation({
-    mutationFn: async ({ employeeId, hours }: { employeeId: string; hours: number }) => {
-      const current = primaryAssignment(employeeId);
-      const { error: employeeError } = await supabase
-        .from("employees")
-        .update({ weekly_hours: hours })
-        .eq("id", employeeId);
-      if (employeeError) throw employeeError;
-
-      // Bei einer Projekt-Zuordnung bleibt der projektspezifische Wert synchron.
-      // Für Freitext-Einsatzorte ist keine Zuordnung erforderlich.
-      if (current) {
-        const { error: assignmentError } = await supabase
-          .from("project_assignments")
-          .update({ hours_per_week: hours })
-          .eq("id", current.id);
-        if (assignmentError) throw assignmentError;
-      }
-    },
-    onSuccess: () => invalidate(),
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const weekDays = React.useMemo(
-    () =>
-      Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(weekStart);
-        d.setDate(d.getDate() + i);
-        return isoDay(d);
-      }),
-    [weekStart],
+  const textField = (
+    key: keyof PersonnelForm,
+    label: string,
+    options?: { type?: string; placeholder?: string },
+  ) => (
+    <div className="space-y-2">
+      <Label htmlFor={String(key)}>{label}</Label>
+      <Input
+        id={String(key)}
+        type={options?.type ?? "text"}
+        placeholder={options?.placeholder}
+        value={typeof form[key] === "string" ? String(form[key]) : ""}
+        onChange={(e) => setForm((current) => ({ ...current, [key]: e.target.value }))}
+      />
+    </div>
   );
-
-  const projectName = (id: string | null | undefined) =>
-    projects.find((p) => p.id === id)?.name || "";
-
-  function trackedHours(employeeId: string) {
-    return entries
-      .filter((e) => e.employee_id === employeeId)
-      .reduce((s, e) => s + Number(e.hours || 0), 0);
-  }
-
-  function hoursOnDay(employeeId: string, day: string) {
-    return entries
-      .filter((e) => e.employee_id === employeeId && e.work_date === day && !isAbsence(e))
-      .reduce((s, e) => s + Number(e.hours || 0), 0);
-  }
-
-  /** Abwesenheitsgrund des Mitarbeiters an einem Tag (Krankheit hat Vorrang). */
-  function absenceOnDay(employeeId: string, day: string) {
-    const list = entries
-      .filter((e) => e.employee_id === employeeId && e.work_date === day && isEffective(e))
-      .map(absenceReason)
-      .filter(Boolean) as ReturnType<typeof absenceReason>[];
-    if (list.length === 0) return null;
-    return list.includes("sick") ? "sick" : list[0]!;
-  }
-
-  /** Monatsabrechnung: Arbeitsstunden, Lohn und Abwesenheitstage je Mitarbeiter. */
-  const monthPrefix = `${monthCursor.getFullYear()}-${String(monthCursor.getMonth() + 1).padStart(2, "0")}`;
-  const payroll = employees.map((e) => {
-    // Strikt: nur bestätigte Stundenzettel-Einträge des gewählten Monats.
-    const rows = entries.filter(
-      (t) =>
-        t.employee_id === e.id &&
-        String(t.work_date).startsWith(monthPrefix) &&
-        countsForPayroll(t),
-    );
-    const workHours = rows
-      .filter((t) => !isAbsence(t))
-      .reduce((s, t) => s + Number(t.hours || 0), 0);
-    const days = (reason: string) =>
-      new Set(rows.filter((t) => absenceReason(t) === reason).map((t) => t.work_date)).size;
-    const rate = Number(e.hourly_rate ?? 0);
-    return {
-      id: e.id,
-      name: e.name,
-      workHours,
-      rate,
-      wage: workHours * rate,
-      vacationDays: days("vacation"),
-      sickDays: days("sick"),
-      otherDays: days("other"),
-    };
-  });
-
-  const payrollExportRows = buildPayrollSummary(
-    entries
-      .filter((t) => String(t.work_date).startsWith(monthPrefix))
-      .map((t) => {
-        const employee = employees.find((e) => e.id === t.employee_id);
-        return {
-          employee_id: String(t.employee_id ?? ""),
-          employee_name: String(t.employee_name || employee?.name || "Ohne Zuordnung"),
-          personnel_number: String(employee?.personnel_number ?? ""),
-          contract_type: String(employee?.contract_type ?? ""),
-          weekly_hours: Number(employee?.weekly_hours ?? 0),
-          hourly_rate: Number(t.hourly_rate ?? employee?.hourly_rate ?? 0),
-          work_date: String(t.work_date ?? ""),
-          hours: Number(t.hours ?? 0),
-          entry_type: String(t.entry_type ?? "work"),
-          absence_reason: String(t.absence_reason ?? ""),
-          approval_status: String(t.approval_status ?? "approved"),
-        };
-      }),
-  );
-
-  async function downloadPayrollPreparationCsv() {
-    const blob = buildCsvBlob(payrollExportRows, {
-      title: `Lohnvorbereitung ${monthPrefix}`,
-    });
-    if (!blob) {
-      toast.error("Keine bestätigten Lohndaten im ausgewählten Monat.");
-      return;
-    }
-    await saveFile(blob, `Lohnvorbereitung_${monthPrefix}.csv`);
-  }
-
-  async function downloadMonthFahrtenbuchPdf() {
-    if (monthTripsError || monthTripVehiclesError) {
-      toast.error("Fahrtenbuch konnte nicht vollständig geladen werden.");
-      return;
-    }
-    if (monthTrips.length === 0) {
-      toast.error("Keine Fahrten im ausgewählten Monat.");
-      return;
-    }
-    try {
-      const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
-      const rows: Record<string, string>[] = monthTrips.map((trip) => {
-        const vehicle = monthTripVehicles.find((v) => v.id === trip.vehicle_id);
-        return {
-          Datum: formatDate(trip.trip_date),
-          Startzeit: String(trip.trip_time ?? "").slice(0, 5),
-          Rückkehrzeit: String(trip.return_time ?? "").slice(0, 5),
-          Fahrtart: trip.trip_type === "round_trip" ? "Hin- und Rückfahrt" : "Nur Hinfahrt",
-          Fahrzeug: vehicle?.vehicle_name ?? "",
-          Kennzeichen: vehicle?.license_plate ?? "",
-          Von: trip.from_location ?? "",
-          "Kunde / Ziel / Zweck": trip.customer_name ?? "",
-          Zieladresse: trip.to_location ?? "",
-          "Start-km": String(trip.start_km ?? ""),
-          "End-km": String(trip.end_km ?? ""),
-          "Geschäftliche km": String(trip.distance_km ?? ""),
-          Bemerkung: trip.notes ?? "",
-        };
-      });
-      await saveFile(await buildBrandedFahrtenbuchPdf(rows, `${reportMonth}-01`, reportMonthEnd), `Fahrtenbuch_${reportMonth}.pdf`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Fahrtenbuch-PDF konnte nicht erstellt werden.");
-    }
-  }
-
-  const shiftWeek = (delta: number) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + delta * 7);
-    setWeekStart(mondayOf(d));
-  };
-
-  const loadError = firstError(employeesError, assignmentsError, projectsError, entriesError);
 
   return (
     <div className="space-y-6">
-      <LoadError
-        error={loadError}
-        title="Personaldaten konnten nicht geladen werden"
-        onRetry={() => void queryClient.invalidateQueries()}
-      />
-      <MitarbeiterEinladung />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Personal</h1>
-          <p className="mt-1 text-muted-foreground">
-            Arbeits-Tabelle: Name, Einsatzort und Stunden direkt in der Zeile bearbeiten.
+          <h1 className="text-2xl font-semibold">Personalstamm</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Stammdaten, Vertrag, Qualifikation und Nachweise der Mitarbeiter. Einsatzplanung und
+            Kalender bleiben getrennt im Dienstplan bzw. Kalender.
           </p>
         </div>
-
         <Dialog
           open={open}
-          onOpenChange={(o) => {
-            setOpen(o);
-            if (!o) setForm(empty);
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setForm(empty);
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setForm(empty)}>
               <Plus className="size-4" /> Neuer Mitarbeiter
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-xl">
+          <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-3xl">
             <DialogHeader>
-              <DialogTitle>Neuer Mitarbeiter</DialogTitle>
+              <DialogTitle>{form.id ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="e-name">Name</Label>
-                <Input
-                  id="e-name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+
+            <div className="space-y-5">
+              <section className="space-y-3">
+                <h3 className="font-semibold">Persönliche Daten</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {textField("name", "Name")}
+                  {textField("birth_date", "Geburtsdatum", { type: "date" })}
+                  {textField("email", "E-Mail", { type: "email" })}
+                  {textField("phone", "Telefon")}
+                  {textField("personnel_number", "Personalnummer")}
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select
+                      value={form.active ? "active" : "inactive"}
+                      onValueChange={(value) =>
+                        setForm((current) => ({ ...current, active: value === "active" }))
+                      }
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Aktiv</SelectItem>
+                        <SelectItem value="inactive">Inaktiv</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    {textField("address_line", "Straße und Hausnummer")}
+                  </div>
+                  {textField("postal_code", "PLZ")}
+                  {textField("city", "Ort")}
+                </div>
+              </section>
+
+              <section className="space-y-3 border-t pt-4">
+                <h3 className="font-semibold">Arbeitsvertrag</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Funktion / Position</Label>
+                    <Select
+                      value={form.role}
+                      onValueChange={(value) => setForm((current) => ({ ...current, role: value }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ROLES.map((role) => (
+                          <SelectItem key={role} value={role}>{role}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vertragsart</Label>
+                    <Select
+                      value={form.contract_type || "__none__"}
+                      onValueChange={(value) =>
+                        setForm((current) => ({
+                          ...current,
+                          contract_type: value === "__none__" ? "" : value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger><SelectValue placeholder="Vertragsart wählen" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nicht angegeben</SelectItem>
+                        {CONTRACT_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {textField("contract_start", "Vertragsbeginn", { type: "date" })}
+                  {textField("contract_end", "Vertragsende / Befristung", { type: "date" })}
+                  {textField("weekly_hours", "Wochenstunden")}
+                  {textField("hourly_rate", "Stundenlohn (€)")}
+                  {textField("vacation_days_per_year", "Urlaubstage / Jahr")}
+                  {textField("vacation_carryover_days", "Resturlaub")}
+                </div>
+              </section>
+
+              <section className="space-y-3 border-t pt-4">
+                <h3 className="font-semibold">Führerschein & Qualifikation</h3>
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3 rounded-md border p-3">
+                    <Checkbox
+                      checked={form.has_driving_license}
+                      onCheckedChange={(checked) =>
+                        setForm((current) => ({
+                          ...current,
+                          has_driving_license: Boolean(checked),
+                          ...(!checked ? { driving_license_classes: "" } : {}),
+                        }))
+                      }
+                    />
+                    <span>Führerschein vorhanden</span>
+                  </label>
+                  {form.has_driving_license &&
+                    textField("driving_license_classes", "Führerscheinklassen", {
+                      placeholder: "z. B. B, BE, C1",
+                    })}
+                  <div className="space-y-2">
+                    <Label>Ausbildung / Qualifikation</Label>
+                    <Textarea
+                      rows={3}
+                      value={form.qualification}
+                      onChange={(e) =>
+                        setForm((current) => ({ ...current, qualification: e.target.value }))
+                      }
+                      placeholder="z. B. Ausbildung Gebäudereiniger, Fachkenntnisse, Zertifikate"
+                    />
+                  </div>
+                  <label className="flex items-center gap-3 rounded-md border p-3">
+                    <Checkbox
+                      checked={form.has_experience_certificate}
+                      onCheckedChange={(checked) =>
+                        setForm((current) => ({
+                          ...current,
+                          has_experience_certificate: Boolean(checked),
+                          ...(!checked ? { experience_details: "" } : {}),
+                        }))
+                      }
+                    />
+                    <span>Erfahrungs-/Arbeitszeugnis vorhanden</span>
+                  </label>
+                  {form.has_experience_certificate && (
+                    <div className="space-y-2">
+                      <Label>Erfahrung / Zeugnisdetails</Label>
+                      <Textarea
+                        rows={3}
+                        value={form.experience_details}
+                        onChange={(e) =>
+                          setForm((current) => ({ ...current, experience_details: e.target.value }))
+                        }
+                        placeholder="z. B. 5 Jahre Unterhaltsreinigung, Arbeitszeugnis vorhanden"
+                      />
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="space-y-2 border-t pt-4">
+                <Label>Interne Personalnotizen</Label>
+                <Textarea
+                  rows={4}
+                  value={form.personnel_notes}
+                  onChange={(e) =>
+                    setForm((current) => ({ ...current, personnel_notes: e.target.value }))
+                  }
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Rolle / Position</Label>
-                <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="e-nr">Personalnummer</Label>
-                <Input
-                  id="e-nr"
-                  value={form.personnel_number}
-                  onChange={(e) => setForm({ ...form, personnel_number: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="e-mail">E-Mail</Label>
-                <Input
-                  id="e-mail"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="e-phone">Telefon</Label>
-                <Input
-                  id="e-phone"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="e-rate">Stundenlohn (€)</Label>
-                <Input
-                  id="e-rate"
-                  inputMode="decimal"
-                  value={form.hourly_rate}
-                  onChange={(e) => setForm({ ...form, hourly_rate: toNumber(e.target.value) })}
-                />
-              </div>
+              </section>
             </div>
+
             <DialogFooter>
               <Button
-                onClick={() => createEmployee.mutate(form)}
-                disabled={!form.name.trim() || createEmployee.isPending}
+                onClick={() => save.mutate(form)}
+                disabled={!form.name.trim() || save.isPending}
               >
                 Speichern
               </Button>
@@ -667,432 +436,89 @@ export function Personal() {
         </Dialog>
       </div>
 
-      {/* Direkt editierbare Arbeits-Tabelle */}
-      <div className="surface overflow-x-auto">
-        {employees.length === 0 ? (
-          <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-            Noch keine Mitarbeiter angelegt.
-          </p>
-        ) : (
-          <table className="w-full min-w-[980px] text-sm">
-            <thead className="text-left text-muted-foreground">
-              <tr className="border-b">
-                <th className="px-5 py-3 w-[22%]">Mitarbeiter</th>
-                <th className="px-3 py-3 w-[14%]">Funktion</th>
-                <th className="px-3 py-3 w-[26%]">Einsatzort</th>
-                <th className="px-3 py-3 w-[10%]">Std./Woche</th>
-                <th className="px-3 py-3 w-[10%]">Stundenlohn €</th>
-                <th className="px-3 py-3 w-[10%]">Urlaub/Jahr</th>
-                <th className="px-3 py-3 text-right w-[10%]">Erfasst</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
+      {employees.length === 0 ? (
+        <div className="surface px-5 py-12 text-center text-sm text-muted-foreground">
+          Noch keine Mitarbeiter angelegt.
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {employees.map((employee) => (
+            <article key={employee.id} className="surface space-y-4 p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-muted p-2">
+                  <UserRound className="size-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-lg font-semibold">{employee.name}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {[employee.role, employee.personnel_number ? "PNr. " + employee.personnel_number : ""]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+                <span
+                  className={
+                    employee.active
+                      ? "rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-800"
+                      : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
+                  }
+                >
+                  {employee.active ? "Aktiv" : "Inaktiv"}
+                </span>
+              </div>
 
-            <tbody>
-              {employees.map((e) => {
-                const assignment = primaryAssignment(e.id);
-                return (
-                  <tr key={e.id} className="border-b last:border-0 align-middle">
-                    <td className="px-5 py-2">
-                      <Input
-                        key={`name-${e.id}-${e.name}`}
-                        defaultValue={e.name}
-                        className="h-9"
-                        onBlur={(ev) => {
-                          const value = ev.target.value.trim();
-                          if (value && value !== e.name)
-                            patchEmployee.mutate({ id: e.id, patch: { name: value } });
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <Select
-                        value={e.role || "Reinigungskraft"}
-                        onValueChange={(v) =>
-                          patchEmployee.mutate({ id: e.id, patch: { role: v } })
-                        }
+              <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+                <div><dt className="text-muted-foreground">Geburtsdatum</dt><dd>{employee.birth_date ? formatDate(employee.birth_date) : "—"}</dd></div>
+                <div><dt className="text-muted-foreground">Kontakt</dt><dd>{valueOrDash(employee.phone || employee.email)}</dd></div>
+                <div><dt className="text-muted-foreground">Vertrag</dt><dd>{valueOrDash(employee.contract_type)}</dd></div>
+                <div><dt className="text-muted-foreground">Vertragsdauer</dt><dd>{employee.contract_start ? formatDate(employee.contract_start) + (employee.contract_end ? " – " + formatDate(employee.contract_end) : " – unbefristet") : "—"}</dd></div>
+                <div><dt className="text-muted-foreground">Wochenstunden</dt><dd>{Number(employee.weekly_hours ?? 0).toLocaleString("de-DE")} Std.</dd></div>
+                <div><dt className="text-muted-foreground">Führerschein</dt><dd>{employee.has_driving_license ? "Ja" + (employee.driving_license_classes ? " · " + employee.driving_license_classes : "") : "Nein"}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-muted-foreground">Ausbildung / Qualifikation</dt><dd>{valueOrDash(employee.qualification)}</dd></div>
+                <div className="sm:col-span-2"><dt className="text-muted-foreground">Erfahrung / Zeugnis</dt><dd>{employee.has_experience_certificate ? valueOrDash(employee.experience_details || "Vorhanden") : "Nicht hinterlegt"}</dd></div>
+              </dl>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setForm(fromEmployee(employee));
+                    setOpen(true);
+                  }}
+                >
+                  <Pencil className="size-4" /> Bearbeiten
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Trash2 className="size-4 text-destructive" /> Löschen
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Mitarbeiter wirklich löschen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Der Mitarbeiter „{employee.name}“ wird gelöscht. Bestehende Zeit-/Einsatzdaten
+                        sollten vorher geprüft werden.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction
+                        className={buttonVariants({ variant: "destructive" })}
+                        onClick={() => remove.mutate(employee.id)}
                       >
-                        <SelectTrigger className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ROLES.map((r) => (
-                            <SelectItem key={r} value={r}>
-                              {r}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <EinsatzortCell
-                        projects={projects}
-                        projectId={assignment?.project_id ?? null}
-                        freeText={e.work_location ?? ""}
-                        onSelectProject={(projectId) => {
-                          setEinsatzort.mutate({
-                            employeeId: e.id,
-                            projectId: projectId ?? NO_PROJECT,
-                          });
-                          if (projectId && (e.work_location ?? ""))
-                            patchEmployee.mutate({ id: e.id, patch: { work_location: "" } });
-                        }}
-                        onFreeText={(value) => {
-                          if (value && assignment)
-                            setEinsatzort.mutate({ employeeId: e.id, projectId: NO_PROJECT });
-                          if (value !== (e.work_location ?? ""))
-                            patchEmployee.mutate({ id: e.id, patch: { work_location: value } });
-                        }}
-                      />
-                    </td>
-
-                    <td className="px-3 py-2">
-                      <Input
-                        key={`h-${e.id}-${e.weekly_hours ?? 0}`}
-                        defaultValue={String(e.weekly_hours ?? assignment?.hours_per_week ?? 0)}
-                        inputMode="decimal"
-                        placeholder="0"
-                        className="h-9"
-                        onBlur={(ev) => {
-                          const hours = toNumber(ev.target.value);
-                          if (hours !== Number(e.weekly_hours ?? assignment?.hours_per_week ?? 0))
-                            setWeeklyHours.mutate({ employeeId: e.id, hours });
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        key={`r-${e.id}-${e.hourly_rate}`}
-                        defaultValue={String(e.hourly_rate ?? 0)}
-                        inputMode="decimal"
-                        className="h-9"
-                        onBlur={(ev) => {
-                          const rate = toNumber(ev.target.value);
-                          if (rate !== Number(e.hourly_rate ?? 0))
-                            patchEmployee.mutate({ id: e.id, patch: { hourly_rate: rate } });
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        key={`u-${e.id}-${e.vacation_days_per_year ?? 0}`}
-                        defaultValue={String(e.vacation_days_per_year ?? 0)}
-                        inputMode="decimal"
-                        placeholder="0"
-                        className="h-9"
-                        title="Jahresurlaub in Tagen"
-                        onBlur={(ev) => {
-                          const days = toNumber(ev.target.value);
-                          if (days !== Number(e.vacation_days_per_year ?? 0))
-                            patchEmployee.mutate({
-                              id: e.id,
-                              patch: { vacation_days_per_year: days },
-                            });
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-right font-medium">
-                      {trackedHours(e.id).toFixed(2)} Std.
-                    </td>
-                    <td className="px-5 py-2 text-right">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="size-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Mitarbeiter wirklich löschen?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {`Der Mitarbeiter „${e.name || "ohne Namen"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                            <AlertDialogAction
-                              className={buttonVariants({ variant: "destructive" })}
-                              onClick={() => remove.mutate(e.id)}
-                            >
-                              Löschen
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
-        <div>
-          <p className="font-medium">Fahrtenbuch</p>
-          <p className="text-sm text-muted-foreground">Fahrten erfassen und denselben Fahrtenbuch-PDF-Bericht wie beim Steuerberater herunterladen.</p>
+                        Löschen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </article>
+          ))}
         </div>
-        <Button asChild variant="outline"><Link to="/fahrtenbuch"><Car className="size-4" /> Fahrtenbuch / PDF</Link></Button>
-      </div>
-
-      <EinsatzKalender employees={employees} projects={projects} />
-
-      {/* Wochenübersicht */}
-
-      <section className="surface space-y-4 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Wochenübersicht</h2>
-            <p className="text-sm text-muted-foreground">
-              {formatDate(weekDays[0]!)} – {formatDate(weekDays[6]!)} · erfasste Stunden je Tag
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => shiftWeek(-1)}>
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button variant="outline" onClick={() => setWeekStart(mondayOf(new Date()))}>
-              Aktuelle Woche
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => shiftWeek(1)}>
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
-
-        {employees.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Noch keine Mitarbeiter vorhanden.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-muted-foreground">
-                <tr className="border-b">
-                  <th className="py-2 pr-3">Mitarbeiter</th>
-                  {weekDays.map((d, i) => (
-                    <th key={d} className="py-2 pr-3 text-right">
-                      {WEEKDAYS[i]} {formatDate(d).slice(0, 6)}
-                    </th>
-                  ))}
-                  <th className="py-2 text-right">Summe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((e) => {
-                  const days = weekDays.map((d) => hoursOnDay(e.id, d));
-                  const sum = days.reduce((s, h) => s + h, 0);
-                  const objects = assignments
-                    .filter((a) => a.employee_id === e.id)
-                    .map((a) => projectName(a.project_id))
-                    .filter(Boolean);
-                  return (
-                    <tr key={e.id} className="border-b last:border-0">
-                      <td className="py-2 pr-3">
-                        <div className="font-medium">{e.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {objects.join(", ") || e.work_location || "Kein Objekt"}
-                        </div>
-                      </td>
-                      {days.map((h, i) => {
-                        const day = weekDays[i]!;
-                        const reason = absenceOnDay(e.id, day);
-                        return (
-                          <td key={day} className="py-2 pr-3 text-right">
-                            {reason ? (
-                              <span
-                                title={absenceLabel(reason)}
-                                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-semibold ${absenceClasses(reason)}`}
-                              >
-                                {reason === "sick" && <HeartPulse className="size-3" />}
-                                {absenceShort(reason)}
-                              </span>
-                            ) : h > 0 ? (
-                              h.toFixed(2)
-                            ) : (
-                              <span className="text-muted-foreground">–</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="py-2 text-right font-semibold">{sum.toFixed(2)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="text-xs text-muted-foreground">
-          Legende: <span className="font-semibold text-destructive">K</span> = Krankheit ·{" "}
-          <span className="font-semibold text-amber-600">U</span> = Urlaub ·{" "}
-          <span className="font-semibold">S</span> = Sonstiges
-        </p>
-      </section>
-
-      {/* Monatsabrechnung */}
-      <section className="surface space-y-4 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Lohnvorbereitung</h2>
-            <p className="text-sm text-muted-foreground">
-              Bestätigte Arbeitsstunden, Personalnummern und Abwesenheiten als vorbereiteter Monats-Export für die Lohnabrechnung.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => void downloadPayrollPreparationCsv()}
-              disabled={payrollExportRows.length === 0}
-            >
-              <Download className="size-4" /> Lohnvorbereitung CSV
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                setMonthCursor(
-                  new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1, 12),
-                )
-              }
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <span className="min-w-[9rem] text-center text-sm font-medium">
-              {monthCursor.toLocaleDateString("de-DE-u-ca-gregory-nu-latn", {
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                setMonthCursor(
-                  new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1, 12),
-                )
-              }
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
-
-        {payroll.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Noch keine Mitarbeiter vorhanden.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead className="text-left text-muted-foreground">
-                <tr className="border-b">
-                  <th className="py-2 pr-3">Mitarbeiter</th>
-                  <th className="py-2 pr-3 text-right">Arbeitsstunden</th>
-                  <th className="py-2 pr-3 text-right">Stundenlohn</th>
-                  <th className="py-2 pr-3 text-right">Lohn (brutto)</th>
-                  <th className="py-2 pr-3 text-right">Urlaubstage</th>
-                  <th className="py-2 pr-3 text-right">Krankheitstage</th>
-                  <th className="py-2 text-right">Sonstige</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payroll.map((p) => (
-                  <tr key={p.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-medium">{p.name}</td>
-                    <td className="py-2 pr-3 text-right">{p.workHours.toFixed(2)}</td>
-                    <td className="py-2 pr-3 text-right">{p.rate.toFixed(2)} €</td>
-                    <td className="py-2 pr-3 text-right font-semibold">{p.wage.toFixed(2)} €</td>
-                    <td className="py-2 pr-3 text-right text-amber-600">{p.vacationDays}</td>
-                    <td className="py-2 pr-3 text-right font-medium text-destructive">
-                      {p.sickDays}
-                    </td>
-                    <td className="py-2 text-right text-muted-foreground">{p.otherDays}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t font-semibold">
-                  <td className="py-2 pr-3">Gesamt</td>
-                  <td className="py-2 pr-3 text-right">
-                    {payroll.reduce((s, p) => s + p.workHours, 0).toFixed(2)}
-                  </td>
-                  <td />
-                  <td className="py-2 pr-3 text-right">
-                    {payroll.reduce((s, p) => s + p.wage, 0).toFixed(2)} €
-                  </td>
-                  <td className="py-2 pr-3 text-right">
-                    {payroll.reduce((s, p) => s + p.vacationDays, 0)}
-                  </td>
-                  <td className="py-2 pr-3 text-right">
-                    {payroll.reduce((s, p) => s + p.sickDays, 0)}
-                  </td>
-                  <td className="py-2 text-right">
-                    {payroll.reduce((s, p) => s + p.otherDays, 0)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* Firmenfahrten sind ein eigenständiger Bericht, kein Bestandteil der Lohnsumme. */}
-      <section className="surface space-y-3 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Fahrtenbuch – Betriebsfahrten</h2>
-            <p className="text-sm text-muted-foreground">
-              Fahrten für {monthCursor.toLocaleDateString("de-DE", { month: "long", year: "numeric" })}; keine automatische Zuordnung zu Mitarbeitern oder Lohn.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => void downloadMonthFahrtenbuchPdf()}
-            disabled={monthTrips.length === 0 || Boolean(monthTripsError || monthTripVehiclesError)}>
-            <Car className="size-4" /> Fahrtenbuch PDF
-          </Button>
-        </div>
-        {(monthTripsError || monthTripVehiclesError) ? (
-          <p className="text-sm text-destructive">Fahrtenbuch konnte nicht geladen werden.</p>
-        ) : (
-          <p className="text-sm text-muted-foreground">{monthTrips.length} Fahrten im gewählten Monat.</p>
-        )}
-      </section>
-
-      {/* Einsatzübersicht je Projekt */}
-      <section className="surface space-y-3 p-5">
-        <h2 className="text-lg font-semibold">Einsatzübersicht nach Objekten</h2>
-        {projects.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Noch keine Projekte vorhanden.</p>
-        ) : (
-          <ul className="divide-y">
-            {projects.map((p) => {
-              const team = assignments.filter((a) => a.project_id === p.id);
-              const hours = entries
-                .filter((e) => e.project_id === p.id)
-                .reduce((s, e) => s + Number(e.hours || 0), 0);
-              return (
-                <li key={p.id} className="flex flex-wrap items-center gap-3 py-3">
-                  <Link
-                    to="/projekte/$id"
-                    params={{ id: p.id }}
-                    className="min-w-0 flex-1 font-medium hover:underline"
-                  >
-                    {p.name || "Ohne Namen"}
-                  </Link>
-                  <span className="text-sm text-muted-foreground">
-                    {team.length === 0
-                      ? "Kein Team zugewiesen"
-                      : team
-                          .map(
-                            (a) =>
-                              employees.find((e) => e.id === a.employee_id)?.name ?? "Unbekannt",
-                          )
-                          .join(", ")}
-                  </span>
-                  <span className="text-sm font-medium">{hours.toFixed(2)} Std.</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      )}
     </div>
   );
 }
