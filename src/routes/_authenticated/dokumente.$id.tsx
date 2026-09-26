@@ -86,6 +86,7 @@ import {
   syncMonthInText,
 } from "@/lib/invoice-period";
 import { findDuplicateInvoice } from "@/lib/invoice-duplicate";
+import { ensureCustomerForAcceptedQuote } from "@/lib/prospect-customer";
 
 import { downloadBytes } from "@/lib/pdf";
 import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
@@ -270,6 +271,7 @@ function DokumentDetail() {
       customer_name: String(d["customer_name"] ?? ""),
       customer_company: String(d["customer_company"] ?? ""),
       customer_email: String(d["customer_email"] ?? ""),
+      customer_phone: String(d["customer_phone"] ?? ""),
       customer_address_line: String(d["customer_address_line"] ?? ""),
       customer_postal_code: String(d["customer_postal_code"] ?? ""),
       customer_city: String(d["customer_city"] ?? ""),
@@ -831,15 +833,32 @@ function DokumentDetail() {
 
   const decide = useMutation({
     mutationFn: async (decision: "accepted" | "declined") => {
+      await save.mutateAsync();
+      const converted =
+        decision === "accepted" && !form["customer_id"]
+          ? await ensureCustomerForAcceptedQuote(id)
+          : null;
       await setQuoteDecision(id, decision);
-      return decision;
+      return { decision, converted };
     },
-    onSuccess: (decision) => {
-      // Lokalen Status mitziehen, sonst überschreibt das Autosave den alten Wert.
-      setForm((f) => ({ ...f, status: decision }));
-      toast.success("Angebotsstatus aktualisiert");
+    onSuccess: ({ decision, converted }) => {
+      // Lokalen Status und ggf. neu verknüpften Kunden mitziehen, damit Autosave
+      // nicht wieder den Interessenten-Zustand überschreibt.
+      setForm((f) => ({
+        ...f,
+        status: decision,
+        ...(converted ? { customer_id: converted.customerId } : {}),
+      }));
+      toast.success(
+        converted?.created
+          ? "Angebot angenommen – Interessent wurde als Kunde angelegt."
+          : converted
+            ? "Angebot angenommen – mit vorhandenem Kunden verknüpft."
+            : "Angebotsstatus aktualisiert",
+      );
       queryClient.invalidateQueries({ queryKey: ["document", id] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -977,6 +996,7 @@ function DokumentDetail() {
       customer_name: c.name,
       customer_company: c.company,
       customer_email: c.email,
+      customer_phone: c.phone,
       customer_address_line: c.address_line,
       customer_postal_code: c.postal_code,
       customer_city: c.city,

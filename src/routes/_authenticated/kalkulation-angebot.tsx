@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Calculator, FileSignature, Map, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Search = { area?: number; belag?: string };
 type Mode = "area" | "hours";
+type RecipientMode = "interessent" | "kunde";
 
 const TYPES = [
   { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.35, hourly: 35 },
@@ -77,6 +79,48 @@ function KalkulationAngebotPage() {
   const [note, setNote] = useState(search.belag ? `Bodenbelag: ${search.belag}` : "");
   const [confirmed, setConfirmed] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>("interessent");
+  const [customerId, setCustomerId] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [prospect, setProspect] = useState({
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    address_line: "",
+    postal_code: "",
+    city: "",
+    country: "Deutschland",
+    vat_id: "",
+  });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers", "quote-start"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .is("deleted_at", null)
+        .order("company", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects", "quote-start"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,customer_id,status")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const selectedCustomer = customers.find((customer) => customer.id === customerId) ?? null;
+  const customerProjects = projects.filter((project) => project.customer_id === customerId);
 
   const visitsPerMonth = useMemo(() => {
     const value = Math.max(1, num(frequency) || 1);
@@ -157,9 +201,54 @@ function KalkulationAngebotPage() {
         note.trim(),
       ].filter(Boolean).join("\n");
 
+      const recipient =
+        recipientMode === "kunde" && selectedCustomer
+          ? {
+              customer_id: selectedCustomer.id,
+              project_id: projectId || null,
+              customer_type: selectedCustomer.company?.trim() ? "firma" : "privat",
+              customer_number: selectedCustomer.customer_number ?? "",
+              customer_name: selectedCustomer.name ?? "",
+              customer_company: selectedCustomer.company ?? "",
+              customer_email: selectedCustomer.email ?? "",
+              customer_phone: selectedCustomer.phone ?? "",
+              customer_address_line: selectedCustomer.address_line ?? "",
+              customer_postal_code: selectedCustomer.postal_code ?? "",
+              customer_city: selectedCustomer.city ?? "",
+              customer_country: selectedCustomer.country ?? "",
+              customer_vat_id: selectedCustomer.vat_id ?? "",
+            }
+          : {
+              customer_id: null,
+              project_id: null,
+              customer_type: prospect.company.trim() ? "firma" : "privat",
+              customer_number: "",
+              customer_name: prospect.name.trim(),
+              customer_company: prospect.company.trim(),
+              customer_email: prospect.email.trim(),
+              customer_phone: prospect.phone.trim(),
+              customer_address_line: prospect.address_line.trim(),
+              customer_postal_code: prospect.postal_code.trim(),
+              customer_city: prospect.city.trim(),
+              customer_country: prospect.country.trim() || "Deutschland",
+              customer_vat_id: prospect.vat_id.trim(),
+            };
+
+      if (recipientMode === "kunde" && !selectedCustomer) {
+        throw new Error("Bitte einen Kunden auswählen.");
+      }
+      if (
+        recipientMode === "interessent" &&
+        !prospect.name.trim() &&
+        !prospect.company.trim()
+      ) {
+        throw new Error("Bitte beim Interessenten mindestens Name oder Firma eintragen.");
+      }
+
       const { error: docError } = await supabase
         .from("documents")
         .update({
+          ...recipient,
           service_description: description,
           discount_percent: 0,
           discount_amount: 0,
@@ -192,6 +281,151 @@ function KalkulationAngebotPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1.45fr_1fr]">
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Empfänger des Angebots</CardTitle>
+              <CardDescription>
+                Angebot direkt für einen Interessenten erstellen oder einen bestehenden Kunden auswählen.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={recipientMode === "interessent" ? "default" : "outline"}
+                  onClick={() => {
+                    setRecipientMode("interessent");
+                    setCustomerId("");
+                    setProjectId("");
+                  }}
+                >
+                  Interessent
+                </Button>
+                <Button
+                  type="button"
+                  variant={recipientMode === "kunde" ? "default" : "outline"}
+                  onClick={() => setRecipientMode("kunde")}
+                >
+                  Kunde
+                </Button>
+              </div>
+
+              {recipientMode === "kunde" ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Kunde</Label>
+                    <Select
+                      value={customerId}
+                      onValueChange={(value) => {
+                        setCustomerId(value);
+                        setProjectId("");
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Kunde auswählen" /></SelectTrigger>
+                      <SelectContent>
+                        {customers.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.company || customer.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Objekt / Projekt (optional)</Label>
+                    <Select
+                      value={projectId || "__none__"}
+                      onValueChange={(value) => setProjectId(value === "__none__" ? "" : value)}
+                      disabled={!customerId}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Kein Objekt gewählt" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Kein Objekt / Projekt</SelectItem>
+                        {customerProjects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name || "Ohne Namen"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Name / Ansprechpartner</Label>
+                    <Input
+                      value={prospect.name}
+                      onChange={(e) => setProspect((p) => ({ ...p, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Firma</Label>
+                    <Input
+                      value={prospect.company}
+                      onChange={(e) => setProspect((p) => ({ ...p, company: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>E-Mail</Label>
+                    <Input
+                      type="email"
+                      value={prospect.email}
+                      onChange={(e) => setProspect((p) => ({ ...p, email: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Telefon</Label>
+                    <Input
+                      value={prospect.phone}
+                      onChange={(e) => setProspect((p) => ({ ...p, phone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Straße und Hausnummer</Label>
+                    <Input
+                      value={prospect.address_line}
+                      onChange={(e) => setProspect((p) => ({ ...p, address_line: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>PLZ</Label>
+                    <Input
+                      value={prospect.postal_code}
+                      onChange={(e) => setProspect((p) => ({ ...p, postal_code: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ort</Label>
+                    <Input
+                      value={prospect.city}
+                      onChange={(e) => setProspect((p) => ({ ...p, city: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Land</Label>
+                    <Input
+                      value={prospect.country}
+                      onChange={(e) => setProspect((p) => ({ ...p, country: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>USt-IdNr. (optional)</Label>
+                    <Input
+                      value={prospect.vat_id}
+                      onChange={(e) => setProspect((p) => ({ ...p, vat_id: e.target.value }))}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground sm:col-span-2">
+                    Der Interessent wird noch nicht im Kundenstamm angelegt. Erst bei Annahme des
+                    Angebots wird er automatisch als Kunde übernommen; vorhandene Dubletten werden
+                    wiederverwendet.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Map className="size-5" /> Grundriss optional</CardTitle>
