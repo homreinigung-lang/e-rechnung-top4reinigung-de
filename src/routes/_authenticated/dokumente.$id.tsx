@@ -162,6 +162,7 @@ function DokumentDetail() {
   const navigate = useNavigate();
   // Standard ist die saubere Vorschau; Bearbeiten wird bewusst geöffnet.
   const [editMode, setEditMode] = useState(Boolean(bearbeiten));
+  const [quoteRecipientMode, setQuoteRecipientMode] = useState<"interessent" | "kunde">("interessent");
 
   const { data, isLoading } = useQuery({
     queryKey: ["document", id],
@@ -300,6 +301,7 @@ function DokumentDetail() {
     };
     baselineFormRef.current = initialForm;
     setForm(initialForm);
+    setQuoteRecipientMode(initialForm["customer_id"] ? "kunde" : "interessent");
 
 
     setItems(
@@ -978,6 +980,7 @@ function DokumentDetail() {
   function pickCustomer(customerId: string) {
     const c = data!.customers.find((x) => x.id === customerId);
     if (!c) return;
+    setQuoteRecipientMode("kunde");
     // Reverse-Charge greift nur bei EU-Kunden MIT gültiger USt-IdNr. (§ 13b UStG / Art. 196 MwStSystRL)
     const euReverseCharge =
       Boolean((c as { is_eu_customer?: boolean }).is_eu_customer) && Boolean(c.vat_id?.trim());
@@ -2015,55 +2018,151 @@ function DokumentDetail() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Kunde auswählen</Label>
-            <Select value={String(form["customer_id"] ?? "")} onValueChange={pickCustomer}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kunde aus dem Kundenstamm wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {data.customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.company || c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {isQuote ? (
+          <div className="space-y-4 rounded-md border p-4">
+            <div>
+              <Label>Empfänger</Label>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:max-w-md">
+                <Button
+                  type="button"
+                  variant={quoteRecipientMode === "interessent" ? "default" : "outline"}
+                  onClick={() => {
+                    setQuoteRecipientMode("interessent");
+                    setForm((current) => ({
+                      ...current,
+                      customer_id: null,
+                      project_id: null,
+                      customer_number: "",
+                    }));
+                  }}
+                >
+                  Interessent
+                </Button>
+                <Button
+                  type="button"
+                  variant={quoteRecipientMode === "kunde" ? "default" : "outline"}
+                  onClick={() => setQuoteRecipientMode("kunde")}
+                >
+                  Kunde
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Ein Interessent kann ein Angebot erhalten, ohne vorher im Kundenstamm angelegt zu
+                werden. Bei Annahme wird er automatisch als Kunde übernommen.
+              </p>
+            </div>
+
+            {quoteRecipientMode === "kunde" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Kunde auswählen</Label>
+                  <Select value={String(form["customer_id"] ?? "")} onValueChange={pickCustomer}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Kunde aus dem Kundenstamm wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.customers.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.company || c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Objekt / Projekt</Label>
+                  <Select
+                    value={String(form["project_id"] ?? "")}
+                    onValueChange={(value) =>
+                      setField("project_id", value === "__none__" ? null : value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          form["customer_id"] ? "Objekt zuordnen" : "Zuerst Kunde auswählen"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nicht zugeordnet</SelectItem>
+                      {data.projects
+                        .filter(
+                          (p) =>
+                            Boolean(form["customer_id"]) &&
+                            p.customer_id === String(form["customer_id"]),
+                        )
+                        .map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name || "Ohne Namen"}
+                            {p.city ? ` · ${p.city}` : ""}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Die Zuordnung wird für Objekt-Controlling und Marge verwendet.
+                  </p>
+                </div>
+              </div>
+            ) : null}
           </div>
-          <div className="space-y-2">
-            <Label>Objekt / Projekt</Label>
-            <Select
-              value={String(form["project_id"] ?? "")}
-              onValueChange={(value) => setField("project_id", value === "__none__" ? null : value)}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    form["customer_id"] ? "Objekt zuordnen" : "Zuerst Kunde auswählen"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Nicht zugeordnet</SelectItem>
-                {data.projects
-                  .filter(
-                    (p) =>
-                      Boolean(form["customer_id"]) &&
-                      p.customer_id === String(form["customer_id"]),
-                  )
-                  .map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name || "Ohne Namen"}
-                      {p.city ? ` · ${p.city}` : ""}
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Kunde auswählen</Label>
+              <Select value={String(form["customer_id"] ?? "")} onValueChange={pickCustomer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Kunde aus dem Kundenstamm wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.customers.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.company || c.name}
                     </SelectItem>
                   ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Die Zuordnung wird für Objekt-Controlling und Marge verwendet.
-            </p>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Objekt / Projekt</Label>
+              <Select
+                value={String(form["project_id"] ?? "")}
+                onValueChange={(value) =>
+                  setField("project_id", value === "__none__" ? null : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      form["customer_id"] ? "Objekt zuordnen" : "Zuerst Kunde auswählen"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Nicht zugeordnet</SelectItem>
+                  {data.projects
+                    .filter(
+                      (p) =>
+                        Boolean(form["customer_id"]) &&
+                        p.customer_id === String(form["customer_id"]),
+                    )
+                    .map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name || "Ohne Namen"}
+                        {p.city ? ` · ${p.city}` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Die Zuordnung wird für Objekt-Controlling und Marge verwendet.
+              </p>
+            </div>
           </div>
+        )}
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Kundentyp</Label>
             <Select
@@ -2096,6 +2195,7 @@ function DokumentDetail() {
                 : []),
               { key: "customer_name", label: isPrivat ? "Name" : "Ansprechpartner" },
               { key: "customer_email", label: "E-Mail" },
+              { key: "customer_phone", label: "Telefon" },
               { key: "customer_address_line", label: "Straße und Hausnummer" },
               { key: "customer_postal_code", label: "PLZ" },
               { key: "customer_city", label: "Ort" },
