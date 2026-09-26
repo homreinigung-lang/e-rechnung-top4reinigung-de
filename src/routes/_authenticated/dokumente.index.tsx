@@ -408,7 +408,8 @@ function DokumenteListe() {
         <div className="flex gap-2">
           <Button
             variant="secondary"
-            onClick={() => navigate({ to: "/kalkulation-angebot" })}
+            onClick={() => create.mutate("quote")}
+            disabled={create.isPending}
           >
             <FileText className="size-4" /> Neues Angebot
           </Button>
