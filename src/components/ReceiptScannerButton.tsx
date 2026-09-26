@@ -1,13 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Camera, FileUp, Loader2, ScanLine } from "lucide-react";
+import { Camera, FileUp, Loader2, ScanLine, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { scanReceiptImage } from "@/lib/receipt-image-scan";
 import { uploadUserFile } from "@/lib/storage";
@@ -155,31 +148,46 @@ export function ReceiptScannerButton({
         {label}
       </Button>
 
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          if (busy) return;
-          setOpen(next);
-        }}
-      >
-        <DialogContent className="max-w-2xl p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Beleg scannen</DialogTitle>
-            <DialogDescription>
-              Beleg vollständig in den Rahmen legen. Der Scan wird zugeschnitten, entzerrt und für bessere Lesbarkeit aufbereitet.
-            </DialogDescription>
-          </DialogHeader>
+      {open ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="receipt-scanner-title"
+          className="fixed inset-0 z-[100] flex h-[100dvh] w-screen flex-col overflow-hidden bg-background"
+        >
+          <div className="flex shrink-0 items-start gap-3 border-b px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
+            <div className="min-w-0 flex-1">
+              <h2 id="receipt-scanner-title" className="text-lg font-semibold">
+                Beleg scannen
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Beleg vollständig in den Rahmen legen. Der Scan wird zugeschnitten, entzerrt und für
+                bessere Lesbarkeit aufbereitet.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              aria-label="Scanner schließen"
+              disabled={busy}
+              onClick={() => setOpen(false)}
+            >
+              <X className="size-5" />
+            </Button>
+          </div>
 
-          <div className="relative overflow-hidden rounded-lg bg-black">
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
             <video
               ref={videoRef}
               playsInline
               muted
-              className="h-full w-full object-contain sm:max-h-[62vh] sm:h-auto"
+              className="h-full w-full object-contain"
             />
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-[5%] bottom-[4%] top-[4%] rounded-md border-2 border-dashed border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.24)] sm:inset-[7%]"
+              className="pointer-events-none absolute inset-x-[4%] bottom-[3%] top-[3%] rounded-md border-2 border-dashed border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.22)]"
             />
             {!cameraReady && !cameraError && (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-white">
@@ -188,13 +196,16 @@ export function ReceiptScannerButton({
             )}
           </div>
 
-          {cameraError && <p className="text-sm text-destructive">{cameraError}</p>}
+          {cameraError ? (
+            <p className="shrink-0 px-4 py-2 text-sm text-destructive">{cameraError}</p>
+          ) : null}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 gap-2 border-t bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3">
             <Button
               type="button"
               onClick={() => void captureScan()}
               disabled={!cameraReady || busy}
+              className="min-h-12 flex-1"
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
               Scannen
@@ -205,6 +216,7 @@ export function ReceiptScannerButton({
               variant="outline"
               disabled={busy}
               onClick={() => inputRef.current?.click()}
+              className="min-h-12 flex-1"
             >
               <FileUp className="size-4" /> Datei auswählen
             </Button>
@@ -222,8 +234,8 @@ export function ReceiptScannerButton({
               }}
             />
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      ) : null}
     </>
   );
 }
