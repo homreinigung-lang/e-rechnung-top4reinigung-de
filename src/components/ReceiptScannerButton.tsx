@@ -18,6 +18,7 @@ export function ReceiptScannerButton({
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,16 +105,50 @@ export function ReceiptScannerButton({
       return;
     }
 
+    const preview = previewRef.current;
+    const previewWidth = preview?.clientWidth ?? 0;
+    const previewHeight = preview?.clientHeight ?? 0;
+
+    // The video preview uses object-cover. Reproduce the same centered crop
+    // on the captured frame so the saved image matches what the user saw.
+    let sourceX = 0;
+    let sourceY = 0;
+    let sourceWidth = video.videoWidth;
+    let sourceHeight = video.videoHeight;
+
+    if (previewWidth > 0 && previewHeight > 0) {
+      const coverScale = Math.max(
+        previewWidth / video.videoWidth,
+        previewHeight / video.videoHeight,
+      );
+      const visibleSourceWidth = previewWidth / coverScale;
+      const visibleSourceHeight = previewHeight / coverScale;
+      sourceWidth = Math.min(video.videoWidth, visibleSourceWidth);
+      sourceHeight = Math.min(video.videoHeight, visibleSourceHeight);
+      sourceX = Math.max(0, (video.videoWidth - sourceWidth) / 2);
+      sourceY = Math.max(0, (video.videoHeight - sourceHeight) / 2);
+    }
+
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = Math.max(1, Math.round(sourceWidth));
+    canvas.height = Math.max(1, Math.round(sourceHeight));
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       toast.error("Kamerabild konnte nicht verarbeitet werden.");
       return;
     }
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+      video,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
 
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
@@ -174,7 +209,7 @@ export function ReceiptScannerButton({
             </Button>
           </div>
 
-          <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
+          <div ref={previewRef} className="relative min-h-0 flex-1 overflow-hidden bg-black">
             <video
               ref={videoRef}
               playsInline
