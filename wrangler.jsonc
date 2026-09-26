@@ -24,11 +24,7 @@
     "staging": {
       "name": "gebcalc-staging-preview",
       "workers_dev": true,
-      "routes": [],
-      "vars": {
-        "PUBLIC_SITE_URL": "https://gebcalc-staging-preview.workers.dev",
-        "RESEND_FROM": "GebCalc Staging <info@top4reinigung.de>"
-      }
+      "routes": []
     }
   }
 }
