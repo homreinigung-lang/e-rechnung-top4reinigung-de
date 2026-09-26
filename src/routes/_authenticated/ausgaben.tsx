@@ -137,23 +137,24 @@ function Ausgaben() {
   }
   const runScan = useServerFn(scanReceipt);
 
-  /** Nimmt den Upload entgegen: Beleg auslesen und Fotos sofort in ein PDF wandeln. */
-  async function handleReceipt(path: string, file: File) {
+  /** Beleg auslesen und genau eine endgültige Datei im Storage speichern. */
+  async function handleReceipt(file: File) {
     setEInvoice(null);
     setReceiptToRetry(file);
-    setForm((f) => ({ ...f, receipt_url: path }));
     const scan = await analyze(file);
-    if (!file.type.startsWith("image/")) return;
+
     try {
-      const pdfFile = await receiptFileToPdf(file, {
-        date: scan?.expense_date || form.expense_date || today(),
-        category: scan?.category || form.category,
-        ...(scan?.supplier ? { supplier: scan.supplier } : {}),
-      });
-      const pdfPath = await uploadUserFile(pdfFile, "belege");
-      setForm((f) => ({ ...f, receipt_url: pdfPath }));
+      const storedFile = file.type.startsWith("image/")
+        ? await receiptFileToPdf(file, {
+            date: scan?.expense_date || form.expense_date || today(),
+            category: scan?.category || form.category,
+            ...(scan?.supplier ? { supplier: scan.supplier } : {}),
+          })
+        : file;
+      const path = await uploadUserFile(storedFile, "belege");
+      setForm((f) => ({ ...f, receipt_url: path }));
     } catch {
-      toast.error("PDF-Umwandlung fehlgeschlagen – das Foto bleibt als Beleg hinterlegt.");
+      toast.error("Beleg konnte nicht gespeichert werden.");
     }
   }
 
@@ -361,9 +362,8 @@ function Ausgaben() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <ReceiptScannerButton
-            folder="belege"
             label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
-            onUploaded={handleReceipt}
+            onProcessed={handleReceipt}
             disabled={processingReceipt || add.isPending}
             onBusyChange={setProcessingReceipt}
           />

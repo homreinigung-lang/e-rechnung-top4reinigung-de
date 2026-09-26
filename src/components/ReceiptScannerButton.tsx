@@ -3,18 +3,15 @@ import { Camera, FileUp, Loader2, ScanLine, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { scanReceiptImage } from "@/lib/receipt-image-scan";
-import { uploadUserFile } from "@/lib/storage";
 
 export function ReceiptScannerButton({
-  folder,
   label = "Beleg fotografieren/hochladen – wird als PDF gespeichert",
-  onUploaded,
+  onProcessed,
   disabled = false,
   onBusyChange,
 }: {
-  folder: string;
   label?: string;
-  onUploaded: (path: string, file: File) => void | Promise<void>;
+  onProcessed: (file: File) => void | Promise<void>;
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
 }) {
@@ -90,8 +87,7 @@ export function ReceiptScannerButton({
       const prepared = scanImage && file.type.startsWith("image/")
         ? await scanReceiptImage(file)
         : file;
-      const path = await uploadUserFile(prepared, folder);
-      await onUploaded(path, prepared);
+      await onProcessed(prepared);
       setOpen(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Beleg konnte nicht verarbeitet werden.");
