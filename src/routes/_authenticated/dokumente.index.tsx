@@ -406,7 +406,10 @@ function DokumenteListe() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => create.mutate("quote")}>
+          <Button
+            variant="secondary"
+            onClick={() => navigate({ to: "/kalkulation-angebot" })}
+          >
             <FileText className="size-4" /> Neues Angebot
           </Button>
           <Button onClick={() => create.mutate("invoice")}>
