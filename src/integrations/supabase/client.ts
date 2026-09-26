@@ -34,14 +34,29 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseClient() {
-  // Prefer deployment envs, but keep production-safe public fallbacks so the
-  // browser bundle cannot fail just because build-time env injection was missed.
-  const SUPABASE_URL =
-    import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"] || DEFAULT_SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY =
+  const configuredUrl =
+    import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"] || "";
+  const configuredKey =
     import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
     process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    DEFAULT_SUPABASE_PUBLISHABLE_KEY;
+    "";
+
+  // Keep the current production deployment working if build-time public envs
+  // were omitted, but never let localhost/preview/other hosts silently connect
+  // to the production Supabase project.
+  const isProductionHost =
+    typeof window !== "undefined" &&
+    window.location.hostname === "e-rechnung.top4reinigung.de";
+
+  const SUPABASE_URL = configuredUrl || (isProductionHost ? DEFAULT_SUPABASE_URL : "");
+  const SUPABASE_PUBLISHABLE_KEY =
+    configuredKey || (isProductionHost ? DEFAULT_SUPABASE_PUBLISHABLE_KEY : "");
+
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    throw new Error(
+      "Supabase ist für diese Umgebung nicht konfiguriert. VITE_SUPABASE_URL und VITE_SUPABASE_PUBLISHABLE_KEY fehlen.",
+    );
+  }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
