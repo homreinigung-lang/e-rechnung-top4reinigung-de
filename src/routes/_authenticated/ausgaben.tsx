@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { formatDate, formatMoney, today } from "@/lib/format";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { receiptFileToPdf } from "@/lib/receipt-pdf";
+import { scanReceiptImage } from "@/lib/receipt-image-scan";
 import { downloadStoredFile, uploadUserFile } from "@/lib/storage";
 import { DateiVorschau } from "@/components/DateiVorschau";
 import { WiederkehrendeAusgaben } from "@/components/WiederkehrendeAusgaben";
@@ -361,8 +362,19 @@ function Ausgaben() {
         <div className="flex flex-wrap items-center gap-3">
           <FileUploadButton
             folder="belege"
+            accept="image/*"
+            capture="environment"
+            label="Beleg scannen"
+            prepareFile={scanReceiptImage}
+            onUploaded={handleReceipt}
+            showSuccessToast={false}
+            disabled={processingReceipt || add.isPending}
+            onBusyChange={setProcessingReceipt}
+          />
+          <FileUploadButton
+            folder="belege"
             accept="image/*,application/pdf"
-            label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
+            label="Beleg/PDF hochladen"
             onUploaded={handleReceipt}
             showSuccessToast={false}
             disabled={processingReceipt || add.isPending}
