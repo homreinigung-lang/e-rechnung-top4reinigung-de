@@ -1,19 +1,22 @@
-# GebCalc migration: Cloudflare + Supabase
+# GebCalc production: Cloudflare + Supabase
 
-Status: **cutover preparation only**. Production (`main`), the live Lovable deployment, DNS and the production database remain unchanged until the final cutover is explicitly approved.
+Status: **production cutover completed**. The `main` branch is the production source, and the custom domain `e-rechnung.top4reinigung.de` is served by Cloudflare Workers.
 
-## Final target
+> Note: the Worker is still named `gebcalc-staging` for historical reasons. The name must not be interpreted as a staging environment and should not be changed without a deliberate Cloudflare route migration.
 
-- Source control: GitHub
+## Current production stack
+
+- Source control / production branch: GitHub `main`
 - Runtime/hosting: Cloudflare Workers
-- Database/Auth/Storage: user-owned Supabase project `squkjqvofugkanzuqtqn` (`Hom.r.ofice`)
+- Production domain: `e-rechnung.top4reinigung.de`
+- Database/Auth/Storage: Supabase project `squkjqvofugkanzuqtqn` (`Hom.r.ofice`)
 - Email: direct Resend integration
 - AI: independent provider path
-- No Lovable runtime dependency after successful cutover
+- No staging deployment configuration is maintained in `wrangler.jsonc`
 
 ## Current verified code state
 
-The migration branch already uses the independent stack:
+The production code uses the independent stack:
 
 - Cloudflare Workers via Wrangler / `@cloudflare/vite-plugin`
 - TanStack Start + React + Tailwind configured directly in the repository
@@ -41,9 +44,11 @@ Names only; never commit secrets:
 - `GEMINI_API_KEY` (or the selected independent AI key)
 - `PUBLIC_SITE_URL`
 
-## Data migration source-of-truth rule
+## Historical migration notes
 
-Until cutover, the live Lovable Supabase project remains the source of truth for ongoing production writes. `Hom.r.ofice` contains divergent historical data and must be reconciled, not blindly overwritten.
+The sections below describe safeguards used during the historical migration/cutover. They are retained for audit and recovery context and are **not** instructions to switch production back to Lovable.
+
+The current production Supabase project is `Hom.r.ofice` (`squkjqvofugkanzuqtqn`). Historical source datasets must never be blindly restored over current production.
 
 Do not use "newer wins" as a merge rule. Preserve soft-deleted records, audit history and explicit business decisions. Auth UUIDs differ between environments and require the established identity mapping; never perform a global UUID replacement.
 
@@ -79,9 +84,9 @@ Use only one local probe at a time:
 
 Completed historical tests (build, typecheck, lint, migrations, Fahrtenbuch and RLS checks) are not to be repeated unless a relevant file or migration changed.
 
-## Cutover gates
+## Historical cutover gates
 
-Do not disconnect Lovable until all of the following are true:
+The following checklist was used for the migration. It is retained as historical reference and should not be treated as a pending production cutover checklist:
 
 - complete DB/Auth backups from both sources are stored locally and checksum-verified;
 - private Storage bytes from both sources are downloaded and SHA-256 verified;
@@ -95,13 +100,14 @@ Do not disconnect Lovable until all of the following are true:
 - Cloudflare staging/runtime validation passes for the exact release commit;
 - production environment variables, Auth redirect URLs and domain routing are prepared.
 
-Only after these gates pass, and only after explicit approval, may production DNS/domain routing be switched. Keep the old live deployment available as a temporary rollback fallback until production smoke tests pass.
+Production DNS/domain routing has already been switched to Cloudflare. Any future routing change must be treated as a new production migration and reviewed separately.
 
-## Final shutdown condition
+## Production deployment
 
-Lovable may be disabled only when both statements are true:
+Use the repository deployment command:
 
-- `LOVABLE TECHNICAL DEPENDENCY REMAINING: NO`
-- `READY FOR FINAL LOVABLE SHUTDOWN: YES`
+```sh
+bun run deploy
+```
 
-Do not assert either flag before the real backup, merge, restore, cutover and post-cutover checks are complete.
+This builds the application and deploys the Worker configured in `wrangler.jsonc`. Do not recreate a staging environment unless a separate staging design is explicitly required.
