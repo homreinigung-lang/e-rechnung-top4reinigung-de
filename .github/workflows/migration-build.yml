@@ -3,6 +3,7 @@ name: Migration Build Check
 on:
   push:
     branches:
+      - main
       - migration/cloudflare-supabase
       - migration/final-cleanup
   pull_request:
