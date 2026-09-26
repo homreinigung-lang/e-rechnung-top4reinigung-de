@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 type Search = { area?: number; belag?: string };
 type Mode = "area" | "hours";
 type RecipientMode = "interessent" | "kunde";
+type RecipientType = "privat" | "firma";
 
 const TYPES = [
   { value: "unterhalt", label: "Unterhaltsreinigung", area: 0.35, hourly: 35 },
@@ -80,6 +81,7 @@ function KalkulationAngebotPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [creating, setCreating] = useState(false);
   const [recipientMode, setRecipientMode] = useState<RecipientMode>("interessent");
+  const [recipientType, setRecipientType] = useState<RecipientType>("firma");
   const [customerId, setCustomerId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [prospect, setProspect] = useState({
@@ -206,7 +208,7 @@ function KalkulationAngebotPage() {
           ? {
               customer_id: selectedCustomer.id,
               project_id: projectId || null,
-              customer_type: selectedCustomer.company?.trim() ? "firma" : "privat",
+              customer_type: recipientType,
               customer_number: selectedCustomer.customer_number ?? "",
               customer_name: selectedCustomer.name ?? "",
               customer_company: selectedCustomer.company ?? "",
@@ -221,7 +223,7 @@ function KalkulationAngebotPage() {
           : {
               customer_id: null,
               project_id: null,
-              customer_type: prospect.company.trim() ? "firma" : "privat",
+              customer_type: recipientType,
               customer_number: "",
               customer_name: prospect.name.trim(),
               customer_company: prospect.company.trim(),
@@ -239,10 +241,17 @@ function KalkulationAngebotPage() {
       }
       if (
         recipientMode === "interessent" &&
-        !prospect.name.trim() &&
+        recipientType === "privat" &&
+        !prospect.name.trim()
+      ) {
+        throw new Error("Bitte den Namen des privaten Interessenten eintragen.");
+      }
+      if (
+        recipientMode === "interessent" &&
+        recipientType === "firma" &&
         !prospect.company.trim()
       ) {
-        throw new Error("Bitte beim Interessenten mindestens Name oder Firma eintragen.");
+        throw new Error("Bitte den Firmennamen des Interessenten eintragen.");
       }
 
       const { error: docError } = await supabase
@@ -310,6 +319,26 @@ function KalkulationAngebotPage() {
                 </Button>
               </div>
 
+              <div className="space-y-2">
+                <Label>Empfängertyp</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={recipientType === "privat" ? "default" : "outline"}
+                    onClick={() => setRecipientType("privat")}
+                  >
+                    Privat
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={recipientType === "firma" ? "default" : "outline"}
+                    onClick={() => setRecipientType("firma")}
+                  >
+                    Firma
+                  </Button>
+                </div>
+              </div>
+
               {recipientMode === "kunde" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
@@ -319,6 +348,8 @@ function KalkulationAngebotPage() {
                       onValueChange={(value) => {
                         setCustomerId(value);
                         setProjectId("");
+                        const customer = customers.find((item) => item.id === value);
+                        setRecipientType(customer?.company?.trim() ? "firma" : "privat");
                       }}
                     >
                       <SelectTrigger><SelectValue placeholder="Kunde auswählen" /></SelectTrigger>
@@ -353,19 +384,21 @@ function KalkulationAngebotPage() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Name / Ansprechpartner</Label>
+                    <Label>{recipientType === "firma" ? "Ansprechpartner" : "Name"}</Label>
                     <Input
                       value={prospect.name}
                       onChange={(e) => setProspect((p) => ({ ...p, name: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Firma</Label>
-                    <Input
-                      value={prospect.company}
-                      onChange={(e) => setProspect((p) => ({ ...p, company: e.target.value }))}
-                    />
-                  </div>
+                  {recipientType === "firma" ? (
+                    <div className="space-y-2">
+                      <Label>Firma</Label>
+                      <Input
+                        value={prospect.company}
+                        onChange={(e) => setProspect((p) => ({ ...p, company: e.target.value }))}
+                      />
+                    </div>
+                  ) : null}
                   <div className="space-y-2">
                     <Label>E-Mail</Label>
                     <Input
