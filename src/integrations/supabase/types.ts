@@ -934,15 +934,26 @@ export type Database = {
         Row: {
           active: boolean
           auth_user_id: string | null
+          birth_date: string | null
+          address_line: string
+          postal_code: string
+          city: string
+          contract_end: string | null
           contract_start: string | null
           contract_type: string
           created_at: string
           email: string
+          experience_details: string
+          has_driving_license: boolean
+          driving_license_classes: string
+          has_experience_certificate: boolean
           hourly_rate: number
           id: string
           name: string
           personnel_number: string
           phone: string
+          personnel_notes: string
+          qualification: string
           role: string
           updated_at: string
           user_id: string
@@ -954,15 +965,26 @@ export type Database = {
         Insert: {
           active?: boolean
           auth_user_id?: string | null
+          birth_date?: string | null
+          address_line?: string
+          postal_code?: string
+          city?: string
+          contract_end?: string | null
           contract_start?: string | null
           contract_type?: string
           created_at?: string
           email?: string
+          experience_details?: string
+          has_driving_license?: boolean
+          driving_license_classes?: string
+          has_experience_certificate?: boolean
           hourly_rate?: number
           id?: string
           name: string
           personnel_number?: string
           phone?: string
+          personnel_notes?: string
+          qualification?: string
           role?: string
           updated_at?: string
           user_id: string
