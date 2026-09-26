@@ -753,6 +753,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string
           customer_number: string
+          customer_phone: string
           customer_postal_code: string
           customer_type: string
           customer_vat_id: string
@@ -807,6 +808,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string
           customer_number?: string
+          customer_phone?: string
           customer_postal_code?: string
           customer_type?: string
           customer_vat_id?: string
@@ -861,6 +863,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string
           customer_number?: string
+          customer_phone?: string
           customer_postal_code?: string
           customer_type?: string
           customer_vat_id?: string
@@ -996,15 +999,26 @@ export type Database = {
         Update: {
           active?: boolean
           auth_user_id?: string | null
+          birth_date?: string | null
+          address_line?: string
+          postal_code?: string
+          city?: string
+          contract_end?: string | null
           contract_start?: string | null
           contract_type?: string
           created_at?: string
           email?: string
+          experience_details?: string
+          has_driving_license?: boolean
+          driving_license_classes?: string
+          has_experience_certificate?: boolean
           hourly_rate?: number
           id?: string
           name?: string
           personnel_number?: string
           phone?: string
+          personnel_notes?: string
+          qualification?: string
           role?: string
           updated_at?: string
           user_id?: string
@@ -2315,6 +2329,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string
           customer_number: string
+          customer_phone: string
           customer_postal_code: string
           customer_type: string
           customer_vat_id: string
