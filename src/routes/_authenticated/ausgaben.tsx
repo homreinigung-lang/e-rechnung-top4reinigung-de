@@ -371,6 +371,9 @@ function Ausgaben() {
             folder="e-rechnungen"
             accept=".xml,application/xml,text/xml,application/pdf"
             label="E-Rechnung empfangen (XRechnung/ZUGFeRD)"
+            validateFile={async (file) => {
+              await readIncomingEInvoice(file);
+            }}
             onUploaded={handleEInvoice}
             showSuccessToast={false}
             disabled={processingReceipt || add.isPending}
