@@ -368,7 +368,7 @@ export const getAccountantDatevExport = createServerFn({ method: "POST" })
       throw new Error("DATEV-Einstellungen zuerst speichern.");
     }
 
-    const [documents, expenses, accounts] = await Promise.all([
+    const [documents, expenses, accounts, mappings] = await Promise.all([
       supabaseAdmin
         .from("documents")
         .select("issue_date,number,total,net_total,vat_amount,tax_mode,customer_company,customer_name,status,cancels_document_id")
@@ -393,13 +393,26 @@ export const getAccountantDatevExport = createServerFn({ method: "POST" })
         .eq("chart", settings.chart)
         .eq("fiscal_year", settings.fiscal_year)
         .eq("is_active", true),
+      accountingDb
+        .from("company_account_mappings")
+        .select("mapping_key,chart,fiscal_year,account_number")
+        .eq("user_id", access.user_id)
+        .eq("chart", settings.chart)
+        .eq("fiscal_year", settings.fiscal_year),
     ]);
-    if (documents.error || expenses.error || accounts.error) {
+    if (documents.error || expenses.error || accounts.error || mappings.error) {
       throw new Error("DATEV-Daten konnten nicht geladen werden.");
     }
 
     const categories = [...new Set((expenses.data ?? []).map((row) => String(row.category ?? "")))];
     const expenseAccounts = buildAutomaticExpenseMappings(categories, settings.chart);
+    for (const mapping of mappings.data ?? []) {
+      const key = String(mapping.mapping_key ?? "");
+      if (!key.startsWith("expense:")) continue;
+      const category = key.slice("expense:".length);
+      if (!category) continue;
+      expenseAccounts[category] = String(mapping.account_number ?? "");
+    }
     const bytes = buildDatevExtf(
       (documents.data ?? []) as unknown as Parameters<typeof buildDatevExtf>[0],
       (expenses.data ?? []) as unknown as Parameters<typeof buildDatevExtf>[1],
