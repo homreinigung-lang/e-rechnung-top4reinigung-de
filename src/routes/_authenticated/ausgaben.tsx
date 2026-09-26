@@ -115,8 +115,8 @@ function Ausgaben() {
         supplier: inv.supplier || f.supplier,
         document_number: inv.document_number || f.document_number,
         expense_date: inv.issue_date || f.expense_date,
-        net_amount: inv.net_amount ? inv.net_amount.toFixed(2) : f.net_amount,
-        vat_amount: inv.vat_amount ? inv.vat_amount.toFixed(2) : f.vat_amount,
+        net_amount: inv.net_amount.toFixed(2),
+        vat_amount: inv.vat_amount.toFixed(2),
         notes: [
           `E-Rechnung ${inv.format}`,
           inv.supplier_vat_id ? `USt-IdNr. ${inv.supplier_vat_id}` : "",
