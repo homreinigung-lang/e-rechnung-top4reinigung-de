@@ -315,7 +315,7 @@ function KalkulationAngebotPage() {
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Kunde</Label>
                     <Select
-                      value={customerId || undefined}
+                      value={customerId}
                       onValueChange={(value) => {
                         setCustomerId(value);
                         setProjectId("");
