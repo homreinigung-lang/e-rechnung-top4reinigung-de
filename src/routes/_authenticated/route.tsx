@@ -9,13 +9,17 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-    // Konten sind nach der Registrierung sofort nutzbar; nur gesperrte Firmen
-    // werden abgewiesen. Netzwerkfehler dürfen die App nicht blockieren.
+    // Konten sind nach der Registrierung sofort nutzbar; gesperrte Firmen
+    // werden abgewiesen. Kann der Status nicht sicher geprüft werden, bleibt
+    // die geschützte App geschlossen, bis die Prüfung wieder möglich ist.
     let status: string | null = null;
     try {
       status = (await getApprovalStatus()).status;
     } catch (error) {
-      console.warn("Freigabe-Status konnte nicht geprüft werden:", error);
+      console.error("Freigabe-Status konnte nicht geprüft werden:", error);
+      throw new Error(
+        "Kontostatus konnte nicht geprüft werden. Bitte Verbindung prüfen und erneut versuchen.",
+      );
     }
     if (status === "blocked" || status === "rejected") {
       await supabase.auth.signOut();
