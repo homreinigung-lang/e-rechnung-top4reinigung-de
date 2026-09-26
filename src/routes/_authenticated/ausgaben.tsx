@@ -362,19 +362,10 @@ function Ausgaben() {
         <div className="flex flex-wrap items-center gap-3">
           <FileUploadButton
             folder="belege"
-            accept="image/*"
-            capture="environment"
-            label="Beleg scannen"
-            prepareFile={scanReceiptImage}
-            onUploaded={handleReceipt}
-            showSuccessToast={false}
-            disabled={processingReceipt || add.isPending}
-            onBusyChange={setProcessingReceipt}
-          />
-          <FileUploadButton
-            folder="belege"
             accept="image/*,application/pdf"
-            label="Beleg/PDF hochladen"
+            capture="environment"
+            label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
+            prepareFile={scanReceiptImage}
             onUploaded={handleReceipt}
             showSuccessToast={false}
             disabled={processingReceipt || add.isPending}
