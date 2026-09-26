@@ -183,7 +183,7 @@ export function ReceiptScannerButton({
               ref={videoRef}
               playsInline
               muted
-              className="h-full w-full object-contain"
+              className="h-full w-full object-cover"
             />
             <div
               aria-hidden="true"
