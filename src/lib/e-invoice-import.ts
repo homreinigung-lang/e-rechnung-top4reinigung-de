@@ -112,6 +112,14 @@ function parseXml(xml: string): Document {
 
 function parseUbl(doc: Document, xml: string): IncomingEInvoice {
   const root = doc.documentElement;
+  const typeCode =
+    text(root, ["InvoiceTypeCode"]) ||
+    text(root, ["CreditNoteTypeCode"]);
+  if (root.localName === "CreditNote" || typeCode === "381") {
+    throw new Error(
+      "Gutschriften/Credit Notes werden derzeit nicht automatisch als Ausgabe importiert. Bitte als separaten Beleg erfassen.",
+    );
+  }
   const supplier = pick(root, ["AccountingSupplierParty", "Party"]);
   const totals = pick(root, ["LegalMonetaryTotal"]);
   const taxTotal = pick(root, ["TaxTotal"]);
@@ -138,6 +146,12 @@ function parseUbl(doc: Document, xml: string): IncomingEInvoice {
 
 function parseCii(doc: Document, xml: string): IncomingEInvoice {
   const root = doc.documentElement;
+  const typeCode = text(root, ["ExchangedDocument", "TypeCode"]);
+  if (typeCode === "381") {
+    throw new Error(
+      "Gutschriften/Credit Notes werden derzeit nicht automatisch als Ausgabe importiert. Bitte als separaten Beleg erfassen.",
+    );
+  }
   const supplier = pick(root, [
     "SupplyChainTradeTransaction",
     "ApplicableHeaderTradeAgreement",
