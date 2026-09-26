@@ -933,6 +933,17 @@ export type Database = {
       employees: {
         Row: {
           active: boolean
+          address_line: string
+          birth_date: string | null
+          city: string
+          contract_end: string | null
+          driving_license_classes: string
+          experience_details: string
+          has_driving_license: boolean
+          has_experience_certificate: boolean
+          personnel_notes: string
+          postal_code: string
+          qualification: string
           auth_user_id: string | null
           contract_start: string | null
           contract_type: string
@@ -953,6 +964,17 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          address_line?: string
+          birth_date?: string | null
+          city?: string
+          contract_end?: string | null
+          driving_license_classes?: string
+          experience_details?: string
+          has_driving_license?: boolean
+          has_experience_certificate?: boolean
+          personnel_notes?: string
+          postal_code?: string
+          qualification?: string
           auth_user_id?: string | null
           contract_start?: string | null
           contract_type?: string
@@ -973,6 +995,17 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          address_line?: string
+          birth_date?: string | null
+          city?: string
+          contract_end?: string | null
+          driving_license_classes?: string
+          experience_details?: string
+          has_driving_license?: boolean
+          has_experience_certificate?: boolean
+          personnel_notes?: string
+          postal_code?: string
+          qualification?: string
           auth_user_id?: string | null
           contract_start?: string | null
           contract_type?: string
