@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarDays, CalendarRange, Clock, HardHat } from "lucide-react";
-import { Personal } from "@/components/PersonalPanel";
+import { PersonalStammdatenPanel } from "@/components/PersonalStammdatenPanel";
 import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
@@ -84,7 +84,7 @@ function ControlCenter() {
           <TeamKalenderPanel />
         </TabsContent>
         <TabsContent value="personal" className="mt-0">
-          <Personal />
+          <PersonalStammdatenPanel />
         </TabsContent>
         <TabsContent value="zeiten" className="mt-0">
           <Zeiterfassung />
