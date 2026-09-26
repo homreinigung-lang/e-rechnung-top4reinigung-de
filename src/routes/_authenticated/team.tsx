@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarRange, Clock, HardHat } from "lucide-react";
+import { CalendarDays, CalendarRange, Clock, HardHat } from "lucide-react";
 import { Personal } from "@/components/PersonalPanel";
 import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
+import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
 
 export const Route = createFileRoute("/_authenticated/team")({
   head: () => ({
@@ -13,13 +14,13 @@ export const Route = createFileRoute("/_authenticated/team")({
       {
         name: "description",
         content:
-          "Ein zentrales Dashboard für Mitarbeiter, Einsatzplanung und Zeiterfassung: Schichten planen, bestätigen und Stunden auswerten.",
+          "Dienstplan, Kalender, Mitarbeiter und Zeiterfassung in einem Control Center – alle Einsätze aus derselben Datenquelle.",
       },
       { property: "og:title", content: "Control Center – Team, Planung & Zeiten" },
       {
         property: "og:description",
         content:
-          "Mitarbeiter anlegen, Schichten planen und Arbeitszeiten bestätigen – alles in einer Ansicht.",
+          "Dienstplan erstellen, Verteilung im Kalender prüfen, Personal verwalten und Arbeitszeiten bestätigen.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/team")({
 const TAB_KEY = "homr:teamTab";
 
 function ControlCenter() {
-  const [tab, setTab] = React.useState("kalender");
+  const [tab, setTab] = React.useState("dienstplan");
 
   React.useEffect(() => {
     try {
@@ -56,28 +57,34 @@ function ControlCenter() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Control Center</h1>
         <p className="text-sm text-muted-foreground">
-          Mitarbeiter, Einsatzplanung und Zeiterfassung in einer Oberfläche.
+          Dienstplan, Kalender, Personal und Zeiterfassung – ohne doppelte Planungsdaten.
         </p>
       </div>
 
       <Tabs value={tab} onValueChange={change} className="space-y-4">
         <TabsList className="flex w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="kalender" className="gap-2">
-            <HardHat className="size-4" /> Team &amp; Kalender
+          <TabsTrigger value="dienstplan" className="gap-2">
+            <CalendarRange className="size-4" /> Dienstplan
           </TabsTrigger>
-          <TabsTrigger value="planung" className="gap-2">
-            <CalendarRange className="size-4" /> Wochenplanung
+          <TabsTrigger value="kalender" className="gap-2">
+            <CalendarDays className="size-4" /> Kalender
+          </TabsTrigger>
+          <TabsTrigger value="personal" className="gap-2">
+            <HardHat className="size-4" /> Personal
           </TabsTrigger>
           <TabsTrigger value="zeiten" className="gap-2">
             <Clock className="size-4" /> Zeiterfassung
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="kalender" className="mt-0">
-          <Personal />
-        </TabsContent>
-        <TabsContent value="planung" className="mt-0">
+        <TabsContent value="dienstplan" className="mt-0">
           <Arbeitsplanung />
+        </TabsContent>
+        <TabsContent value="kalender" className="mt-0">
+          <TeamKalenderPanel />
+        </TabsContent>
+        <TabsContent value="personal" className="mt-0">
+          <Personal />
         </TabsContent>
         <TabsContent value="zeiten" className="mt-0">
           <Zeiterfassung />
