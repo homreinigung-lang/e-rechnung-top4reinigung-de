@@ -19,12 +19,5 @@
   },
   "observability": {
     "enabled": true
-  },
-  "env": {
-    "staging": {
-      "name": "gebcalc-staging-preview",
-      "workers_dev": true,
-      "routes": []
-    }
   }
 }
