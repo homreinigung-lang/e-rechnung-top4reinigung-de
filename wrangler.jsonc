@@ -1,5 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
+  // Legacy name: this Worker currently serves the production custom domain.
+  // Do not rename it until Cloudflare routing is migrated deliberately.
   "name": "gebcalc-staging",
   "compatibility_date": "2026-09-08",
   "compatibility_flags": ["nodejs_compat"],
@@ -17,5 +19,16 @@
   },
   "observability": {
     "enabled": true
+  },
+  "env": {
+    "staging": {
+      "name": "gebcalc-staging-preview",
+      "workers_dev": true,
+      "routes": [],
+      "vars": {
+        "PUBLIC_SITE_URL": "https://gebcalc-staging-preview.workers.dev",
+        "RESEND_FROM": "GebCalc Staging <info@top4reinigung.de>"
+      }
+    }
   }
 }
