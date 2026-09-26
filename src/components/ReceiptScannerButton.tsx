@@ -175,11 +175,11 @@ export function ReceiptScannerButton({
               ref={videoRef}
               playsInline
               muted
-              className="max-h-[62vh] w-full object-contain"
+              className="h-full w-full object-contain sm:max-h-[62vh] sm:h-auto"
             />
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-[7%] rounded-md border-2 border-dashed border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.28)]"
+              className="pointer-events-none absolute inset-x-[5%] bottom-[4%] top-[4%] rounded-md border-2 border-dashed border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.24)] sm:inset-[7%]"
             />
             {!cameraReady && !cameraError && (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-white">
