@@ -1,4 +1,5 @@
 type Point = { x: number; y: number };
+type Quad = readonly [Point, Point, Point, Point];
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -35,7 +36,7 @@ function detectDocumentQuad(
   pixels: Uint8ClampedArray,
   width: number,
   height: number,
-): Point[] | null {
+): Quad | null {
   const cornerSize = Math.max(4, Math.round(Math.min(width, height) * 0.06));
   const sampleCorners = [
     [0, 0],
@@ -99,7 +100,7 @@ function detectDocumentQuad(
     if (p.y - p.x > bl.y - bl.x) bl = p;
   }
 
-  const quad = [tl, tr, brp, bl];
+  const quad: Quad = [tl, tr, brp, bl];
   const area = polygonArea(quad);
   if (area < width * height * 0.22) return null;
 
@@ -114,7 +115,7 @@ function detectDocumentQuad(
   return quad;
 }
 
-function squareToQuadHomography([tl, tr, br, bl]: readonly Point[]) {
+function squareToQuadHomography([tl, tr, br, bl]: Quad) {
   const dx1 = tr.x - br.x;
   const dx2 = bl.x - br.x;
   const dx3 = tl.x - tr.x + br.x - bl.x;
@@ -158,7 +159,7 @@ function applyScanLook(value: number) {
 
 function perspectiveWarp(
   source: ImageData,
-  quad: readonly Point[],
+  quad: Quad,
   outWidth: number,
   outHeight: number,
 ): ImageData {
@@ -252,8 +253,14 @@ export async function scanReceiptImage(file: File): Promise<File> {
   const analysisImage = actx.getImageData(0, 0, aw, ah);
   const detectedQuad = detectDocumentQuad(analysisImage.data, aw, ah);
 
-  const fullQuad: Point[] = detectedQuad
-    ? detectedQuad.map((p) => ({ x: p.x / analyzeScale, y: p.y / analyzeScale }))
+  const scalePoint = (p: Point): Point => ({ x: p.x / analyzeScale, y: p.y / analyzeScale });
+  const fullQuad: Quad = detectedQuad
+    ? [
+        scalePoint(detectedQuad[0]),
+        scalePoint(detectedQuad[1]),
+        scalePoint(detectedQuad[2]),
+        scalePoint(detectedQuad[3]),
+      ]
     : [
         { x: 0, y: 0 },
         { x: bitmap.width - 1, y: 0 },
@@ -262,8 +269,8 @@ export async function scanReceiptImage(file: File): Promise<File> {
       ];
 
   const [tl, tr, br, bl] = fullQuad;
-  const targetWidth = Math.max(distance(tl!, tr!), distance(bl!, br!));
-  const targetHeight = Math.max(distance(tl!, bl!), distance(tr!, br!));
+  const targetWidth = Math.max(distance(tl, tr), distance(bl, br));
+  const targetHeight = Math.max(distance(tl, bl), distance(tr, br));
   const maxOutput = 2200;
   const outputScale = Math.min(1, maxOutput / Math.max(targetWidth, targetHeight));
   const ow = Math.max(1, Math.round(targetWidth * outputScale));
