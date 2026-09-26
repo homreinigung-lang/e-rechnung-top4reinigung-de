@@ -14,6 +14,7 @@ export function FileUploadButton({
   showSuccessToast = true,
   capture,
   prepareFile,
+  validateFile,
 }: {
   folder: string;
   accept?: string;
@@ -24,6 +25,7 @@ export function FileUploadButton({
   showSuccessToast?: boolean;
   capture?: "user" | "environment";
   prepareFile?: (file: File) => File | Promise<File>;
+  validateFile?: (file: File) => void | Promise<void>;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +37,7 @@ export function FileUploadButton({
     onBusyChange?.(true);
     try {
       const preparedFile = prepareFile ? await prepareFile(file) : file;
+      if (validateFile) await validateFile(preparedFile);
       const path = await uploadUserFile(preparedFile, folder);
       // Upload and document analysis are separate steps. Do not signal a
       // successful analysis merely because Storage accepted the file.
