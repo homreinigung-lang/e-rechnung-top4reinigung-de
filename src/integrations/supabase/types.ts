@@ -772,6 +772,8 @@ export type Database = {
           number: string
           order_number: string
           paid_at: string | null
+          planned_hours_month: number
+          planned_visits_month: number
           pdf_path: string
           pdf_sha256: string
           reminder_level: number
@@ -826,6 +828,8 @@ export type Database = {
           number: string
           order_number?: string
           paid_at?: string | null
+          planned_hours_month?: number
+          planned_visits_month?: number
           pdf_path?: string
           pdf_sha256?: string
           reminder_level?: number
@@ -880,6 +884,8 @@ export type Database = {
           number?: string
           order_number?: string
           paid_at?: string | null
+          planned_hours_month?: number
+          planned_visits_month?: number
           pdf_path?: string
           pdf_sha256?: string
           reminder_level?: number
