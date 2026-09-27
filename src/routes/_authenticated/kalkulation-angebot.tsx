@@ -83,6 +83,13 @@ function KalkulationAngebotPage() {
     return frequencyUnit === "week" ? value * WEEKS_PER_MONTH : value;
   }, [frequency, frequencyUnit]);
 
+  const monthlyHours = useMemo(() => {
+    if (mode === "hours") return num(hours) * visitsPerMonth;
+    const rate = num(hourlyRate);
+    if (rate <= 0) return 0;
+    return (num(area) * num(pricePerSqm) * visitsPerMonth) / rate;
+  }, [mode, hours, area, pricePerSqm, hourlyRate, visitsPerMonth]);
+
   const basePositions = useMemo(
     () =>
       buildConsolidatedPositions({
