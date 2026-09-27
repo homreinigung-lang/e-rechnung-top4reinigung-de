@@ -2121,6 +2121,13 @@ export type Database = {
           location: string
           note: string
           photo_paths: string[]
+          performance_completed_at: string | null
+          performance_note: string
+          performance_services: string[]
+          performance_status: string
+          employee_signature: string
+          customer_signature: string
+          customer_signer_name: string
           project_id: string | null
           service_category: string
           start_time: string | null
@@ -2150,6 +2157,13 @@ export type Database = {
           location?: string
           note?: string
           photo_paths?: string[]
+          performance_completed_at?: string | null
+          performance_note?: string
+          performance_services?: string[]
+          performance_status?: string
+          employee_signature?: string
+          customer_signature?: string
+          customer_signer_name?: string
           project_id?: string | null
           service_category?: string
           start_time?: string | null
@@ -2179,6 +2193,13 @@ export type Database = {
           location?: string
           note?: string
           photo_paths?: string[]
+          performance_completed_at?: string | null
+          performance_note?: string
+          performance_services?: string[]
+          performance_status?: string
+          employee_signature?: string
+          customer_signature?: string
+          customer_signer_name?: string
           project_id?: string | null
           service_category?: string
           start_time?: string | null
