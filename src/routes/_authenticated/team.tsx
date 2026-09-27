@@ -64,7 +64,9 @@ function ControlCenter() {
     }
     try {
       const saved = localStorage.getItem(TAB_KEY);
-      if (saved) setTab(saved);
+      if (saved && ["dienstplan", "kalender", "personal", "zeiten"].includes(saved)) {
+        setTab(saved as TeamTab);
+      }
     } catch {
       /* Speicher nicht verfügbar – unkritisch */
     }
