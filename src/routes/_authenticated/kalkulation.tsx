@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   AlertTriangle,
   Calculator,
+  CalendarRange,
   FileDown,
   FileSignature,
   FileText,
@@ -2398,15 +2399,36 @@ function KalkulationPage() {
                     <Calculator className="size-4" /> Grundkalkulation für Angebot übernehmen
                   </Button>
                   {projectId && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={importProjectLv.isPending}
-                      onClick={() => importProjectLv.mutate()}
-                    >
-                      <FileText className="size-4" /> Positionen aus Projekt-LV laden
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={importProjectLv.isPending}
+                        onClick={() => importProjectLv.mutate()}
+                      >
+                        <FileText className="size-4" /> Positionen aus Projekt-LV laden
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={monthlyHours <= 0 || visitsPerMonth <= 0}
+                        onClick={() =>
+                          navigate({
+                            to: "/team",
+                            search: {
+                              tab: "dienstplan",
+                              projekt: projectId,
+                              stunden: monthlyHours,
+                              einsaetze: visitsPerMonth,
+                            },
+                          })
+                        }
+                      >
+                        <CalendarRange className="size-4" /> Einsatzplanung vorbereiten
+                      </Button>
+                    </>
                   )}
                   <Button
                     type="button"
