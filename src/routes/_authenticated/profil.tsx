@@ -12,6 +12,7 @@ import { useFileUrl } from "@/hooks/useFileUrl";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { useMyEmployee, type MyEmployee } from "@/lib/employee";
 import { LoginMethodsCard } from "@/components/LoginMethodsCard";
+import { formatDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/profil")({
   head: () => ({
@@ -79,6 +80,11 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
   const [name, setName] = useState(employee.name ?? "");
   const [phone, setPhone] = useState(employee.phone ?? "");
 
+  useEffect(() => {
+    setName(employee.name ?? "");
+    setPhone(employee.phone ?? "");
+  }, [employee.id, employee.name, employee.phone]);
+
   const save = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -90,20 +96,46 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
     onSuccess: () => {
       toast.success("Profil gespeichert");
       queryClient.invalidateQueries({ queryKey: ["my_employee"] });
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["employees", "stammdaten"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const info = (label: string, value: string) => (
+    <div className="space-y-1">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="min-h-6 text-sm font-medium">{value || "—"}</div>
+    </div>
+  );
+
+  const address = [
+    employee.address_line,
+    [employee.postal_code, employee.city].filter(Boolean).join(" "),
+  ].filter(Boolean).join(", ");
+
+  const contractDuration = [
+    employee.contract_start ? formatDate(employee.contract_start) : "",
+    employee.contract_end ? formatDate(employee.contract_end) : "unbefristet",
+  ].filter(Boolean).join(" – ");
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Mein Profil</h1>
         <p className="mt-1 text-muted-foreground">
-          Ihre persönlichen Kontaktdaten. Firmendaten sind dem Inhaber vorbehalten.
+          Ihre Personaldaten aus der Mitarbeiterakte. Bitte prüfen Sie, ob die Angaben korrekt sind.
         </p>
       </div>
 
-      <div className="surface space-y-4 p-6">
+      <div className="surface space-y-5 p-6">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Persönliche Daten</h2>
+          <p className="text-sm text-muted-foreground">
+            Name und Telefonnummer können Sie selbst aktualisieren. Die übrigen Stammdaten werden von der Verwaltung gepflegt.
+          </p>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="emp_name">Name</Label>
@@ -111,35 +143,62 @@ function EmployeeProfil({ employee }: { employee: MyEmployee }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="emp_phone">Telefon</Label>
-            <Input
-              id="emp_phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              dir="ltr"
-            />
+            <Input id="emp_phone" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="emp_mail">E-Mail</Label>
             <Input id="emp_mail" value={employee.email ?? ""} readOnly disabled dir="ltr" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="emp_role">Funktion</Label>
-            <Input id="emp_role" value={employee.role ?? ""} readOnly disabled />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="emp_persno">Personalnummer</Label>
-            <Input
-              id="emp_persno"
-              value={employee.personnel_number ?? ""}
-              readOnly
-              disabled
-              dir="ltr"
-            />
+            <Input id="emp_persno" value={employee.personnel_number ?? ""} readOnly disabled dir="ltr" />
           </div>
         </div>
+
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           Speichern
         </Button>
+      </div>
+
+      <div className="surface space-y-5 p-6">
+        <h2 className="font-display text-lg font-semibold">Mitarbeiterakte</h2>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          {info("Geburtsdatum", employee.birth_date ? formatDate(employee.birth_date) : "")}
+          {info("Funktion", employee.role ?? "")}
+          {info("Adresse", address)}
+          {info("Arbeitsort", employee.work_location ?? "")}
+          {info("Vertragsart", employee.contract_type ?? "")}
+          {info("Vertragsdauer", contractDuration)}
+          {info(
+            "Arbeitszeit",
+            `${Number(employee.weekly_hours ?? 0).toLocaleString("de-DE")} Std./Woche`,
+          )}
+          {info(
+            "Urlaub",
+            `${Number(employee.vacation_days_per_year ?? 0).toLocaleString("de-DE")} Tage/Jahr` +
+              (Number(employee.vacation_carryover_days ?? 0) > 0
+                ? ` · Übertrag ${Number(employee.vacation_carryover_days).toLocaleString("de-DE")} Tage`
+                : ""),
+          )}
+          {info(
+            "Führerschein",
+            employee.has_driving_license
+              ? `Ja${employee.driving_license_classes ? ` · Klasse ${employee.driving_license_classes}` : ""}`
+              : "Nein",
+          )}
+          {info("Qualifikation / Ausbildung", employee.qualification ?? "")}
+          {info(
+            "Erfahrungsnachweis",
+            employee.has_experience_certificate ? "Vorhanden" : "Nicht hinterlegt",
+          )}
+          {info("Erfahrung / Zertifikate", employee.experience_details ?? "")}
+        </div>
+
+        <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+          Diese Angaben stammen direkt aus Ihrer Personalakte und sind mit Ihrem Mitarbeiterkonto verknüpft.
+          Wenn etwas nicht stimmt, wenden Sie sich bitte an die Verwaltung.
+        </div>
       </div>
 
       <LoginMethodsCard />
