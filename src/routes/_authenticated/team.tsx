@@ -7,7 +7,27 @@ import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
 
+type TeamSearch = {
+  tab?: "dienstplan" | "kalender" | "personal" | "zeiten";
+  projekt?: string;
+  stunden?: number;
+  einsaetze?: number;
+};
+
 export const Route = createFileRoute("/_authenticated/team")({
+  validateSearch: (search: Record<string, unknown>): TeamSearch => {
+    const tab = ["dienstplan", "kalender", "personal", "zeiten"].includes(String(search["tab"]))
+      ? (String(search["tab"]) as TeamSearch["tab"])
+      : undefined;
+    const stunden = Number(search["stunden"]);
+    const einsaetze = Number(search["einsaetze"]);
+    return {
+      ...(tab ? { tab } : {}),
+      ...(search["projekt"] ? { projekt: String(search["projekt"]) } : {}),
+      ...(Number.isFinite(stunden) && stunden > 0 ? { stunden } : {}),
+      ...(Number.isFinite(einsaetze) && einsaetze > 0 ? { einsaetze } : {}),
+    };
+  },
   head: () => ({
     meta: [
       { title: "Control Center – Team, Planung & Zeiten" },
@@ -32,16 +52,21 @@ export const Route = createFileRoute("/_authenticated/team")({
 const TAB_KEY = "homr:teamTab";
 
 function ControlCenter() {
-  const [tab, setTab] = React.useState("dienstplan");
+  const search = Route.useSearch();
+  const [tab, setTab] = React.useState(search.tab ?? "dienstplan");
 
   React.useEffect(() => {
+    if (search.tab) {
+      setTab(search.tab);
+      return;
+    }
     try {
       const saved = localStorage.getItem(TAB_KEY);
       if (saved) setTab(saved);
     } catch {
       /* Speicher nicht verfügbar – unkritisch */
     }
-  }, []);
+  }, [search.tab]);
 
   function change(value: string) {
     setTab(value);
@@ -78,7 +103,17 @@ function ControlCenter() {
         </TabsList>
 
         <TabsContent value="dienstplan" className="mt-0">
-          <Arbeitsplanung />
+          <Arbeitsplanung
+            initialPlan={
+              search.projekt && search.stunden && search.einsaetze
+                ? {
+                    projectId: search.projekt,
+                    monthlyHours: search.stunden,
+                    visitsPerMonth: search.einsaetze,
+                  }
+                : undefined
+            }
+          />
         </TabsContent>
         <TabsContent value="kalender" className="mt-0">
           <TeamKalenderPanel />
