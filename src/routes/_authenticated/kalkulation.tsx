@@ -1297,6 +1297,8 @@ function KalkulationPage() {
           net_total: net,
           vat_amount: vat,
           total: grossTotal,
+          planned_hours_month: monthlyHours,
+          planned_visits_month: visitsPerMonth,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
