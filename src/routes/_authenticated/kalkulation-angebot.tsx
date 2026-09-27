@@ -170,6 +170,8 @@ function KalkulationAngebotPage() {
           net_total: totals.netTotal,
           vat_amount: totals.vatAmount,
           total: totals.grossTotal,
+          planned_hours_month: monthlyHours,
+          planned_visits_month: visitsPerMonth,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
