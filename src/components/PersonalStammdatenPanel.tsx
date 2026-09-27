@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { ChevronRight, Link2, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -127,6 +127,7 @@ function Info({ label, value }: { label: string; value: string }) {
 export function PersonalStammdatenPanel() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
   const [form, setForm] = useState<EmployeeForm>(empty);
 
   const { data: employees = [] } = useQuery({
@@ -229,75 +230,125 @@ export function PersonalStammdatenPanel() {
           Noch keine Mitarbeiter angelegt.
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2">
           {employees.map((employee) => (
-            <article key={employee.id} className="surface space-y-4 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold">{employee.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {[employee.personnel_number, employee.role].filter(Boolean).join(" · ") || "Mitarbeiter"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2 py-1 text-xs ${employee.active ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>
-                    {employee.active ? "Aktiv" : "Inaktiv"}
-                  </span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => {
-                      setForm(toForm(employee));
-                      setOpen(true);
-                    }}
-                    aria-label="Mitarbeiter bearbeiten"
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                </div>
+            <button
+              key={employee.id}
+              type="button"
+              onClick={() => setDetailEmployee(employee)}
+              className="surface flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-muted/30"
+            >
+              <div className="min-w-0">
+                <h3 className="truncate font-semibold">{employee.name}</h3>
               </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Info label="Geburtsdatum" value={employee.birth_date ? formatDate(employee.birth_date) : ""} />
-                <Info label="Kontakt" value={[employee.email, employee.phone].filter(Boolean).join(" · ")} />
-                <Info
-                  label="Adresse"
-                  value={[
-                    employee.address_line,
-                    [employee.postal_code, employee.city].filter(Boolean).join(" "),
-                  ].filter(Boolean).join(", ")}
-                />
-                <Info label="Vertragsart" value={employee.contract_type ?? ""} />
-                <Info
-                  label="Vertragsdauer"
-                  value={[
-                    employee.contract_start ? formatDate(employee.contract_start) : "",
-                    employee.contract_end ? formatDate(employee.contract_end) : "unbefristet",
-                  ].filter(Boolean).join(" – ")}
-                />
-                <Info label="Arbeitszeit" value={`${Number(employee.weekly_hours ?? 0).toLocaleString("de-DE")} Std./Woche`} />
-                <Info
-                  label="Führerschein"
-                  value={employee.has_driving_license ? `Ja${employee.driving_license_classes ? ` · Klasse ${employee.driving_license_classes}` : ""}` : "Nein"}
-                />
-                <Info label="Qualifikation / Ausbildung" value={employee.qualification ?? ""} />
-                <Info
-                  label="Erfahrungsnachweis"
-                  value={employee.has_experience_certificate ? "Vorhanden" : "Nicht hinterlegt"}
-                />
-                <Info label="Erfahrung / Zertifikate" value={employee.experience_details ?? ""} />
+              <div className="flex shrink-0 items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${employee.active ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>
+                  {employee.active ? "Aktiv" : "Inaktiv"}
+                </span>
+                <ChevronRight className="size-4 text-muted-foreground" />
               </div>
-
-              {employee.personnel_notes ? (
-                <div className="rounded-md border bg-muted/30 p-3 text-sm">
-                  <div className="mb-1 text-xs text-muted-foreground">Personalnotiz</div>
-                  {employee.personnel_notes}
-                </div>
-              ) : null}
-            </article>
+            </button>
           ))}
         </div>
       )}
+
+      <Dialog
+        open={Boolean(detailEmployee)}
+        onOpenChange={(value) => {
+          if (!value) setDetailEmployee(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{detailEmployee?.name || "Mitarbeiter"}</DialogTitle>
+          </DialogHeader>
+
+          {detailEmployee && (
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+                <div>
+                  <div className="font-medium">{detailEmployee.name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {[detailEmployee.personnel_number, detailEmployee.role].filter(Boolean).join(" · ") || "Mitarbeiter"}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${detailEmployee.active ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>
+                    {detailEmployee.active ? "Aktiv" : "Inaktiv"}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${detailEmployee.auth_user_id ? "bg-sky-100 text-sky-800" : "bg-muted text-muted-foreground"}`}>
+                    <Link2 className="size-3" />
+                    {detailEmployee.auth_user_id ? "Mitarbeiterkonto verknüpft" : "Konto noch nicht verknüpft"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+                <div className="font-medium">Abgleich mit Mitarbeiterkonto</div>
+                <p className="mt-1 text-muted-foreground">
+                  {detailEmployee.auth_user_id
+                    ? "Diese Personalakte ist mit dem Login des Mitarbeiters verknüpft. „Mein Profil“ verwendet dieselben Mitarbeiterdaten."
+                    : "Noch kein Mitarbeiter-Login mit dieser Personalakte verknüpft. Die Verknüpfung erfolgt beim Mitarbeiterzugang über die hinterlegte E-Mail-Adresse."}
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Info label="Geburtsdatum" value={detailEmployee.birth_date ? formatDate(detailEmployee.birth_date) : ""} />
+                <Info label="E-Mail" value={detailEmployee.email ?? ""} />
+                <Info label="Telefon" value={detailEmployee.phone ?? ""} />
+                <Info
+                  label="Adresse"
+                  value={[
+                    detailEmployee.address_line,
+                    [detailEmployee.postal_code, detailEmployee.city].filter(Boolean).join(" "),
+                  ].filter(Boolean).join(", ")}
+                />
+                <Info label="Vertragsart" value={detailEmployee.contract_type ?? ""} />
+                <Info
+                  label="Vertragsdauer"
+                  value={[
+                    detailEmployee.contract_start ? formatDate(detailEmployee.contract_start) : "",
+                    detailEmployee.contract_end ? formatDate(detailEmployee.contract_end) : "unbefristet",
+                  ].filter(Boolean).join(" – ")}
+                />
+                <Info label="Arbeitszeit" value={`${Number(detailEmployee.weekly_hours ?? 0).toLocaleString("de-DE")} Std./Woche`} />
+                <Info label="Stundenlohn" value={`${Number(detailEmployee.hourly_rate ?? 0).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`} />
+                <Info label="Urlaubstage / Jahr" value={String(detailEmployee.vacation_days_per_year ?? 0)} />
+                <Info
+                  label="Führerschein"
+                  value={detailEmployee.has_driving_license ? `Ja${detailEmployee.driving_license_classes ? ` · Klasse ${detailEmployee.driving_license_classes}` : ""}` : "Nein"}
+                />
+                <Info label="Qualifikation / Ausbildung" value={detailEmployee.qualification ?? ""} />
+                <Info
+                  label="Erfahrungsnachweis"
+                  value={detailEmployee.has_experience_certificate ? "Vorhanden" : "Nicht hinterlegt"}
+                />
+                <Info label="Erfahrung / Zertifikate" value={detailEmployee.experience_details ?? ""} />
+              </div>
+
+              {detailEmployee.personnel_notes ? (
+                <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                  <div className="mb-1 text-xs text-muted-foreground">Personalnotiz</div>
+                  {detailEmployee.personnel_notes}
+                </div>
+              ) : null}
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setForm(toForm(detailEmployee));
+                    setDetailEmployee(null);
+                    setOpen(true);
+                  }}
+                >
+                  <Pencil className="size-4" /> Mitarbeiter bearbeiten
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={open}
