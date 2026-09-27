@@ -34,6 +34,7 @@ import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { Urlaubsantraege } from "@/components/Urlaubsantraege";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
+import { LeistungsnachweisDialog } from "@/components/LeistungsnachweisDialog";
 import { requireUserId } from "@/lib/auth-user";
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -180,9 +181,9 @@ export function Zeiterfassung() {
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id,name").order("name");
+      const { data, error } = await supabase.from("projects").select("id,name,address_line,postal_code,city,customer_name").order("name");
       if (error) throw error;
-      return data as { id: string; name: string }[];
+      return data as { id: string; name: string; address_line: string; postal_code: string; city: string; customer_name?: string }[];
     },
   });
 
@@ -1010,6 +1011,20 @@ export function Zeiterfassung() {
                     paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
                     invalidateKey="time_entries"
                   />
+                  {(
+                    (((e as { performance_services?: string[] }).performance_services ?? []).length > 0) ||
+                    Boolean((e as { performance_note?: string }).performance_note) ||
+                    Boolean((e as { employee_signature?: string }).employee_signature) ||
+                    Boolean((e as { customer_signature?: string }).customer_signature)
+                  ) && (
+                    <div className="mt-2">
+                      <LeistungsnachweisDialog
+                        readOnly
+                        entry={e}
+                        project={projects.find((project) => project.id === e.project_id)}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="text-right text-sm">
                   {formatMoney(Number(e.hours) * Number(e.hourly_rate || 0))}
