@@ -115,7 +115,15 @@ function SignaturePad({ value, onChange, label }: { value: string; onChange: (v:
   );
 }
 
-export function LeistungsnachweisDialog({ entry, project }: { entry: Entry; project?: Project | undefined }) {
+export function LeistungsnachweisDialog({
+  entry,
+  project,
+  readOnly = false,
+}: {
+  entry: Entry;
+  project?: Project | undefined;
+  readOnly?: boolean;
+}) {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [services, setServices] = React.useState<string[]>(entry.performance_services ?? []);
@@ -226,7 +234,7 @@ export function LeistungsnachweisDialog({ entry, project }: { entry: Entry; proj
       <DialogTrigger asChild>
         <Button type="button" size="sm" variant={completed ? "secondary" : "outline"}>
           {completed ? <CheckCircle2 className="size-4" /> : <FileSignature className="size-4" />}
-          {completed ? "Leistungsnachweis" : "Leistungsnachweis erstellen"}
+          {readOnly ? "Leistungsnachweis prüfen" : completed ? "Leistungsnachweis" : "Leistungsnachweis erstellen"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -237,49 +245,114 @@ export function LeistungsnachweisDialog({ entry, project }: { entry: Entry; proj
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <Label>Ausgeführte Leistungen</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {SERVICES.map((service) => (
-                <label key={service} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                  <Checkbox
-                    checked={services.includes(service)}
-                    onCheckedChange={(checked) => setServices((current) => checked ? [...current, service] : current.filter((x) => x !== service))}
-                  />
-                  {service}
-                </label>
-              ))}
+        {readOnly ? (
+          <div className="space-y-5">
+            <div className="rounded-md border p-3 text-sm">
+              <div className="font-medium">
+                Status: {completed ? "Abgeschlossen" : "Entwurf"}
+              </div>
+              {entry.performance_completed_at && (
+                <div className="mt-1 text-muted-foreground">
+                  Abgeschlossen am {formatDate(String(entry.performance_completed_at).slice(0, 10))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Ausgeführte Leistungen</Label>
+              <div className="flex flex-wrap gap-2">
+                {services.length > 0 ? (
+                  services.map((service) => (
+                    <span key={service} className="rounded-md border px-2 py-1 text-sm">
+                      {service}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Keine Leistungen eingetragen.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Bemerkungen</Label>
+              <p className="rounded-md border p-3 text-sm">
+                {note.trim() || "Keine Bemerkungen."}
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Unterschrift Mitarbeiter</Label>
+                <div className="flex h-32 items-center justify-center rounded-md border bg-white p-2">
+                  {employeeSignature ? (
+                    <img src={employeeSignature} alt="Unterschrift Mitarbeiter" className="max-h-full max-w-full object-contain" />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Keine Unterschrift</span>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Unterschrift Kunde</Label>
+                <div className="flex h-32 items-center justify-center rounded-md border bg-white p-2">
+                  {customerSignature ? (
+                    <img src={customerSignature} alt="Unterschrift Kunde" className="max-h-full max-w-full object-contain" />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Keine Unterschrift</span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {customerSignerName || "Kein Ansprechpartner eingetragen"}
+                </p>
+              </div>
             </div>
           </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <Label>Ausgeführte Leistungen</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {SERVICES.map((service) => (
+                  <label key={service} className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                    <Checkbox
+                      checked={services.includes(service)}
+                      onCheckedChange={(checked) => setServices((current) => checked ? [...current, service] : current.filter((x) => x !== service))}
+                    />
+                    {service}
+                  </label>
+                ))}
+              </div>
+            </div>
 
-          <div className="space-y-2">
-            <Label>Bemerkungen</Label>
-            <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. Reinigung gemäß Leistungsverzeichnis durchgeführt." />
+            <div className="space-y-2">
+              <Label>Bemerkungen</Label>
+              <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. Reinigung gemäß Leistungsverzeichnis durchgeführt." />
+            </div>
+
+            <SignaturePad label="Unterschrift Mitarbeiter" value={employeeSignature} onChange={setEmployeeSignature} />
+
+            <div className="space-y-2">
+              <Label>Name des Kunden / Ansprechpartners</Label>
+              <Input value={customerSignerName} onChange={(e) => setCustomerSignerName(e.target.value)} placeholder="Vor- und Nachname" />
+            </div>
+
+            <SignaturePad label="Unterschrift Kunde" value={customerSignature} onChange={setCustomerSignature} />
           </div>
-
-          <SignaturePad label="Unterschrift Mitarbeiter" value={employeeSignature} onChange={setEmployeeSignature} />
-
-          <div className="space-y-2">
-            <Label>Name des Kunden / Ansprechpartners</Label>
-            <Input value={customerSignerName} onChange={(e) => setCustomerSignerName(e.target.value)} placeholder="Vor- und Nachname" />
-          </div>
-
-          <SignaturePad label="Unterschrift Kunde" value={customerSignature} onChange={setCustomerSignature} />
-        </div>
+        )}
 
         <DialogFooter className="flex-wrap sm:justify-between">
           <Button type="button" variant="outline" onClick={() => void createPdf()}>
             <FileDown className="size-4" /> PDF erstellen
           </Button>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" disabled={save.isPending} onClick={() => save.mutate(false)}>
-              <Save className="size-4" /> Entwurf speichern
-            </Button>
-            <Button type="button" disabled={save.isPending} onClick={() => save.mutate(true)}>
-              <CheckCircle2 className="size-4" /> Leistungsnachweis abschließen
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" disabled={save.isPending} onClick={() => save.mutate(false)}>
+                <Save className="size-4" /> Entwurf speichern
+              </Button>
+              <Button type="button" disabled={save.isPending} onClick={() => save.mutate(true)}>
+                <CheckCircle2 className="size-4" /> Leistungsnachweis abschließen
+              </Button>
+            </div>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
