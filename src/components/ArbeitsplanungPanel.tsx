@@ -173,7 +173,7 @@ type CalculationPlanSeed = {
   visitsPerMonth: number;
 };
 
-export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanSeed }) {
+export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanSeed | undefined }) {
   const queryClient = useQueryClient();
   const [seedEmployeeId, setSeedEmployeeId] = React.useState("");
   const [seedStartTime, setSeedStartTime] = React.useState("08:00");
