@@ -104,6 +104,7 @@ import {
   BadgeEuro,
   Ban,
   BellRing,
+  CalendarRange,
   Check,
   Copy,
   FileCode2,
@@ -865,6 +866,97 @@ function DokumentDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const preparePlanning = useMutation({
+    mutationFn: async () => {
+      if (String(form["status"] ?? "") !== "accepted") {
+        throw new Error("Bitte das Angebot zuerst als angenommen markieren.");
+      }
+
+      const hours = Number(form["planned_hours_month"] ?? 0);
+      const visits = Number(form["planned_visits_month"] ?? 0);
+      if (!(hours > 0) || !(visits > 0)) {
+        throw new Error(
+          "In diesem Angebot fehlen Soll-Stunden oder Einsätze pro Monat. Bitte eine neue Kalkulation übernehmen oder die Planung manuell im Dienstplan anlegen.",
+        );
+      }
+
+      let customerId = String(form["customer_id"] ?? "").trim();
+      if (!customerId) {
+        const linked = await ensureCustomerForAcceptedQuote(id);
+        customerId = linked?.customerId ?? "";
+      }
+      if (!customerId) throw new Error("Kein Kunde mit dem angenommenen Angebot verknüpft.");
+
+      let projectId = String(form["project_id"] ?? "").trim();
+      let created = false;
+
+      if (!projectId) {
+        const { data: customer, error: customerError } = await supabase
+          .from("customers")
+          .select(
+            "id,name,company,email,phone,service_address_line,service_postal_code,service_city,address_line,postal_code,city",
+          )
+          .eq("id", customerId)
+          .single();
+        if (customerError) throw customerError;
+
+        const { data: auth } = await supabase.auth.getUser();
+        const userId = auth.user?.id;
+        if (!userId) throw new Error("Nicht angemeldet");
+
+        const objectName = `${customer.company || customer.name || "Kunde"} – Objekt`;
+        const addressLine = customer.service_address_line || customer.address_line || "";
+        const postalCode = customer.service_postal_code || customer.postal_code || "";
+        const city = customer.service_city || customer.city || "";
+
+        const { data: project, error: projectError } = await supabase
+          .from("projects")
+          .insert({
+            user_id: userId,
+            name: objectName,
+            mode: "floorplan",
+            customer_id: customer.id,
+            customer_name: customer.company || customer.name || "",
+            contact_email: customer.email || "",
+            contact_phone: customer.phone || "",
+            address_line: addressLine,
+            postal_code: postalCode,
+            city,
+          })
+          .select("id")
+          .single();
+        if (projectError) throw projectError;
+
+        projectId = project.id;
+        created = true;
+
+        const { error: linkError } = await supabase
+          .from("documents")
+          .update({ project_id: projectId } as never)
+          .eq("id", id);
+        if (linkError) throw linkError;
+      }
+
+      return { projectId, hours, visits, created };
+    },
+    onSuccess: ({ projectId, hours, visits, created }) => {
+      setForm((current) => ({ ...current, project_id: projectId }));
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      if (created) toast.success("Objekt angelegt – Einsatzplanung wird vorbereitet.");
+      navigate({
+        to: "/team",
+        search: {
+          tab: "dienstplan",
+          projekt: projectId,
+          stunden: hours,
+          einsaetze: visits,
+        },
+      });
+    },
+    onError: (e: Error) => toast.error(e.message, { duration: 9000 }),
+  });
+
   const convert = useMutation({
     mutationFn: (): Promise<string> =>
       data?.doc.type === "order" ? convertOrderToInvoice(id) : convertQuoteToOrder(id),
@@ -919,6 +1011,10 @@ function DokumentDetail() {
   const canMahnen = mahnungAllowed(docRecord["due_date"] as string | null);
 
   const convertedId = (docRecord["converted_document_id"] as string | null) ?? null;
+  const plannedHoursMonth = Number(docRecord["planned_hours_month"] ?? form["planned_hours_month"] ?? 0);
+  const plannedVisitsMonth = Number(
+    docRecord["planned_visits_month"] ?? form["planned_visits_month"] ?? 0,
+  );
   const followUpDoc =
     (data as { followUp?: { id: string; number: string; type: string } | null }).followUp ?? null;
   const sourceDoc =
@@ -1613,6 +1709,27 @@ function DokumentDetail() {
                   <X className="size-4" /> Angebot ablehnen
                 </Button>
               </>
+            )}
+            {doc.status === "accepted" && (
+              <Button
+                variant="outline"
+                onClick={() => preparePlanning.mutate()}
+                disabled={
+                  preparePlanning.isPending || plannedHoursMonth <= 0 || plannedVisitsMonth <= 0
+                }
+                title={
+                  plannedHoursMonth > 0 && plannedVisitsMonth > 0
+                    ? form["project_id"]
+                      ? "Vorhandenes Objekt in die Einsatzplanung übernehmen"
+                      : "Objekt aus dem angenommenen Angebot anlegen und Einsatzplanung vorbereiten"
+                    : "Keine Planungswerte vorhanden – bitte Angebot aus einer aktuellen Kalkulation erstellen."
+                }
+              >
+                <CalendarRange className="size-4" />
+                {form["project_id"]
+                  ? "Einsatzplanung vorbereiten"
+                  : "Objekt anlegen & Einsatzplanung vorbereiten"}
+              </Button>
             )}
             {!convertedId && doc.status === "accepted" && (
               <>
