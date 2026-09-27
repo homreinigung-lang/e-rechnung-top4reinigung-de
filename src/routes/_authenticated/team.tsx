@@ -7,8 +7,10 @@ import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
 
+type TeamTab = "dienstplan" | "kalender" | "personal" | "zeiten";
+
 type TeamSearch = {
-  tab?: "dienstplan" | "kalender" | "personal" | "zeiten";
+  tab?: TeamTab;
   projekt?: string;
   stunden?: number;
   einsaetze?: number;
@@ -69,9 +71,10 @@ function ControlCenter() {
   }, [search.tab]);
 
   function change(value: string) {
-    setTab(value);
+    const next = value as TeamTab;
+    setTab(next);
     try {
-      localStorage.setItem(TAB_KEY, value);
+      localStorage.setItem(TAB_KEY, next);
     } catch {
       /* unkritisch */
     }
@@ -103,17 +106,17 @@ function ControlCenter() {
         </TabsList>
 
         <TabsContent value="dienstplan" className="mt-0">
-          <Arbeitsplanung
-            initialPlan={
-              search.projekt && search.stunden && search.einsaetze
-                ? {
-                    projectId: search.projekt,
-                    monthlyHours: search.stunden,
-                    visitsPerMonth: search.einsaetze,
-                  }
-                : undefined
-            }
-          />
+          {search.projekt && search.stunden && search.einsaetze ? (
+            <Arbeitsplanung
+              initialPlan={{
+                projectId: search.projekt,
+                monthlyHours: search.stunden,
+                visitsPerMonth: search.einsaetze,
+              }}
+            />
+          ) : (
+            <Arbeitsplanung />
+          )}
         </TabsContent>
         <TabsContent value="kalender" className="mt-0">
           <TeamKalenderPanel />
