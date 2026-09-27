@@ -43,6 +43,7 @@ import {
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
 import { ArbeitsnachweisFotos } from "@/components/ArbeitsnachweisFotos";
+import { LeistungsnachweisDialog } from "@/components/LeistungsnachweisDialog";
 import { MeinEinsatzkalender, type DayTask } from "@/components/MeinEinsatzkalender";
 import { FahrtenbuchMitarbeiterErfassung } from "@/components/FahrtenbuchMitarbeiterErfassung";
 
@@ -93,7 +94,7 @@ function MeineZeiten() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id,name,city,address_line,postal_code");
+        .select("id,name,city,address_line,postal_code,customer_name");
       if (error) return [];
       return (data ?? []) as {
         id: string;
@@ -101,6 +102,7 @@ function MeineZeiten() {
         city: string;
         address_line: string;
         postal_code: string;
+        customer_name: string;
       }[];
     },
   });
@@ -534,12 +536,20 @@ function MeineZeiten() {
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
                   {!isAbsence(e) && (
-                    <ArbeitsnachweisFotos
-                      entryId={e.id as string}
-                      paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
-                      canUpload
-                      invalidateKey="my_time_entries"
-                    />
+                    <>
+                      <ArbeitsnachweisFotos
+                        entryId={e.id as string}
+                        paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
+                        canUpload
+                        invalidateKey="my_time_entries"
+                      />
+                      <div className="mt-3">
+                        <LeistungsnachweisDialog
+                          entry={e as never}
+                          project={projects.find((p) => p.id === e.project_id)}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
                 <span
@@ -578,7 +588,7 @@ function ProjectDetailDialog({
   onClose,
 }: {
   projectId: string | null;
-  projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
+  projects: { id: string; name: string; city: string; address_line: string; postal_code: string; customer_name?: string }[];
   assignments: {
     id: string;
     project_id: string | null;
@@ -671,7 +681,7 @@ function ZeitErfassenDialog({
   assignments,
 }: {
   employee: { id: string; name: string; user_id: string; hourly_rate?: number | null };
-  projects: { id: string; name: string; city: string; address_line: string; postal_code: string }[];
+  projects: { id: string; name: string; city: string; address_line: string; postal_code: string; customer_name?: string }[];
   assignments: { project_id: string | null }[];
 }) {
   const queryClient = useQueryClient();
