@@ -746,7 +746,7 @@ function ProjektDetail() {
           <div>
             <h2 className="text-lg font-semibold">Objekt-Controlling / Marge</h2>
             <p className="text-sm text-muted-foreground">
-              Umsatz, Plan/Ist-Stunden und direkte Objektkosten im gewählten Monat.
+              Umsatz, Soll-/Ist-Stunden und direkte Objektkosten im gewählten Monat.
             </p>
           </div>
           <div className="space-y-1">
@@ -763,13 +763,13 @@ function ProjektDetail() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             ["Umsatz netto", formatMoney(revenueNet)],
-            ["Planstunden", `${formatNumber(plannedHours)} Std.`],
+            ["Soll-Stunden", `${formatNumber(plannedHours)} Std.`],
             ["Ist-Stunden", `${formatNumber(actualHours)} Std.`],
             [
-              "Abweichung",
+              "Soll/Ist-Abweichung",
               `${hourVariance >= 0 ? "+" : ""}${formatNumber(hourVariance)} Std.`,
             ],
-            ["Lohnkosten", formatMoney(wageCosts)],
+            ["Personalkosten", formatMoney(wageCosts)],
             ["Weitere Objektkosten", formatMoney(materialAndOtherCosts)],
             ["Gesamtkosten", formatMoney(totalCosts)],
             ["Deckungsbeitrag", formatMoney(contribution)],
