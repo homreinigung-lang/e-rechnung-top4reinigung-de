@@ -3,6 +3,13 @@ import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import {
@@ -28,7 +35,8 @@ import {
   EMPTY_DAY_TIME,
   type DayTime,
 } from "@/lib/planung";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
+import { WEEKS_PER_MONTH } from "@/lib/constants";
 import { friendlyDbError } from "@/lib/db-errors";
 import { LoadError, firstError } from "@/components/LoadError";
 
@@ -159,8 +167,17 @@ function addDays(date: Date, n: number) {
   return d;
 }
 
-export function Arbeitsplanung() {
+type CalculationPlanSeed = {
+  projectId: string;
+  monthlyHours: number;
+  visitsPerMonth: number;
+};
+
+export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanSeed }) {
   const queryClient = useQueryClient();
+  const [seedEmployeeId, setSeedEmployeeId] = React.useState("");
+  const [seedStartTime, setSeedStartTime] = React.useState("08:00");
+  const [seedBreakMinutes, setSeedBreakMinutes] = React.useState("0");
   const [filter, setFilter] = React.useState("");
   const [monday, setMonday] = React.useState(() => mondayOf(new Date()));
   const weekStart = isoDay(monday);
@@ -342,6 +359,60 @@ export function Arbeitsplanung() {
 
   const cellHours = (e: string, p: string) =>
     cellDayHours(e, p).reduce((s, n) => s + (Number(n) || 0), 0);
+
+  const seedProject = initialPlan
+    ? objects.find((object) => object.id === initialPlan.projectId)
+    : undefined;
+  const seedVisitsPerWeek = initialPlan ? initialPlan.visitsPerMonth / WEEKS_PER_MONTH : 0;
+  const seedHoursPerVisit =
+    initialPlan && initialPlan.visitsPerMonth > 0
+      ? initialPlan.monthlyHours / initialPlan.visitsPerMonth
+      : 0;
+
+  function applyCalculationPlan() {
+    if (!initialPlan || !seedProject) {
+      toast.error("Das verknüpfte Objekt wurde nicht gefunden.");
+      return;
+    }
+    if (!seedEmployeeId) {
+      toast.error("Bitte zuerst einen Mitarbeiter auswählen.");
+      return;
+    }
+    if (seedVisitsPerWeek < 0.75) {
+      toast.error(
+        "Der Turnus liegt unter einem Einsatz pro Woche. Bitte die einzelnen Einsatzwochen manuell planen.",
+      );
+      return;
+    }
+    const employee = employees.find((item) => item.id === seedEmployeeId);
+    if (!employee) {
+      toast.error("Der ausgewählte Mitarbeiter wurde nicht gefunden.");
+      return;
+    }
+
+    const visits = Math.min(7, Math.max(1, Math.round(seedVisitsPerWeek)));
+    const breakMinutes = Math.max(0, Number(seedBreakMinutes) || 0);
+    const [startHour = 8, startMinute = 0] = seedStartTime.split(":").map(Number);
+    const startTotal = startHour * 60 + startMinute;
+    const endTotal = startTotal + Math.round(seedHoursPerVisit * 60) + breakMinutes;
+    const hh = String(Math.floor((endTotal % 1440) / 60)).padStart(2, "0");
+    const mm = String(endTotal % 60).padStart(2, "0");
+    const end = `${hh}:${mm}`;
+    const times = Array.from({ length: 7 }, (_, index) =>
+      index < visits
+        ? { start: seedStartTime, end, breakMin: breakMinutes }
+        : { ...EMPTY_DAY_TIME },
+    );
+
+    setDraft((current) => ({
+      ...current,
+      [key(employee.id, seedProject.id)]: times,
+    }));
+    setFilter(seedProject.name ?? "");
+    toast.success(
+      `Planungsvorschlag für ${employee.name} übernommen. Bitte prüfen und speichern.`,
+    );
+  }
 
   const setDayTime = (e: string, p: string, index: number, patch: Partial<DayTime>) =>
     setDraft((d) => {
@@ -746,6 +817,69 @@ export function Arbeitsplanung() {
           automatisch berechnet und nach der Freigabe im Mitarbeiterportal angezeigt.
         </p>
       </div>
+
+      {initialPlan && (
+        <section className="surface space-y-4 border-primary/30 p-5">
+          <div>
+            <h2 className="font-semibold">Planungsvorschlag aus Kalkulation</h2>
+            <p className="text-sm text-muted-foreground">
+              {seedProject?.name ?? "Verknüpftes Objekt"} · Soll{" "}
+              {formatNumber(initialPlan.monthlyHours)} Std./Monat ·{" "}
+              {formatNumber(initialPlan.visitsPerMonth)} Einsätze/Monat · ca.{" "}
+              {formatNumber(seedHoursPerVisit)} Std. je Einsatz
+            </p>
+          </div>
+          {seedVisitsPerWeek < 0.75 ? (
+            <div className="rounded-md border border-amber-500/50 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              Der Turnus liegt unter einem Einsatz pro Woche. Die konkreten Einsatzwochen bitte im
+              Dienstplan manuell festlegen.
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_140px_120px_auto] md:items-end">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Mitarbeiter</label>
+                <Select value={seedEmployeeId} onValueChange={setSeedEmployeeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Mitarbeiter auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id}>
+                        {employee.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Startzeit</label>
+                <Input
+                  type="time"
+                  value={seedStartTime}
+                  onChange={(event) => setSeedStartTime(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Pause (Min.)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={5}
+                  value={seedBreakMinutes}
+                  onChange={(event) => setSeedBreakMinutes(event.target.value)}
+                />
+              </div>
+              <Button type="button" onClick={applyCalculationPlan}>
+                In Wochenplan übernehmen
+              </Button>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Der Vorschlag verteilt den kalkulierten Turnus auf die ersten Wochentage. Vor dem
+            Speichern können Tage und Uhrzeiten vollständig angepasst werden.
+          </p>
+        </section>
+      )}
 
       <div className="surface flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap items-center gap-2">
