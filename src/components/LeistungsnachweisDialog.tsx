@@ -115,7 +115,7 @@ function SignaturePad({ value, onChange, label }: { value: string; onChange: (v:
   );
 }
 
-export function LeistungsnachweisDialog({ entry, project }: { entry: Entry; project?: Project }) {
+export function LeistungsnachweisDialog({ entry, project }: { entry: Entry; project?: Project | undefined }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [services, setServices] = React.useState<string[]>(entry.performance_services ?? []);
@@ -193,27 +193,27 @@ export function LeistungsnachweisDialog({ entry, project }: { entry: Entry; proj
       ["Gesamt", `${Number(entry.hours ?? 0).toFixed(2).replace(".", ",")} Std.`],
     ];
     for (const [label, value] of rows) {
-      pdf.setFont(undefined, "bold"); pdf.text(label, 18, y);
-      pdf.setFont(undefined, "normal"); pdf.text(value, 55, y);
+      pdf.setFont("helvetica", "bold"); pdf.text(label, 18, y);
+      pdf.setFont("helvetica", "normal"); pdf.text(value, 55, y);
       y += 6;
     }
     y += 4;
-    pdf.setFont(undefined, "bold"); pdf.text("Ausgeführte Leistungen", 18, y); y += 6;
-    pdf.setFont(undefined, "normal");
+    pdf.setFont("helvetica", "bold"); pdf.text("Ausgeführte Leistungen", 18, y); y += 6;
+    pdf.setFont("helvetica", "normal");
     for (const service of services) { pdf.text(`• ${service}`, 22, y); y += 5; }
     if (note.trim()) {
-      y += 3; pdf.setFont(undefined, "bold"); pdf.text("Bemerkungen", 18, y); y += 6;
-      pdf.setFont(undefined, "normal");
+      y += 3; pdf.setFont("helvetica", "bold"); pdf.text("Bemerkungen", 18, y); y += 6;
+      pdf.setFont("helvetica", "normal");
       const lines = pdf.splitTextToSize(note.trim(), 170);
       pdf.text(lines, 18, y); y += lines.length * 5;
     }
     const photoCount = entry.photo_paths?.length ?? 0;
     y += 4; pdf.text(`Fotodokumentation: ${photoCount} Foto(s) zum Arbeitsnachweis gespeichert.`, 18, y); y += 10;
-    pdf.setFont(undefined, "bold"); pdf.text("Unterschrift Mitarbeiter", 18, y); pdf.text("Unterschrift Kunde", 108, y); y += 4;
+    pdf.setFont("helvetica", "bold"); pdf.text("Unterschrift Mitarbeiter", 18, y); pdf.text("Unterschrift Kunde", 108, y); y += 4;
     if (employeeSignature) pdf.addImage(employeeSignature, "PNG", 18, y, 75, 24);
     if (customerSignature) pdf.addImage(customerSignature, "PNG", 108, y, 75, 24);
     y += 28;
-    pdf.setFont(undefined, "normal");
+    pdf.setFont("helvetica", "normal");
     pdf.text(entry.employee_name || "", 18, y);
     pdf.text(customerSignerName || "Kunde", 108, y);
     pdf.save(`Leistungsnachweis_${entry.work_date}_${(entry.employee_name || "Mitarbeiter").replace(/\s+/g, "_")}.pdf`);
