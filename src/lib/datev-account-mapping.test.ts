@@ -5,6 +5,7 @@ describe("automatic DATEV expense mappings", () => {
   it("maps the standard categories for SKR03", () => {
     expect(automaticExpenseAccount("Löhne", "SKR03")).toBe("4110");
     expect(automaticExpenseAccount("Reinigungsmittel", "SKR03")).toBe("4250");
+    expect(automaticExpenseAccount("Sozialabgaben / Arbeitgeberabgaben", "SKR03")).toBe("4130");
     expect(automaticExpenseAccount("Versicherung", "SKR03")).toBe("4360");
     expect(automaticExpenseAccount("Sonstiges", "SKR03")).toBe("4900");
   });
@@ -12,6 +13,7 @@ describe("automatic DATEV expense mappings", () => {
   it("maps the standard categories for SKR04", () => {
     expect(automaticExpenseAccount("Löhne", "SKR04")).toBe("6010");
     expect(automaticExpenseAccount("Reinigungsmittel", "SKR04")).toBe("6330");
+    expect(automaticExpenseAccount("Sozialabgaben / Arbeitgeberabgaben", "SKR04")).toBe("6110");
     expect(automaticExpenseAccount("Versicherung", "SKR04")).toBe("6400");
     expect(automaticExpenseAccount("Sonstiges", "SKR04")).toBe("6300");
   });
