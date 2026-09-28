@@ -2289,6 +2289,8 @@ export type Database = {
           kind: string
           name: string
           surcharge_percent: number
+          time_from: string | null
+          time_to: string | null
           updated_at: string
           user_id: string
         }
@@ -2300,6 +2302,8 @@ export type Database = {
           kind?: string
           name: string
           surcharge_percent?: number
+          time_from?: string | null
+          time_to?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2311,6 +2315,38 @@ export type Database = {
           kind?: string
           name?: string
           surcharge_percent?: number
+          time_from?: string | null
+          time_to?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      company_holidays: {
+        Row: {
+          active: boolean
+          created_at: string
+          holiday_date: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          holiday_date: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          holiday_date?: string
+          id?: string
+          name?: string
           updated_at?: string
           user_id?: string
         }
