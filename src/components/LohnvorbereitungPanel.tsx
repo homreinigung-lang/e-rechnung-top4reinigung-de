@@ -74,12 +74,15 @@ export function LohnvorbereitungPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("company_holidays")
-        .select("holiday_date")
+        .select("holiday_date,surcharge_percent")
         .eq("active", true)
         .gte("holiday_date", start)
         .lt("holiday_date", end);
       if (error) throw error;
-      return (data ?? []).map((row) => row.holiday_date);
+      return (data ?? []).map((row) => ({
+        holiday_date: row.holiday_date,
+        surcharge_percent: row.surcharge_percent,
+      }));
     },
   });
 
@@ -168,7 +171,7 @@ export function LohnvorbereitungPanel() {
                 <th className="px-4 py-3 text-right font-medium">Sonntag</th>
                 <th className="px-4 py-3 text-right font-medium">Nacht</th>
                 <th className="px-4 py-3 text-right font-medium">Feiertag</th>
-                <th className="px-4 py-3 text-right font-medium">Überstunden</th>
+                <th className="px-4 py-3 text-right font-medium">Belastung</th>
                 <th className="px-4 py-3 text-right font-medium">Urlaub</th>
                 <th className="px-4 py-3 text-right font-medium">Krank</th>
                 <th className="px-4 py-3 text-right font-medium">Grundlohn</th>
@@ -207,8 +210,8 @@ export function LohnvorbereitungPanel() {
         <p>
           Sonntagsstunden werden automatisch aus dem Datum erkannt. Nachtstunden werden aus
           Start-/Endzeit und der in „Lohnarten“ hinterlegten Nachtzeit berechnet. Feiertagsarbeit
-          wird nur für die dort gepflegten Feiertage erkannt. Überstunden werden als Arbeitsstunden
-          oberhalb des monatlichen Solls aus den Vertrags-Wochenstunden berechnet.
+          wird nur für die dort gepflegten Feiertage erkannt. Der Belastungszuschlag wird für
+          Arbeitszeit über 8 Stunden täglich oder alternativ über 40 Stunden wöchentlich berechnet.
         </p>
       </div>
     </div>
