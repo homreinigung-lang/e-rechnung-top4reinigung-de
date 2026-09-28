@@ -1222,7 +1222,6 @@ export type Database = {
         }
         Insert: {
           active?: boolean
-          anchor_day?: number
           created_at?: string
           floor_covering?: string
           id?: string
@@ -1234,7 +1233,6 @@ export type Database = {
         }
         Update: {
           active?: boolean
-          anchor_day?: number
           created_at?: string
           floor_covering?: string
           id?: string
@@ -1877,6 +1875,7 @@ export type Database = {
       recurring_expenses: {
         Row: {
           active: boolean
+          anchor_day: number
           category: string
           created_at: string
           gross_amount: number
@@ -1894,6 +1893,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          anchor_day?: number
           category?: string
           created_at?: string
           gross_amount?: number
@@ -1911,6 +1911,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          anchor_day?: number
           category?: string
           created_at?: string
           gross_amount?: number
