@@ -37,7 +37,7 @@ export function LohnvorbereitungPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
-        .select("id,name,personnel_number,hourly_rate,weekly_hours,contract_type")
+        .select("id,name,personnel_number,hourly_rate,weekly_hours,contract_type,contract_start")
         .order("name");
       if (error) throw error;
       return (data ?? []) as LohnEmployee[];
@@ -49,7 +49,7 @@ export function LohnvorbereitungPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
-        .select("employee_id,employee_name,work_date,hours,hourly_rate,entry_type,absence_reason,approval_status,completed_at")
+        .select("employee_id,employee_name,work_date,start_time,end_time,break_minutes,hours,hourly_rate,entry_type,absence_reason,approval_status,completed_at")
         .gte("work_date", start)
         .lt("work_date", end)
         .order("work_date");
@@ -63,15 +63,29 @@ export function LohnvorbereitungPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("wage_types")
-        .select("kind,surcharge_percent,active");
+        .select("kind,surcharge_percent,active,time_from,time_to");
       if (error) throw error;
       return (data ?? []) as LohnartRule[];
     },
   });
 
+  const { data: holidays = [] } = useQuery({
+    queryKey: ["company-holidays", month],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("company_holidays")
+        .select("holiday_date")
+        .eq("active", true)
+        .gte("holiday_date", start)
+        .lt("holiday_date", end);
+      if (error) throw error;
+      return (data ?? []).map((row) => row.holiday_date);
+    },
+  });
+
   const rows = useMemo(
-    () => buildLohnvorbereitung(entries, employees, wageTypes),
-    [entries, employees, wageTypes],
+    () => buildLohnvorbereitung(entries, employees, wageTypes, holidays),
+    [entries, employees, wageTypes, holidays],
   );
 
   const totals = useMemo(
@@ -152,6 +166,9 @@ export function LohnvorbereitungPanel() {
                 <th className="px-4 py-3 font-medium">Mitarbeiter</th>
                 <th className="px-4 py-3 text-right font-medium">Normal</th>
                 <th className="px-4 py-3 text-right font-medium">Sonntag</th>
+                <th className="px-4 py-3 text-right font-medium">Nacht</th>
+                <th className="px-4 py-3 text-right font-medium">Feiertag</th>
+                <th className="px-4 py-3 text-right font-medium">Überstunden</th>
                 <th className="px-4 py-3 text-right font-medium">Urlaub</th>
                 <th className="px-4 py-3 text-right font-medium">Krank</th>
                 <th className="px-4 py-3 text-right font-medium">Grundlohn</th>
@@ -168,6 +185,9 @@ export function LohnvorbereitungPanel() {
                   </td>
                   <td className="px-4 py-3 text-right">{de(row.normalstunden)} Std.</td>
                   <td className="px-4 py-3 text-right">{de(row.sonntagstunden)} Std.</td>
+                  <td className="px-4 py-3 text-right">{de(row.nachtstunden)} Std.</td>
+                  <td className="px-4 py-3 text-right">{de(row.feiertagstunden)} Std.</td>
+                  <td className="px-4 py-3 text-right">{de(row.ueberstunden)} Std.</td>
                   <td className="px-4 py-3 text-right">{row.urlaubstage} Tage</td>
                   <td className="px-4 py-3 text-right">{row.kranktage} Tage</td>
                   <td className="px-4 py-3 text-right">{formatMoney(row.grundlohn)}</td>
@@ -185,10 +205,10 @@ export function LohnvorbereitungPanel() {
       <div className="surface flex gap-3 p-4 text-sm text-muted-foreground">
         <WalletCards className="mt-0.5 size-5 shrink-0" />
         <p>
-          Sonntagsstunden werden aus dem Arbeitsdatum automatisch erkannt und mit dem in
-          „Lohnarten“ hinterlegten Sonntagszuschlag berechnet. Nacht- und Feiertagszuschläge
-          werden erst automatisch berechnet, sobald dafür eindeutige Zeit- bzw. Feiertagsregeln
-          hinterlegt sind.
+          Sonntagsstunden werden automatisch aus dem Datum erkannt. Nachtstunden werden aus
+          Start-/Endzeit und der in „Lohnarten“ hinterlegten Nachtzeit berechnet. Feiertagsarbeit
+          wird nur für die dort gepflegten Feiertage erkannt. Überstunden werden als Arbeitsstunden
+          oberhalb des monatlichen Solls aus den Vertrags-Wochenstunden berechnet.
         </p>
       </div>
     </div>
