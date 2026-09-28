@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plannedHoursForMonth, revenueForMonth } from "@/lib/object-controlling";
+import { plannedHoursForMonth, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 
 describe("object controlling accuracy", () => {
   it("uses service period month before invoice issue month", () => {
@@ -74,5 +74,79 @@ describe("object controlling accuracy", () => {
       },
     ];
     expect(plannedHoursForMonth(assignments, "2026-09")).toBe(10);
+  });
+});
+
+
+describe("object controlling financial summary", () => {
+  it("combines wage and other costs into contribution and margin", () => {
+    const summary = summarizeObjectFinancials({
+      revenue: 1000,
+      wageCosts: 420,
+      otherCosts: 80,
+      hours: 25,
+    });
+
+    expect(summary.costs).toBe(500);
+    expect(summary.contribution).toBe(500);
+    expect(summary.margin).toBe(50);
+    expect(summary.contributionPerHour).toBe(20);
+  });
+
+  it("shows a negative contribution and margin when costs exceed revenue", () => {
+    const summary = summarizeObjectFinancials({
+      revenue: 600,
+      wageCosts: 500,
+      otherCosts: 200,
+      hours: 20,
+    });
+
+    expect(summary.costs).toBe(700);
+    expect(summary.contribution).toBe(-100);
+    expect(summary.margin).toBeCloseTo(-16.6667, 4);
+    expect(summary.contributionPerHour).toBe(-5);
+  });
+
+  it("returns no margin when there is no revenue basis", () => {
+    const summary = summarizeObjectFinancials({
+      revenue: 0,
+      wageCosts: 120,
+      otherCosts: 30,
+      hours: 10,
+    });
+
+    expect(summary.costs).toBe(150);
+    expect(summary.contribution).toBe(-150);
+    expect(summary.margin).toBeNull();
+    expect(summary.contributionPerHour).toBe(-15);
+  });
+
+  it("returns no per-hour contribution when there are no worked hours", () => {
+    const summary = summarizeObjectFinancials({
+      revenue: 350,
+      wageCosts: 0,
+      otherCosts: 20,
+      hours: 0,
+    });
+
+    expect(summary.contribution).toBe(330);
+    expect(summary.margin).toBeCloseTo(94.2857, 4);
+    expect(summary.contributionPerHour).toBeNull();
+  });
+
+  it("rounds monetary inputs and totals to cents before deriving ratios", () => {
+    const summary = summarizeObjectFinancials({
+      revenue: 100.005,
+      wageCosts: 33.335,
+      otherCosts: 16.335,
+      hours: 2,
+    });
+
+    expect(summary.revenue).toBe(100.01);
+    expect(summary.wageCosts).toBe(33.34);
+    expect(summary.otherCosts).toBe(16.34);
+    expect(summary.costs).toBe(49.68);
+    expect(summary.contribution).toBe(50.33);
+    expect(summary.contributionPerHour).toBe(25.165);
   });
 });
