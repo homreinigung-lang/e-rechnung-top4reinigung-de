@@ -161,7 +161,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .eq("user_id", access.user_id),
       supabaseAdmin
         .from("company_holidays")
-        .select("holiday_date,name,active")
+        .select("holiday_date,name,active,surcharge_percent")
         .eq("user_id", access.user_id)
         .eq("active", true)
         .gte("holiday_date", data.from)
