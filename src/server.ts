@@ -46,6 +46,25 @@ function isH3SwallowedErrorBody(body: string): boolean {
 }
 
 export default {
+  async scheduled(
+    _controller: unknown,
+    env: Record<string, string | undefined>,
+    ctx: { waitUntil(promise: Promise<unknown>): void },
+  ) {
+    ctx.waitUntil(
+      import("./lib/recurring-auto.server")
+        .then(({ runAutomaticRecurringInvoices }) => runAutomaticRecurringInvoices(env))
+        .then((results) => {
+          const sent = results.filter((item) => item.status === "sent").length;
+          const failed = results.filter((item) => item.status === "failed").length;
+          console.info(`Automatic recurring invoices: ${sent} sent, ${failed} failed.`);
+        })
+        .catch((error) => {
+          console.error("Automatic recurring invoice job failed:", error);
+        }),
+    );
+  },
+
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const redirect = requireHttps(request);
     if (redirect) return withSecurityHeaders(redirect, request);
