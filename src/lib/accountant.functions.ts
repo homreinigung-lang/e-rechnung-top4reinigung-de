@@ -9,6 +9,7 @@ export type AccountantReport = {
   documents: Row[];
   expenses: Row[];
   timeEntries: Row[];
+  wageTypes: Row[];
   adjustments: Row[];
   fahrtenbuchEntries: Row[];
   fahrtenbuchVehicles: Row[];
@@ -117,7 +118,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
 
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
-    const [documents, expenses, timeEntries, employees, adjustments, settings, fahrtenbuchEntries, fahrtenbuchVehicles] = await Promise.all([
+    const [documents, expenses, timeEntries, employees, wageTypes, adjustments, settings, fahrtenbuchEntries, fahrtenbuchVehicles] = await Promise.all([
       supabaseAdmin
         .from("documents")
         .select("*")
@@ -152,6 +153,10 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       supabaseAdmin
         .from("employees")
         .select("id, name, personnel_number, hourly_rate, weekly_hours, contract_type")
+        .eq("user_id", access.user_id),
+      supabaseAdmin
+        .from("wage_types")
+        .select("kind,surcharge_percent,active")
         .eq("user_id", access.user_id),
       supabaseAdmin
         .from("time_account_adjustments")
@@ -225,6 +230,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       documents: (documents.data ?? []) as unknown as Row[],
       expenses: (expenses.data ?? []) as unknown as Row[],
       timeEntries: enrichedTime as unknown as Row[],
+      wageTypes: (wageTypes.data ?? []) as unknown as Row[],
       adjustments: (adjustments.data ?? []) as unknown as Row[],
       fahrtenbuchEntries: (fahrtenbuchEntries.data ?? []) as unknown as Row[],
       fahrtenbuchVehicles: (fahrtenbuchVehicles.data ?? []) as unknown as Row[],
