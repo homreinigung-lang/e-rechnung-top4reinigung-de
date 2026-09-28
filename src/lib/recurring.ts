@@ -11,6 +11,11 @@ async function currentUserId(): Promise<string> {
   return uid;
 }
 
+export function addMonths(dateStr: string, months: number): string {
+  const anchorDay = Number(String(dateStr).slice(8, 10)) || 1;
+  return nextRecurringDate(dateStr, months, anchorDay);
+}
+
 export function isDue(nextRun: string): boolean {
   return nextRun <= today();
 }
