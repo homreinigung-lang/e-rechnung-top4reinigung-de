@@ -8,6 +8,7 @@ import { sendVerifiedEmail } from "@/lib/resend-email.server";
 type Env = {
   SUPABASE_URL?: string;
   SUPABASE_SECRET_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
 };
@@ -185,11 +186,35 @@ function makePdfData(
 }
 
 export async function runAutomaticRecurringInvoices(env: Env) {
-  if (!env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY || !env.RESEND_API_KEY) {
-    throw new Error("Automatischer Rechnungsversand ist nicht vollständig konfiguriert.");
+  const supabaseAdminKey = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!env.SUPABASE_URL || !supabaseAdminKey || !env.RESEND_API_KEY) {
+    const missing = [
+      ...(!env.SUPABASE_URL ? ["SUPABASE_URL"] : []),
+      ...(!supabaseAdminKey ? ["SUPABASE_SECRET_KEY/SUPABASE_SERVICE_ROLE_KEY"] : []),
+      ...(!env.RESEND_API_KEY ? ["RESEND_API_KEY"] : []),
+    ];
+    throw new Error(`Automatischer Rechnungsversand: Konfiguration fehlt (${missing.join(", ")}).`);
   }
 
-  const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
+  const isOpaqueSecret = supabaseAdminKey.startsWith("sb_secret_");
+  const admin = createClient(env.SUPABASE_URL, supabaseAdminKey, {
+    global: isOpaqueSecret
+      ? {
+          fetch: (input, init) => {
+            const headers = new Headers(
+              typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+            );
+            if (init?.headers) {
+              new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+            }
+            if (headers.get("Authorization") === `Bearer ${supabaseAdminKey}`) {
+              headers.delete("Authorization");
+            }
+            headers.set("apikey", supabaseAdminKey);
+            return fetch(input, { ...init, headers });
+          },
+        }
+      : undefined,
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const today = localTodayBerlin();
