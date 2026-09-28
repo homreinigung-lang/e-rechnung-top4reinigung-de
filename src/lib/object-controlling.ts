@@ -143,6 +143,7 @@ export type ObjectFinancialSummary = {
   contribution: number;
   margin: number | null;
   contributionPerHour: number | null;
+  costPerHour: number | null;
 };
 
 function roundMoney(value: number) {
@@ -164,6 +165,7 @@ export function summarizeObjectFinancials(
   const contribution = roundMoney(revenue - costs);
   const margin = revenue > 0 ? (contribution / revenue) * 100 : null;
   const contributionPerHour = hours > 0 ? contribution / hours : null;
+  const costPerHour = hours > 0 ? costs / hours : null;
 
   return {
     revenue,
@@ -173,6 +175,7 @@ export function summarizeObjectFinancials(
     contribution,
     margin,
     contributionPerHour,
+    costPerHour,
   };
 }
 
