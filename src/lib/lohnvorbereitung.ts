@@ -1,4 +1,3 @@
-import { sollHoursForMonth } from "@/lib/zeitkonto";
 export type LohnEntry = {
   employee_id?: string | null;
   employee_name?: string | null;
@@ -30,6 +29,11 @@ export type LohnartRule = {
   active?: boolean | null;
   time_from?: string | null;
   time_to?: string | null;
+};
+
+export type LohnHoliday = {
+  holiday_date: string;
+  surcharge_percent?: number | string | null;
 };
 
 export type LohnvorbereitungRow = {
@@ -108,14 +112,16 @@ export function buildLohnvorbereitung(
   entries: LohnEntry[],
   employees: LohnEmployee[],
   wageTypes: LohnartRule[],
-  holidayDates: string[] = [],
+  holidays: LohnHoliday[] = [],
 ): LohnvorbereitungRow[] {
   const surcharge = (kind: string) => {
     const rule = wageTypes.find((w) => w.active !== false && String(w.kind) === kind);
     return n(rule?.surcharge_percent) / 100;
   };
 
-  const holidaySet = new Set(holidayDates);
+  const holidayRate = new Map(
+    holidays.map((holiday) => [holiday.holiday_date, n(holiday.surcharge_percent) / 100]),
+  );
   const nightRule = wageTypes.find((w) => w.active !== false && String(w.kind) === "night");
 
   return employees
@@ -166,17 +172,39 @@ export function buildLohnvorbereitung(
           supplements += nHours * rate * surcharge("night");
         }
 
-        if (holidaySet.has(date)) {
+        if (holidayRate.has(date)) {
           holiday += hours;
-          supplements += hours * rate * surcharge("holiday");
+          supplements += hours * rate * (holidayRate.get(date) ?? surcharge("holiday"));
         }
       }
 
-      const month = String(rows.find((entry) => entry.work_date)?.work_date ?? "").slice(0, 7);
-      const monthlySoll = month
-        ? sollHoursForMonth(n(employee.weekly_hours), month, employee.contract_start)
-        : 0;
-      const overtime = monthlySoll > 0 ? Math.max(0, totalWorkHours - monthlySoll) : 0;
+      // Belastungszuschlag nach RTV Gebäudereinigung:
+      // Arbeitszeit über 8 Std./Tag oder alternativ über 40 Std./Woche.
+      const workByDate = new Map<string, number>();
+      for (const entry of rows) {
+        if (absenceKind(entry)) continue;
+        const date = String(entry.work_date ?? "");
+        if (!date) continue;
+        workByDate.set(date, (workByDate.get(date) ?? 0) + n(entry.hours));
+      }
+
+      let dailyExcess = 0;
+      for (const hours of workByDate.values()) dailyExcess += Math.max(0, hours - 8);
+
+      const workByWeek = new Map<string, number>();
+      for (const [date, hours] of workByDate) {
+        const d = new Date(date + "T12:00:00Z");
+        const day = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - day);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+        const key = `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+        workByWeek.set(key, (workByWeek.get(key) ?? 0) + hours);
+      }
+      let weeklyExcess = 0;
+      for (const hours of workByWeek.values()) weeklyExcess += Math.max(0, hours - 40);
+
+      const overtime = Math.max(dailyExcess, weeklyExcess);
       if (overtime > 0) {
         supplements += overtime * n(employee.hourly_rate) * surcharge("overtime");
       }
