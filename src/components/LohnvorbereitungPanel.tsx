@@ -38,7 +38,6 @@ export function LohnvorbereitungPanel() {
       const { data, error } = await supabase
         .from("employees")
         .select("id,name,personnel_number,hourly_rate,weekly_hours,contract_type")
-        .eq("active", true)
         .order("name");
       if (error) throw error;
       return (data ?? []) as LohnEmployee[];
