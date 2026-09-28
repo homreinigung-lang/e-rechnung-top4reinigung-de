@@ -67,7 +67,7 @@ export function ManagementDashboard() {
         supabase
           .from("time_entries")
           .select(
-            "id,employee_id,project_id,work_date,hours,hourly_rate,entry_type,absence_reason,approval_status",
+            "id,employee_id,project_id,work_date,start_time,end_time,break_minutes,hours,hourly_rate,entry_type,absence_reason,approval_status",
           )
           .gte("work_date", previousBounds.start)
           .lte("work_date", end),
