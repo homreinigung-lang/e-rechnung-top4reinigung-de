@@ -241,15 +241,19 @@ export function buildLohnvorbereitung(
     .sort((a, b) => (a.personalNr || a.mitarbeiter).localeCompare(b.personalNr || b.mitarbeiter, "de"));
 }
 
-export function lohnvorbereitungCsvRows(rows: LohnvorbereitungRow[]) {
+export function lohnvorbereitungCsvRows(
+  rows: LohnvorbereitungRow[],
+  options: { period?: string } = {},
+) {
   return rows.map((row) => ({
-    Mitarbeiter: row.mitarbeiter,
+    ...(options.period ? { Abrechnungszeitraum: options.period } : {}),
     "Personal-Nr.": row.personalNr,
+    Mitarbeiter: row.mitarbeiter,
     Normalstunden: row.normalstunden.toFixed(2).replace(".", ","),
     "Sonntagsstunden": row.sonntagstunden.toFixed(2).replace(".", ","),
     "Nachtstunden": row.nachtstunden.toFixed(2).replace(".", ","),
     "Feiertagsstunden": row.feiertagstunden.toFixed(2).replace(".", ","),
-    "Überstunden": row.ueberstunden.toFixed(2).replace(".", ","),
+    "Belastungsstunden": row.ueberstunden.toFixed(2).replace(".", ","),
     Urlaubstage: String(row.urlaubstage),
     Kranktage: String(row.kranktage),
     "Sonstige Abwesenheitstage": String(row.sonstigeAbwesenheitstage),
