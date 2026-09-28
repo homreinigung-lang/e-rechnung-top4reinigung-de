@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
-import { percentChange, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { isApprovedWorkEntry, percentChange, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -111,11 +111,7 @@ export function ManagementDashboard() {
     );
   }
 
-  const workEntries = timeEntries.filter(
-    (entry) =>
-      (entry.entry_type ?? "work") === "work" &&
-      (entry.approval_status ?? "approved") !== "rejected",
-  );
+  const workEntries = timeEntries.filter(isApprovedWorkEntry);
   const currentWorkEntries = workEntries.filter((entry) =>
     String(entry.work_date ?? "").startsWith(month),
   );
