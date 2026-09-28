@@ -10,6 +10,7 @@ export type AccountantReport = {
   expenses: Row[];
   timeEntries: Row[];
   wageTypes: Row[];
+  holidays: Row[];
   adjustments: Row[];
   fahrtenbuchEntries: Row[];
   fahrtenbuchVehicles: Row[];
@@ -118,7 +119,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
 
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
-    const [documents, expenses, timeEntries, employees, wageTypes, adjustments, settings, fahrtenbuchEntries, fahrtenbuchVehicles] = await Promise.all([
+    const [documents, expenses, timeEntries, employees, wageTypes, holidays, adjustments, settings, fahrtenbuchEntries, fahrtenbuchVehicles] = await Promise.all([
       supabaseAdmin
         .from("documents")
         .select("*")
@@ -152,12 +153,19 @@ export const getAccountantReport = createServerFn({ method: "POST" })
         .order("work_date"),
       supabaseAdmin
         .from("employees")
-        .select("id, name, personnel_number, hourly_rate, weekly_hours, contract_type")
+        .select("id, name, personnel_number, hourly_rate, weekly_hours, contract_type, contract_start")
         .eq("user_id", access.user_id),
       supabaseAdmin
         .from("wage_types")
-        .select("kind,surcharge_percent,active")
+        .select("kind,surcharge_percent,active,time_from,time_to")
         .eq("user_id", access.user_id),
+      supabaseAdmin
+        .from("company_holidays")
+        .select("holiday_date,name,active")
+        .eq("user_id", access.user_id)
+        .eq("active", true)
+        .gte("holiday_date", data.from)
+        .lte("holiday_date", data.to),
       supabaseAdmin
         .from("time_account_adjustments")
         .select("*")
@@ -218,6 +226,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
           personnel_number: String(emp?.["personnel_number"] ?? ""),
           contract_type: String(emp?.["contract_type"] ?? ""),
           weekly_hours: Number(emp?.["weekly_hours"] ?? 0),
+          contract_start: String(emp?.["contract_start"] ?? ""),
           hourly_rate: Number(t.hourly_rate ?? emp?.["hourly_rate"] ?? 0),
           lohnart: code,
           is_absence: entryType !== "work",
@@ -231,6 +240,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       expenses: (expenses.data ?? []) as unknown as Row[],
       timeEntries: enrichedTime as unknown as Row[],
       wageTypes: (wageTypes.data ?? []) as unknown as Row[],
+      holidays: (holidays.data ?? []) as unknown as Row[],
       adjustments: (adjustments.data ?? []) as unknown as Row[],
       fahrtenbuchEntries: (fahrtenbuchEntries.data ?? []) as unknown as Row[],
       fahrtenbuchVehicles: (fahrtenbuchVehicles.data ?? []) as unknown as Row[],
