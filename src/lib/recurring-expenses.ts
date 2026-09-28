@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { today } from "@/lib/format";
-import { addMonths } from "@/lib/recurring";
+import { nextRecurringDate } from "@/lib/recurring-date";
 
 export type RecurringExpense = {
   id: string;
@@ -35,6 +35,7 @@ export async function runRecurringExpense(id: string): Promise<void> {
   if (error) throw error;
 
   const expenseDate = isExpenseDue(rec.next_run) ? rec.next_run : today();
+  const anchorDay = Number(rec.anchor_day) || Number(String(rec.next_run).slice(8, 10)) || 1;
   const net = Number(rec.net_amount) || 0;
   const vat = Number(rec.vat_amount) || 0;
 
@@ -55,7 +56,7 @@ export async function runRecurringExpense(id: string): Promise<void> {
   await supabase
     .from("recurring_expenses")
     .update({
-      next_run: addMonths(expenseDate, Number(rec.interval_months) || 1),
+      next_run: nextRecurringDate(rec.next_run, Number(rec.interval_months) || 1, anchorDay),
       last_run_at: new Date().toISOString(),
     } as never)
     .eq("id", id);
