@@ -181,3 +181,29 @@ describe("project supplement allocation", () => {
     expect(allocated).toEqual([{ projectId: "p1", supplements: 24 }]);
   });
 });
+
+
+describe("project supplement allocation details", () => {
+  it("allocates night and holiday supplements through the same payroll rules", () => {
+    const entries = [
+      {
+        employee_id: "e1",
+        project_id: "p1",
+        work_date: "2026-12-25",
+        start_time: "22:00",
+        end_time: "00:00",
+        hours: 2,
+        hourly_rate: 15,
+        approval_status: "approved",
+      },
+    ];
+    const allocated = allocateSupplementsByProject(
+      entries,
+      [employee],
+      wageTypes,
+      [{ holiday_date: "2026-12-25", surcharge_percent: 200 }],
+    );
+    // Night 30%: 9.00 + holiday 200%: 60.00
+    expect(allocated).toEqual([{ projectId: "p1", supplements: 69 }]);
+  });
+});
