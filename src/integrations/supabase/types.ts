@@ -777,6 +777,8 @@ export type Database = {
           pdf_path: string
           pdf_sha256: string
           reminder_level: number
+          recurring_invoice_id: string | null
+          recurring_run_date: string | null
           retention_until: string | null
           reverse_charge: boolean
           sent_at: string | null
@@ -833,6 +835,8 @@ export type Database = {
           pdf_path?: string
           pdf_sha256?: string
           reminder_level?: number
+          recurring_invoice_id?: string | null
+          recurring_run_date?: string | null
           retention_until?: string | null
           reverse_charge?: boolean
           sent_at?: string | null
@@ -889,6 +893,8 @@ export type Database = {
           pdf_path?: string
           pdf_sha256?: string
           reminder_level?: number
+          recurring_invoice_id?: string | null
+          recurring_run_date?: string | null
           retention_until?: string | null
           reverse_charge?: boolean
           sent_at?: string | null
