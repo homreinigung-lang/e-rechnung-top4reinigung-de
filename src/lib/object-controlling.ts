@@ -126,3 +126,52 @@ export function plannedHoursForMonth(
     return total + subtotal;
   }, 0);
 }
+
+
+export type ObjectFinancialInput = {
+  revenue: number;
+  wageCosts: number;
+  otherCosts: number;
+  hours: number;
+};
+
+export type ObjectFinancialSummary = {
+  revenue: number;
+  wageCosts: number;
+  otherCosts: number;
+  costs: number;
+  contribution: number;
+  margin: number | null;
+  contributionPerHour: number | null;
+};
+
+function roundMoney(value: number) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+/**
+ * Pure financial summary used by the management cockpit.
+ * Keeping this calculation outside React makes the money logic independently testable.
+ */
+export function summarizeObjectFinancials(
+  input: ObjectFinancialInput,
+): ObjectFinancialSummary {
+  const revenue = roundMoney(input.revenue);
+  const wageCosts = roundMoney(input.wageCosts);
+  const otherCosts = roundMoney(input.otherCosts);
+  const hours = Math.max(0, Number(input.hours) || 0);
+  const costs = roundMoney(wageCosts + otherCosts);
+  const contribution = roundMoney(revenue - costs);
+  const margin = revenue > 0 ? (contribution / revenue) * 100 : null;
+  const contributionPerHour = hours > 0 ? contribution / hours : null;
+
+  return {
+    revenue,
+    wageCosts,
+    otherCosts,
+    costs,
+    contribution,
+    margin,
+    contributionPerHour,
+  };
+}
