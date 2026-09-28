@@ -1,5 +1,6 @@
 export type LohnEntry = {
   employee_id?: string | null;
+  project_id?: string | null;
   employee_name?: string | null;
   work_date?: string | null;
   hours?: number | string | null;
@@ -255,5 +256,71 @@ export function lohnvorbereitungCsvRows(rows: LohnvorbereitungRow[]) {
     Grundlohn: row.grundlohn.toFixed(2).replace(".", ","),
     Zuschlaege: row.zuschlaege.toFixed(2).replace(".", ","),
     "Brutto vorbereitet": row.bruttoVorbereitet.toFixed(2).replace(".", ","),
+  }));
+}
+
+
+export type ProjectSupplementAllocation = {
+  projectId: string;
+  supplements: number;
+};
+
+/**
+ * Allocates the already-tested monthly employee supplements to objects by the
+ * employee's share of approved worked hours on each project.
+ *
+ * This keeps the total supplement amount aligned with Lohnvorbereitung while
+ * avoiding a second, divergent implementation of Sunday/night/holiday/burden rules.
+ * Hours without a project remain unallocated instead of being charged to an object.
+ */
+export function allocateSupplementsByProject(
+  entries: LohnEntry[],
+  employees: LohnEmployee[],
+  wageTypes: LohnartRule[],
+  holidays: LohnHoliday[] = [],
+): ProjectSupplementAllocation[] {
+  const prepared = buildLohnvorbereitung(entries, employees, wageTypes, holidays);
+  const supplementsByEmployee = new Map(
+    prepared.map((row) => [row.employeeId, row.zuschlaege] as const),
+  );
+
+  const totalHoursByEmployee = new Map<string, number>();
+  const projectHoursByEmployee = new Map<string, Map<string, number>>();
+
+  for (const entry of entries) {
+    const employeeId = String(entry.employee_id ?? "");
+    if (!employeeId) continue;
+    if (String(entry.approval_status ?? "approved") !== "approved") continue;
+    if (absenceKind(entry)) continue;
+
+    const hours = n(entry.hours);
+    if (hours <= 0) continue;
+    totalHoursByEmployee.set(employeeId, (totalHoursByEmployee.get(employeeId) ?? 0) + hours);
+
+    const projectId = String(entry.project_id ?? "");
+    if (!projectId) continue;
+    let projectMap = projectHoursByEmployee.get(employeeId);
+    if (!projectMap) {
+      projectMap = new Map<string, number>();
+      projectHoursByEmployee.set(employeeId, projectMap);
+    }
+    projectMap.set(projectId, (projectMap.get(projectId) ?? 0) + hours);
+  }
+
+  const totals = new Map<string, number>();
+  for (const [employeeId, projectMap] of projectHoursByEmployee) {
+    const employeeSupplements = supplementsByEmployee.get(employeeId) ?? 0;
+    const employeeHours = totalHoursByEmployee.get(employeeId) ?? 0;
+    if (employeeSupplements <= 0 || employeeHours <= 0) continue;
+
+    for (const [projectId, projectHours] of projectMap) {
+      const allocated = employeeSupplements * (projectHours / employeeHours);
+      totals.set(projectId, (totals.get(projectId) ?? 0) + allocated);
+    }
+  }
+
+  return Array.from(totals, ([projectId, supplements]) => ({
+    projectId,
+    supplements: round(supplements),
   }));
 }
