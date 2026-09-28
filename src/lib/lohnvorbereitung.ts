@@ -68,9 +68,10 @@ function minutes(value: string | null | undefined) {
 }
 
 function overlapMinutes(start: number, end: number, windowStart: number, windowEnd: number) {
-  const segments = windowEnd > windowStart
-    ? [[windowStart, windowEnd]]
-    : [[windowStart, 1440], [0, windowEnd]];
+  const segments: Array<[number, number]> =
+    windowEnd > windowStart
+      ? [[windowStart, windowEnd]]
+      : [[windowStart, 1440], [0, windowEnd]];
   let total = 0;
   for (const [a, b] of segments) {
     total += Math.max(0, Math.min(end, b) - Math.max(start, a));
