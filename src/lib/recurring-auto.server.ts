@@ -197,10 +197,10 @@ export async function runAutomaticRecurringInvoices(env: Env) {
   }
 
   const isOpaqueSecret = supabaseAdminKey.startsWith("sb_secret_");
-  const admin = createClient(env.SUPABASE_URL, supabaseAdminKey, {
-    global: isOpaqueSecret
-      ? {
-          fetch: (input, init) => {
+  const options = isOpaqueSecret
+    ? {
+        global: {
+          fetch: (input: URL | RequestInfo, init?: RequestInit) => {
             const headers = new Headers(
               typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
             );
@@ -213,10 +213,14 @@ export async function runAutomaticRecurringInvoices(env: Env) {
             headers.set("apikey", supabaseAdminKey);
             return fetch(input, { ...init, headers });
           },
-        }
-      : undefined,
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+        },
+        auth: { persistSession: false, autoRefreshToken: false },
+      }
+    : {
+        auth: { persistSession: false, autoRefreshToken: false },
+      };
+
+  const admin = createClient(env.SUPABASE_URL, supabaseAdminKey, options);
   const today = localTodayBerlin();
 
   const { data: recurring, error: recurringError } = await admin
