@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { BadgeEuro, Pencil, Plus } from "lucide-react";
+import { BadgeEuro, CalendarDays, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,8 @@ type FormState = {
   name: string;
   kind: string;
   surcharge_percent: string;
+  time_from: string;
+  time_to: string;
   active: boolean;
 };
 
@@ -51,6 +53,8 @@ const emptyForm: FormState = {
   name: "",
   kind: "other",
   surcharge_percent: "0",
+  time_from: "",
+  time_to: "",
   active: true,
 };
 
@@ -61,6 +65,8 @@ function toForm(row: WageType): FormState {
     name: row.name,
     kind: row.kind,
     surcharge_percent: String(row.surcharge_percent ?? 0),
+    time_from: row.time_from ? String(row.time_from).slice(0, 5) : "",
+    time_to: row.time_to ? String(row.time_to).slice(0, 5) : "",
     active: row.active,
   };
 }
@@ -74,6 +80,8 @@ export function LohnartenPanel() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [holidayDate, setHolidayDate] = useState("");
+  const [holidayName, setHolidayName] = useState("");
 
   const { data: wageTypes = [], isLoading } = useQuery({
     queryKey: ["wage-types"],
@@ -87,6 +95,54 @@ export function LohnartenPanel() {
     },
   });
 
+  const { data: holidays = [] } = useQuery({
+    queryKey: ["company-holidays"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("company_holidays")
+        .select("*")
+        .order("holiday_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const saveHoliday = useMutation({
+    mutationFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error("Nicht angemeldet");
+      if (!holidayDate || !holidayName.trim()) throw new Error("Datum und Bezeichnung eintragen.");
+      const { error } = await supabase.from("company_holidays").upsert(
+        {
+          user_id: userId,
+          holiday_date: holidayDate,
+          name: holidayName.trim(),
+          active: true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,holiday_date" },
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setHolidayDate("");
+      setHolidayName("");
+      queryClient.invalidateQueries({ queryKey: ["company-holidays"] });
+      toast.success("Feiertag gespeichert");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const removeHoliday = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("company_holidays").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["company-holidays"] }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const save = useMutation({
     mutationFn: async (values: FormState) => {
       const { data: auth } = await supabase.auth.getUser();
@@ -98,6 +154,8 @@ export function LohnartenPanel() {
         name: values.name.trim(),
         kind: values.kind,
         surcharge_percent: num(values.surcharge_percent),
+        time_from: values.kind === "night" && values.time_from ? values.time_from : null,
+        time_to: values.kind === "night" && values.time_to ? values.time_to : null,
         active: values.active,
         updated_at: new Date().toISOString(),
       };
@@ -204,6 +262,51 @@ export function LohnartenPanel() {
         </div>
       )}
 
+      <div className="surface space-y-4 p-4">
+        <div className="flex items-start gap-3">
+          <CalendarDays className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+          <div className="flex-1">
+            <div className="font-medium">Feiertage für automatische Zuschläge</div>
+            <p className="text-sm text-muted-foreground">
+              Nur hier eingetragene Feiertage werden automatisch als Feiertagsarbeit erkannt.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[170px_1fr_auto]">
+          <Input type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} />
+          <Input
+            value={holidayName}
+            onChange={(e) => setHolidayName(e.target.value)}
+            placeholder="z. B. Tag der Deutschen Einheit"
+          />
+          <Button onClick={() => saveHoliday.mutate()} disabled={saveHoliday.isPending}>
+            <Plus className="size-4" /> Feiertag
+          </Button>
+        </div>
+        {holidays.length > 0 && (
+          <div className="divide-y rounded-md border">
+            {holidays.map((holiday) => (
+              <div key={holiday.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <div>
+                  <div className="font-medium">{holiday.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(`${holiday.holiday_date}T12:00:00`).toLocaleDateString("de-DE")}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Feiertag löschen"
+                  onClick={() => removeHoliday.mutate(holiday.id)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="surface p-4 text-sm text-muted-foreground">
         <div className="flex gap-3">
           <BadgeEuro className="mt-0.5 size-5 shrink-0" />
@@ -284,6 +387,32 @@ export function LohnartenPanel() {
                 }
               />
             </div>
+            {form.kind === "night" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="wage-time-from">Nachtzeit von</Label>
+                  <Input
+                    id="wage-time-from"
+                    type="time"
+                    value={form.time_from}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, time_from: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wage-time-to">Nachtzeit bis</Label>
+                  <Input
+                    id="wage-time-to"
+                    type="time"
+                    value={form.time_to}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, time_to: event.target.value }))
+                    }
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <label className="flex items-center gap-2 text-sm">
