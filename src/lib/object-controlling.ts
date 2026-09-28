@@ -224,3 +224,12 @@ export function pendingWorkHours(entries: ControllingHoursEntry[]): number {
     return sum + (Number(entry.hours ?? 0) || 0);
   }, 0);
 }
+
+
+/** Percentage deviation of actual hours from planned hours. Positive means over plan. */
+export function planIstDeviationPercent(actualHours: number, plannedHours: number): number | null {
+  const actual = Number(actualHours);
+  const planned = Number(plannedHours);
+  if (!Number.isFinite(actual) || !Number.isFinite(planned) || planned <= 0) return null;
+  return ((actual - planned) / planned) * 100;
+}
