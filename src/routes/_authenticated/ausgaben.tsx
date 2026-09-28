@@ -50,6 +50,7 @@ const CATEGORIES = [
   "Reinigungsmittel",
   "Fahrzeug",
   "Löhne",
+  "Sozialabgaben / Arbeitgeberabgaben",
   "Miete",
   "Versicherung",
   "Sonstiges",
