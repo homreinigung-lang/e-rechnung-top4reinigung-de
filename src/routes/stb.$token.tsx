@@ -424,14 +424,6 @@ function AccountantPortal() {
     Einsatzort: String(t["location"] ?? ""),
     Notiz: String(t["note"] || t["absence_reason"] || ""),
   }));
-  const hoursTotal = payrollPrepared.reduce(
-    (sum, row) => sum + row.normalstunden + row.sonntagstunden,
-    0,
-  );
-  const wageTotal = payrollPrepared.reduce((sum, row) => sum + row.bruttoVorbereitet, 0);
-  const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
-  const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
-
   /** Monatliche Lohnvorbereitung aus derselben Logik wie im internen Team-Bereich. */
   const payrollEmployees = [
     ...new Map(
@@ -470,6 +462,13 @@ function AccountantPortal() {
     })),
   );
   const payrollRows: Table[] = lohnvorbereitungCsvRows(payrollPrepared);
+  const hoursTotal = payrollPrepared.reduce(
+    (sum, row) => sum + row.normalstunden + row.sonntagstunden,
+    0,
+  );
+  const wageTotal = payrollPrepared.reduce((sum, row) => sum + row.bruttoVorbereitet, 0);
+  const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
+  const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
 
   const netTotal = documents.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const vatTotal = documents.reduce((s, d) => s + num(d["vat_amount"]), 0);
