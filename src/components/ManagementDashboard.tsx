@@ -191,7 +191,8 @@ export function ManagementDashboard() {
           sum + Number(entry.hours ?? 0) * Number(entry.hourly_rate ?? 0),
         0,
       );
-      const wageCosts = baseWageCosts + (supplementMap.get(project.id) ?? 0);
+      const supplements = supplementMap.get(project.id) ?? 0;
+      const wageCosts = baseWageCosts + supplements;
       const otherCosts = targetExpenses
         .filter((expense) => expense.project_id === project.id)
         .reduce((sum, expense) => sum + Number(expense.net_amount ?? 0), 0);
@@ -208,7 +209,11 @@ export function ManagementDashboard() {
         customer: project.customer_name || "",
         city: project.city || "",
         revenue: financials.revenue,
+        baseWageCosts,
+        supplements,
+        otherCosts: financials.otherCosts,
         costs: financials.costs,
+        costPerHour: financials.costPerHour,
         contribution: financials.contribution,
         margin: financials.margin,
         contributionPerHour: financials.contributionPerHour,
@@ -371,12 +376,16 @@ export function ManagementDashboard() {
             </div>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-lg border">
-              <table className="w-full min-w-[900px] text-sm">
+              <table className="w-full min-w-[1250px] text-sm">
                 <thead className="bg-muted/40 text-left">
                   <tr>
                     <th className="px-3 py-2">Objekt</th>
                     <th className="px-3 py-2 text-right">Umsatz</th>
-                    <th className="px-3 py-2 text-right">Kosten</th>
+                    <th className="px-3 py-2 text-right">Grundlohn</th>
+                    <th className="px-3 py-2 text-right">Zuschläge</th>
+                    <th className="px-3 py-2 text-right">Sonst. Kosten</th>
+                    <th className="px-3 py-2 text-right">Kosten gesamt</th>
+                    <th className="px-3 py-2 text-right">Kosten / Std.</th>
                     <th className="px-3 py-2 text-right">DB</th>
                     <th className="px-3 py-2 text-right">Marge</th>
                     <th className="px-3 py-2 text-right">DB / Std.</th>
@@ -399,7 +408,13 @@ export function ManagementDashboard() {
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right">{formatMoney(row.revenue)}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.baseWageCosts)}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.supplements)}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(row.otherCosts)}</td>
                       <td className="px-3 py-2 text-right">{formatMoney(row.costs)}</td>
+                      <td className="px-3 py-2 text-right">
+                        {row.costPerHour == null ? "–" : formatMoney(row.costPerHour)}
+                      </td>
                       <td
                         className={
                           row.contribution < 0
@@ -446,7 +461,7 @@ export function ManagementDashboard() {
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Users className="size-4" /> Aktive Mitarbeiter
               </div>
-              <div className="mt-1 text-xl font-semibold">{employees.length}</div>
+              <div className="mt-1 text-xl font-semibold">{activeEmployees.length}</div>
             </div>
             <div className="rounded-lg border p-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
