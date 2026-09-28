@@ -31,7 +31,7 @@ import {
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
 import { TableSummary } from "@/components/TableSummary";
-import { buildPayrollSummary } from "@/lib/payroll-export";
+import { buildLohnvorbereitung, lohnvorbereitungCsvRows } from "@/lib/lohnvorbereitung";
 import {
   buildCsvBlob,
   filterRowsByDateRange,
@@ -349,6 +349,7 @@ function AccountantPortal() {
   const documents: Row[] = data?.documents ?? [];
   const expenses: Row[] = data?.expenses ?? [];
   const timeEntries: Row[] = data?.timeEntries ?? [];
+  const wageTypes: Row[] = data?.wageTypes ?? [];
   const fahrtenbuchEntries: Row[] = data?.fahrtenbuchEntries ?? [];
   const fahrtenbuchVehicles: Row[] = data?.fahrtenbuchVehicles ?? [];
 
@@ -423,28 +424,52 @@ function AccountantPortal() {
     Einsatzort: String(t["location"] ?? ""),
     Notiz: String(t["note"] || t["absence_reason"] || ""),
   }));
-  const hoursTotal = workEntries.reduce((s, t) => s + num(t["hours"]), 0);
-  const wageTotal = workEntries.reduce((s, t) => s + num(t["hours"]) * num(t["hourly_rate"]), 0);
+  const hoursTotal = payrollPrepared.reduce(
+    (sum, row) => sum + row.normalstunden + row.sonntagstunden,
+    0,
+  );
+  const wageTotal = payrollPrepared.reduce((sum, row) => sum + row.bruttoVorbereitet, 0);
   const sickDays = absenceEntries.filter((t) => t["lohnart"] === "K").length;
   const vacationDays = absenceEntries.filter((t) => t["lohnart"] === "U").length;
 
-  /** Professionelle Lohnvorbereitung je Mitarbeiter. */
-  const payrollRows: Table[] = buildPayrollSummary(
+  /** Monatliche Lohnvorbereitung aus derselben Logik wie im internen Team-Bereich. */
+  const payrollEmployees = [
+    ...new Map(
+      timeEntries
+        .filter((t) => String(t["employee_id"] ?? ""))
+        .map((t) => [
+          String(t["employee_id"]),
+          {
+            id: String(t["employee_id"]),
+            name: String(t["employee_name"] ?? ""),
+            personnel_number: String(t["personnel_number"] ?? ""),
+            hourly_rate: Number(t["hourly_rate"] ?? 0),
+            weekly_hours: Number(t["weekly_hours"] ?? 0),
+            contract_type: String(t["contract_type"] ?? ""),
+          },
+        ]),
+    ).values(),
+  ];
+  const payrollPrepared = buildLohnvorbereitung(
     timeEntries.map((t) => ({
       employee_id: String(t["employee_id"] ?? ""),
       employee_name: String(t["employee_name"] ?? ""),
-      personnel_number: String(t["personnel_number"] ?? ""),
-      contract_type: String(t["contract_type"] ?? ""),
-      weekly_hours: Number(t["weekly_hours"] ?? 0),
-      hourly_rate: Number(t["hourly_rate"] ?? 0),
       work_date: String(t["work_date"] ?? ""),
       hours: Number(t["hours"] ?? 0),
-      lohnart: String(t["lohnart"] ?? "A"),
+      hourly_rate: Number(t["hourly_rate"] ?? 0),
       entry_type: String(t["entry_type"] ?? "work"),
       absence_reason: String(t["absence_reason"] ?? ""),
       approval_status: String(t["approval_status"] ?? "approved"),
+      completed_at: String(t["completed_at"] ?? ""),
+    })),
+    payrollEmployees,
+    wageTypes.map((w) => ({
+      kind: String(w["kind"] ?? ""),
+      surcharge_percent: Number(w["surcharge_percent"] ?? 0),
+      active: Boolean(w["active"] ?? true),
     })),
   );
+  const payrollRows: Table[] = lohnvorbereitungCsvRows(payrollPrepared);
 
   const netTotal = documents.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);
   const vatTotal = documents.reduce((s, d) => s + num(d["vat_amount"]), 0);
@@ -653,7 +678,7 @@ function AccountantPortal() {
               variant="outline"
               onClick={() => downloadCsv(`Lohnvorbereitung_${period}.csv`, payrollRows, { from, to })}
             >
-              <Download className="size-4" /> Lohnvorbereitung (CSV)
+              <Download className="size-4" /> Lohnvorbereitung für Steuerberater (CSV)
             </Button>
 
             <Button
@@ -740,8 +765,12 @@ function AccountantPortal() {
                       <tr key={String(r["Mitarbeiter"])} className="border-b last:border-0">
                         <td className="py-1 pr-3">{String(r["Mitarbeiter"])}</td>
                         <td className="py-1 pr-3">{String(r["Personal-Nr."] || "—")}</td>
-                        <td className="py-1 pr-3 text-right">{String(r["Stunden"])} Std.</td>
-                        <td className="py-1 text-right">{formatMoney(parseDe(r["Lohn"]))}</td>
+                        <td className="py-1 pr-3 text-right">
+                          {de(parseDe(r["Normalstunden"]) + parseDe(r["Sonntagsstunden"]))} Std.
+                        </td>
+                        <td className="py-1 text-right">
+                          {formatMoney(parseDe(r["Brutto vorbereitet"]))}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
