@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plannedHoursForMonth, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { percentChange, plannedHoursForMonth, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 
 describe("object controlling accuracy", () => {
   it("uses service period month before invoice issue month", () => {
@@ -148,5 +148,23 @@ describe("object controlling financial summary", () => {
     expect(summary.costs).toBe(49.68);
     expect(summary.contribution).toBe(50.33);
     expect(summary.contributionPerHour).toBe(25.165);
+  });
+});
+
+
+describe("object controlling month comparison", () => {
+  it("finds the previous month across a year boundary", () => {
+    expect(previousMonthKey("2026-01")).toBe("2025-12");
+    expect(previousMonthKey("2026-09")).toBe("2026-08");
+  });
+
+  it("calculates positive and negative percentage changes", () => {
+    expect(percentChange(120, 100)).toBe(20);
+    expect(percentChange(80, 100)).toBe(-20);
+  });
+
+  it("avoids misleading percentage changes when previous value is zero", () => {
+    expect(percentChange(100, 0)).toBeNull();
+    expect(percentChange(0, 0)).toBeNull();
   });
 });
