@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { isApprovedWorkEntry, pendingWorkHours, percentChange, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { allocateSupplementsByProject, type LohnEmployee, type LohnEntry, type LohnartRule } from "@/lib/lohnvorbereitung";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -48,7 +49,7 @@ export function ManagementDashboard() {
   const { data } = useQuery({
     queryKey: ["management_dashboard", month],
     queryFn: async () => {
-      const [projects, documents, expenses, timeEntries, employees, qmCases] = await Promise.all([
+      const [projects, documents, expenses, timeEntries, employees, qmCases, wageTypes, holidays] = await Promise.all([
         supabase
           .from("projects")
           .select("id,name,customer_id,customer_name,city,status"),
@@ -72,15 +73,23 @@ export function ManagementDashboard() {
           .lte("work_date", end),
         supabase
           .from("employees")
-          .select("id,name,active,weekly_hours")
-          .eq("active", true),
+          .select("id,name,active,weekly_hours,hourly_rate,personnel_number,contract_type,contract_start"),
         db
           .from("qm_cases")
           .select("id,title,status,priority,due_date,project_id,customer_id,occurred_at")
           .order("created_at", { ascending: false }),
+        supabase
+          .from("wage_types")
+          .select("kind,surcharge_percent,active,time_from,time_to"),
+        supabase
+          .from("company_holidays")
+          .select("holiday_date,surcharge_percent")
+          .eq("active", true)
+          .gte("holiday_date", previousBounds.start)
+          .lte("holiday_date", end),
       ]);
 
-      for (const result of [projects, documents, expenses, timeEntries, employees, qmCases]) {
+      for (const result of [projects, documents, expenses, timeEntries, employees, qmCases, wageTypes, holidays]) {
         if (result.error) throw result.error;
       }
 
@@ -91,6 +100,8 @@ export function ManagementDashboard() {
         timeEntries: timeEntries.data ?? [],
         employees: employees.data ?? [],
         qmCases: qmCases.data ?? [],
+        wageTypes: wageTypes.data ?? [],
+        holidays: holidays.data ?? [],
       };
     },
   });
@@ -101,7 +112,10 @@ export function ManagementDashboard() {
   const timeEntries = data?.timeEntries ?? [];
   const employees = data?.employees ?? [];
   const qmCases = data?.qmCases ?? [];
+  const wageTypes = (data?.wageTypes ?? []) as LohnartRule[];
+  const holidays = data?.holidays ?? [];
 
+  const activeEmployees = employees.filter((employee) => employee.active);
   const customerProjectCount = new Map<string, number>();
   for (const project of projects) {
     if (!project.customer_id) continue;
@@ -127,6 +141,22 @@ export function ManagementDashboard() {
   const previousExpenses = expenses.filter((expense) =>
     String(expense.expense_date ?? "").startsWith(previousMonth),
   );
+  const currentSupplementMap = new Map(
+    allocateSupplementsByProject(
+      timeEntries.filter((entry) => String(entry.work_date ?? "").startsWith(month)) as LohnEntry[],
+      employees as LohnEmployee[],
+      wageTypes,
+      holidays.filter((holiday) => String(holiday.holiday_date ?? "").startsWith(month)),
+    ).map((row) => [row.projectId, row.supplements] as const),
+  );
+  const previousSupplementMap = new Map(
+    allocateSupplementsByProject(
+      timeEntries.filter((entry) => String(entry.work_date ?? "").startsWith(previousMonth)) as LohnEntry[],
+      employees as LohnEmployee[],
+      wageTypes,
+      holidays.filter((holiday) => String(holiday.holiday_date ?? "").startsWith(previousMonth)),
+    ).map((row) => [row.projectId, row.supplements] as const),
+  );
   const absenceEntries = timeEntries.filter(
     (entry) =>
       (entry.entry_type ?? "work") !== "work" &&
@@ -137,6 +167,7 @@ export function ManagementDashboard() {
     targetMonth: string,
     targetWorkEntries: typeof currentWorkEntries,
     targetExpenses: typeof currentExpenses,
+    supplementMap: Map<string, number>,
   ) {
     return projects.map((project) => {
       const revenue = documents
@@ -155,11 +186,12 @@ export function ManagementDashboard() {
 
       const entries = targetWorkEntries.filter((entry) => entry.project_id === project.id);
       const hours = entries.reduce((sum, entry) => sum + Number(entry.hours ?? 0), 0);
-      const wageCosts = entries.reduce(
+      const baseWageCosts = entries.reduce(
         (sum, entry) =>
           sum + Number(entry.hours ?? 0) * Number(entry.hourly_rate ?? 0),
         0,
       );
+      const wageCosts = baseWageCosts + (supplementMap.get(project.id) ?? 0);
       const otherCosts = targetExpenses
         .filter((expense) => expense.project_id === project.id)
         .reduce((sum, expense) => sum + Number(expense.net_amount ?? 0), 0);
@@ -185,11 +217,17 @@ export function ManagementDashboard() {
     });
   }
 
-  const projectRows = buildProjectRows(month, currentWorkEntries, currentExpenses);
+  const projectRows = buildProjectRows(
+    month,
+    currentWorkEntries,
+    currentExpenses,
+    currentSupplementMap,
+  );
   const previousProjectRows = buildProjectRows(
     previousMonth,
     previousWorkEntries,
     previousExpenses,
+    previousSupplementMap,
   );
   const previousById = new Map(previousProjectRows.map((row) => [row.id, row]));
 
@@ -257,8 +295,8 @@ export function ManagementDashboard() {
       value: `${formatNumber(totalHours)} Std.`,
       hint:
         portfolioContributionPerHour == null
-          ? `${employees.length} aktive Mitarbeiter${pendingHoursCurrent > 0 ? ` · ${formatNumber(pendingHoursCurrent)} Std. offen` : ""}`
-          : `DB / Std. ${formatMoney(portfolioContributionPerHour)} · ${employees.length} aktive Mitarbeiter${pendingHoursCurrent > 0 ? ` · ${formatNumber(pendingHoursCurrent)} Std. offen` : ""}`,
+          ? `${activeEmployees.length} aktive Mitarbeiter${pendingHoursCurrent > 0 ? ` · ${formatNumber(pendingHoursCurrent)} Std. offen` : ""}`
+          : `DB / Std. ${formatMoney(portfolioContributionPerHour)} · ${activeEmployees.length} aktive Mitarbeiter${pendingHoursCurrent > 0 ? ` · ${formatNumber(pendingHoursCurrent)} Std. offen` : ""}`,
       icon: Clock3,
     },
     {
