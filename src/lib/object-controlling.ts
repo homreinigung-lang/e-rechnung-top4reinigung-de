@@ -175,3 +175,18 @@ export function summarizeObjectFinancials(
     contributionPerHour,
   };
 }
+
+
+/** Returns the YYYY-MM key immediately before the supplied month. */
+export function previousMonthKey(month: string) {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return "";
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  date.setUTCMonth(date.getUTCMonth() - 1);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export function percentChange(current: number, previous: number): number | null {
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) return null;
+  return ((current - previous) / Math.abs(previous)) * 100;
+}
