@@ -190,3 +190,20 @@ export function percentChange(current: number, previous: number): number | null 
   if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) return null;
   return ((current - previous) / Math.abs(previous)) * 100;
 }
+
+
+export type ControllingTimeEntry = {
+  entry_type?: string | null;
+  approval_status?: string | null;
+};
+
+/**
+ * Only approved work entries are allowed into actual-hours and labor-cost controlling.
+ * Pending/rejected rows must not distort object profitability before approval.
+ */
+export function isApprovedWorkEntry(entry: ControllingTimeEntry): boolean {
+  return (
+    String(entry.entry_type ?? "work") === "work" &&
+    String(entry.approval_status ?? "approved") === "approved"
+  );
+}
