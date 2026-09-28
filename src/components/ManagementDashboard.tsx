@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
-import { isApprovedWorkEntry, pendingWorkHours, percentChange, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { isApprovedWorkEntry, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 import { allocateSupplementsByProject, type LohnEmployee, type LohnEntry, type LohnartRule } from "@/lib/lohnvorbereitung";
 import {
   AlertTriangle,
@@ -49,7 +49,7 @@ export function ManagementDashboard() {
   const { data } = useQuery({
     queryKey: ["management_dashboard", month],
     queryFn: async () => {
-      const [projects, documents, expenses, timeEntries, employees, qmCases, wageTypes, holidays] = await Promise.all([
+      const [projects, documents, expenses, timeEntries, employees, qmCases, wageTypes, holidays, assignments] = await Promise.all([
         supabase
           .from("projects")
           .select("id,name,customer_id,customer_name,city,status"),
@@ -87,9 +87,13 @@ export function ManagementDashboard() {
           .eq("active", true)
           .gte("holiday_date", previousBounds.start)
           .lte("holiday_date", end),
+        supabase
+          .from("project_assignments")
+          .select("project_id,start_date,end_date,hours_per_week,day_hours,day_times")
+          .or(`start_date.is.null,end_date.gte.${previousBounds.start},end_date.is.null`),
       ]);
 
-      for (const result of [projects, documents, expenses, timeEntries, employees, qmCases, wageTypes, holidays]) {
+      for (const result of [projects, documents, expenses, timeEntries, employees, qmCases, wageTypes, holidays, assignments]) {
         if (result.error) throw result.error;
       }
 
@@ -102,6 +106,7 @@ export function ManagementDashboard() {
         qmCases: qmCases.data ?? [],
         wageTypes: wageTypes.data ?? [],
         holidays: holidays.data ?? [],
+        assignments: assignments.data ?? [],
       };
     },
   });
@@ -114,6 +119,7 @@ export function ManagementDashboard() {
   const qmCases = data?.qmCases ?? [];
   const wageTypes = (data?.wageTypes ?? []) as LohnartRule[];
   const holidays = data?.holidays ?? [];
+  const assignments = data?.assignments ?? [];
 
   const activeEmployees = employees.filter((employee) => employee.active);
   const customerProjectCount = new Map<string, number>();
@@ -186,6 +192,11 @@ export function ManagementDashboard() {
 
       const entries = targetWorkEntries.filter((entry) => entry.project_id === project.id);
       const hours = entries.reduce((sum, entry) => sum + Number(entry.hours ?? 0), 0);
+      const plannedHours = plannedHoursForMonth(
+        assignments.filter((assignment) => assignment.project_id === project.id),
+        targetMonth,
+      );
+      const planIstDeviation = planIstDeviationPercent(hours, plannedHours);
       const baseWageCosts = entries.reduce(
         (sum, entry) =>
           sum + Number(entry.hours ?? 0) * Number(entry.hourly_rate ?? 0),
@@ -218,6 +229,8 @@ export function ManagementDashboard() {
         margin: financials.margin,
         contributionPerHour: financials.contributionPerHour,
         hours,
+        plannedHours,
+        planIstDeviation,
       };
     });
   }
@@ -376,7 +389,7 @@ export function ManagementDashboard() {
             </div>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-lg border">
-              <table className="w-full min-w-[1250px] text-sm">
+              <table className="w-full min-w-[1450px] text-sm">
                 <thead className="bg-muted/40 text-left">
                   <tr>
                     <th className="px-3 py-2">Objekt</th>
@@ -385,6 +398,8 @@ export function ManagementDashboard() {
                     <th className="px-3 py-2 text-right">Zuschläge</th>
                     <th className="px-3 py-2 text-right">Sonst. Kosten</th>
                     <th className="px-3 py-2 text-right">Kosten gesamt</th>
+                    <th className="px-3 py-2 text-right">Plan / Ist</th>
+                    <th className="px-3 py-2 text-right">Abweichung</th>
                     <th className="px-3 py-2 text-right">Kosten / Std.</th>
                     <th className="px-3 py-2 text-right">DB</th>
                     <th className="px-3 py-2 text-right">Marge</th>
@@ -412,6 +427,20 @@ export function ManagementDashboard() {
                       <td className="px-3 py-2 text-right">{formatMoney(row.supplements)}</td>
                       <td className="px-3 py-2 text-right">{formatMoney(row.otherCosts)}</td>
                       <td className="px-3 py-2 text-right">{formatMoney(row.costs)}</td>
+                      <td className="px-3 py-2 text-right">
+                        {formatNumber(row.plannedHours)} / {formatNumber(row.hours)} Std.
+                      </td>
+                      <td
+                        className={
+                          row.planIstDeviation != null && row.planIstDeviation > 10
+                            ? "px-3 py-2 text-right font-semibold text-destructive"
+                            : "px-3 py-2 text-right"
+                        }
+                      >
+                        {row.planIstDeviation == null
+                          ? "–"
+                          : `${row.planIstDeviation >= 0 ? "+" : ""}${formatNumber(row.planIstDeviation)} %`}
+                      </td>
                       <td className="px-3 py-2 text-right">
                         {row.costPerHour == null ? "–" : formatMoney(row.costPerHour)}
                       </td>
