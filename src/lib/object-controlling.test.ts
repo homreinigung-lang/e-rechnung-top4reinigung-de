@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { percentChange, plannedHoursForMonth, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { isApprovedWorkEntry, percentChange, plannedHoursForMonth, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 
 describe("object controlling accuracy", () => {
   it("uses service period month before invoice issue month", () => {
@@ -166,5 +166,26 @@ describe("object controlling month comparison", () => {
   it("avoids misleading percentage changes when previous value is zero", () => {
     expect(percentChange(100, 0)).toBeNull();
     expect(percentChange(0, 0)).toBeNull();
+  });
+});
+
+
+describe("object controlling time-entry approval", () => {
+  it("counts approved work entries", () => {
+    expect(isApprovedWorkEntry({ entry_type: "work", approval_status: "approved" })).toBe(true);
+  });
+
+  it("keeps legacy work entries approved by default", () => {
+    expect(isApprovedWorkEntry({ entry_type: "work", approval_status: null })).toBe(true);
+  });
+
+  it("excludes pending and rejected work entries", () => {
+    expect(isApprovedWorkEntry({ entry_type: "work", approval_status: "pending" })).toBe(false);
+    expect(isApprovedWorkEntry({ entry_type: "work", approval_status: "rejected" })).toBe(false);
+  });
+
+  it("excludes absence entries from worked-hours controlling", () => {
+    expect(isApprovedWorkEntry({ entry_type: "vacation", approval_status: "approved" })).toBe(false);
+    expect(isApprovedWorkEntry({ entry_type: "sick", approval_status: "approved" })).toBe(false);
   });
 });
