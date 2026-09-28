@@ -100,6 +100,7 @@ function Ausgaben() {
   const [processingReceipt, setProcessingReceipt] = useState(false);
   const [receiptToRetry, setReceiptToRetry] = useState<File | null>(null);
   const [scanError, setScanError] = useState("");
+  const [duplicateExpense, setDuplicateExpense] = useState<ExpenseRowData | null>(null);
 
   /** Eingehende E-Rechnung (XRechnung/ZUGFeRD) einlesen und die Felder vorbelegen. */
   async function handleEInvoice(path: string, file: File) {
@@ -267,6 +268,48 @@ function Ausgaben() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  function normalizeDuplicateText(value: string) {
+    return value
+      .trim()
+      .toLocaleLowerCase("de-DE")
+      .replace(/\s+/g, " ");
+  }
+
+  function findPossibleDuplicate() {
+    const supplier = normalizeDuplicateText(form.supplier);
+    const documentNumber = normalizeDuplicateText(form.document_number);
+    const gross = Math.round(
+      (Number(form.net_amount || 0) + Number(form.vat_amount || 0)) * 100,
+    );
+
+    return (
+      (rows as unknown as ExpenseRowData[]).find((row) => {
+        if (!row || !row.id) return false;
+        const sameSupplier =
+          supplier !== "" && normalizeDuplicateText(row.supplier || "") === supplier;
+        const sameDocumentNumber =
+          documentNumber !== "" &&
+          normalizeDuplicateText(row.document_number || "") === documentNumber;
+
+        // Eine vorhandene Belegnummer beim gleichen Lieferanten ist das stärkste Signal.
+        if (sameSupplier && sameDocumentNumber) return true;
+
+        // Ohne Belegnummer warnen wir bei gleicher Firma, gleichem Datum und exakt gleichem Betrag.
+        const rowGross = Math.round(Number(row.gross_amount || 0) * 100);
+        return sameSupplier && row.expense_date === form.expense_date && rowGross === gross;
+      }) ?? null
+    );
+  }
+
+  function saveWithDuplicateCheck() {
+    const duplicate = findPossibleDuplicate();
+    if (duplicate) {
+      setDuplicateExpense(duplicate);
+      return;
+    }
+    add.mutate();
+  }
 
   const totalNet = rows.reduce((s, r) => s + Number(r.net_amount), 0);
   const totalGross = rows.reduce((s, r) => s + Number(r.gross_amount), 0);
@@ -439,9 +482,42 @@ function Ausgaben() {
             {scanError}
           </p>
         )}
-        <Button onClick={() => add.mutate()} disabled={add.isPending || processingReceipt}>
+        <Button onClick={saveWithDuplicateCheck} disabled={add.isPending || processingReceipt}>
           <Plus className="size-4" /> Ausgabe speichern
         </Button>
+
+        <AlertDialog
+          open={duplicateExpense !== null}
+          onOpenChange={(open) => {
+            if (!open) setDuplicateExpense(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Mögliche doppelte Ausgabe</AlertDialogTitle>
+              <AlertDialogDescription>
+                {duplicateExpense
+                  ? `Es gibt bereits eine Ausgabe von „${duplicateExpense.supplier || "ohne Lieferant"}" am ${formatDate(
+                      duplicateExpense.expense_date,
+                    )} über ${formatMoney(Number(duplicateExpense.gross_amount))}. Bitte prüfen, bevor Sie dieselbe Ausgabe noch einmal speichern.`
+                  : ""}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDuplicateExpense(null)}>
+                Nicht speichern
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setDuplicateExpense(null);
+                  add.mutate();
+                }}
+              >
+                Trotzdem speichern
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
