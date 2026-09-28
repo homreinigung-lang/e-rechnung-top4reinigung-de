@@ -11,6 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   MapPin,
@@ -23,6 +29,8 @@ import {
   Copy,
   Send,
   Save,
+  GripVertical,
+  UserPlus,
 } from "lucide-react";
 import { mapsUrl, projectAddress } from "@/lib/maps";
 import { isoWeek, isoWeekYear } from "@/lib/kw";
@@ -179,6 +187,10 @@ export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanS
   const [seedStartTime, setSeedStartTime] = React.useState("08:00");
   const [seedBreakMinutes, setSeedBreakMinutes] = React.useState("0");
   const [filter, setFilter] = React.useState("");
+  const [assignEmployeeId, setAssignEmployeeId] = React.useState("");
+  const [assignProjectId, setAssignProjectId] = React.useState("");
+  const [quickAssign, setQuickAssign] = React.useState<{ employeeId: string; projectId: string } | null>(null);
+  const [dragEmployeeId, setDragEmployeeId] = React.useState<string | null>(null);
   const [monday, setMonday] = React.useState(() => mondayOf(new Date()));
   const weekStart = isoDay(monday);
   const weekEnd = isoDay(addDays(monday, 6));
@@ -359,6 +371,24 @@ export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanS
 
   const cellHours = (e: string, p: string) =>
     cellDayHours(e, p).reduce((s, n) => s + (Number(n) || 0), 0);
+
+  function openAssignment(employeeId: string, projectId: string) {
+    const employee = employees.find((item) => item.id === employeeId);
+    const object = objects.find((item) => item.id === projectId);
+    if (!employee || !object) {
+      toast.error("Mitarbeiter oder Objekt wurde nicht gefunden.");
+      return;
+    }
+    setQuickAssign({ employeeId, projectId });
+  }
+
+  function handleEmployeeDrop(projectId: string, event: React.DragEvent) {
+    event.preventDefault();
+    const employeeId = event.dataTransfer.getData("text/employee-id") || dragEmployeeId || "";
+    setDragEmployeeId(null);
+    if (!employeeId) return;
+    openAssignment(employeeId, projectId);
+  }
 
   const seedProject = initialPlan
     ? objects.find((object) => object.id === initialPlan.projectId)
@@ -1138,6 +1168,58 @@ export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanS
         </div>
       )}
 
+      <section className="surface space-y-3 p-4">
+        <div className="flex items-start gap-3">
+          <UserPlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <h2 className="font-semibold">Mitarbeiter zuweisen</h2>
+            <p className="text-sm text-muted-foreground">
+              Am Computer können Sie einen Mitarbeiter auf ein Objekt ziehen. Auf Handy/Tablet
+              Mitarbeiter und Objekt auswählen und „Einsatz planen“ öffnen.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-2 md:grid-cols-[minmax(180px,1fr)_minmax(220px,1fr)_auto]">
+          <Select value={assignEmployeeId} onValueChange={setAssignEmployeeId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Mitarbeiter auswählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {employees.map((employee) => (
+                <SelectItem key={employee.id} value={employee.id}>
+                  {employee.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={assignProjectId} onValueChange={setAssignProjectId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Objekt auswählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {visibleProjects.map((object) => (
+                <SelectItem key={object.id} value={object.id}>
+                  {object.name || "Objekt"}{object.city ? ` · ${object.city}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            onClick={() => {
+              if (!assignEmployeeId || !assignProjectId) {
+                toast.error("Bitte Mitarbeiter und Objekt auswählen.");
+                return;
+              }
+              openAssignment(assignEmployeeId, assignProjectId);
+            }}
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Einsatz planen
+          </Button>
+        </div>
+      </section>
+
       <section className="surface overflow-x-auto p-0">
         {employees.length === 0 || visibleProjects.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">
@@ -1153,7 +1235,13 @@ export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanS
                   Mitarbeiter
                 </th>
                 {visibleProjects.map((p) => (
-                  <th key={p.id} className="min-w-[150px] p-3 text-left font-semibold align-top">
+                  <th
+                    key={p.id}
+                    className={`min-w-[150px] p-3 text-left font-semibold align-top transition ${dragEmployeeId ? "bg-primary/5 ring-1 ring-inset ring-primary/20" : ""}`}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => handleEmployeeDrop(p.id, event)}
+                    title="Mitarbeiter hierher ziehen, um einen Einsatz zu planen"
+                  >
                     <div className="truncate">{p.name || "Objekt"}</div>
                     <div className="mt-1 flex items-center gap-1 text-xs font-normal text-muted-foreground">
                       <MapPin className="h-3 w-3 shrink-0" />
@@ -1182,7 +1270,20 @@ export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanS
                 return (
                   <tr key={e.id} className="border-b last:border-0">
                     <td className="sticky left-0 z-10 bg-background p-3">
-                      <div className="font-medium">{e.name}</div>
+                      <div
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData("text/employee-id", e.id);
+                        event.dataTransfer.effectAllowed = "copy";
+                        setDragEmployeeId(e.id);
+                      }}
+                      onDragEnd={() => setDragEmployeeId(null)}
+                      className="flex cursor-grab items-center gap-1 font-medium active:cursor-grabbing"
+                      title="Auf ein Objekt ziehen"
+                    >
+                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      {e.name}
+                    </div>
                       <div className="text-xs text-muted-foreground">
                         {e.role || "—"}
                         {soll > 0 ? ` · Soll ${soll.toFixed(1)} Std.` : ""}
@@ -1299,6 +1400,93 @@ export function Arbeitsplanung({ initialPlan }: { initialPlan?: CalculationPlanS
           </table>
         )}
       </section>
+
+      <Dialog open={quickAssign !== null} onOpenChange={(open) => !open && setQuickAssign(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          {quickAssign && (() => {
+            const employee = employees.find((item) => item.id === quickAssign.employeeId);
+            const object = objects.find((item) => item.id === quickAssign.projectId);
+            if (!employee || !object) return null;
+            const times = cellTimes(employee.id, object.id);
+            const days = cellDayHours(employee.id, object.id);
+            const sum = cellHours(employee.id, object.id);
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>
+                    Einsatz planen · {employee.name}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="text-sm text-muted-foreground">
+                  {object.name || "Objekt"}{object.city ? ` · ${object.city}` : ""}
+                </div>
+                <WeekQuickFill
+                  onApply={(template, dayCount) =>
+                    applyWeekTimes(employee.id, object.id, template, dayCount)
+                  }
+                  onClear={() => clearWeekTimes(employee.id, object.id)}
+                />
+                <div className="grid grid-cols-[2rem_1fr_1fr_3.5rem_3rem] items-center gap-1 text-[10px] text-muted-foreground">
+                  <span />
+                  <span>Von</span>
+                  <span>Bis</span>
+                  <span>Pause</span>
+                  <span className="text-right">Std.</span>
+                </div>
+                {DAY_LABELS.map((label, index) => (
+                  <div
+                    key={label}
+                    className="grid grid-cols-[2rem_1fr_1fr_3.5rem_3rem] items-center gap-1"
+                  >
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                    <Input
+                      type="time"
+                      value={times[index]?.start ?? ""}
+                      onChange={(event) =>
+                        setDayTime(employee.id, object.id, index, { start: event.target.value })
+                      }
+                      className="h-9 px-1 text-xs"
+                    />
+                    <Input
+                      type="time"
+                      value={times[index]?.end ?? ""}
+                      onChange={(event) =>
+                        setDayTime(employee.id, object.id, index, { end: event.target.value })
+                      }
+                      className="h-9 px-1 text-xs"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step="5"
+                      value={times[index]?.breakMin ? String(times[index]!.breakMin) : ""}
+                      onChange={(event) =>
+                        setDayTime(employee.id, object.id, index, {
+                          breakMin: Number(event.target.value) || 0,
+                        })
+                      }
+                      className="h-9 px-1 text-center text-xs"
+                    />
+                    <span className="text-right text-xs font-medium">
+                      {(days[index] ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between border-t pt-3">
+                  <span className="text-sm font-semibold">Woche: {sum.toFixed(2)} Std.</span>
+                  <Button type="button" onClick={() => setQuickAssign(null)}>
+                    Übernehmen
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Der Einsatz wird zunächst als Entwurf übernommen. Danach oben „Speichern“ und
+                  anschließend die Woche freigeben.
+                </p>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
