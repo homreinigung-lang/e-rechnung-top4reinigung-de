@@ -27,6 +27,7 @@ import { DateiVorschau } from "@/components/DateiVorschau";
 import { WiederkehrendeAusgaben } from "@/components/WiederkehrendeAusgaben";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
 import { receiptFormValues } from "@/lib/receipt-form";
+import { findDuplicateExpense } from "@/lib/expense-duplicate";
 import { readIncomingEInvoice, type IncomingEInvoice } from "@/lib/e-invoice-import";
 import { Download, Eye, FileCode2, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
 
@@ -269,41 +270,11 @@ function Ausgaben() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function normalizeDuplicateText(value: string) {
-    return value
-      .trim()
-      .toLocaleLowerCase("de-DE")
-      .replace(/\s+/g, " ");
-  }
-
-  function findPossibleDuplicate() {
-    const supplier = normalizeDuplicateText(form.supplier);
-    const documentNumber = normalizeDuplicateText(form.document_number);
-    const gross = Math.round(
-      (Number(form.net_amount || 0) + Number(form.vat_amount || 0)) * 100,
-    );
-
-    return (
-      (rows as unknown as ExpenseRowData[]).find((row) => {
-        if (!row || !row.id) return false;
-        const sameSupplier =
-          supplier !== "" && normalizeDuplicateText(row.supplier || "") === supplier;
-        const sameDocumentNumber =
-          documentNumber !== "" &&
-          normalizeDuplicateText(row.document_number || "") === documentNumber;
-
-        // Eine vorhandene Belegnummer beim gleichen Lieferanten ist das stärkste Signal.
-        if (sameSupplier && sameDocumentNumber) return true;
-
-        // Ohne Belegnummer warnen wir bei gleicher Firma, gleichem Datum und exakt gleichem Betrag.
-        const rowGross = Math.round(Number(row.gross_amount || 0) * 100);
-        return sameSupplier && row.expense_date === form.expense_date && rowGross === gross;
-      }) ?? null
-    );
-  }
-
   function saveWithDuplicateCheck() {
-    const duplicate = findPossibleDuplicate();
+    const duplicate = findDuplicateExpense(
+      form,
+      rows as unknown as ExpenseRowData[],
+    );
     if (duplicate) {
       setDuplicateExpense(duplicate);
       return;
