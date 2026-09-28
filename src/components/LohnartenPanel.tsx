@@ -39,7 +39,7 @@ type FormState = {
 
 const KIND_LABELS: Record<string, string> = {
   normal: "Normalstunden",
-  overtime: "Überstunden",
+  overtime: "Belastungszuschlag",
   night: "Nachtarbeit",
   sunday: "Sonntagsarbeit",
   holiday: "Feiertagsarbeit",
@@ -82,6 +82,7 @@ export function LohnartenPanel() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [holidayDate, setHolidayDate] = useState("");
   const [holidayName, setHolidayName] = useState("");
+  const [holidaySurcharge, setHolidaySurcharge] = useState("80");
 
   const { data: wageTypes = [], isLoading } = useQuery({
     queryKey: ["wage-types"],
@@ -118,6 +119,7 @@ export function LohnartenPanel() {
           user_id: userId,
           holiday_date: holidayDate,
           name: holidayName.trim(),
+          surcharge_percent: num(holidaySurcharge),
           active: true,
           updated_at: new Date().toISOString(),
         },
@@ -128,6 +130,7 @@ export function LohnartenPanel() {
     onSuccess: () => {
       setHolidayDate("");
       setHolidayName("");
+      setHolidaySurcharge("80");
       queryClient.invalidateQueries({ queryKey: ["company-holidays"] });
       toast.success("Feiertag gespeichert");
     },
@@ -272,12 +275,19 @@ export function LohnartenPanel() {
             </p>
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-[170px_1fr_auto]">
+        <div className="grid gap-3 sm:grid-cols-[170px_1fr_120px_auto]">
           <Input type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} />
           <Input
             value={holidayName}
             onChange={(e) => setHolidayName(e.target.value)}
             placeholder="z. B. Tag der Deutschen Einheit"
+          />
+          <Input
+            inputMode="decimal"
+            value={holidaySurcharge}
+            onChange={(e) => setHolidaySurcharge(e.target.value)}
+            placeholder="Zuschlag %"
+            aria-label="Feiertagszuschlag in Prozent"
           />
           <Button onClick={() => saveHoliday.mutate()} disabled={saveHoliday.isPending}>
             <Plus className="size-4" /> Feiertag
@@ -291,6 +301,7 @@ export function LohnartenPanel() {
                   <div className="font-medium">{holiday.name}</div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(`${holiday.holiday_date}T12:00:00`).toLocaleDateString("de-DE")}
+                    {" · "}{Number(holiday.surcharge_percent ?? 80).toLocaleString("de-DE")} %
                   </div>
                 </div>
                 <Button
@@ -311,9 +322,9 @@ export function LohnartenPanel() {
         <div className="flex gap-3">
           <BadgeEuro className="mt-0.5 size-5 shrink-0" />
           <p>
-            Die Standard-Lohnarten sind angelegt. Die Zuschlagsprozente bleiben zunächst bei 0 %,
-            bis du deine vertraglichen bzw. tariflichen Regeln festlegst. So werden keine
-            rechtlichen Werte geraten.
+            Tarif-Voreinstellung Gebäudereinigung: Nachtarbeit 30 % (22:00–05:00),
+            Sonntags- und Feiertagsarbeit 80 % und Belastungszuschlag 25 %. Besondere Feiertage
+            können beim Feiertag selbst mit 200 % hinterlegt werden.
           </p>
         </div>
       </div>
