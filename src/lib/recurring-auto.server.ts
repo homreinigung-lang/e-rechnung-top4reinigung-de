@@ -73,8 +73,8 @@ function asText(v: unknown): string {
 }
 
 async function loadCompanyLogo(
-  admin: ReturnType<typeof createClient>,
   logoPathOrUrl: string,
+  downloadStored: (path: string) => Promise<Blob | null>,
 ): Promise<PdfDocData["logo"]> {
   const value = logoPathOrUrl.trim();
   if (!value) return null;
@@ -100,8 +100,8 @@ async function loadCompanyLogo(
         bytes = new TextEncoder().encode(decodeURIComponent(encoded));
       }
     } else {
-      const { data, error } = await admin.storage.from("firmen-dateien").download(value);
-      if (error || !data) return null;
+      const data = await downloadStored(value);
+      if (!data) return null;
       mime = data.type ?? "";
       bytes = new Uint8Array(await data.arrayBuffer());
     }
@@ -346,7 +346,13 @@ export async function runAutomaticRecurringInvoices(env: Env) {
           throw new Error("Archiv-PDF-Prüfsumme stimmt nicht.");
         }
       } else {
-        const companyLogo = await loadCompanyLogo(admin, asText(settings.logo_url));
+        const companyLogo = await loadCompanyLogo(
+          asText(settings.logo_url),
+          async (path) => {
+            const { data, error } = await admin.storage.from("firmen-dateien").download(path);
+            return error || !data ? null : data;
+          },
+        );
         pdfBytes = await buildDocumentPdfBytes(
           makePdfData(
             doc as unknown as Record<string, unknown>,
