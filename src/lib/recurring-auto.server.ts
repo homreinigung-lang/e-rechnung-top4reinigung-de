@@ -308,12 +308,13 @@ export async function runAutomaticRecurringInvoices(env: Env) {
         `Freundliche Grüße\n${companyName}`,
       ].join("\n");
 
+      const companyEmail = asText(settings.email).trim();
       await sendVerifiedEmail({
         to: asText(doc.customer_email).trim(),
         subject,
         text: body,
         companyName,
-        companyEmail: asText(settings.email).trim() || undefined,
+        ...(companyEmail ? { companyEmail } : {}),
         attachments: [
           {
             filename: `Rechnung_${run.document_number.replace(/[^\w.-]+/g, "_")}.pdf`,
@@ -322,7 +323,7 @@ export async function runAutomaticRecurringInvoices(env: Env) {
         ],
         idempotencyKey: `recurring/${rec.id}/${run.scheduled_date}`,
         resendApiKey: env.RESEND_API_KEY,
-        resendFrom: env.RESEND_FROM,
+        ...(env.RESEND_FROM ? { resendFrom: env.RESEND_FROM } : {}),
       });
 
       const now = new Date().toISOString();
