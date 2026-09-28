@@ -101,7 +101,7 @@ export async function runRecurring(recurringId: string): Promise<string> {
     );
   }
 
-  const base = isDue(rec.next_run) ? rec.next_run : issue;
+  const base = rec.next_run;
   const anchorDay = Number(rec.anchor_day) || Number(String(rec.next_run).slice(8, 10)) || 1;
   await supabase
     .from("recurring_invoices")
