@@ -127,6 +127,7 @@ function DokumenteListe() {
   const [deleteTarget, setDeleteTarget] = useState<DocTarget>(null);
   const [declineTarget, setDeclineTarget] = useState<DocTarget>(null);
   const [declineReason, setDeclineReason] = useState("");
+  const [invoiceFilter, setInvoiceFilter] = useState<"all" | "open" | "overdue" | "paid">("all");
 
   const create = useMutation({
     mutationFn: async (type: "invoice" | "quote") => {
@@ -395,6 +396,25 @@ function DokumenteListe() {
   // die Originalrechnung, sichtbar markiert mit Stornohinweis.
   const list = allOfTab.filter((d) => !(d as unknown as Record<string, unknown>)["is_storno"]);
 
+  // Offene-Posten-Übersicht für Rechnungen.
+  const invoiceRows = list.filter((d) => d.type === "invoice");
+  const openInvoices = invoiceRows.filter(
+    (d) => d.status !== "paid" && d.status !== "cancelled" && d.status !== "draft",
+  );
+  const overdueInvoices = openInvoices.filter((d) => Boolean(dueInfo(d.due_date, d.status)?.overdue));
+  const paidInvoices = invoiceRows.filter((d) => d.status === "paid");
+  const openAmount = openInvoices.reduce((sum, d) => sum + Number(d.total ?? 0), 0);
+  const overdueAmount = overdueInvoices.reduce((sum, d) => sum + Number(d.total ?? 0), 0);
+  const paidAmount = paidInvoices.reduce((sum, d) => sum + Number(d.total ?? 0), 0);
+  const filteredInvoices =
+    invoiceFilter === "open"
+      ? openInvoices
+      : invoiceFilter === "overdue"
+        ? overdueInvoices
+        : invoiceFilter === "paid"
+          ? paidInvoices
+          : invoiceRows;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -460,14 +480,84 @@ function DokumenteListe() {
         />
 
       ) : (
-        <div className="surface overflow-hidden">
-          {list.length === 0 ? (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => setInvoiceFilter("open")}
+              className={`surface p-4 text-left transition hover:bg-muted/50 ${invoiceFilter === "open" ? "ring-2 ring-primary" : ""}`}
+            >
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Offen
+              </div>
+              <div className="mt-1 text-2xl font-bold">{formatMoney(openAmount)}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {openInvoices.length} offene Rechnung{openInvoices.length === 1 ? "" : "en"}
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvoiceFilter("overdue")}
+              className={`surface p-4 text-left transition hover:bg-muted/50 ${invoiceFilter === "overdue" ? "ring-2 ring-destructive" : ""}`}
+            >
+              <div className="text-xs font-medium uppercase tracking-wide text-destructive">
+                Überfällig
+              </div>
+              <div className="mt-1 text-2xl font-bold text-destructive">
+                {formatMoney(overdueAmount)}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {overdueInvoices.length} überfällige Rechnung{overdueInvoices.length === 1 ? "" : "en"}
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvoiceFilter("paid")}
+              className={`surface p-4 text-left transition hover:bg-muted/50 ${invoiceFilter === "paid" ? "ring-2 ring-primary" : ""}`}
+            >
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Bezahlt
+              </div>
+              <div className="mt-1 text-2xl font-bold">{formatMoney(paidAmount)}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {paidInvoices.length} bezahlte Rechnung{paidInvoices.length === 1 ? "" : "en"}
+              </div>
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              ["all", "Alle"],
+              ["open", "Offen"],
+              ["overdue", "Überfällig"],
+              ["paid", "Bezahlt"],
+            ].map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={invoiceFilter === value ? "default" : "outline"}
+                onClick={() => setInvoiceFilter(value as "all" | "open" | "overdue" | "paid")}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="surface overflow-hidden">
+          {filteredInvoices.length === 0 ? (
             <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-              Noch keine Rechnungen vorhanden.
+              {invoiceFilter === "overdue"
+                ? "Keine überfälligen Rechnungen."
+                : invoiceFilter === "open"
+                  ? "Keine offenen Rechnungen."
+                  : invoiceFilter === "paid"
+                    ? "Noch keine bezahlten Rechnungen."
+                    : "Noch keine Rechnungen vorhanden."}
             </p>
           ) : (
             <ul className="divide-y">
-              {list.map((d) => {
+              {filteredInvoices.map((d) => {
                 const r = d as unknown as Record<string, unknown>;
                 const isStorno = Boolean(r["is_storno"]);
                 const cancelsNumber = r["cancels_document_id"]
@@ -622,6 +712,7 @@ function DokumenteListe() {
               })}
             </ul>
           )}
+          </div>
         </div>
       )}
 
