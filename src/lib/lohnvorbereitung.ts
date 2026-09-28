@@ -71,7 +71,7 @@ export function buildLohnvorbereitung(
       const rows = entries.filter(
         (entry) =>
           entry.employee_id === employee.id &&
-          String(entry.approval_status ?? "approved") !== "rejected",
+          String(entry.approval_status ?? "approved") === "approved",
       );
       const vacation = new Set<string>();
       const sick = new Set<string>();
