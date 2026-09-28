@@ -66,6 +66,23 @@ export default {
   },
 
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const runtimeEnv = env as Record<string, string | undefined>;
+    const url = new URL(request.url);
+    if (url.pathname === "/api/recurring-health") {
+      const hasSupabaseAdmin = Boolean(
+        runtimeEnv["SUPABASE_SECRET_KEY"] || runtimeEnv["SUPABASE_SERVICE_ROLE_KEY"],
+      );
+      const hasResend = Boolean(runtimeEnv["RESEND_API_KEY"]);
+      return new Response(
+        JSON.stringify({
+          ok: hasSupabaseAdmin && hasResend,
+          supabaseAdmin: hasSupabaseAdmin,
+          resend: hasResend,
+        }),
+        { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } },
+      );
+    }
+
     const redirect = requireHttps(request);
     if (redirect) return withSecurityHeaders(redirect, request);
     try {
