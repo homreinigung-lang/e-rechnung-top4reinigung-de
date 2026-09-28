@@ -2329,6 +2329,7 @@ export type Database = {
           holiday_date: string
           id: string
           name: string
+          surcharge_percent: number
           updated_at: string
           user_id: string
         }
@@ -2338,6 +2339,7 @@ export type Database = {
           holiday_date: string
           id?: string
           name: string
+          surcharge_percent?: number
           updated_at?: string
           user_id: string
         }
@@ -2347,6 +2349,7 @@ export type Database = {
           holiday_date?: string
           id?: string
           name?: string
+          surcharge_percent?: number
           updated_at?: string
           user_id?: string
         }
