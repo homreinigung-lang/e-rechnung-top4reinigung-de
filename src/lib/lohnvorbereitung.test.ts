@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocateSupplementsByProject, buildLohnvorbereitung } from "./lohnvorbereitung";
+import { allocateSupplementsByProject, buildLohnvorbereitung, payrollReadinessIssues } from "./lohnvorbereitung";
 
 const employee = {
   id: "e1",
@@ -205,5 +205,54 @@ describe("project supplement allocation details", () => {
     );
     // Night 30%: 9.00 + holiday 200%: 60.00
     expect(allocated).toEqual([{ projectId: "p1", supplements: 69 }]);
+  });
+});
+
+
+describe("payroll readiness", () => {
+  it("flags pending entries, missing personnel numbers and missing rates", () => {
+    const issues = payrollReadinessIssues(
+      [
+        {
+          employee_id: "e1",
+          work_date: "2026-09-28",
+          hours: 3,
+          hourly_rate: 0,
+          approval_status: "pending",
+        },
+        {
+          employee_id: "e2",
+          work_date: "2026-09-28",
+          hours: 2,
+          hourly_rate: 0,
+          approval_status: "approved",
+        },
+      ],
+      [
+        { id: "e1", name: "A", personnel_number: "", hourly_rate: 15 },
+        { id: "e2", name: "B", personnel_number: "002", hourly_rate: 0 },
+      ],
+    );
+
+    expect(issues).toEqual([
+      { code: "pending_entries", count: 1, employeeIds: ["e1"] },
+      { code: "missing_personnel_number", count: 1, employeeIds: ["e1"] },
+      { code: "missing_hourly_rate", count: 1, employeeIds: ["e2"] },
+    ]);
+  });
+
+  it("does not flag approved absences for a missing hourly rate", () => {
+    expect(
+      payrollReadinessIssues(
+        [{
+          employee_id: "e1",
+          work_date: "2026-09-28",
+          entry_type: "sick",
+          absence_reason: "Krank",
+          approval_status: "approved",
+        }],
+        [{ id: "e1", personnel_number: "001", hourly_rate: 0 }],
+      ),
+    ).toEqual([]);
   });
 });
