@@ -17,6 +17,9 @@
     "PUBLIC_SITE_URL": "https://e-rechnung.top4reinigung.de",
     "RESEND_FROM": "GebCalc <info@top4reinigung.de>"
   },
+  "triggers": {
+    "crons": ["15 * * * *"]
+  },
   "observability": {
     "enabled": true
   }
