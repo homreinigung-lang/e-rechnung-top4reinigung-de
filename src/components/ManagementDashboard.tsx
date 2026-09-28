@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
-import { revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { percentChange, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -38,6 +38,8 @@ function absenceReason(value: unknown) {
 export function ManagementDashboard() {
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const { start, end } = monthBounds(month);
+  const previousMonth = previousMonthKey(month);
+  const previousBounds = monthBounds(previousMonth);
   const monthLabel = new Date(`${month}-01T12:00:00`).toLocaleDateString(
     "de-DE-u-ca-gregory-nu-latn",
     { month: "long", year: "numeric" },
@@ -59,14 +61,14 @@ export function ManagementDashboard() {
           .from("expenses")
           .select("id,project_id,expense_date,net_amount")
           .is("deleted_at", null)
-          .gte("expense_date", start)
+          .gte("expense_date", previousBounds.start)
           .lte("expense_date", end),
         supabase
           .from("time_entries")
           .select(
             "id,employee_id,project_id,work_date,hours,hourly_rate,entry_type,absence_reason,approval_status",
           )
-          .gte("work_date", start)
+          .gte("work_date", previousBounds.start)
           .lte("work_date", end),
         supabase
           .from("employees")
@@ -114,63 +116,96 @@ export function ManagementDashboard() {
       (entry.entry_type ?? "work") === "work" &&
       (entry.approval_status ?? "approved") !== "rejected",
   );
+  const currentWorkEntries = workEntries.filter((entry) =>
+    String(entry.work_date ?? "").startsWith(month),
+  );
+  const previousWorkEntries = workEntries.filter((entry) =>
+    String(entry.work_date ?? "").startsWith(previousMonth),
+  );
+  const currentExpenses = expenses.filter((expense) =>
+    String(expense.expense_date ?? "").startsWith(month),
+  );
+  const previousExpenses = expenses.filter((expense) =>
+    String(expense.expense_date ?? "").startsWith(previousMonth),
+  );
   const absenceEntries = timeEntries.filter(
     (entry) =>
       (entry.entry_type ?? "work") !== "work" &&
       (entry.approval_status ?? "approved") === "approved",
   );
 
-  const projectRows = projects.map((project) => {
-    const revenue = documents
-      .filter((doc) => {
-        if (String(doc.status ?? "") === "cancelled" || doc.is_storno) return false;
-        const sameCustomer =
-          Boolean(project.customer_id) && doc.customer_id === project.customer_id;
-        const direct = doc.project_id === project.id && sameCustomer;
-        const historical =
-          !doc.project_id &&
-          sameCustomer &&
-          customerProjectCount.get(project.customer_id!) === 1;
-        return direct || historical;
-      })
-      .reduce((sum, doc) => sum + revenueForMonth(doc, month), 0);
+  function buildProjectRows(
+    targetMonth: string,
+    targetWorkEntries: typeof currentWorkEntries,
+    targetExpenses: typeof currentExpenses,
+  ) {
+    return projects.map((project) => {
+      const revenue = documents
+        .filter((doc) => {
+          if (String(doc.status ?? "") === "cancelled" || doc.is_storno) return false;
+          const sameCustomer =
+            Boolean(project.customer_id) && doc.customer_id === project.customer_id;
+          const direct = doc.project_id === project.id && sameCustomer;
+          const historical =
+            !doc.project_id &&
+            sameCustomer &&
+            customerProjectCount.get(project.customer_id!) === 1;
+          return direct || historical;
+        })
+        .reduce((sum, doc) => sum + revenueForMonth(doc, targetMonth), 0);
 
-    const entries = workEntries.filter((entry) => entry.project_id === project.id);
-    const hours = entries.reduce((sum, entry) => sum + Number(entry.hours ?? 0), 0);
-    const wageCosts = entries.reduce(
-      (sum, entry) =>
-        sum + Number(entry.hours ?? 0) * Number(entry.hourly_rate ?? 0),
-      0,
-    );
-    const otherCosts = expenses
-      .filter((expense) => expense.project_id === project.id)
-      .reduce((sum, expense) => sum + Number(expense.net_amount ?? 0), 0);
-    const financials = summarizeObjectFinancials({
-      revenue,
-      wageCosts,
-      otherCosts,
-      hours,
+      const entries = targetWorkEntries.filter((entry) => entry.project_id === project.id);
+      const hours = entries.reduce((sum, entry) => sum + Number(entry.hours ?? 0), 0);
+      const wageCosts = entries.reduce(
+        (sum, entry) =>
+          sum + Number(entry.hours ?? 0) * Number(entry.hourly_rate ?? 0),
+        0,
+      );
+      const otherCosts = targetExpenses
+        .filter((expense) => expense.project_id === project.id)
+        .reduce((sum, expense) => sum + Number(expense.net_amount ?? 0), 0);
+      const financials = summarizeObjectFinancials({
+        revenue,
+        wageCosts,
+        otherCosts,
+        hours,
+      });
+
+      return {
+        id: project.id,
+        name: project.name || "Ohne Namen",
+        customer: project.customer_name || "",
+        city: project.city || "",
+        revenue: financials.revenue,
+        costs: financials.costs,
+        contribution: financials.contribution,
+        margin: financials.margin,
+        contributionPerHour: financials.contributionPerHour,
+        hours,
+      };
     });
+  }
 
-    return {
-      id: project.id,
-      name: project.name || "Ohne Namen",
-      customer: project.customer_name || "",
-      city: project.city || "",
-      revenue: financials.revenue,
-      costs: financials.costs,
-      contribution: financials.contribution,
-      margin: financials.margin,
-      hours,
-    };
-  });
+  const projectRows = buildProjectRows(month, currentWorkEntries, currentExpenses);
+  const previousProjectRows = buildProjectRows(
+    previousMonth,
+    previousWorkEntries,
+    previousExpenses,
+  );
+  const previousById = new Map(previousProjectRows.map((row) => [row.id, row]));
 
   const portfolioRevenue = projectRows.reduce((sum, row) => sum + row.revenue, 0);
   const portfolioCosts = projectRows.reduce((sum, row) => sum + row.costs, 0);
   const portfolioContribution = portfolioRevenue - portfolioCosts;
   const portfolioMargin =
     portfolioRevenue > 0 ? (portfolioContribution / portfolioRevenue) * 100 : null;
-  const totalHours = workEntries.reduce((sum, entry) => sum + Number(entry.hours ?? 0), 0);
+  const totalHours = currentWorkEntries.reduce((sum, entry) => sum + Number(entry.hours ?? 0), 0);
+  const previousPortfolioRevenue = previousProjectRows.reduce((sum, row) => sum + row.revenue, 0);
+  const previousPortfolioCosts = previousProjectRows.reduce((sum, row) => sum + row.costs, 0);
+  const previousPortfolioContribution = previousPortfolioRevenue - previousPortfolioCosts;
+  const revenueChange = percentChange(portfolioRevenue, previousPortfolioRevenue);
+  const contributionChange = percentChange(portfolioContribution, previousPortfolioContribution);
+  const portfolioContributionPerHour = totalHours > 0 ? portfolioContribution / totalHours : null;
 
   const uniqueAbsenceDays = (reason: "sick" | "vacation") =>
     new Set(
@@ -199,7 +234,10 @@ export function ManagementDashboard() {
     {
       label: "Objekt-Umsatz netto",
       value: formatMoney(portfolioRevenue),
-      hint: monthLabel,
+      hint:
+        revenueChange == null
+          ? `${monthLabel} · kein Vergleich`
+          : `${monthLabel} · ${revenueChange >= 0 ? "+" : ""}${formatNumber(revenueChange)} % zum Vormonat`,
       icon: TrendingUp,
     },
     {
@@ -208,13 +246,20 @@ export function ManagementDashboard() {
       hint:
         portfolioMargin == null
           ? "Keine Umsatzbasis"
-          : `Marge ${formatNumber(portfolioMargin)} %`,
+          : `Marge ${formatNumber(portfolioMargin)} %${
+              contributionChange == null
+                ? ""
+                : ` · DB ${contributionChange >= 0 ? "+" : ""}${formatNumber(contributionChange)} %`
+            }`,
       icon: BriefcaseBusiness,
     },
     {
       label: "Ist-Stunden",
       value: `${formatNumber(totalHours)} Std.`,
-      hint: `${employees.length} aktive Mitarbeiter`,
+      hint:
+        portfolioContributionPerHour == null
+          ? `${employees.length} aktive Mitarbeiter`
+          : `DB / Std. ${formatMoney(portfolioContributionPerHour)} · ${employees.length} aktive Mitarbeiter`,
       icon: Clock3,
     },
     {
@@ -277,7 +322,7 @@ export function ManagementDashboard() {
             </div>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-lg border">
-              <table className="w-full min-w-[680px] text-sm">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead className="bg-muted/40 text-left">
                   <tr>
                     <th className="px-3 py-2">Objekt</th>
@@ -285,6 +330,8 @@ export function ManagementDashboard() {
                     <th className="px-3 py-2 text-right">Kosten</th>
                     <th className="px-3 py-2 text-right">DB</th>
                     <th className="px-3 py-2 text-right">Marge</th>
+                    <th className="px-3 py-2 text-right">DB / Std.</th>
+                    <th className="px-3 py-2 text-right">Vormonat</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -315,6 +362,22 @@ export function ManagementDashboard() {
                       </td>
                       <td className="px-3 py-2 text-right font-semibold text-destructive">
                         {row.margin == null ? "Keine Umsatzbasis" : `${formatNumber(row.margin)} %`}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {row.contributionPerHour == null
+                          ? "–"
+                          : formatMoney(row.contributionPerHour)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {(() => {
+                          const previous = previousById.get(row.id);
+                          const change = previous
+                            ? percentChange(row.contribution, previous.contribution)
+                            : null;
+                          return change == null
+                            ? "–"
+                            : `${change >= 0 ? "+" : ""}${formatNumber(change)} %`;
+                        })()}
                       </td>
                     </tr>
                   ))}
