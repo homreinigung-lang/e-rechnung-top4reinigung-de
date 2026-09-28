@@ -2,22 +2,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
 import { reserveDocumentNumber } from "@/lib/doc-number";
+import { nextRecurringDate } from "@/lib/recurring-date";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
   const uid = data.user?.id;
   if (!uid) throw new Error("Nicht angemeldet");
   return uid;
-}
-
-export function addMonths(dateStr: string, months: number): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  const day = d.getDate();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + months);
-  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  d.setDate(Math.min(day, lastDay));
-  return d.toISOString().slice(0, 10);
 }
 
 export function isDue(nextRun: string): boolean {
@@ -106,9 +97,10 @@ export async function runRecurring(recurringId: string): Promise<string> {
   }
 
   const base = isDue(rec.next_run) ? rec.next_run : issue;
+  const anchorDay = Number(rec.anchor_day) || Number(String(rec.next_run).slice(8, 10)) || 1;
   await supabase
     .from("recurring_invoices")
-    .update({ next_run: addMonths(base, Number(rec.interval_months) || 1) } as never)
+    .update({ next_run: nextRecurringDate(base, Number(rec.interval_months) || 1, anchorDay) } as never)
     .eq("id", recurringId);
 
   await logAudit(
