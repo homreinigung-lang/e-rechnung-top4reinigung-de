@@ -207,3 +207,17 @@ export function isApprovedWorkEntry(entry: ControllingTimeEntry): boolean {
     String(entry.approval_status ?? "approved") === "approved"
   );
 }
+
+
+export type ControllingHoursEntry = ControllingTimeEntry & {
+  hours?: number | string | null;
+};
+
+export function pendingWorkHours(entries: ControllingHoursEntry[]): number {
+  return entries.reduce((sum, entry) => {
+    const isWork = String(entry.entry_type ?? "work") === "work";
+    const status = String(entry.approval_status ?? "approved");
+    if (!isWork || status !== "pending") return sum;
+    return sum + (Number(entry.hours ?? 0) || 0);
+  }, 0);
+}
