@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLohnvorbereitung } from "./lohnvorbereitung";
+import { allocateSupplementsByProject, buildLohnvorbereitung } from "./lohnvorbereitung";
 
 const employee = {
   id: "e1",
@@ -104,5 +104,80 @@ describe("Lohnvorbereitung financial rules", () => {
     );
     expect(rows[0]?.urlaubstage).toBe(1);
     expect(rows[0]?.kranktage).toBe(1);
+  });
+});
+
+
+describe("project supplement allocation", () => {
+  it("allocates employee supplements by approved project hours", () => {
+    const entries = [
+      {
+        employee_id: "e1",
+        project_id: "p1",
+        work_date: "2026-09-27",
+        hours: 2,
+        hourly_rate: 15,
+        approval_status: "approved",
+      },
+      {
+        employee_id: "e1",
+        project_id: "p2",
+        work_date: "2026-09-27",
+        hours: 1,
+        hourly_rate: 15,
+        approval_status: "approved",
+      },
+    ];
+    const allocated = allocateSupplementsByProject(entries, [employee], wageTypes);
+    expect(allocated).toEqual([
+      { projectId: "p1", supplements: 24 },
+      { projectId: "p2", supplements: 12 },
+    ]);
+  });
+
+  it("leaves the unassigned share unallocated", () => {
+    const entries = [
+      {
+        employee_id: "e1",
+        project_id: "p1",
+        work_date: "2026-09-27",
+        hours: 2,
+        hourly_rate: 15,
+        approval_status: "approved",
+      },
+      {
+        employee_id: "e1",
+        project_id: null,
+        work_date: "2026-09-27",
+        hours: 2,
+        hourly_rate: 15,
+        approval_status: "approved",
+      },
+    ];
+    const allocated = allocateSupplementsByProject(entries, [employee], wageTypes);
+    expect(allocated).toEqual([{ projectId: "p1", supplements: 24 }]);
+  });
+
+  it("ignores pending project hours in the allocation", () => {
+    const entries = [
+      {
+        employee_id: "e1",
+        project_id: "p1",
+        work_date: "2026-09-27",
+        hours: 2,
+        hourly_rate: 15,
+        approval_status: "approved",
+      },
+      {
+        employee_id: "e1",
+        project_id: "p2",
+        work_date: "2026-09-27",
+        hours: 2,
+        hourly_rate: 15,
+        approval_status: "pending",
+      },
+    ];
+    const allocated = allocateSupplementsByProject(entries, [employee], wageTypes);
+    expect(allocated).toEqual([{ projectId: "p1", supplements: 24 }]);
   });
 });
