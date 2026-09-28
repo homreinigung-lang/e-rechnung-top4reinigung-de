@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { formatDate, today } from "@/lib/format";
 import { isDue, runRecurring } from "@/lib/recurring";
+import { recurringAnchorDay } from "@/lib/recurring-date";
 import { Play, Plus, Repeat, Trash2 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 
@@ -88,6 +89,7 @@ function RecurringPage() {
         title: title.trim() || `Serie ${template?.number ?? ""}`.trim(),
         interval_months: Number(interval),
         next_run: nextRun,
+        anchor_day: recurringAnchorDay(nextRun),
         template_document_id: templateId,
         customer_id: template?.customer_id ?? null,
         active: true,
@@ -232,7 +234,7 @@ function RecurringPage() {
                     <div className="text-sm text-muted-foreground">
                       {INTERVALS.find((i) => i.value === String(r.interval_months))?.label ??
                         `Alle ${r.interval_months} Monate`}{" "}
-                      · Nächste Ausführung:{" "}
+                      · Ankertag: {r.anchor_day}. · Nächste Ausführung:{" "}
                       <span className={due ? "font-medium text-destructive" : ""}>
                         {formatDate(r.next_run)}
                         {due ? " (fällig)" : ""}
