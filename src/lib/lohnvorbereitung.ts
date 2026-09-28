@@ -324,3 +324,67 @@ export function allocateSupplementsByProject(
     supplements: round(supplements),
   }));
 }
+
+
+export type PayrollReadinessIssue = {
+  code: "pending_entries" | "missing_personnel_number" | "missing_hourly_rate";
+  count: number;
+  employeeIds: string[];
+};
+
+export function payrollReadinessIssues(
+  entries: LohnEntry[],
+  employees: LohnEmployee[],
+): PayrollReadinessIssue[] {
+  const employeeById = new Map(employees.map((employee) => [employee.id, employee] as const));
+  const pendingEmployeeIds = new Set<string>();
+  const missingPersonnel = new Set<string>();
+  const missingRate = new Set<string>();
+
+  for (const entry of entries) {
+    const employeeId = String(entry.employee_id ?? "");
+    if (!employeeId) continue;
+    const employee = employeeById.get(employeeId);
+
+    if (String(entry.approval_status ?? "approved") === "pending") {
+      pendingEmployeeIds.add(employeeId);
+    }
+
+    if (!String(employee?.personnel_number ?? "").trim()) {
+      missingPersonnel.add(employeeId);
+    }
+
+    if (
+      String(entry.approval_status ?? "approved") === "approved" &&
+      !absenceKind(entry) &&
+      n(entry.hours) > 0 &&
+      (n(entry.hourly_rate) || n(employee?.hourly_rate)) <= 0
+    ) {
+      missingRate.add(employeeId);
+    }
+  }
+
+  const issues: PayrollReadinessIssue[] = [];
+  if (pendingEmployeeIds.size) {
+    issues.push({
+      code: "pending_entries",
+      count: pendingEmployeeIds.size,
+      employeeIds: [...pendingEmployeeIds],
+    });
+  }
+  if (missingPersonnel.size) {
+    issues.push({
+      code: "missing_personnel_number",
+      count: missingPersonnel.size,
+      employeeIds: [...missingPersonnel],
+    });
+  }
+  if (missingRate.size) {
+    issues.push({
+      code: "missing_hourly_rate",
+      count: missingRate.size,
+      employeeIds: [...missingRate],
+    });
+  }
+  return issues;
+}
