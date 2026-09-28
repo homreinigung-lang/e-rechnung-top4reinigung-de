@@ -31,7 +31,7 @@ import {
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
 import { TableSummary } from "@/components/TableSummary";
-import { buildLohnvorbereitung, lohnvorbereitungCsvRows } from "@/lib/lohnvorbereitung";
+import { buildLohnvorbereitung, lohnvorbereitungCsvRows, payrollReadinessIssues } from "@/lib/lohnvorbereitung";
 import {
   buildCsvBlob,
   filterRowsByDateRange,
@@ -444,8 +444,7 @@ function AccountantPortal() {
         ]),
     ).values(),
   ];
-  const payrollPrepared = buildLohnvorbereitung(
-    timeEntries.map((t) => ({
+  const payrollInputEntries = timeEntries.map((t) => ({
       employee_id: String(t["employee_id"] ?? ""),
       employee_name: String(t["employee_name"] ?? ""),
       work_date: String(t["work_date"] ?? ""),
@@ -458,7 +457,9 @@ function AccountantPortal() {
       start_time: String(t["start_time"] ?? ""),
       end_time: String(t["end_time"] ?? ""),
       break_minutes: Number(t["break_minutes"] ?? 0),
-    })),
+    }));
+  const payrollPrepared = buildLohnvorbereitung(
+    payrollInputEntries,
     payrollEmployees,
     wageTypes.map((w) => ({
       kind: String(w["kind"] ?? ""),
@@ -475,6 +476,7 @@ function AccountantPortal() {
       .filter((h) => Boolean(h.holiday_date)),
   );
   const payrollRows: Table[] = lohnvorbereitungCsvRows(payrollPrepared);
+  const payrollReadiness = payrollReadinessIssues(payrollInputEntries, payrollEmployees);
   const hoursTotal = payrollPrepared.reduce(
     (sum, row) => sum + row.normalstunden + row.sonntagstunden,
     0,
@@ -619,6 +621,34 @@ function AccountantPortal() {
                 disabled={datevSettings.isPending}>DATEV-Einstellungen erneut laden</Button>
             )}
           </section>
+          <section
+            className={
+              payrollReadiness.length > 0
+                ? "no-print rounded-lg border border-amber-500/40 bg-amber-500/10 p-4"
+                : "no-print rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4"
+            }
+          >
+            <h2 className="font-display text-sm font-semibold">Datenqualität Lohnvorbereitung</h2>
+            {payrollReadiness.length === 0 ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Keine offenen Freigaben oder fehlenden Personal-/Lohndaten erkannt.
+              </p>
+            ) : (
+              <div className="mt-2 text-sm text-muted-foreground">
+                {payrollReadiness.map((issue) => (
+                  <div key={issue.code}>
+                    {issue.code === "pending_entries" &&
+                      `${issue.count} Mitarbeiter mit noch nicht freigegebenen Zeiteinträgen.`}
+                    {issue.code === "missing_personnel_number" &&
+                      `${issue.count} Mitarbeiter ohne Personal-Nr.`}
+                    {issue.code === "missing_hourly_rate" &&
+                      `${issue.count} Mitarbeiter mit Arbeitszeit ohne gültigen Stundensatz.`}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           <section className="no-print flex flex-wrap gap-2">
             <Button
               variant="outline"
