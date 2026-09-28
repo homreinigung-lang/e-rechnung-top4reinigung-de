@@ -112,13 +112,13 @@ export function LohnvorbereitungPanel() {
   );
 
   function exportCsv() {
-    const csvRows = lohnvorbereitungCsvRows(rows);
+    const csvRows = lohnvorbereitungCsvRows(rows, { period: month });
     const blob = buildCsvBlob(csvRows, { title: `Lohnvorbereitung ${month}` });
     if (!blob) {
       toast.error("Keine Lohndaten in diesem Monat.");
       return;
     }
-    void saveFile(blob, `Lohnvorbereitung_${month}.csv`);
+    void saveFile(blob, `Lohnvorbereitung_Steuerberater_${month}.csv`);
   }
 
   return (
