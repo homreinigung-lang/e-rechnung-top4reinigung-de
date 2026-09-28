@@ -5,6 +5,7 @@ import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
 import { buildEpcPayload } from "@/lib/epc";
 import { formatDate, formatMoney, formatNumber, taxNoteForTaxMode } from "@/lib/format";
 import { sendVerifiedEmail } from "@/lib/resend-email.server";
+import { nextRecurringDate } from "@/lib/recurring-date";
 
 type Env = {
   SUPABASE_URL?: string;
@@ -30,18 +31,6 @@ function localTodayBerlin(): string {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-}
-
-function addMonths(dateStr: string, months: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const first = new Date(Date.UTC(y!, m! - 1 + months, 1));
-  const lastDay = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
-  const day = Math.min(d!, lastDay);
-  return [
-    first.getUTCFullYear(),
-    String(first.getUTCMonth() + 1).padStart(2, "0"),
-    String(day).padStart(2, "0"),
-  ].join("-");
 }
 
 function germanMonthYear(dateStr: string): string {
@@ -278,7 +267,7 @@ export async function runAutomaticRecurringInvoices(env: Env) {
 
   const { data: recurring, error: recurringError } = await admin
     .from("recurring_invoices")
-    .select("id,user_id,title,next_run,interval_months,active,template_document_id")
+    .select("id,user_id,title,next_run,interval_months,anchor_day,active,template_document_id")
     .eq("active", true)
     .lte("next_run", today)
     .not("template_document_id", "is", null)
@@ -297,7 +286,12 @@ export async function runAutomaticRecurringInvoices(env: Env) {
       const run = (createdRows?.[0] ?? null) as DueRow | null;
       if (!run) continue;
 
-      const nextRun = addMonths(run.scheduled_date, Number(run.interval_months) || 1);
+      const anchorDay = Number(rec.anchor_day) || Number(String(run.scheduled_date).slice(8, 10)) || 1;
+      const nextRun = nextRecurringDate(
+        run.scheduled_date,
+        Number(run.interval_months) || 1,
+        anchorDay,
+      );
 
       if (run.already_sent) {
         const { error: advanceError } = await admin
