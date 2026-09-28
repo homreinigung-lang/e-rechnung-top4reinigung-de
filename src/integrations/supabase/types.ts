@@ -1944,6 +1944,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          anchor_day?: number
           created_at?: string
           customer_id?: string | null
           id?: string
@@ -1956,6 +1957,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          anchor_day?: number
           created_at?: string
           customer_id?: string | null
           id?: string
