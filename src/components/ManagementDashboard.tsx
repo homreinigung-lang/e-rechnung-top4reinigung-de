@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
-import { isApprovedWorkEntry, percentChange, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { isApprovedWorkEntry, pendingWorkHours, percentChange, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -114,6 +114,9 @@ export function ManagementDashboard() {
   const workEntries = timeEntries.filter(isApprovedWorkEntry);
   const currentWorkEntries = workEntries.filter((entry) =>
     String(entry.work_date ?? "").startsWith(month),
+  );
+  const pendingHoursCurrent = pendingWorkHours(
+    timeEntries.filter((entry) => String(entry.work_date ?? "").startsWith(month)),
   );
   const previousWorkEntries = workEntries.filter((entry) =>
     String(entry.work_date ?? "").startsWith(previousMonth),
@@ -254,8 +257,8 @@ export function ManagementDashboard() {
       value: `${formatNumber(totalHours)} Std.`,
       hint:
         portfolioContributionPerHour == null
-          ? `${employees.length} aktive Mitarbeiter`
-          : `DB / Std. ${formatMoney(portfolioContributionPerHour)} · ${employees.length} aktive Mitarbeiter`,
+          ? `${employees.length} aktive Mitarbeiter${pendingHoursCurrent > 0 ? ` · ${formatNumber(pendingHoursCurrent)} Std. offen` : ""}`
+          : `DB / Std. ${formatMoney(portfolioContributionPerHour)} · ${employees.length} aktive Mitarbeiter${pendingHoursCurrent > 0 ? ` · ${formatNumber(pendingHoursCurrent)} Std. offen` : ""}`,
       icon: Clock3,
     },
     {
@@ -298,6 +301,18 @@ export function ManagementDashboard() {
           </div>
         ))}
       </div>
+
+      {pendingHoursCurrent > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="size-4" />
+            {formatNumber(pendingHoursCurrent)} Std. warten auf Freigabe
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Diese Stunden sind noch nicht in Ist-Stunden, Lohnkosten und Deckungsbeitrag enthalten.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="surface p-5 lg:col-span-2">
