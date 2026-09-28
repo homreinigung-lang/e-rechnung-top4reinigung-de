@@ -22,6 +22,7 @@ import {
   runRecurringExpense,
 } from "@/lib/recurring-expenses";
 import { Play, Plus, Repeat } from "lucide-react";
+import { recurringAnchorDay } from "@/lib/recurring-date";
 
 const INTERVALS = [
   { value: "1", label: "Monatlich" },
@@ -123,6 +124,7 @@ export function WiederkehrendeAusgaben({ categories }: { categories: string[] })
         notes: form.notes,
         interval_months: Number(form.interval_months),
         next_run: form.next_run || today(),
+        anchor_day: recurringAnchorDay(form.next_run || today()),
         active: true,
       });
       if (error) throw error;
@@ -288,7 +290,7 @@ export function WiederkehrendeAusgaben({ categories }: { categories: string[] })
                     <div className="text-sm text-muted-foreground">
                       {INTERVALS.find((i) => i.value === String(r.interval_months))?.label ??
                         `Alle ${r.interval_months} Monate`}{" "}
-                      · {formatMoney(Number(r.gross_amount))} · Nächste Buchung:{" "}
+                      · {formatMoney(Number(r.gross_amount))} · Ankertag: {r.anchor_day}. · Nächste Buchung:{" "}
                       <span className={due ? "font-medium text-destructive" : ""}>
                         {formatDate(r.next_run)}
                         {due ? " (fällig)" : ""}
