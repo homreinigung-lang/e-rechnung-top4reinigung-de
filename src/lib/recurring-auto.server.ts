@@ -2,6 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
+import { buildEpcPayload } from "@/lib/epc";
 import { formatDate, formatMoney, formatNumber, taxNoteForTaxMode } from "@/lib/format";
 import { sendVerifiedEmail } from "@/lib/resend-email.server";
 
@@ -71,10 +72,56 @@ function asText(v: unknown): string {
   return String(v ?? "");
 }
 
+async function loadCompanyLogo(
+  admin: ReturnType<typeof createClient>,
+  logoPathOrUrl: string,
+): Promise<PdfDocData["logo"]> {
+  const value = logoPathOrUrl.trim();
+  if (!value) return null;
+
+  try {
+    let bytes: Uint8Array;
+    let mime = "";
+
+    if (/^https?:/i.test(value)) {
+      const response = await fetch(value);
+      if (!response.ok) return null;
+      mime = response.headers.get("content-type") ?? "";
+      bytes = new Uint8Array(await response.arrayBuffer());
+    } else if (/^data:/i.test(value)) {
+      const match = value.match(/^data:([^;,]+)?(;base64)?,(.*)$/s);
+      if (!match) return null;
+      mime = match[1] ?? "";
+      const encoded = match[3] ?? "";
+      if (match[2]) {
+        const binary = atob(encoded);
+        bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      } else {
+        bytes = new TextEncoder().encode(decodeURIComponent(encoded));
+      }
+    } else {
+      const { data, error } = await admin.storage.from("firmen-dateien").download(value);
+      if (error || !data) return null;
+      mime = data.type ?? "";
+      bytes = new Uint8Array(await data.arrayBuffer());
+    }
+
+    if (bytes.length < 2) return null;
+    const isJpg =
+      /jpe?g/i.test(mime) ||
+      (bytes[0] === 0xff && bytes[1] === 0xd8);
+    return { bytes, type: isJpg ? "jpg" : "png" };
+  } catch (error) {
+    console.warn("Firmenlogo konnte für die automatische Rechnung nicht geladen werden:", error);
+    return null;
+  }
+}
+
 function makePdfData(
   doc: Record<string, unknown>,
   items: Array<Record<string, unknown>>,
   settings: Record<string, unknown>,
+  logo: PdfDocData["logo"],
 ): PdfDocData {
   const companyName = asText(settings["company_name"]) || "Unternehmen";
   const net = Number(doc["net_total"] ?? 0);
@@ -90,7 +137,7 @@ function makePdfData(
   return {
     isInvoice: true,
     title: asText(doc["title"]).trim() || `Rechnung ${number}`,
-    logo: null,
+    logo,
     logoInitials: companyName
       .split(/\s+/)
       .slice(0, 2)
@@ -154,7 +201,13 @@ function makePdfData(
       `Zahlüberweisung in ${Number(settings["payment_terms_days"] ?? 14)} Tagen`,
       "Vielen Dank für die gute Zusammenarbeit.",
     ],
-    qrPayload: null,
+    qrPayload: buildEpcPayload({
+      name: companyName,
+      iban: asText(settings["iban"]),
+      bic: asText(settings["bic"]),
+      amount: gross,
+      reference: `Rechnung ${number}`,
+    }),
     footer: [
       {
         heading: companyName,
@@ -293,8 +346,14 @@ export async function runAutomaticRecurringInvoices(env: Env) {
           throw new Error("Archiv-PDF-Prüfsumme stimmt nicht.");
         }
       } else {
+        const companyLogo = await loadCompanyLogo(admin, asText(settings.logo_url));
         pdfBytes = await buildDocumentPdfBytes(
-          makePdfData(doc as unknown as Record<string, unknown>, (items ?? []) as unknown as Array<Record<string, unknown>>, settings as unknown as Record<string, unknown>),
+          makePdfData(
+            doc as unknown as Record<string, unknown>,
+            (items ?? []) as unknown as Array<Record<string, unknown>>,
+            settings as unknown as Record<string, unknown>,
+            companyLogo,
+          ),
         );
         pdfHash = await sha256Hex(pdfBytes);
         pdfPath = `${run.owner_user_id}/gobd/${run.document_number.replace(/[^\w.-]+/g, "_")}.pdf`;
