@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
-import { revenueForMonth } from "@/lib/object-controlling";
+import { revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -145,19 +145,22 @@ export function ManagementDashboard() {
     const otherCosts = expenses
       .filter((expense) => expense.project_id === project.id)
       .reduce((sum, expense) => sum + Number(expense.net_amount ?? 0), 0);
-    const costs = wageCosts + otherCosts;
-    const contribution = revenue - costs;
-    const margin = revenue > 0 ? (contribution / revenue) * 100 : null;
+    const financials = summarizeObjectFinancials({
+      revenue,
+      wageCosts,
+      otherCosts,
+      hours,
+    });
 
     return {
       id: project.id,
       name: project.name || "Ohne Namen",
       customer: project.customer_name || "",
       city: project.city || "",
-      revenue,
-      costs,
-      contribution,
-      margin,
+      revenue: financials.revenue,
+      costs: financials.costs,
+      contribution: financials.contribution,
+      margin: financials.margin,
       hours,
     };
   });
