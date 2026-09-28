@@ -91,6 +91,7 @@ describe("object controlling financial summary", () => {
     expect(summary.contribution).toBe(500);
     expect(summary.margin).toBe(50);
     expect(summary.contributionPerHour).toBe(20);
+    expect(summary.costPerHour).toBe(20);
   });
 
   it("shows a negative contribution and margin when costs exceed revenue", () => {
@@ -105,6 +106,7 @@ describe("object controlling financial summary", () => {
     expect(summary.contribution).toBe(-100);
     expect(summary.margin).toBeCloseTo(-16.6667, 4);
     expect(summary.contributionPerHour).toBe(-5);
+    expect(summary.costPerHour).toBe(35);
   });
 
   it("returns no margin when there is no revenue basis", () => {
@@ -119,6 +121,7 @@ describe("object controlling financial summary", () => {
     expect(summary.contribution).toBe(-150);
     expect(summary.margin).toBeNull();
     expect(summary.contributionPerHour).toBe(-15);
+    expect(summary.costPerHour).toBe(15);
   });
 
   it("returns no per-hour contribution when there are no worked hours", () => {
@@ -132,6 +135,7 @@ describe("object controlling financial summary", () => {
     expect(summary.contribution).toBe(330);
     expect(summary.margin).toBeCloseTo(94.2857, 4);
     expect(summary.contributionPerHour).toBeNull();
+    expect(summary.costPerHour).toBeNull();
   });
 
   it("rounds monetary inputs and totals to cents before deriving ratios", () => {
@@ -148,6 +152,7 @@ describe("object controlling financial summary", () => {
     expect(summary.costs).toBe(49.68);
     expect(summary.contribution).toBe(50.33);
     expect(summary.contributionPerHour).toBe(25.165);
+    expect(summary.costPerHour).toBe(24.84);
   });
 });
 
