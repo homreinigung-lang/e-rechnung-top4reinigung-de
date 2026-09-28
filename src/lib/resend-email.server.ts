@@ -14,15 +14,17 @@ type SendVerifiedEmailOptions = {
   companyEmail?: string;
   attachments?: Attachment[];
   idempotencyKey?: string;
+  resendApiKey?: string;
+  resendFrom?: string;
 };
 
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 export async function sendVerifiedEmail(options: SendVerifiedEmailOptions) {
-  const resendKey = process.env["RESEND_API_KEY"];
+  const resendKey = options.resendApiKey || process.env["RESEND_API_KEY"];
   if (!resendKey) throw new Error("E-Mail-Versand ist nicht konfiguriert.");
 
-  const baseFrom = process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
+  const baseFrom = options.resendFrom || process.env["RESEND_FROM"] || "GebCalc <info@top4reinigung.de>";
   const baseAddress = baseFrom.match(/<([^>]+)>/)?.[1] ?? baseFrom;
   const senderName = (options.companyName ?? "").replace(/[<>"]/g, "").trim();
   const fromAddress = senderName ? `${senderName} <${baseAddress}>` : baseFrom;
