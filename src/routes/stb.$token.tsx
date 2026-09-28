@@ -475,7 +475,9 @@ function AccountantPortal() {
       }))
       .filter((h) => Boolean(h.holiday_date)),
   );
-  const payrollRows: Table[] = lohnvorbereitungCsvRows(payrollPrepared);
+  const payrollRows: Table[] = lohnvorbereitungCsvRows(payrollPrepared, {
+    period: `${from} bis ${to}`,
+  });
   const payrollReadiness = payrollReadinessIssues(payrollInputEntries, payrollEmployees);
   const hoursTotal = payrollPrepared.reduce(
     (sum, row) => sum + row.normalstunden + row.sonntagstunden,
