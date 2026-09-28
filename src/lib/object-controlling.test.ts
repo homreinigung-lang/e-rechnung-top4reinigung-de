@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isApprovedWorkEntry, pendingWorkHours, percentChange, plannedHoursForMonth, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { isApprovedWorkEntry, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 
 describe("object controlling accuracy", () => {
   it("uses service period month before invoice issue month", () => {
@@ -216,5 +216,20 @@ describe("object controlling pending hours", () => {
         { entry_type: "work", approval_status: null, hours: 3 },
       ]),
     ).toBe(0);
+  });
+});
+
+
+describe("object controlling plan vs actual", () => {
+  it("shows positive deviation when actual hours exceed plan", () => {
+    expect(planIstDeviationPercent(55, 50)).toBe(10);
+  });
+
+  it("shows negative deviation when actual hours stay below plan", () => {
+    expect(planIstDeviationPercent(40, 50)).toBe(-20);
+  });
+
+  it("does not invent a deviation without a plan basis", () => {
+    expect(planIstDeviationPercent(10, 0)).toBeNull();
   });
 });
