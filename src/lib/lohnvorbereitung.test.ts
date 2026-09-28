@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocateSupplementsByProject, buildLohnvorbereitung, payrollReadinessIssues } from "./lohnvorbereitung";
+import { allocateSupplementsByProject, buildLohnvorbereitung, lohnvorbereitungCsvRows, payrollReadinessIssues } from "./lohnvorbereitung";
 
 const employee = {
   id: "e1",
@@ -254,5 +254,35 @@ describe("payroll readiness", () => {
         [{ id: "e1", personnel_number: "001", hourly_rate: 0 }],
       ),
     ).toEqual([]);
+  });
+});
+
+
+describe("payroll accountant export", () => {
+  it("uses accountant-friendly terminology and includes the billing period", () => {
+    const rows = lohnvorbereitungCsvRows(
+      [{
+        employeeId: "e1",
+        mitarbeiter: "Test Mitarbeiter",
+        personalNr: "001",
+        normalstunden: 10,
+        sonntagstunden: 2,
+        nachtstunden: 1,
+        feiertagstunden: 0,
+        ueberstunden: 1.5,
+        urlaubstage: 1,
+        kranktage: 0,
+        sonstigeAbwesenheitstage: 0,
+        grundlohn: 180,
+        zuschlaege: 30,
+        bruttoVorbereitet: 210,
+      }],
+      { period: "2026-09" },
+    );
+
+    expect(rows[0]?.["Abrechnungszeitraum"]).toBe("2026-09");
+    expect(rows[0]?.["Personal-Nr."]).toBe("001");
+    expect(rows[0]?.["Belastungsstunden"]).toBe("1,50");
+    expect("Überstunden" in (rows[0] ?? {})).toBe(false);
   });
 });
