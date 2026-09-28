@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, CalendarRange, Clock, HardHat } from "lucide-react";
+import { BadgeEuro, CalendarDays, CalendarRange, Clock, HardHat } from "lucide-react";
 import { PersonalStammdatenPanel } from "@/components/PersonalStammdatenPanel";
 import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
+import { LohnartenPanel } from "@/components/LohnartenPanel";
 
-type TeamTab = "dienstplan" | "kalender" | "personal" | "zeiten";
+type TeamTab = "dienstplan" | "kalender" | "personal" | "zeiten" | "lohnarten";
 
 type TeamSearch = {
   tab?: TeamTab;
@@ -18,7 +19,7 @@ type TeamSearch = {
 
 export const Route = createFileRoute("/_authenticated/team")({
   validateSearch: (search: Record<string, unknown>): TeamSearch => {
-    const tab = ["dienstplan", "kalender", "personal", "zeiten"].includes(String(search["tab"]))
+    const tab = ["dienstplan", "kalender", "personal", "zeiten", "lohnarten"].includes(String(search["tab"]))
       ? (String(search["tab"]) as TeamSearch["tab"])
       : undefined;
     const stunden = Number(search["stunden"]);
@@ -64,7 +65,7 @@ function ControlCenter() {
     }
     try {
       const saved = localStorage.getItem(TAB_KEY);
-      if (saved && ["dienstplan", "kalender", "personal", "zeiten"].includes(saved)) {
+      if (saved && ["dienstplan", "kalender", "personal", "zeiten", "lohnarten"].includes(saved)) {
         setTab(saved as TeamTab);
       }
     } catch {
@@ -105,6 +106,9 @@ function ControlCenter() {
           <TabsTrigger value="zeiten" className="gap-2">
             <Clock className="size-4" /> Zeiterfassung
           </TabsTrigger>
+          <TabsTrigger value="lohnarten" className="gap-2">
+            <BadgeEuro className="size-4" /> Lohnarten
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dienstplan" className="mt-0">
@@ -128,6 +132,9 @@ function ControlCenter() {
         </TabsContent>
         <TabsContent value="zeiten" className="mt-0">
           <Zeiterfassung />
+        </TabsContent>
+        <TabsContent value="lohnarten" className="mt-0">
+          <LohnartenPanel />
         </TabsContent>
       </Tabs>
     </div>
