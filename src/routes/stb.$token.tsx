@@ -467,7 +467,12 @@ function AccountantPortal() {
       time_from: String(w["time_from"] ?? ""),
       time_to: String(w["time_to"] ?? ""),
     })),
-    holidays.map((h) => String(h["holiday_date"] ?? "")).filter(Boolean),
+    holidays
+      .map((h) => ({
+        holiday_date: String(h["holiday_date"] ?? ""),
+        surcharge_percent: Number(h["surcharge_percent"] ?? 80),
+      }))
+      .filter((h) => Boolean(h.holiday_date)),
   );
   const payrollRows: Table[] = lohnvorbereitungCsvRows(payrollPrepared);
   const hoursTotal = payrollPrepared.reduce(
