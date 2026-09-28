@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download, WalletCards } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,7 @@ import { buildCsvBlob } from "@/lib/table-summary";
 import {
   buildLohnvorbereitung,
   lohnvorbereitungCsvRows,
+  payrollReadinessIssues,
   type LohnEmployee,
   type LohnEntry,
   type LohnartRule,
@@ -91,6 +92,11 @@ export function LohnvorbereitungPanel() {
     [entries, employees, wageTypes, holidays],
   );
 
+  const readinessIssues = useMemo(
+    () => payrollReadinessIssues(entries, employees),
+    [entries, employees],
+  );
+
   const totals = useMemo(
     () =>
       rows.reduce(
@@ -136,6 +142,41 @@ export function LohnvorbereitungPanel() {
             <Download className="size-4" /> CSV für Steuerberater
           </Button>
         </div>
+      </div>
+
+      <div
+        className={
+          readinessIssues.length > 0
+            ? "rounded-lg border border-amber-500/40 bg-amber-500/10 p-4"
+            : "rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4"
+        }
+      >
+        <div className="flex items-center gap-2 font-medium">
+          {readinessIssues.length > 0 ? (
+            <AlertTriangle className="size-4" />
+          ) : (
+            <CheckCircle2 className="size-4" />
+          )}
+          Abrechnungsprüfung
+        </div>
+        {readinessIssues.length === 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Keine offenen Freigaben oder fehlenden Personal-/Lohndaten erkannt.
+          </p>
+        ) : (
+          <div className="mt-2 text-sm text-muted-foreground">
+            {readinessIssues.map((issue) => (
+              <div key={issue.code}>
+                {issue.code === "pending_entries" &&
+                  `${issue.count} Mitarbeiter mit noch nicht freigegebenen Zeiteinträgen.`}
+                {issue.code === "missing_personnel_number" &&
+                  `${issue.count} Mitarbeiter ohne Personal-Nr.`}
+                {issue.code === "missing_hourly_rate" &&
+                  `${issue.count} Mitarbeiter mit Arbeitszeit ohne gültigen Stundensatz.`}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
