@@ -350,6 +350,7 @@ function AccountantPortal() {
   const expenses: Row[] = data?.expenses ?? [];
   const timeEntries: Row[] = data?.timeEntries ?? [];
   const wageTypes: Row[] = data?.wageTypes ?? [];
+  const holidays: Row[] = data?.holidays ?? [];
   const fahrtenbuchEntries: Row[] = data?.fahrtenbuchEntries ?? [];
   const fahrtenbuchVehicles: Row[] = data?.fahrtenbuchVehicles ?? [];
 
@@ -438,6 +439,7 @@ function AccountantPortal() {
             hourly_rate: Number(t["hourly_rate"] ?? 0),
             weekly_hours: Number(t["weekly_hours"] ?? 0),
             contract_type: String(t["contract_type"] ?? ""),
+            contract_start: String(t["contract_start"] ?? ""),
           },
         ]),
     ).values(),
@@ -453,13 +455,19 @@ function AccountantPortal() {
       absence_reason: String(t["absence_reason"] ?? ""),
       approval_status: String(t["approval_status"] ?? "approved"),
       completed_at: String(t["completed_at"] ?? ""),
+      start_time: String(t["start_time"] ?? ""),
+      end_time: String(t["end_time"] ?? ""),
+      break_minutes: Number(t["break_minutes"] ?? 0),
     })),
     payrollEmployees,
     wageTypes.map((w) => ({
       kind: String(w["kind"] ?? ""),
       surcharge_percent: Number(w["surcharge_percent"] ?? 0),
       active: Boolean(w["active"] ?? true),
+      time_from: String(w["time_from"] ?? ""),
+      time_to: String(w["time_to"] ?? ""),
     })),
+    holidays.map((h) => String(h["holiday_date"] ?? "")).filter(Boolean),
   );
   const payrollRows: Table[] = lohnvorbereitungCsvRows(payrollPrepared);
   const hoursTotal = payrollPrepared.reduce(
