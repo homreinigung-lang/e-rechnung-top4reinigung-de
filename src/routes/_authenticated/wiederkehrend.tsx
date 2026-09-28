@@ -145,9 +145,15 @@ function RecurringPage() {
       <div>
         <h1 className="text-3xl font-bold">Wiederkehrende Rechnungen</h1>
         <p className="mt-1 text-muted-foreground">
-          Wartungsverträge und Daueraufträge automatisch in festen Intervallen aus einer
-          Vorlage-Rechnung erzeugen.
+          Aktive Serien werden am Fälligkeitstag automatisch mit neuer Rechnungsnummer und
+          aktuellem Rechnungsdatum erzeugt und per E-Mail an den Kunden gesendet.
         </p>
+      </div>
+
+      <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+        <strong>Automatischer Versand:</strong> Nur Wiederkehrende Rechnungen werden automatisch
+        versendet. Jede Ausführung erhält eine eigene fortlaufende Rechnungsnummer und das für
+        diesen Serienlauf vorgesehene Rechnungsdatum.
       </div>
 
       <div className="surface space-y-4 p-6">
