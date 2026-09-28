@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BadgeEuro, CalendarDays, CalendarRange, Clock, HardHat } from "lucide-react";
+import { BadgeEuro, CalendarDays, CalendarRange, Clock, HardHat, WalletCards } from "lucide-react";
 import { PersonalStammdatenPanel } from "@/components/PersonalStammdatenPanel";
 import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
 import { LohnartenPanel } from "@/components/LohnartenPanel";
+import { LohnvorbereitungPanel } from "@/components/LohnvorbereitungPanel";
 
-type TeamTab = "dienstplan" | "kalender" | "personal" | "zeiten" | "lohnarten";
+type TeamTab = "dienstplan" | "kalender" | "personal" | "zeiten" | "lohnarten" | "lohnvorbereitung";
 
 type TeamSearch = {
   tab?: TeamTab;
@@ -19,7 +20,7 @@ type TeamSearch = {
 
 export const Route = createFileRoute("/_authenticated/team")({
   validateSearch: (search: Record<string, unknown>): TeamSearch => {
-    const tab = ["dienstplan", "kalender", "personal", "zeiten", "lohnarten"].includes(String(search["tab"]))
+    const tab = ["dienstplan", "kalender", "personal", "zeiten", "lohnarten", "lohnvorbereitung"].includes(String(search["tab"]))
       ? (String(search["tab"]) as TeamSearch["tab"])
       : undefined;
     const stunden = Number(search["stunden"]);
@@ -65,7 +66,7 @@ function ControlCenter() {
     }
     try {
       const saved = localStorage.getItem(TAB_KEY);
-      if (saved && ["dienstplan", "kalender", "personal", "zeiten", "lohnarten"].includes(saved)) {
+      if (saved && ["dienstplan", "kalender", "personal", "zeiten", "lohnarten", "lohnvorbereitung"].includes(saved)) {
         setTab(saved as TeamTab);
       }
     } catch {
@@ -109,6 +110,9 @@ function ControlCenter() {
           <TabsTrigger value="lohnarten" className="gap-2">
             <BadgeEuro className="size-4" /> Lohnarten
           </TabsTrigger>
+          <TabsTrigger value="lohnvorbereitung" className="gap-2">
+            <WalletCards className="size-4" /> Lohnvorbereitung
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dienstplan" className="mt-0">
@@ -135,6 +139,9 @@ function ControlCenter() {
         </TabsContent>
         <TabsContent value="lohnarten" className="mt-0">
           <LohnartenPanel />
+        </TabsContent>
+        <TabsContent value="lohnvorbereitung" className="mt-0">
+          <LohnvorbereitungPanel />
         </TabsContent>
       </Tabs>
     </div>
