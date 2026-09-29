@@ -2,9 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import JSZip from "jszip";
 import {
-  getAccountantMonthReceipts,
+  getAccountantReceiptExport,
   getAccountantReceiptUrl,
   getAccountantReport,
   getAccountantDatevSettings,
@@ -30,6 +29,7 @@ import {
 
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
+import { buildExpenseReceiptZip } from "@/lib/expense-receipt-export";
 import { TableSummary } from "@/components/TableSummary";
 import { buildLohnvorbereitung, lohnvorbereitungCsvRows, payrollReadinessIssues } from "@/lib/lohnvorbereitung";
 import {
@@ -301,22 +301,30 @@ function AccountantPortal() {
   });
 
   const [zipMonth, setZipMonth] = useState(new Date().toISOString().slice(0, 7));
-  const fetchMonthReceipts = useServerFn(getAccountantMonthReceipts);
+  const fetchReceiptExport = useServerFn(getAccountantReceiptExport);
   const zipExport = useMutation({
     mutationFn: async () => {
-      const files = await fetchMonthReceipts({ data: { token, code, month: zipMonth } });
-      if (files.length === 0) throw new Error("Keine Belege in diesem Monat.");
-      const zip = new JSZip();
-      for (const f of files) {
-        const res = await fetch(f.url);
-        if (!res.ok) continue;
-        zip.file(f.name, await res.blob());
+      const expensesForExport = await fetchReceiptExport({ data: { token, code, from, to } });
+      if (expensesForExport.length === 0) {
+        throw new Error("Keine Ausgaben im gewählten Zeitraum.");
       }
-      const blob = await zip.generateAsync({ type: "blob" });
-      await saveFile(blob, `Belege_${zipMonth}.zip`);
-      return files.length;
+      const result = await buildExpenseReceiptZip({
+        expenses: expensesForExport,
+        loadReceipt: async (row) => {
+          const url = String(row.receipt_url ?? "");
+          if (!url) throw new Error("Beleg fehlt");
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Beleg konnte nicht geladen werden.");
+          return await res.blob();
+        },
+      });
+      await saveFile(result.blob, `Ausgabenbelege_${from}_${to}.zip`);
+      return result;
     },
-    onSuccess: (count) => toast.success(`${count} Belege als ZIP heruntergeladen`),
+    onSuccess: (result) =>
+      toast.success(
+        `${result.receiptCount} Belege geladen · ${result.expenseCount} Ausgaben in der Übersicht`,
+      ),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -744,7 +752,7 @@ function AccountantPortal() {
               <FileSpreadsheet className="size-4" /> Excel-Export
             </Button>
 
-            <div className="flex items-center gap-2 rounded-md border px-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border px-2 py-1">
               <Label htmlFor="zipMonth" className="text-xs text-muted-foreground">
                 Belege-Monat
               </Label>
@@ -756,9 +764,22 @@ function AccountantPortal() {
                 className="h-8 w-[150px] border-0 shadow-none focus-visible:ring-0"
               />
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                disabled={zipExport.isPending}
+                onClick={() => {
+                  if (!/^\\d{4}-\\d{2}$/.test(zipMonth)) return;
+                  const [y, m] = zipMonth.split("-").map(Number);
+                  setFrom(`${zipMonth}-01`);
+                  setTo(new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10));
+                }}
+              >
+                Monat verwenden
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={zipExport.isPending || !code || !from || !to}
                 onClick={() => zipExport.mutate()}
               >
                 {zipExport.isPending ? (
@@ -766,7 +787,7 @@ function AccountantPortal() {
                 ) : (
                   <FileArchive className="size-4" />
                 )}
-                ZIP laden
+                Alle Belege herunterladen
               </Button>
             </div>
             <Button variant="outline" onClick={() => window.print()}>
