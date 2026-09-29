@@ -479,58 +479,121 @@ export const getAccountantReceiptUrl = createServerFn({ method: "POST" })
     return signed.signedUrl;
   });
 
-/** Liefert alle Belege eines Monats als Liste signierter Download-Adressen (ZIP-Export). */
-export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
-  .inputValidator((data: { token: string; code: string; month: string }) => data)
-  .handler(async ({ data }): Promise<Array<{ name: string; url: string }>> => {
+export type AccountantReceiptExportRow = {
+  id: string;
+  expense_date: string;
+  supplier: string;
+  category: string;
+  document_number: string;
+  net_amount: number;
+  vat_amount: number;
+  gross_amount: number;
+  payment_method: string;
+  receipt_url: string;
+};
+
+/** Liefert alle Ausgaben eines Zeitraums; Belege werden ausschließlich als kurzlebige signierte URLs ausgegeben. */
+export const getAccountantReceiptExport = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; code: string; from: string; to: string }) => data)
+  .handler(async ({ data }): Promise<AccountantReceiptExportRow[]> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { verifyAccountantAccess } = await import("./accountant-access.server");
 
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(data.from) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(data.to) ||
+      data.from > data.to
+    ) {
+      throw new Error("Ungültiger Belegzeitraum.");
+    }
+
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
-
-    if (!/^\d{4}-\d{2}$/.test(data.month)) throw new Error("Ungültiger Monat.");
-    const start = `${data.month}-01`;
-    const [y, m] = data.month.split("-").map(Number);
-    const endDate = new Date(Date.UTC(y!, m!, 1));
-    const end = endDate.toISOString().slice(0, 10);
-
-    const { data: expenses } = await supabaseAdmin
+    const { data: expenses, error } = await supabaseAdmin
       .from("expenses")
-      .select("id, expense_date, supplier, category, document_number, receipt_url")
+      .select("*")
       .eq("user_id", access.user_id)
-      .gte("expense_date", start)
-      .lt("expense_date", end)
+      .is("deleted_at", null)
+      .gte("expense_date", data.from)
+      .lte("expense_date", data.to)
       .order("expense_date", { ascending: true });
+    if (error) throw new Error("Ausgaben konnten nicht geladen werden.");
+
+    const out: AccountantReceiptExportRow[] = [];
+    for (const raw of expenses ?? []) {
+      const e = raw as Record<string, unknown>;
+      const path = String(e["receipt_url"] ?? "");
+      let receiptUrl = "";
+      if (path) {
+        if (/^https?:/.test(path)) {
+          receiptUrl = path;
+        } else {
+          const { data: signed, error: signedError } = await supabaseAdmin.storage
+            .from("firmen-dateien")
+            .createSignedUrl(path, 60 * 30);
+          if (!signedError && signed?.signedUrl) receiptUrl = signed.signedUrl;
+        }
+      }
+
+      out.push({
+        id: String(e["id"] ?? ""),
+        expense_date: String(e["expense_date"] ?? ""),
+        supplier: String(e["supplier"] ?? ""),
+        category: String(e["category"] ?? ""),
+        document_number: String(e["document_number"] ?? ""),
+        net_amount: Number(e["net_amount"] ?? 0),
+        vat_amount: Number(e["vat_amount"] ?? 0),
+        gross_amount: Number(e["gross_amount"] ?? 0),
+        payment_method: String(e["payment_method"] ?? ""),
+        receipt_url: receiptUrl,
+      });
+    }
+    return out;
+  });
+
+/** Rückwärtskompatibel: Monatsabruf für ältere Clients. */
+export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; code: string; month: string }) => data)
+  .handler(async ({ data }): Promise<Array<{ name: string; url: string }>> => {
+    if (!/^\d{4}-\d{2}$/.test(data.month)) throw new Error("Ungültiger Monat.");
+    const [year, month] = data.month.split("-").map(Number);
+    const from = `${data.month}-01`;
+    const to = new Date(Date.UTC(year!, month!, 0)).toISOString().slice(0, 10);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { verifyAccountantAccess } = await import("./accountant-access.server");
+    const access = await verifyAccountantAccess(data.token, data.code ?? "");
+    const { data: expenses, error } = await supabaseAdmin
+      .from("expenses")
+      .select("expense_date,supplier,category,receipt_url")
+      .eq("user_id", access.user_id)
+      .is("deleted_at", null)
+      .gte("expense_date", from)
+      .lte("expense_date", to)
+      .order("expense_date", { ascending: true });
+    if (error) throw new Error("Ausgaben konnten nicht geladen werden.");
 
     const out: Array<{ name: string; url: string }> = [];
     let index = 1;
     for (const e of expenses ?? []) {
-      const path = e.receipt_url ?? "";
-      if (!path) continue;
-      const ext = path.split(".").pop()?.toLowerCase() || "pdf";
+      const storedPath = e.receipt_url ?? "";
+      if (!storedPath) continue;
+      const ext = String(storedPath).split("?")[0]?.split(".").pop()?.toLowerCase() || "pdf";
       const label = [
         String(index).padStart(2, "0"),
         e.expense_date,
-        (e.supplier || "Beleg")
-          .replace(/[^\w\s-]+/g, "")
-          .trim()
-          .replace(/\s+/g, "-"),
-        (e.category || "").replace(/[^\w-]+/g, ""),
-      ]
-        .filter(Boolean)
-        .join("_");
-
-      if (/^https?:/.test(path)) {
-        out.push({ name: `${label}.${ext}`, url: path });
+        String(e.supplier || "Beleg").replace(/[^\w\s-]+/g, "").trim().replace(/\s+/g, "-"),
+        String(e.category || "").replace(/[^\w-]+/g, ""),
+      ].filter(Boolean).join("_");
+      if (/^https?:/.test(storedPath)) {
+        out.push({ name: `${label}.${ext}`, url: storedPath });
       } else {
         const { data: signed } = await supabaseAdmin.storage
           .from("firmen-dateien")
-          .createSignedUrl(path, 60 * 30);
+          .createSignedUrl(storedPath, 60 * 30);
         if (signed?.signedUrl) out.push({ name: `${label}.${ext}`, url: signed.signedUrl });
       }
       index += 1;
     }
-
     return out;
   });
 
