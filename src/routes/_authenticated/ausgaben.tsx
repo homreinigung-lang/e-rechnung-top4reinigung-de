@@ -22,14 +22,16 @@ import { formatDate, formatMoney, today } from "@/lib/format";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ReceiptScannerButton } from "@/components/ReceiptScannerButton";
 import { receiptFileToPdf } from "@/lib/receipt-pdf";
-import { downloadStoredFile, uploadUserFile } from "@/lib/storage";
+import { downloadStoredFile, fetchStoredBlob, uploadUserFile } from "@/lib/storage";
 import { DateiVorschau } from "@/components/DateiVorschau";
 import { WiederkehrendeAusgaben } from "@/components/WiederkehrendeAusgaben";
 import { scanReceipt } from "@/lib/receipt-scan.functions";
 import { receiptFormValues } from "@/lib/receipt-form";
 import { findDuplicateExpense } from "@/lib/expense-duplicate";
+import { buildExpenseReceiptZip } from "@/lib/expense-receipt-export";
+import { saveFile } from "@/lib/download";
 import { readIncomingEInvoice, type IncomingEInvoice } from "@/lib/e-invoice-import";
-import { Download, Eye, FileCode2, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Download, Eye, FileArchive, FileCode2, Loader2, Paperclip, Plus, Sparkles, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ausgaben")({
   head: () => ({
@@ -102,6 +104,13 @@ function Ausgaben() {
   const [receiptToRetry, setReceiptToRetry] = useState<File | null>(null);
   const [scanError, setScanError] = useState("");
   const [duplicateExpense, setDuplicateExpense] = useState<ExpenseRowData | null>(null);
+  const [exportMonth, setExportMonth] = useState(() => today().slice(0, 7));
+  const [exportYear, setExportYear] = useState(() => Number(today().slice(0, 4)));
+  const [exportFrom, setExportFrom] = useState(() => `${today().slice(0, 7)}-01`);
+  const [exportTo, setExportTo] = useState(() => {
+    const [y, m] = today().slice(0, 7).split("-").map(Number);
+    return new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10);
+  });
 
   /** Eingehende E-Rechnung (XRechnung/ZUGFeRD) einlesen und die Felder vorbelegen. */
   async function handleEInvoice(path: string, file: File) {
@@ -267,6 +276,38 @@ function Ausgaben() {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const exportRows = rows.filter(
+    (row) =>
+      String(row.expense_date ?? "") >= exportFrom &&
+      String(row.expense_date ?? "") <= exportTo,
+  );
+
+  const receiptExport = useMutation({
+    mutationFn: async () => {
+      if (!exportFrom || !exportTo || exportFrom > exportTo) {
+        throw new Error("Bitte einen gültigen Zeitraum auswählen.");
+      }
+      if (exportRows.length === 0) {
+        throw new Error("Keine Ausgaben im gewählten Zeitraum.");
+      }
+      const result = await buildExpenseReceiptZip({
+        expenses: exportRows,
+        loadReceipt: async (row) => {
+          const path = String(row.receipt_url ?? "");
+          if (!path) throw new Error("Beleg fehlt");
+          return fetchStoredBlob(path);
+        },
+      });
+      await saveFile(result.blob, `Ausgabenbelege_${exportFrom}_${exportTo}.zip`);
+      return result;
+    },
+    onSuccess: (result) =>
+      toast.success(
+        `${result.receiptCount} Belege geladen · ${result.expenseCount} Ausgaben in der Übersicht`,
+      ),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -502,6 +543,103 @@ function Ausgaben() {
             <div className="mt-2 font-display text-2xl font-semibold">{formatMoney(s.value)}</div>
           </div>
         ))}
+      </div>
+
+      <div className="surface space-y-4 p-5">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Ausgabenbelege herunterladen</h2>
+          <p className="text-sm text-muted-foreground">
+            Alle Belege werden einzeln in einer ZIP-Datei gespeichert. Zusätzlich enthält die ZIP eine Ausgabenübersicht.xlsx.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1">
+            <Label htmlFor="export-month">Monat</Label>
+            <div className="flex gap-2">
+              <Input
+                id="export-month"
+                type="month"
+                value={exportMonth}
+                onChange={(e) => setExportMonth(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (!/^\\d{4}-\\d{2}$/.test(exportMonth)) return;
+                  const [y, m] = exportMonth.split("-").map(Number);
+                  setExportFrom(`${exportMonth}-01`);
+                  setExportTo(new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10));
+                }}
+              >
+                Übernehmen
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="export-year">Jahr</Label>
+            <div className="flex gap-2">
+              <Input
+                id="export-year"
+                type="number"
+                min="2000"
+                max="2100"
+                value={exportYear}
+                onChange={(e) => setExportYear(Number(e.target.value))}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (!Number.isInteger(exportYear) || exportYear < 2000 || exportYear > 2100) return;
+                  setExportFrom(`${exportYear}-01-01`);
+                  setExportTo(`${exportYear}-12-31`);
+                }}
+              >
+                Übernehmen
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="export-from">Von</Label>
+            <Input
+              id="export-from"
+              type="date"
+              value={exportFrom}
+              max={exportTo || undefined}
+              onChange={(e) => setExportFrom(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="export-to">Bis</Label>
+            <Input
+              id="export-to"
+              type="date"
+              value={exportTo}
+              min={exportFrom || undefined}
+              onChange={(e) => setExportTo(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            onClick={() => receiptExport.mutate()}
+            disabled={receiptExport.isPending || exportRows.length === 0}
+          >
+            {receiptExport.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <FileArchive className="size-4" />
+            )}
+            Alle Belege herunterladen
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {exportRows.length === 0
+              ? "Keine Ausgaben im gewählten Zeitraum."
+              : `${exportRows.length} Ausgaben ausgewählt · ${exportRows.filter((row) => Boolean(row.receipt_url)).length} mit Beleg`}
+          </span>
+        </div>
       </div>
 
       <div className="surface overflow-hidden">
