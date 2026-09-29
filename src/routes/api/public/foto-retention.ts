@@ -3,18 +3,16 @@ import { createFileRoute } from "@tanstack/react-router";
 /**
  * Automatische Aufbewahrungsfrist für Arbeitsnachweis-Fotos.
  *
- * Wird täglich per Zeitplan aufgerufen. Fotos, die älter als die in den
- * Firmeneinstellungen hinterlegte Frist sind, werden aus dem privaten Speicher
- * und aus dem Arbeitszeit-Eintrag entfernt. Rechnungen, Angebote, Vorlagen und
- * das GoBD-Archiv bleiben davon vollständig unberührt.
- *
  * Zugriffsschutz: ausschließlich über den geheimen Header `x-cron-secret`.
- * Gültig sind die Umgebungsvariable CRON_SECRET (manueller Aufruf) sowie der
- * in `public.cron_tokens` hinterlegte Auftragsschlüssel (Zeitplan). Der
- * öffentliche Browser-Schlüssel wird bewusst NICHT mehr akzeptiert.
+ * Der Server vergleicht nur SHA-256-Werte; es gibt keinen Datenbank-Fallback
+ * mit einem Klartext-Token.
  */
 
-/** Zeitkonstanter Vergleich – verhindert Rückschlüsse über die Antwortzeit. */
+const RATE_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT = 10;
+const attemptsByIp = new Map<string, number[]>();
+
+/** Zeitkonstanter Vergleich gleich langer Zeichenketten. */
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length || a.length === 0) return false;
   let diff = 0;
@@ -22,29 +20,69 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Best-effort Edge-Drosselung pro Cloudflare-IP.
+ * Sie begrenzt Brute-Force-Versuche innerhalb einer Worker-Instanz; der geheime
+ * Token bleibt zusätzlich der eigentliche Zugriffsschutz.
+ */
+function allowAttempt(request: Request): boolean {
+  const ip = request.headers.get("cf-connecting-ip")?.trim() || "unknown";
+  const now = Date.now();
+  const recent = (attemptsByIp.get(ip) ?? []).filter((ts) => now - ts < RATE_WINDOW_MS);
+  if (recent.length >= RATE_LIMIT) {
+    attemptsByIp.set(ip, recent);
+    return false;
+  }
+  recent.push(now);
+  attemptsByIp.set(ip, recent);
+
+  if (attemptsByIp.size > 500) {
+    for (const [key, values] of attemptsByIp) {
+      const alive = values.filter((ts) => now - ts < RATE_WINDOW_MS);
+      if (alive.length === 0) attemptsByIp.delete(key);
+      else attemptsByIp.set(key, alive);
+    }
+  }
+  return true;
+}
+
+async function authorizedCronRequest(request: Request): Promise<boolean> {
+  const presented = request.headers.get("x-cron-secret") ?? "";
+  if (presented.length < 16) return false;
+
+  const configuredHash = (process.env["CRON_SECRET_SHA256"] ?? "").trim().toLowerCase();
+  if (/^[a-f0-9]{64}$/.test(configuredHash)) {
+    return safeEqual(await sha256Hex(presented), configuredHash);
+  }
+
+  // Übergangskompatibilität: falls nur CRON_SECRET gesetzt ist, wird auch
+  // dieses vor dem Vergleich gehasht. Kein Klartext-Token wird aus der DB gelesen.
+  const legacySecret = process.env["CRON_SECRET"] ?? "";
+  if (legacySecret.length < 16) return false;
+  return safeEqual(await sha256Hex(presented), await sha256Hex(legacySecret));
+}
+
 export const Route = createFileRoute("/api/public/foto-retention")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const presented = request.headers.get("x-cron-secret") ?? "";
-        if (presented.length < 16) return new Response("Unauthorized", { status: 401 });
-
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-        const envSecret = process.env["CRON_SECRET"] ?? "";
-        let authorized = envSecret.length > 0 && safeEqual(presented, envSecret);
-
-        if (!authorized) {
-          const { data: tokenRow } = await supabaseAdmin
-            .from("cron_tokens")
-            .select("token")
-            .eq("name", "foto-retention")
-            .maybeSingle();
-          const dbToken = (tokenRow as { token?: string } | null)?.token ?? "";
-          authorized = dbToken.length > 0 && safeEqual(presented, dbToken);
+        if (!allowAttempt(request)) {
+          return new Response("Too Many Requests", {
+            status: 429,
+            headers: { "retry-after": String(RATE_WINDOW_MS / 1000) },
+          });
         }
 
-        if (!authorized) return new Response("Unauthorized", { status: 401 });
+        if (!(await authorizedCronRequest(request))) {
+          return new Response("Unauthorized", { status: 401 });
+        }
+
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         const { data: settings, error: settingsError } = await supabaseAdmin
           .from("company_settings")
