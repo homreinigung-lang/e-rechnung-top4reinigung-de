@@ -10,13 +10,17 @@ import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import { buildGobdExport, downloadBlob } from "@/lib/gobd";
 import { saveFile } from "@/lib/download";
+import { fetchStoredBlob } from "@/lib/storage";
+import { buildExpenseReceiptZip } from "@/lib/expense-receipt-export";
 import {
   Archive,
   Calculator,
   Check,
   Download,
+  FileArchive,
   FileSpreadsheet,
   FileText,
+  Loader2,
   Lock,
   Printer,
   ShieldCheck,
@@ -370,6 +374,32 @@ function Steuerberater() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const receiptZipExport = useMutation({
+    mutationFn: async () => {
+      if (!from || !to || from > to) {
+        throw new Error("Bitte einen gültigen Zeitraum auswählen.");
+      }
+      if (expenses.length === 0) {
+        throw new Error("Keine Ausgaben im gewählten Zeitraum.");
+      }
+      const result = await buildExpenseReceiptZip({
+        expenses,
+        loadReceipt: async (row) => {
+          const path = String(row.receipt_url ?? "");
+          if (!path) throw new Error("Beleg fehlt");
+          return fetchStoredBlob(path);
+        },
+      });
+      await saveFile(result.blob, `Ausgabenbelege_${from}_${to}.zip`);
+      return result;
+    },
+    onSuccess: (result) =>
+      toast.success(
+        `${result.receiptCount} Belege geladen · ${result.expenseCount} Ausgaben in der Übersicht`,
+      ),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   /** Lohnart-Kürzel: A = Arbeit, K = Krank, U = Urlaub, F = Feiertag, S = Sonstige. */
   function lohnart(t: Record<string, unknown>) {
     const type = String(t["entry_type"] ?? "work");
@@ -561,6 +591,18 @@ function Steuerberater() {
           onClick={() => downloadCsv(`Ausgaben_${period}.csv`, expenseRows, { from, to })}
         >
           <Download className="size-4" /> Ausgaben (CSV)
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => receiptZipExport.mutate()}
+          disabled={receiptZipExport.isPending || expenses.length === 0}
+        >
+          {receiptZipExport.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <FileArchive className="size-4" />
+          )}
+          Alle Belege herunterladen
         </Button>
         <Button
           variant="outline"
