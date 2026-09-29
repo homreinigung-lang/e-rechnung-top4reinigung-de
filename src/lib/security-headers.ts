@@ -14,14 +14,28 @@ export function withSecurityHeaders(response: Response, request: Request): Respo
   result.headers.set("X-Content-Type-Options", "nosniff");
   result.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   result.headers.set("Permissions-Policy", "camera=(self), geolocation=(self), microphone=()");
-  // Preserve the connected Lovable preview; do not restrict PDF blobs or scripts.
   result.headers.set(
     "Content-Security-Policy",
-    "base-uri 'self'; object-src 'none'; frame-ancestors 'self' https://lovable.dev https://*.lovable.dev https://*.lovable.app",
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://squkjqvofugkanzuqtqn.supabase.co",
+      "font-src 'self' data:",
+      "connect-src 'self' https://squkjqvofugkanzuqtqn.supabase.co wss://squkjqvofugkanzuqtqn.supabase.co",
+      "form-action 'self'",
+      "upgrade-insecure-requests",
+    ].join("; "),
   );
   const url = new URL(request.url);
   if (url.hostname === LIVE_HOST && url.protocol === "https:") {
-    result.headers.set("Strict-Transport-Security", "max-age=86400");
+    result.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
   }
   return result;
 }

@@ -24,8 +24,16 @@ describe("application response security", () => {
     expect(response.status).toBe(500);
     expect(response.headers.get("set-cookie")).toBe("a=b; Secure");
     expect(await response.text()).toBe("error");
-    expect(response.headers.get("strict-transport-security")).toBe("max-age=86400");
-    expect(response.headers.get("content-security-policy")).toContain("https://*.lovable.app");
+    expect(response.headers.get("strict-transport-security")).toBe(
+      "max-age=31536000; includeSubDomains",
+    );
+    const csp = response.headers.get("content-security-policy") ?? "";
+    expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+    expect(csp).toContain(
+      "connect-src 'self' https://squkjqvofugkanzuqtqn.supabase.co wss://squkjqvofugkanzuqtqn.supabase.co",
+    );
+    expect(csp).toContain("frame-ancestors 'self'");
+    expect(csp).not.toContain("lovable");
     expect(response.headers.get("permissions-policy")).toContain("camera=(self)");
   });
   it("does not set HSTS on previews or local development", () => {
