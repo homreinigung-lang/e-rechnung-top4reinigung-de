@@ -7,6 +7,7 @@ import { useIsAdmin } from "@/lib/subscriptions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
 import { BewertungDialog } from "@/components/BewertungDialog";
+import { OnboardingGuide } from "@/components/OnboardingGuide";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -17,7 +18,7 @@ import {
   ArrowLeft, BadgeCheck, BarChart3, Calculator, Car, ClipboardCheck, Clock, FileSearch,
   FileSignature, FileText, FolderKanban, HardHat, Landmark, LayoutDashboard,
   LifeBuoy, LogOut, Map as MapIcon, MessageSquare, MoreHorizontal, MoreVertical,
-  Repeat, Settings, ShieldCheck, Star, Trash2, TrendingDown, UserCircle, Users,
+  Repeat, Settings, ShieldCheck, Sparkles, Star, Trash2, TrendingDown, UserCircle, Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -141,7 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-1">
             <AssignmentBell />
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Mehr"><MoreVertical className="size-5" /></Button></DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild><Button data-onboarding="mehr" variant="ghost" size="icon" aria-label="Mehr"><MoreVertical className="size-5" /></Button></DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="max-h-[82vh] w-72 overflow-y-auto">
                 {moreGroups.map((group, gi) => (
                   <div key={group.title}>
@@ -192,7 +193,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ><item.icon className="size-5" /><span className="truncate">{item.label}</span></Link>
           ))}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild><button type="button" className="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] text-muted-foreground"><MoreHorizontal className="size-5" /><span>Mehr</span></button></DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild><button data-onboarding="mehr" type="button" className="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] text-muted-foreground"><MoreHorizontal className="size-5" /><span>Mehr</span></button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="max-h-[70vh] w-72 overflow-y-auto">
               {moreGroups.map((group, gi) => (
                 <div key={group.title}>{gi > 0 && <DropdownMenuSeparator />}<DropdownMenuLabel>{group.title}</DropdownMenuLabel>{group.items.map((item) => (
