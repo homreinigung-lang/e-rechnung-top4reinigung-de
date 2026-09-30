@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
  *
  * Zugriffsschutz: ausschließlich über den geheimen Header `x-cron-secret`.
  * Der Server vergleicht nur SHA-256-Werte; es gibt keinen Datenbank-Fallback
- * mit einem Klartext-Token.
+ * und keinen Klartext-Secret-Fallback.
  */
 
 const RATE_WINDOW_MS = 15 * 60 * 1000;
@@ -56,15 +56,9 @@ async function authorizedCronRequest(request: Request): Promise<boolean> {
   if (presented.length < 16) return false;
 
   const configuredHash = (process.env["CRON_SECRET_SHA256"] ?? "").trim().toLowerCase();
-  if (/^[a-f0-9]{64}$/.test(configuredHash)) {
-    return safeEqual(await sha256Hex(presented), configuredHash);
-  }
+  if (!/^[a-f0-9]{64}$/.test(configuredHash)) return false;
 
-  // Übergangskompatibilität: falls nur CRON_SECRET gesetzt ist, wird auch
-  // dieses vor dem Vergleich gehasht. Kein Klartext-Token wird aus der DB gelesen.
-  const legacySecret = process.env["CRON_SECRET"] ?? "";
-  if (legacySecret.length < 16) return false;
-  return safeEqual(await sha256Hex(presented), await sha256Hex(legacySecret));
+  return safeEqual(await sha256Hex(presented), configuredHash);
 }
 
 export const Route = createFileRoute("/api/public/foto-retention")({
