@@ -16,7 +16,7 @@ import { EuerChart } from "@/components/EuerChart";
 import { FinanzDashboard } from "@/components/FinanzDashboard";
 import { ManagementDashboard } from "@/components/ManagementDashboard";
 import { EinsaetzeHeute } from "@/components/EinsaetzeHeute";
-import { TrialBanner } from "@/components/TrialBanner";
+import { TrialBanner } from "@/components/TrialBanner";\nimport { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { createDocument } from "@/lib/create-document";
 import { useMyEmployee, type MyEmployee } from "@/lib/employee";
 import { dueInfo, mahnLabel } from "@/lib/workflow";
