@@ -235,7 +235,13 @@ function AdminDashboard() {
       const d = new Date(dateStr);
       return d.getFullYear() === year && Math.floor(d.getMonth() / 3) + 1 === q;
     };
-    const rows = invoices.filter((d) => inQ(d.issue_date));
+    const rows = invoices.filter((d) => {
+      if (d.status !== "paid") return false;
+      const paidAt = String(
+        (d as unknown as Record<string, unknown>)["paid_at"] ?? d.issue_date,
+      );
+      return inQ(paidAt);
+    });
     const exp = expenses.filter((e) => inQ(e.expense_date));
     const net = rows.reduce((s, d) => s + Number(d.net_total || d.total), 0);
     const vat = rows.reduce((s, d) => s + Number(d.vat_amount), 0);
@@ -545,8 +551,9 @@ function AdminDashboard() {
         <div className="border-b px-5 py-4">
           <h2 className="font-semibold">Quartale {year} – Umsatzsteuer-Voranmeldung</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Endabrechnung je Quartal: Umsatzsteuer abzüglich Vorsteuer ergibt Zahllast (an das
-            Finanzamt) oder Erstattung (vom Finanzamt).
+            Ist-Versteuerung: Nur bezahlte Rechnungen zählen zum Zeitpunkt des Zahlungseingangs.
+            Umsatzsteuer abzüglich Vorsteuer ergibt Zahllast (an das Finanzamt) oder Erstattung
+            (vom Finanzamt).
           </p>
         </div>
         <div className="overflow-x-auto">
