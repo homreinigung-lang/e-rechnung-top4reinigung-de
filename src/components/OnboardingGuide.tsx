@@ -97,7 +97,8 @@ export function OnboardingGuide() {
   useEffect(() => {
     if (!open) return;
     const update = () => {
-      const node = visibleTarget(steps[step].target);
+      const currentStep = steps[step] ?? steps[0];
+      const node = visibleTarget(currentStep.target);
       if (!node) {
         setRect(null);
         return;
@@ -142,7 +143,7 @@ export function OnboardingGuide() {
 
   if (!open) return null;
 
-  const current = steps[step];
+  const current = steps[step] ?? steps[0];
 
   return (
     <div className="no-print fixed inset-0 z-[80]">
@@ -196,7 +197,7 @@ export function OnboardingGuide() {
               </Button>
             ) : null}
             {step < steps.length - 1 ? (
-              <Button type="button" size="sm" onClick={() => setStep((s) => s + 1)}>
+              <Button type="button" size="sm" onClick={() => setStep((s) => Math.min(s + 1, steps.length - 1))}>
                 Weiter <ChevronRight className="size-4" />
               </Button>
             ) : (
