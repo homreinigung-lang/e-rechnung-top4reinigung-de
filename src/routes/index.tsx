@@ -38,25 +38,25 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "GebCalc – Software für Gebäudereinigung & E-Rechnung" },
+      { title: "GebCalc – Software für Gebäudereinigung | Kalkulation & E-Rechnung" },
       {
         name: "description",
         content:
-          "GebCalc ist die Software für Gebäudereinigungsunternehmen: Kalkulation, Leistungsverzeichnis, Angebote, E-Rechnungen, Zeiterfassung und Einsatzplanung – GoBD-konform und für den EU-Einsatz.",
+          "Software für Reinigungsunternehmen: Angebote schneller erstellen, Leistungen kalkulieren, Objekte und Mitarbeiter verwalten, Arbeitszeiten erfassen und E-Rechnungen erstellen.",
       },
       {
         name: "keywords",
         content:
-          "Rechnungssoftware Reinigung, E-Rechnung, XRechnung, ZUGFeRD, Gebäudereinigung Software, Büroreinigung, Unterhaltsreinigung, Treppenhausreinigung, Reverse-Charge, § 13b UStG, GoBD, Angebot, Kalkulation, Zeiterfassung, Einsatzplanung",
+          "Software für Reinigungsunternehmen, Gebäudereinigung Software, Kalkulation Gebäudereinigung, Angebote erstellen, Rechnungen erstellen, E-Rechnung, Zeiterfassung, Objektverwaltung, Mitarbeiterverwaltung, Leistungsverzeichnis",
       },
       {
         property: "og:title",
-        content: "GebCalc – Software für Gebäudereinigung & E-Rechnung",
+        content: "GebCalc – Software für Gebäudereinigung | Kalkulation & E-Rechnung",
       },
       {
         property: "og:description",
         content:
-          "Angebote, Kalkulation, Zeiterfassung und rechtssichere E-Rechnungen für Büroreinigung, Unterhaltsreinigung und Treppenhausreinigung.",
+          "Angebote schneller erstellen, Leistungen kalkulieren, Objekte und Mitarbeiter verwalten, Zeiten erfassen und E-Rechnungen erstellen.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://e-rechnung.top4reinigung.de/" },
@@ -64,11 +64,11 @@ export const Route = createFileRoute("/")({
       { property: "og:locale", content: "de_DE" },
       { property: "og:site_name", content: "GebCalc" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "GebCalc – Software für Gebäudereinigung & E-Rechnung" },
+      { name: "twitter:title", content: "GebCalc – Software für Gebäudereinigung | Kalkulation & E-Rechnung" },
       {
         name: "twitter:description",
         content:
-          "Angebote, Kalkulation, Zeiterfassung und rechtssichere E-Rechnungen für Reinigungsfirmen.",
+          "Kalkulation, Angebote, Objektverwaltung, Zeiterfassung, Rechnungen und E-Rechnung für Reinigungsunternehmen.",
       },
       { name: "twitter:image", content: "https://e-rechnung.top4reinigung.de/app-icon-192.png" },
     ],
@@ -85,7 +85,7 @@ export const Route = createFileRoute("/")({
           url: "https://e-rechnung.top4reinigung.de/",
           inLanguage: "de-DE",
           description:
-            "Software für Gebäudereinigungsunternehmen: Kalkulation, Leistungsverzeichnis, Angebote, E-Rechnungen, Zeiterfassung und Einsatzplanung.",
+            "Software für Reinigungsunternehmen: Kalkulation, Angebote, Objekt- und Mitarbeiterverwaltung, Zeiterfassung, Rechnungen und E-Rechnung.",
           offers: {
             "@type": "Offer",
             priceCurrency: "EUR",
@@ -110,34 +110,34 @@ export const Route = createFileRoute("/")({
 
 const features = [
   {
-    icon: Receipt,
-    title: "Rechnungen in Sekunden",
-    text: "Positionen erfassen, Nummer wird automatisch vergeben, Summe wird live berechnet.",
-  },
-  {
     icon: FileText,
-    title: "Angebote & Kostenvoranschläge",
-    text: "Angebote schreiben und mit einem Klick in eine Rechnung umwandeln.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "EU ohne Umsatzsteuer",
-    text: "Reverse-Charge-Hinweis nach § 13b UStG inklusive USt-IdNr. beider Parteien.",
-  },
-  {
-    icon: Mail,
-    title: "Versand per E-Mail",
-    text: "Dokument direkt an den Kunden senden oder als PDF drucken.",
+    title: "Angebote schneller erstellen",
+    text: "Positionen und Preise übersichtlich vorbereiten und vorhandene Kalkulationsdaten weiterverwenden.",
   },
   {
     icon: Calculator,
-    title: "Kalkulation & Leistungsverzeichnis",
-    text: "Flächen, Leistungswerte und Stundensätze zu einem belastbaren Angebotspreis rechnen.",
+    title: "Kalkulation im Blick",
+    text: "Leistungen, Zeiten, Personalkosten und Preise übersichtlich planen.",
+  },
+  {
+    icon: Building2,
+    title: "Objekte & Mitarbeiter organisieren",
+    text: "Objekte, Projekte, Einsatzorte und Mitarbeiter zentral verwalten.",
   },
   {
     icon: Clock,
-    title: "Zeiterfassung & Einsatzplanung",
-    text: "Mitarbeitende erfassen ihre Zeiten mobil, Einsätze werden im Kalender geplant.",
+    title: "Zeiterfassung vereinfachen",
+    text: "Arbeitszeiten einfach erfassen und Mitarbeitern sowie Projekten zuordnen.",
+  },
+  {
+    icon: Receipt,
+    title: "Rechnungen schneller erstellen",
+    text: "Vorhandene Daten weiterverwenden und Rechnungen ohne doppelte Eingaben erstellen.",
+  },
+  {
+    icon: Stamp,
+    title: "E-Rechnung integriert",
+    text: "E-Rechnungen direkt im System erstellen und für den Versand vorbereiten.",
   },
 ];
 
@@ -152,24 +152,24 @@ const fallbackPartners = [
 
 const trustPoints = [
   {
-    icon: ShieldCheck,
-    title: "GoBD-konform",
-    text: "Archivierung mit Festschreibung – prüfungssicher dokumentiert.",
+    icon: Calculator,
+    title: "Kalkulation",
+    text: "Leistungen, Zeiten und Preise übersichtlich planen.",
+  },
+  {
+    icon: FileText,
+    title: "Angebote",
+    text: "Angebote schneller erstellen und Daten weiterverwenden.",
+  },
+  {
+    icon: Clock,
+    title: "Zeiterfassung",
+    text: "Arbeitszeiten einfach erfassen und Projekten zuordnen.",
   },
   {
     icon: Stamp,
     title: "E-Rechnung",
-    text: "XRechnung 3.0 & ZUGFeRD 2.3 – amtlich zertifiziert.",
-  },
-  {
-    icon: Server,
-    title: "Serverstandort EU",
-    text: "Daten je Firma streng getrennt – DSGVO-konform.",
-  },
-  {
-    icon: Landmark,
-    title: "EU ohne Umsatzsteuer",
-    text: "Reverse-Charge nach § 13b UStG – automatisch korrekt.",
+    text: "E-Rechnungen direkt im System erstellen.",
   },
 ];
 
@@ -270,7 +270,7 @@ function Landing() {
                         ))}
                       </span>
                     </div>
-                    <p className="text-[11px] text-primary">Verified Business User</p>
+                    <p className="text-[11px] text-primary">Registrierter Nutzer</p>
                     <p className="mt-1 text-xs text-foreground/90 leading-snug">{r.body}</p>
                   </div>
                 ))}
@@ -329,11 +329,11 @@ function Landing() {
             Software für Gebäudereinigungsunternehmen
           </p>
           <h1 className="mt-4 max-w-3xl text-4xl leading-tight font-bold md:text-6xl">
-            GebCalc – Kalkulation, Angebote, Rechnungen & Einsatzplanung für Gebäudereinigung
+            Software für Reinigungsunternehmen – Kalkulation, Angebote, Zeiterfassung & E-Rechnung
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
-            GebCalc unterstützt Gebäudereinigungsunternehmen bei Kalkulation und Leistungsverzeichnis,
-            Angeboten und Rechnungen sowie Zeiterfassung und Einsatzplanung – alles in einer zentralen Web-App.
+            Angebote schneller erstellen, Leistungen präzise kalkulieren, Objekte und Mitarbeiter zentral
+            verwalten, Arbeitszeiten einfach erfassen und Rechnungen ohne doppelte Eingaben erstellen.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
@@ -349,9 +349,6 @@ function Landing() {
                 key={t.title}
                 className="group relative flex flex-col items-center gap-3 rounded-2xl border border-primary/15 bg-gradient-to-b from-primary/[0.06] to-card p-5 text-center shadow-[var(--shadow-panel)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_4px_14px_oklch(0.55_0.19_258/0.14),0_18px_44px_oklch(0.55_0.19_258/0.10)]"
               >
-                <span className="absolute right-3 top-3 text-[10px] font-semibold uppercase tracking-wider text-primary/40">
-                  Geprüft
-                </span>
                 <span className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/55 text-primary-foreground shadow-md ring-1 ring-primary/20 ring-offset-2 ring-offset-background transition-transform duration-300 group-hover:scale-105">
                   <t.icon className="size-7" strokeWidth={2} />
                 </span>
