@@ -21,7 +21,7 @@ export function withSecurityHeaders(response: Response, request: Request): Respo
       "base-uri 'self'",
       "object-src 'none'",
       "frame-ancestors 'self'",
-      "frame-src 'none'",
+      "frame-src 'self' blob:",
       "script-src 'self' 'unsafe-inline'",
       "script-src-attr 'none'",
       "style-src 'self' 'unsafe-inline'",

@@ -30,7 +30,7 @@ describe("application response security", () => {
     const csp = response.headers.get("content-security-policy") ?? "";
     expect(csp).toContain("script-src 'self' 'unsafe-inline'");
     expect(csp).toContain("script-src-attr 'none'");
-    expect(csp).toContain("frame-src 'none'");
+    expect(csp).toContain("frame-src 'self' blob:");
     expect(csp).toContain("manifest-src 'self'");
     expect(csp).toContain("worker-src 'self' blob:");
     expect(csp).toContain(
