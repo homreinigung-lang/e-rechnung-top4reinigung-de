@@ -267,6 +267,21 @@ function Ausgaben() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const attachReceipt = useMutation({
+    mutationFn: async ({ id, path }: { id: string; path: string }) => {
+      const { error } = await supabase
+        .from("expenses")
+        .update({ receipt_url: path })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Beleg gespeichert");
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.rpc("trash_entity", { _entity: "expense", _id: id });
@@ -655,6 +670,7 @@ function Ausgaben() {
                 row={r as never}
                 onDelete={() => remove.mutate(r.id)}
                 onPreview={(path) => setPreview(path)}
+                onAttach={(path) => attachReceipt.mutateAsync({ id: r.id, path })}
               />
             ))}
           </ul>
@@ -683,10 +699,12 @@ function ExpenseRow({
   row: r,
   onDelete,
   onPreview,
+  onAttach,
 }: {
   row: ExpenseRowData;
   onDelete: () => void;
   onPreview: (path: string) => void;
+  onAttach: (path: string) => Promise<unknown>;
 }) {
   return (
     <li className="flex items-center gap-3 px-5 py-4">
@@ -703,6 +721,24 @@ function ExpenseRow({
           netto {formatMoney(Number(r.net_amount))}
         </div>
       </div>
+      <FileUploadButton
+        folder="belege"
+        accept=".pdf,application/pdf,image/*"
+        label={r.receipt_url ? "Beleg ersetzen" : "Beleg hinzufügen"}
+        prepareFile={async (file) =>
+          file.type.startsWith("image/")
+            ? receiptFileToPdf(file, {
+                date: r.expense_date,
+                category: r.category,
+                ...(r.supplier ? { supplier: r.supplier } : {}),
+              })
+            : file
+        }
+        onUploaded={async (path) => {
+          await onAttach(path);
+        }}
+        showSuccessToast={false}
+      />
       {r.receipt_url && (
         <>
           <Button
