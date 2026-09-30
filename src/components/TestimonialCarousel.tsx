@@ -24,7 +24,7 @@ export function TestimonialCarousel() {
           <div>
             <h2 className="text-2xl font-bold md:text-3xl">Das sagen unsere Kunden</h2>
             <p className="mt-2 max-w-2xl text-muted-foreground">
-              Echte Bewertungen verifizierter Firmenkunden – geprüft und freigegeben.
+              Bewertungen von registrierten Nutzern.
             </p>
           </div>
           <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-500">
@@ -56,7 +56,7 @@ export function TestimonialCarousel() {
                     <p className="text-sm font-semibold">{r.company_name || "Firmenkunde"}</p>
                     <p className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
                       <BadgeCheck className="size-3.5" />
-                      Verified Business User
+                      Registrierter Nutzer
                     </p>
                   </figcaption>
                 </figure>
