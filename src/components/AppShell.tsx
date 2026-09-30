@@ -6,7 +6,8 @@ import { useMyEmployee, isEmployeeAllowedPath } from "@/lib/employee";
 import { useIsAdmin } from "@/lib/subscriptions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
-import { BewertungDialog } from "@/components/BewertungDialog";\nimport { OnboardingGuide } from "@/components/OnboardingGuide";
+import { BewertungDialog } from "@/components/BewertungDialog";
+import { OnboardingGuide } from "@/components/OnboardingGuide";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
