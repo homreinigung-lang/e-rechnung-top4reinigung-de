@@ -107,7 +107,6 @@ import {
   type ERechnungInput,
 } from "@/lib/erechnung";
 import {
-  ArrowLeft,
   ArrowRightLeft,
   BadgeEuro,
   Ban,
@@ -118,12 +117,8 @@ import {
   FileCode2,
   FileDown,
   Lock,
-  Mail,
-  Pencil,
   Plus,
-  Printer,
   Save,
-  ShieldCheck,
   Trash2,
   X,
 } from "lucide-react";
