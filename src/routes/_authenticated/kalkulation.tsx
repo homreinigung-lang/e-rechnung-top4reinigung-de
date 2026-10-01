@@ -222,7 +222,7 @@ function KalkulationPage() {
   const [taxMode, setTaxMode] = useState("domestic");
   // Interne Kostenkalkulation: Standardwerte kommen aus den Firmeneinstellungen.
   const [laborWage, setLaborWage] = useState("15");
-  const [laborBurdenPercent, setLaborBurdenPercent] = useState("30");
+  const [laborBurdenPercent, setLaborBurdenPercent] = useState("32");
   const [materialCost, setMaterialCost] = useState("1,20");
   const [overheadCost, setOverheadCost] = useState("3,50");
   const [profitMarkup, setProfitMarkup] = useState("20");
@@ -245,7 +245,7 @@ function KalkulationPage() {
         if (data.small_business) setTaxMode("kleinunternehmer");
         setLaborWage(String(Number(data.calc_worker_hourly_wage ?? 15)).replace(".", ","));
         setLaborBurdenPercent(
-          String(Number(data.calc_labor_burden_percent ?? 30)).replace(".", ","),
+          String(Number(data.calc_labor_burden_percent ?? 32)).replace(".", ","),
         );
         setMaterialCost(String(Number(data.calc_material_cost_hour ?? 1.2)).replace(".", ","));
         setOverheadCost(String(Number(data.calc_overhead_cost_hour ?? 3.5)).replace(".", ","));
