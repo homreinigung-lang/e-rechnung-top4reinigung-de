@@ -20,7 +20,7 @@ type DocumentMetadataEditorProps = {
   servicePeriod: string;
   dateCheck: DateCheck;
   statusLabels: Record<string, string>;
-  onFieldChange: (key: string, value: unknown) => void;
+  onFieldChange: (key: string, value: string | boolean | null) => void;
   onApplyIssueMonth: () => void;
 };
 
