@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
  * Pflege der raumtypbezogenen Leistungswerte (m² pro Stunde).
  * Ohne eigene Einträge gelten die Standardwerte aus DEFAULT_PERFORMANCE_RATES.
  */
-export function Leistungswerte() {
+export function Leistungswerte({ embedded = false }: { embedded?: boolean } = {}) {
   const queryClient = useQueryClient();
 
   const { data: rates = [], isLoading } = useQuery({
@@ -100,7 +100,7 @@ export function Leistungswerte() {
   });
 
   return (
-    <div className="surface space-y-4 p-6">
+    <div className={embedded ? "space-y-4 border-t pt-5" : "surface space-y-4 p-6"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-lg font-semibold">Leistungswerte (m² pro Stunde)</h2>
