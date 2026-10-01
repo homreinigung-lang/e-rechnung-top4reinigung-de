@@ -3,8 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Customer = { id: string; company?: string | null; name?: string | null };
-type Project = { id: string; customer_id?: string | null; name?: string | null; city?: string | null };
+type Customer = { id: string; company?: unknown; name?: unknown };
+type Project = { id: string; customer_id?: unknown; name?: unknown; city?: unknown };
 
 type DocumentCustomerEditorProps = {
   isQuote: boolean;
@@ -31,7 +31,7 @@ export function DocumentCustomerEditor({
         <Label>Kunde auswählen</Label>
         <Select value={customerId} onValueChange={onPickCustomer}>
           <SelectTrigger><SelectValue placeholder="Kunde aus dem Kundenstamm wählen" /></SelectTrigger>
-          <SelectContent>{customers.map((customer) => <SelectItem key={customer.id} value={customer.id}>{customer.company || customer.name}</SelectItem>)}</SelectContent>
+          <SelectContent>{customers.map((customer) => <SelectItem key={customer.id} value={customer.id}>{String(customer.company || customer.name || "")}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div className="space-y-2">
@@ -40,8 +40,8 @@ export function DocumentCustomerEditor({
           <SelectTrigger><SelectValue placeholder={customerId ? "Objekt zuordnen" : "Zuerst Kunde auswählen"} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__none__">Nicht zugeordnet</SelectItem>
-            {projects.filter((project) => Boolean(customerId) && project.customer_id === customerId).map((project) => (
-              <SelectItem key={project.id} value={project.id}>{project.name || "Ohne Namen"}{project.city ? ` · ${project.city}` : ""}</SelectItem>
+            {projects.filter((project) => Boolean(customerId) && String(project.customer_id ?? "") === customerId).map((project) => (
+              <SelectItem key={project.id} value={project.id}>{String(project.name || "Ohne Namen")}{project.city ? ` · ${String(project.city)}` : ""}</SelectItem>
             ))}
           </SelectContent>
         </Select>
