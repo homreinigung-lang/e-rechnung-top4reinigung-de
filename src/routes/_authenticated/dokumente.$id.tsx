@@ -37,7 +37,6 @@ import {
   deriveServiceName,
   quoteHeadline,
 } from "@/lib/document-texts";
-import { DocumentTitleSelector } from "@/components/DocumentTitleSelector";
 import {
   DocumentConfirmDialog,
   type DocumentConfirmDialogState,
