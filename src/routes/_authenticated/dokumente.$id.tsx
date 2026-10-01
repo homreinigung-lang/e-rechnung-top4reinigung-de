@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -35,10 +35,8 @@ import {
   CANCELLATION_TERMS,
   ORDER_INTRO,
   INVOICE_INTRO,
-  QUOTE_INTRO_PRIVAT,
   defaultQuoteIntro,
   orderHeadline,
-  quoteIntro,
   deriveServiceName,
   quoteHeadline,
 } from "@/lib/document-texts";
@@ -54,7 +52,6 @@ import { DocumentHeaderActions } from "@/components/documents/DocumentHeaderActi
 import { DocumentWorkflowActions } from "@/components/documents/DocumentWorkflowActions";
 import { DocumentPrintPreview } from "@/components/documents/DocumentPrintPreview";
 import { isEmptyDraft } from "@/lib/empty-draft";
-import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildSignatureHtml } from "@/lib/signature";
