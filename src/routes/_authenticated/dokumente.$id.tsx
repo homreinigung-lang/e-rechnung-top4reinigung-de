@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,6 @@ import {
   vatRateForTaxMode,
 } from "@/lib/format";
 import { computeDocumentTotals, hasDiscountPosition } from "@/lib/document-totals";
-import { Sparkles } from "lucide-react";
 import { useCanReverseCharge } from "@/lib/subscriptions";
 import { buildEpcPayload } from "@/lib/epc";
 import {
@@ -55,7 +54,6 @@ import { DocumentTaxEditor } from "@/components/documents/DocumentTaxEditor";
 import { DocumentMetadataEditor } from "@/components/documents/DocumentMetadataEditor";
 import { DocumentTitleEditor } from "@/components/documents/DocumentTitleEditor";
 import { isEmptyDraft } from "@/lib/empty-draft";
-import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildSignatureHtml } from "@/lib/signature";
 import { useFileUrl } from "@/hooks/useFileUrl";
@@ -100,8 +98,6 @@ import {
   validateERechnung,
   type ERechnungInput,
 } from "@/lib/erechnung";
-import {
-} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
   validateSearch: (search: Record<string, unknown>): { bearbeiten?: boolean } =>
