@@ -54,6 +54,7 @@ import { DocumentTextEditor } from "@/components/documents/DocumentTextEditor";
 import { DocumentCustomerEditor } from "@/components/documents/DocumentCustomerEditor";
 import { DocumentTaxEditor } from "@/components/documents/DocumentTaxEditor";
 import { DocumentMetadataEditor } from "@/components/documents/DocumentMetadataEditor";
+import { DocumentTitleEditor } from "@/components/documents/DocumentTitleEditor";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -1646,26 +1647,11 @@ function DokumentDetail() {
           {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
         </h2>
 
-        {isQuote ? (
-          <DocumentTitleSelector
-            title={String(form["title"] ?? "")}
-            onChange={(value) => setField("title", value)}
-          />
-        ) : (
-          <div className="space-y-2">
-            <Label htmlFor="title">Titel (optional)</Label>
-            <Input
-              id="title"
-              value={String(form["title"] ?? "")}
-              onChange={(e) => setField("title", e.target.value)}
-              placeholder="z. B. Grundreinigung – Komplett Haus"
-            />
-            <p className="text-xs text-muted-foreground">
-              Eigene Hauptüberschrift des Belegs. Bleibt das Feld leer, wird die Überschrift wie
-              bisher automatisch erzeugt.
-            </p>
-          </div>
-        )}
+        <DocumentTitleEditor
+          isQuote={isQuote}
+          title={String(form["title"] ?? "")}
+          onChange={(value) => setField("title", value)}
+        />
 
         <DocumentTaxEditor
           taxMode={taxMode}
