@@ -50,6 +50,7 @@ import { DocumentHeaderActions } from "@/components/documents/DocumentHeaderActi
 import { DocumentWorkflowActions } from "@/components/documents/DocumentWorkflowActions";
 import { DocumentPrintPreview } from "@/components/documents/DocumentPrintPreview";
 import { DocumentPositionsEditor } from "@/components/documents/DocumentPositionsEditor";
+import { DocumentTotalsEditor } from "@/components/documents/DocumentTotalsEditor";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -2033,67 +2034,19 @@ function DokumentDetail() {
             onUpdateItem={updateItem}
           />
 
-          {discountItemPresent && (
-            <p
-              role="alert"
-              className="rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
-            >
-              Dieser Beleg enthält bereits eine Rabattposition aus der Kalkulation. Ein zusätzlicher
-              Belegrabatt ist deshalb gesperrt – sonst würde derselbe Nachlass doppelt abgezogen.
-            </p>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Rabatt (%)</Label>
-              <Input
-                inputMode="decimal"
-                disabled={discountItemPresent}
-                value={discountItemPresent ? "0" : String(form["discount_percent"] ?? "0")}
-                onChange={(e) => setField("discount_percent", e.target.value)}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Rabattgrund</Label>
-              <Input
-                value={String(form["discount_reason"] ?? "")}
-                onChange={(e) => setField("discount_reason", e.target.value)}
-                placeholder="z. B. Treuerabatt"
-              />
-            </div>
-          </div>
-
-
-          <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Zwischensumme (netto)</span>
-              <span>{formatMoney(itemsTotal)}</span>
-            </div>
-            {discountPercent > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Rabatt {formatNumber(discountPercent)} %
-                  {discountReason ? ` (${discountReason})` : ""}
-                </span>
-                <span>−{formatMoney(discountAmount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Nettobetrag</span>
-              <span>{formatMoney(netTotal)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                zzgl. Umsatzsteuer {formatNumber(vatRate)} %
-              </span>
-              <span>{formatMoney(vatAmount)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-1 font-display text-base font-semibold">
-              <span>Bruttobetrag</span>
-              <span>{formatMoney(grossTotal)}</span>
-            </div>
-          </div>
+          <DocumentTotalsEditor
+            discountItemPresent={discountItemPresent}
+            discountPercent={discountPercent}
+            discountReason={discountReason}
+            itemsTotal={itemsTotal}
+            discountAmount={discountAmount}
+            netTotal={netTotal}
+            vatRate={vatRate}
+            vatAmount={vatAmount}
+            grossTotal={grossTotal}
+            onDiscountPercentChange={(value) => setField("discount_percent", value)}
+            onDiscountReasonChange={(value) => setField("discount_reason", value)}
+          />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
