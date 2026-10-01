@@ -36,13 +36,7 @@ import { DocumentStatusNotices } from "@/components/documents/DocumentStatusNoti
 import { DocumentHeaderActions } from "@/components/documents/DocumentHeaderActions";
 import { DocumentWorkflowActions } from "@/components/documents/DocumentWorkflowActions";
 import { DocumentPrintPreview } from "@/components/documents/DocumentPrintPreview";
-import { DocumentPositionsEditor } from "@/components/documents/DocumentPositionsEditor";
-import { DocumentTotalsEditor } from "@/components/documents/DocumentTotalsEditor";
-import { DocumentTextEditor } from "@/components/documents/DocumentTextEditor";
-import { DocumentCustomerEditor } from "@/components/documents/DocumentCustomerEditor";
-import { DocumentTaxEditor } from "@/components/documents/DocumentTaxEditor";
-import { DocumentMetadataEditor } from "@/components/documents/DocumentMetadataEditor";
-import { DocumentTitleEditor } from "@/components/documents/DocumentTitleEditor";
+import { DocumentEditorPanel } from "@/components/documents/DocumentEditorPanel";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildDocumentMail } from "@/lib/document-mail";
@@ -1589,104 +1583,96 @@ function DokumentDetail() {
         lastReminderAt={docRecord["last_reminder_at"]}
       />
 
-      <fieldset
-        disabled={locked}
-        hidden={!editMode}
-        className="no-print surface space-y-6 p-6 disabled:opacity-90"
-      >
-        <h2 className="font-display text-xl font-semibold">
-          {DOC_TYPE_LABEL[doc.type]} {docNumber} {locked ? "(schreibgeschützt)" : "bearbeiten"}
-        </h2>
-
-        <DocumentTitleEditor
-          isQuote={isQuote}
-          title={String(form["title"] ?? "")}
-          onChange={(value) => setField("title", value)}
-        />
-
-        <DocumentTaxEditor
-          taxMode={taxMode}
-          taxNote={taxNote}
-          isSmallBusiness={isSmallBusiness}
-          reverseChargeAllowed={reverseChargeAllowed}
-          onTaxModeChange={(value) => setField("tax_mode", value)}
-        />
-
-
-        <DocumentMetadataEditor
-          isInvoice={isInvoice}
-          isOrder={isOrder}
-          isPrivat={isPrivat}
-          docNumber={docNumber}
-          isDraftNumber={isDraftPlaceholder(docNumber)}
-          status={String(form["status"] ?? "draft")}
-          orderNumber={String(form["order_number"] ?? "")}
-          issueDate={String(form["issue_date"] ?? "")}
-          dueDate={String(form["due_date"] ?? "")}
-          paidAt={String(form["paid_at"] ?? "")}
-          servicePeriod={String(form["service_period"] ?? "")}
-          dateCheck={dateCheck}
-          statusLabels={STATUS_LABEL}
-          onFieldChange={setField}
-          onApplyIssueMonth={applyIssueMonth}
-        />
-
-        <DocumentCustomerEditor
-          isQuote={isQuote}
-          isPrivat={isPrivat}
-          quoteRecipientMode={quoteRecipientMode}
-          customerId={String(form["customer_id"] ?? "")}
-          projectId={String(form["project_id"] ?? "")}
-          customers={data.customers}
-          projects={data.projects}
-          values={form}
-          onQuoteRecipientModeChange={setQuoteRecipientMode}
-          onResetProspect={() => setForm((current) => ({ ...current, customer_id: null, project_id: null, customer_number: "" }))}
-          onPickCustomer={pickCustomer}
-          onFieldChange={setField}
-        />
-
-        <div className="space-y-3">
-          <DocumentPositionsEditor
-            items={items}
-            unitOptions={UNIT_OPTIONS}
-            defaultNetRate={DEFAULT_NET_RATE}
-            vatRate={vatRate}
-            onItemsChange={setItems}
-            onUpdateItem={updateItem}
-          />
-
-          <DocumentTotalsEditor
-            discountItemPresent={discountItemPresent}
-            discountPercent={discountPercent}
-            discountPercentValue={String(form["discount_percent"] ?? "0")}
-            discountReason={discountReason}
-            itemsTotal={itemsTotal}
-            discountAmount={discountAmount}
-            netTotal={netTotal}
-            vatRate={vatRate}
-            vatAmount={vatAmount}
-            grossTotal={grossTotal}
-            onDiscountPercentChange={(value) => setField("discount_percent", value)}
-            onDiscountReasonChange={(value) => setField("discount_reason", value)}
-          />
-        </div>
-
-        <DocumentTextEditor
-          isQuote={isQuote}
-          isInvoice={isInvoice}
-          isPrivat={isPrivat}
-          companyName={String(settings?.["company_name"] ?? "")}
-          introText={String(form["intro_text"] ?? "")}
-          notes={String(form["notes"] ?? "")}
-          serviceDescription={String(form["service_description"] ?? "")}
-          defaultQuoteIntro={defaultQuoteIntro}
-          onIntroChange={(value) => setField("intro_text", value)}
-          onNotesChange={(value) => setField("notes", value)}
-          onServiceDescriptionChange={(value) => setField("service_description", value)}
-        />
-      </fieldset>
-
+      <DocumentEditorPanel
+        locked={locked}
+        editMode={editMode}
+        docType={doc.type}
+        docNumber={docNumber}
+        title={{
+          isQuote,
+          title: String(form["title"] ?? ""),
+          onChange: (value) => setField("title", value),
+        }}
+        tax={{
+          taxMode,
+          taxNote,
+          isSmallBusiness,
+          reverseChargeAllowed,
+          onTaxModeChange: (value) => setField("tax_mode", value),
+        }}
+        metadata={{
+          isInvoice,
+          isOrder,
+          isPrivat,
+          docNumber,
+          isDraftNumber: isDraftPlaceholder(docNumber),
+          status: String(form["status"] ?? "draft"),
+          orderNumber: String(form["order_number"] ?? ""),
+          issueDate: String(form["issue_date"] ?? ""),
+          dueDate: String(form["due_date"] ?? ""),
+          paidAt: String(form["paid_at"] ?? ""),
+          servicePeriod: String(form["service_period"] ?? ""),
+          dateCheck,
+          statusLabels: STATUS_LABEL,
+          onFieldChange: setField,
+          onApplyIssueMonth: applyIssueMonth,
+        }}
+        customer={{
+          isQuote,
+          isPrivat,
+          quoteRecipientMode,
+          customerId: String(form["customer_id"] ?? ""),
+          projectId: String(form["project_id"] ?? ""),
+          customers: data.customers,
+          projects: data.projects,
+          values: form,
+          onQuoteRecipientModeChange: setQuoteRecipientMode,
+          onResetProspect: () =>
+            setForm((current) => ({
+              ...current,
+              customer_id: null,
+              project_id: null,
+              customer_number: "",
+            })),
+          onPickCustomer: pickCustomer,
+          onFieldChange: setField,
+        }}
+        positions={{
+          items,
+          unitOptions: UNIT_OPTIONS,
+          defaultNetRate: DEFAULT_NET_RATE,
+          vatRate,
+          onItemsChange: setItems,
+          onUpdateItem: updateItem,
+        }}
+        totals={{
+          discountItemPresent,
+          discountPercent,
+          discountPercentValue: String(form["discount_percent"] ?? "0"),
+          discountReason,
+          itemsTotal,
+          discountAmount,
+          netTotal,
+          vatRate,
+          vatAmount,
+          grossTotal,
+          onDiscountPercentChange: (value) => setField("discount_percent", value),
+          onDiscountReasonChange: (value) => setField("discount_reason", value),
+        }}
+        text={{
+          isQuote,
+          isInvoice,
+          isPrivat,
+          companyName: String(settings?.["company_name"] ?? ""),
+          introText: String(form["intro_text"] ?? ""),
+          notes: String(form["notes"] ?? ""),
+          serviceDescription: String(form["service_description"] ?? ""),
+          defaultQuoteIntro,
+          onIntroChange: (value) => setField("intro_text", value),
+          onNotesChange: (value) => setField("notes", value),
+          onServiceDescriptionChange: (value) => setField("service_description", value),
+        }}
+      />
       <DocumentPrintPreview
         cancelledBy={cancelledBy}
         isStorno={isStorno}
