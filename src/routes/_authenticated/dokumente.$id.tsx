@@ -40,6 +40,7 @@ import { DocumentEditorPanel } from "@/components/documents/DocumentEditorPanel"
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildDocumentMail } from "@/lib/document-mail";
+import { loadDocumentLogo } from "@/lib/document-logo";
 import { fetchDocumentDetail, type DocumentItem as Item } from "@/lib/document-detail-query";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
@@ -1076,21 +1077,6 @@ function DokumentDetail() {
     }
   }
 
-  /** Logo für die PDF-Erzeugung laden (optional – ohne Logo wird ein Kürzel gesetzt). */
-  async function loadLogo(): Promise<PdfDocData["logo"]> {
-    if (!logoSrc) return null;
-    try {
-      const response = await fetch(logoSrc);
-      if (!response.ok) return null;
-      const blob = await response.blob();
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-      const isJpg = /jpe?g/i.test(blob.type) || bytes[0] === 0xff;
-      return { bytes, type: isJpg ? "jpg" : "png" };
-    } catch {
-      return null;
-    }
-  }
-
   /** Alle Belegdaten für die bibliotheksbasierte PDF-Erzeugung (pdf-lib) sammeln. */
   async function buildPdfData(numberOverride?: string): Promise<PdfDocData> {
     const number = numberOverride ?? docNumber;
@@ -1198,7 +1184,7 @@ function DokumentDetail() {
                   ),
                 ),
           }),
-      logo: (await loadLogo()) ?? null,
+      logo: (await loadDocumentLogo(logoSrc)) ?? null,
       logoInitials: companyName
         .split(/\s+/)
         .slice(0, 2)
