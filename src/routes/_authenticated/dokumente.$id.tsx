@@ -56,6 +56,7 @@ import {
   type DocumentConfirmDialogState,
 } from "@/components/documents/DocumentConfirmDialog";
 import { DocumentPaymentDialog } from "@/components/documents/DocumentPaymentDialog";
+import { DocumentCancellationDialog } from "@/components/documents/DocumentCancellationDialog";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -1799,40 +1800,14 @@ function DokumentDetail() {
         )}
       </div>
 
-      <Dialog open={stornoOpen} onOpenChange={(o) => !o && setStornoOpen(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Stornorechnung erstellen</DialogTitle>
-            <DialogDescription>
-              Es wird ein neuer Beleg mit eigener fortlaufender Nummer und negativen Beträgen
-              erzeugt. Der Stornogrund wird revisionssicher gespeichert und auf dem Storno-Beleg
-              gedruckt.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="storno-reason">Stornogrund (Pflichtangabe)</Label>
-            <Textarea
-              id="storno-reason"
-              value={stornoReason}
-              onChange={(e) => setStornoReason(e.target.value)}
-              placeholder="z. B. Falscher Leistungszeitraum, Kunde storniert, fehlerhafte Positionen …"
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setStornoOpen(false)}>
-              Abbrechen
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => storno.mutate(stornoReason)}
-              disabled={storno.isPending || stornoReason.trim().length < 3}
-            >
-              Storno erstellen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DocumentCancellationDialog
+        open={stornoOpen}
+        reason={stornoReason}
+        pending={storno.isPending}
+        onClose={() => setStornoOpen(false)}
+        onReasonChange={setStornoReason}
+        onConfirm={() => storno.mutate(stornoReason)}
+      />
 
       {emailPending && (
         <div role="alert" className="no-print rounded-lg border border-amber-500/60 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
