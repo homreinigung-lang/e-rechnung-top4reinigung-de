@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DocumentTitleSelector } from "@/components/documents/DocumentTitleSelector";
+import { DocumentTitleSelector } from "@/components/DocumentTitleSelector";
 
 type DocumentTitleEditorProps = {
   isQuote: boolean;
