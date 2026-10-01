@@ -51,6 +51,7 @@ import { DocumentWorkflowActions } from "@/components/documents/DocumentWorkflow
 import { DocumentPrintPreview } from "@/components/documents/DocumentPrintPreview";
 import { DocumentPositionsEditor } from "@/components/documents/DocumentPositionsEditor";
 import { DocumentTotalsEditor } from "@/components/documents/DocumentTotalsEditor";
+import { DocumentTextEditor } from "@/components/documents/DocumentTextEditor";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -2049,75 +2050,19 @@ function DokumentDetail() {
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="intro">Einleitungstext</Label>
-              {isQuote && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() =>
-                    setField(
-                      "intro_text",
-                      defaultQuoteIntro(isPrivat, String(settings?.["company_name"] ?? "")),
-                    )
-                  }
-                >
-                  Standardtext einsetzen
-                </Button>
-              )}
-            </div>
-            <Textarea
-              id="intro"
-              rows={isQuote ? 8 : 3}
-              value={String(form["intro_text"] ?? "")}
-              onChange={(e) => setField("intro_text", e.target.value)}
-              placeholder="Für die erbrachten Reinigungsleistungen berechnen wir Ihnen wie folgt:"
-            />
-            {isQuote && (
-              <p className="text-xs text-muted-foreground">
-                Frei bearbeitbar – gilt nur für dieses Angebot. Bleibt das Feld leer, wird beim
-                PDF-Export automatisch der Standardtext verwendet.
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="notes">Schlussbemerkung</Label>
-            <Textarea
-              id="notes"
-              value={String(form["notes"] ?? "")}
-              onChange={(e) => setField("notes", e.target.value)}
-            />
-          </div>
-        </div>
-
-        {!isInvoice && (
-          <div className="space-y-2">
-            <Label htmlFor="service_description">
-              Detaillierte Leistungsbeschreibung (optional)
-            </Label>
-            <Textarea
-              id="service_description"
-              rows={8}
-              value={String(form["service_description"] ?? "")}
-              onChange={(e) => setField("service_description", e.target.value)}
-              placeholder={
-                "Beschreiben Sie hier ausführlich, welche Reinigungsleistungen enthalten sind, z. B.:\n" +
-                "- Unterhaltsreinigung Büroflächen (Staubwischen, Böden, Papierkörbe)\n" +
-                "- Sanitärreinigung inkl. Desinfektion und Auffüllen der Verbrauchsmaterialien\n" +
-                "- Glasreinigung innen, monatlich\n" +
-                "- Alle Reinigungsmittel und Geräte inklusive"
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              Erscheint übersichtlich im PDF-Angebot unter „Leistungsbeschreibung“. Jede Zeile wird
-              als eigener Punkt dargestellt (Zeilen mit „-“ oder „•“ werden als Liste formatiert).
-            </p>
-          </div>
-        )}
+        <DocumentTextEditor
+          isQuote={isQuote}
+          isInvoice={isInvoice}
+          isPrivat={isPrivat}
+          companyName={String(settings?.["company_name"] ?? "")}
+          introText={String(form["intro_text"] ?? "")}
+          notes={String(form["notes"] ?? "")}
+          serviceDescription={String(form["service_description"] ?? "")}
+          defaultQuoteIntro={defaultQuoteIntro}
+          onIntroChange={(value) => setField("intro_text", value)}
+          onNotesChange={(value) => setField("notes", value)}
+          onServiceDescriptionChange={(value) => setField("service_description", value)}
+        />
       </fieldset>
 
       <DocumentPrintPreview
