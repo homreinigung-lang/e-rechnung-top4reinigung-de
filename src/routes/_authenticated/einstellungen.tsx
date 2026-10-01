@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { saveFile } from "@/lib/download";
 import { buildCsvBlob, type DateRange } from "@/lib/table-summary";
 import { Download, Upload } from "lucide-react";
@@ -401,6 +401,21 @@ function Einstellungen() {
     }
   }
 
+  const costNumber = (key: string, fallback = 0) => {
+    const value = Number(String(form[key] ?? fallback).replace(",", "."));
+    return Number.isFinite(value) && value >= 0 ? value : 0;
+  };
+  const settingsWage = costNumber("calc_worker_hourly_wage", 15);
+  const settingsBurdenPercent = Math.min(200, costNumber("calc_labor_burden_percent", 30));
+  const settingsBurdenPerHour = (settingsWage * settingsBurdenPercent) / 100;
+  const settingsSelfCost =
+    settingsWage +
+    settingsBurdenPerHour +
+    costNumber("calc_material_cost_hour", 1.2) +
+    costNumber("calc_overhead_cost_hour", 3.5);
+  const settingsProfitPercent = Math.min(100, costNumber("calc_profit_markup_percent", 20));
+  const settingsTargetRate = settingsSelfCost * (1 + settingsProfitPercent / 100);
+
   return (
     <div className="space-y-6">
       <div>
@@ -469,9 +484,25 @@ function Einstellungen() {
             />
           </div>
         </div>
+        <div className="grid gap-3 rounded-md border bg-muted/40 p-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Lohnnebenkosten / Std.</p>
+            <p className="font-semibold">{formatMoney(settingsBurdenPerHour)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Selbstkosten / Std.</p>
+            <p className="font-semibold">{formatMoney(settingsSelfCost)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Ziel-Verkaufspreis / Std.</p>
+            <p className="font-semibold">{formatMoney(settingsTargetRate)}</p>
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground">
-          Die Lohnnebenkosten werden automatisch aus dem Stundenlohn berechnet. Alle Werte sind
-          interne Kalkulationswerte und erscheinen nicht im Kundenangebot.
+          Beispiel: Bei 15,00 € Stundenlohn werden die eingestellten Lohnnebenkosten automatisch
+          pro Stunde hinzugerechnet. Material und Gemeinkosten kommen anschließend dazu; auf die
+          Selbstkosten wird der gewünschte Gewinnaufschlag gerechnet. Die Werte sind intern und
+          erscheinen nicht im Kundenangebot.
         </p>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           Kostenbasis speichern
