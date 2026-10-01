@@ -55,6 +55,7 @@ import {
   DocumentConfirmDialog,
   type DocumentConfirmDialogState,
 } from "@/components/documents/DocumentConfirmDialog";
+import { DocumentPaymentDialog } from "@/components/documents/DocumentPaymentDialog";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -2987,43 +2988,22 @@ function DokumentDetail() {
         }}
       />
 
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Als bezahlt markieren</DialogTitle>
-            <DialogDescription>Zahlungsdatum im Format TT.MM.JJJJ erfassen.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="detail-pay-date">Zahlungsdatum</Label>
-            <Input
-              id="detail-pay-date"
-              value={payDate}
-              onChange={(e) => setPayDate(e.target.value)}
-              placeholder="TT.MM.JJJJ"
-              inputMode="numeric"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayOpen(false)}>
-              Abbrechen
-            </Button>
-            <Button
-              onClick={() => {
-                const iso = parseGermanDate(payDate);
-                if (!iso) {
-                  toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
-                  return;
-                }
-                markPaid.mutate(iso);
-                setPayOpen(false);
-              }}
-              disabled={markPaid.isPending}
-            >
-              Zahlung buchen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DocumentPaymentDialog
+        open={payOpen}
+        value={payDate}
+        pending={markPaid.isPending}
+        onOpenChange={setPayOpen}
+        onValueChange={setPayDate}
+        onConfirm={() => {
+          const iso = parseGermanDate(payDate);
+          if (!iso) {
+            toast.error("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+            return;
+          }
+          markPaid.mutate(iso);
+          setPayOpen(false);
+        }}
+      />
 
       <DocumentConfirmDialog dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />
     </div>
