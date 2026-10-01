@@ -100,20 +100,8 @@ import {
   type ERechnungInput,
 } from "@/lib/erechnung";
 import {
-  ArrowRightLeft,
-  BadgeEuro,
-  Ban,
-  BellRing,
-  CalendarRange,
-  Check,
-  Copy,
-  FileCode2,
-  FileDown,
-  Lock,
   Plus,
-  Save,
   Trash2,
-  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
