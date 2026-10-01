@@ -52,6 +52,7 @@ import { DocumentPositionsEditor } from "@/components/documents/DocumentPosition
 import { DocumentTotalsEditor } from "@/components/documents/DocumentTotalsEditor";
 import { DocumentTextEditor } from "@/components/documents/DocumentTextEditor";
 import { DocumentCustomerEditor } from "@/components/documents/DocumentCustomerEditor";
+import { DocumentTaxEditor } from "@/components/documents/DocumentTaxEditor";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -1665,49 +1666,13 @@ function DokumentDetail() {
           </div>
         )}
 
-        <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
-          <Label>Steuer-Art</Label>
-          {isSmallBusiness && (
-            <p className="rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
-              Kleinunternehmerregelung (§ 19 UStG) ist im Firmenprofil aktiv – es wird keine
-              Umsatzsteuer berechnet oder ausgewiesen.
-            </p>
-          )}
-          <Select
-            value={taxMode}
-            onValueChange={(v) => setField("tax_mode", v)}
-            disabled={isSmallBusiness}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="domestic">Inland (Deutschland) – 19 % MwSt.</SelectItem>
-              <SelectItem value="eu_reverse_charge" disabled={!reverseChargeAllowed}>
-                EU-Ausland – Reverse-Charge (0 % MwSt.)
-                {reverseChargeAllowed ? "" : " – ab Pro"}
-              </SelectItem>
-              <SelectItem value="kleinunternehmer">
-                Kleinunternehmer § 19 UStG (0 % MwSt.)
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          {!reverseChargeAllowed && (
-            <p className="flex flex-wrap items-center gap-1 rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
-              <Sparkles className="size-3.5 text-primary" />
-              Rechnungen ohne MwSt. (Reverse-Charge für EU-Ausland) sind ab dem{" "}
-              <strong className="font-semibold text-foreground">Pro-Paket</strong> verfügbar.
-              <Link to="/mein-paket" className="font-medium text-primary underline">
-                Paket ansehen
-              </Link>
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {taxMode === "domestic"
-              ? "Es werden 19 % Umsatzsteuer ausgewiesen. Es wird kein Steuerhinweis gedruckt."
-              : `0 % Umsatzsteuer. Folgender Pflichthinweis erscheint automatisch auf dem Dokument: „${taxNote}“`}
-          </p>
-        </div>
+        <DocumentTaxEditor
+          taxMode={taxMode}
+          taxNote={taxNote}
+          isSmallBusiness={isSmallBusiness}
+          reverseChargeAllowed={reverseChargeAllowed}
+          onTaxModeChange={(value) => setField("tax_mode", value)}
+        />
 
 
         <div className="grid gap-4 sm:grid-cols-3">
