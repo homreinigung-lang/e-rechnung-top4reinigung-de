@@ -189,6 +189,7 @@ function Fahrtenbuch() {
   const db = supabase as SupabaseClient;
   const now = localDateTime();
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [startPointMode, setStartPointMode] = useState<"company" | "manual">("manual");
   const [vehicleName, setVehicleName] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
   const [month, setMonth] = useState(now.month);
@@ -711,18 +712,15 @@ function Fahrtenbuch() {
             <Label>Von (Startpunkt)</Label>
             <div className="grid gap-2 sm:grid-cols-[220px_1fr]">
               <Select
-                value={companyAddress && form.from_location === companyAddress ? "company" : "manual"}
-                onValueChange={(value) =>
+                value={startPointMode}
+                onValueChange={(value) => {
+                  const mode = value as "company" | "manual";
+                  setStartPointMode(mode);
                   setForm((current) => ({
                     ...current,
-                    from_location:
-                      value === "company"
-                        ? companyAddress
-                        : current.from_location === companyAddress
-                          ? ""
-                          : current.from_location,
-                  }))
-                }
+                    from_location: mode === "company" ? companyAddress : "",
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Startpunkt wählen" />
@@ -735,8 +733,9 @@ function Fahrtenbuch() {
                 </SelectContent>
               </Select>
               <Input
-                placeholder="Betrieb, Lager oder letzter Termin"
+                placeholder={startPointMode === "manual" ? "Startpunkt eingeben, z. B. Lager oder letzter Termin" : "Firmenadresse"}
                 value={form.from_location}
+                readOnly={startPointMode === "company"}
                 onChange={(e) => setForm({ ...form, from_location: e.target.value })}
               />
             </div>
