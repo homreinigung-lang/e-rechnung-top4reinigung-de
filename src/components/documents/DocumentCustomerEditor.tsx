@@ -3,8 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Customer = { id: string; company?: string | null; name: string };
-type Project = { id: string; customer_id: string | null; name: string; city?: string | null };
+type Customer = { id: string; company?: string | null; name?: string | null };
+type Project = { id: string; customer_id?: string | null; name?: string | null; city?: string | null };
 
 type DocumentCustomerEditorProps = {
   isQuote: boolean;
@@ -12,8 +12,8 @@ type DocumentCustomerEditorProps = {
   quoteRecipientMode: string;
   customerId: string;
   projectId: string;
-  customers: Customer[];
-  projects: Project[];
+  customers: readonly Customer[];
+  projects: readonly Project[];
   values: Record<string, unknown>;
   onQuoteRecipientModeChange: (mode: string) => void;
   onResetProspect: () => void;
