@@ -40,6 +40,7 @@ import { DocumentEditorPanel } from "@/components/documents/DocumentEditorPanel"
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { buildDocumentMail } from "@/lib/document-mail";
+import { buildDocumentSenderLine } from "@/lib/document-sender-line";
 import { buildInitialDocumentForm } from "@/lib/document-initial-form";
 import { loadDocumentLogo } from "@/lib/document-logo";
 import { fetchDocumentDetail, type DocumentItem as Item } from "@/lib/document-detail-query";
@@ -881,13 +882,7 @@ function DokumentDetail() {
     ? checkInvoiceDates(String(form["issue_date"] ?? ""), String(form["service_period"] ?? ""))
     : { level: "ok" as const, message: "" };
 
-  const senderLine = [
-    settings?.["company_name"] ?? "",
-    settings?.["address_line"] ?? "",
-    `${settings?.["postal_code"] ?? ""} ${settings?.["city"] ?? ""}`.trim(),
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const senderLine = buildDocumentSenderLine(settings as Record<string, unknown> | null);
 
   function setField(key: string, value: string | boolean | null) {
     setForm((f) => {
