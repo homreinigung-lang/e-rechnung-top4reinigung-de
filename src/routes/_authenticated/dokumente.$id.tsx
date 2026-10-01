@@ -51,6 +51,7 @@ import { DocumentStatusNotices } from "@/components/documents/DocumentStatusNoti
 import { DocumentHeaderActions } from "@/components/documents/DocumentHeaderActions";
 import { DocumentWorkflowActions } from "@/components/documents/DocumentWorkflowActions";
 import { DocumentPrintPreview } from "@/components/documents/DocumentPrintPreview";
+import { DocumentPositionsEditor } from "@/components/documents/DocumentPositionsEditor";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -2027,117 +2028,14 @@ function DokumentDetail() {
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label>Positionen</Label>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() =>
-                setItems((prev) => [
-                  ...prev,
-                  {
-                    id: crypto.randomUUID(),
-                    position: prev.length + 1,
-                    description: "",
-                    quantity: 1,
-                    unit: "Std.",
-                    unit_price: Number(prev[prev.length - 1]?.unit_price) || DEFAULT_NET_RATE,
-                    is_optional: false,
-                  },
-                ])
-              }
-            >
-              <Plus className="size-4" /> Position
-            </Button>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Alle Preise werden als <strong>Netto-Beträge</strong> (z. B. Netto-Stundensatz)
-            eingegeben. Die Umsatzsteuer wird automatisch berechnet.
-          </p>
-
-          {items.map((item, index) => (
-            <div key={item.id} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-12">
-              <div className="space-y-1 sm:col-span-5">
-                <Label className="text-xs text-muted-foreground">Bezeichnung</Label>
-                <Input
-                  placeholder="Bezeichnung (z. B. Unterhaltsreinigung Büro)"
-                  value={item.description}
-                  onChange={(e) => updateItem(index, { description: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1 sm:col-span-2">
-                <Label className="text-xs text-muted-foreground">Menge</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={item.quantity}
-                  onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                />
-              </div>
-              <div className="space-y-1 sm:col-span-2">
-                <Label className="text-xs text-muted-foreground">Einheit</Label>
-                <Select
-                  value={UNIT_OPTIONS.includes(item.unit) ? item.unit : "__custom"}
-                  onValueChange={(v) => updateItem(index, { unit: v === "__custom" ? "" : v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Einheit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNIT_OPTIONS.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="__custom">Andere …</SelectItem>
-                  </SelectContent>
-                </Select>
-                {!UNIT_OPTIONS.includes(item.unit) && (
-                  <Input
-                    placeholder="Eigene Einheit"
-                    value={item.unit}
-                    onChange={(e) => updateItem(index, { unit: e.target.value })}
-                  />
-                )}
-              </div>
-
-              <div className="space-y-1 sm:col-span-2">
-                <Label className="text-xs text-muted-foreground">Netto-Preis / Einheit €</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={item.unit_price}
-                  onChange={(e) => updateItem(index, { unit_price: Number(e.target.value) })}
-                />
-              </div>
-              <div className="flex items-end sm:col-span-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-                >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
-              </div>
-              <label className="flex cursor-pointer items-center gap-2 text-xs sm:col-span-12">
-                <Checkbox
-                  checked={Boolean(item.is_optional)}
-                  onCheckedChange={(v) => updateItem(index, { is_optional: v === true })}
-                />
-                <span>Optionale Zusatzleistung (nur bei Durchführung berechnet)</span>
-              </label>
-              <p className="text-xs text-muted-foreground sm:col-span-12">
-                Netto {formatMoney(roundCents(item.quantity * item.unit_price))}
-                {vatRate > 0 && (
-                  <>
-                    {" · "}Brutto inkl. {formatNumber(vatRate)} % MwSt.{" "}
-                    {formatMoney(roundCents(item.quantity * item.unit_price * (1 + vatRate / 100)))}
-                  </>
-                )}
-              </p>
-            </div>
-          ))}
+          <DocumentPositionsEditor
+            items={items}
+            unitOptions={UNIT_OPTIONS}
+            defaultNetRate={DEFAULT_NET_RATE}
+            vatRate={vatRate}
+            onItemsChange={setItems}
+            onUpdateItem={updateItem}
+          />
 
           {discountItemPresent && (
             <p
