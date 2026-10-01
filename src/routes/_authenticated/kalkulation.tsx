@@ -220,9 +220,9 @@ function KalkulationPage() {
   const [discountReason, setDiscountReason] = useState("");
   const [glassArea, setGlassArea] = useState("0");
   const [taxMode, setTaxMode] = useState("domestic");
-  // Interne Kostenkalkulation: frei änderbare Beispielwerte je produktiver Stunde.
-  const [laborWage, setLaborWage] = useState("14,50");
-  const [laborBurden, setLaborBurden] = useState("4,80");
+  // Interne Kostenkalkulation: Standardwerte kommen aus den Firmeneinstellungen.
+  const [laborWage, setLaborWage] = useState("15");
+  const [laborBurdenPercent, setLaborBurdenPercent] = useState("30");
   const [materialCost, setMaterialCost] = useState("1,20");
   const [overheadCost, setOverheadCost] = useState("3,50");
   const [profitMarkup, setProfitMarkup] = useState("20");
@@ -231,15 +231,25 @@ function KalkulationPage() {
   const [projectId, setProjectId] = useState<string | null>(search.projekt ?? null);
   const queryClient = useQueryClient();
 
-  // Steuerart einmalig aus dem Firmenprofil vorbelegen (§ 19 UStG).
+  // Steuerart und interne Kostenbasis einmalig aus den Firmeneinstellungen vorbelegen.
   useEffect(() => {
     let active = true;
     void supabase
       .from("company_settings")
-      .select("small_business")
+      .select(
+        "small_business,calc_worker_hourly_wage,calc_labor_burden_percent,calc_material_cost_hour,calc_overhead_cost_hour,calc_profit_markup_percent",
+      )
       .maybeSingle()
       .then(({ data }) => {
-        if (active && data?.small_business) setTaxMode("kleinunternehmer");
+        if (!active || !data) return;
+        if (data.small_business) setTaxMode("kleinunternehmer");
+        setLaborWage(String(Number(data.calc_worker_hourly_wage ?? 15)).replace(".", ","));
+        setLaborBurdenPercent(
+          String(Number(data.calc_labor_burden_percent ?? 30)).replace(".", ","),
+        );
+        setMaterialCost(String(Number(data.calc_material_cost_hour ?? 1.2)).replace(".", ","));
+        setOverheadCost(String(Number(data.calc_overhead_cost_hour ?? 3.5)).replace(".", ","));
+        setProfitMarkup(String(Number(data.calc_profit_markup_percent ?? 20)).replace(".", ","));
       });
     return () => {
       active = false;
@@ -698,8 +708,11 @@ function KalkulationPage() {
     raumbuch && raumbuch.hoursPerVisit > 0
       ? round2(raumbuch.hoursPerVisit * visitsPerMonth)
       : round2(monthlyHours);
+  const laborBurdenPerHour = round2(
+    num(laborWage) * (Math.min(200, num(laborBurdenPercent)) / 100),
+  );
   const selfCostPerHour = round2(
-    num(laborWage) + num(laborBurden) + num(materialCost) + num(overheadCost),
+    num(laborWage) + laborBurdenPerHour + num(materialCost) + num(overheadCost),
   );
   const targetSellingRate = round2(
     selfCostPerHour * (1 + Math.min(100, num(profitMarkup)) / 100),
@@ -2597,8 +2610,8 @@ function KalkulationPage() {
                   <div>
                     <p className="text-sm font-medium">Kosten & Wirtschaftlichkeit</p>
                     <p className="text-xs text-muted-foreground">
-                      Interne Kalkulation je produktiver Stunde. Die Beispielwerte bitte an die
-                      eigenen Lohn- und Betriebskosten anpassen.
+                      Interne Kalkulation je produktiver Stunde. Standardwerte kommen aus
+                      Einstellungen → Kalkulation – Kostenbasis und bleiben hier frei änderbar.
                     </p>
                   </div>
 
@@ -2608,8 +2621,11 @@ function KalkulationPage() {
                       <Input inputMode="decimal" value={laborWage} onChange={(e) => setLaborWage(e.target.value)} />
                     </div>
                     <div className="space-y-1">
-                      <Label>Lohnnebenkosten / Std.</Label>
-                      <Input inputMode="decimal" value={laborBurden} onChange={(e) => setLaborBurden(e.target.value)} />
+                      <Label>Lohnnebenkosten (%)</Label>
+                      <Input inputMode="decimal" value={laborBurdenPercent} onChange={(e) => setLaborBurdenPercent(e.target.value)} />
+                      <p className="text-[11px] text-muted-foreground">
+                        = {formatMoney(laborBurdenPerHour)} / Std.
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <Label>Material / Std.</Label>
