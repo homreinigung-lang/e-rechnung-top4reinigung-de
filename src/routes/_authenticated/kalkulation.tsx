@@ -220,6 +220,12 @@ function KalkulationPage() {
   const [discountReason, setDiscountReason] = useState("");
   const [glassArea, setGlassArea] = useState("0");
   const [taxMode, setTaxMode] = useState("domestic");
+  // Interne Kostenkalkulation: frei änderbare Beispielwerte je produktiver Stunde.
+  const [laborWage, setLaborWage] = useState("14,50");
+  const [laborBurden, setLaborBurden] = useState("4,80");
+  const [materialCost, setMaterialCost] = useState("1,20");
+  const [overheadCost, setOverheadCost] = useState("3,50");
+  const [profitMarkup, setProfitMarkup] = useState("20");
   const [calcId, setCalcId] = useState<string | null>(null);
   const [calcTitle, setCalcTitle] = useState(search.objekt ?? "");
   const [projectId, setProjectId] = useState<string | null>(search.projekt ?? null);
@@ -682,6 +688,34 @@ function KalkulationPage() {
     if (rate <= 0) return 0;
     return (num(area) * num(pricePerSqm) * visitsPerMonth) / rate;
   }, [mode, hours, area, pricePerSqm, hourlyRate, visitsPerMonth]);
+
+  /**
+   * Interne Kostenkalkulation vor Angebotsabgabe.
+   * Wenn ein Raumbuch vorhanden ist, werden dessen Leistungswerte für den
+   * Stundenbedarf bevorzugt; sonst greift die bestehende Kalkulationslogik.
+   */
+  const costingMonthlyHours =
+    raumbuch && raumbuch.hoursPerVisit > 0
+      ? round2(raumbuch.hoursPerVisit * visitsPerMonth)
+      : round2(monthlyHours);
+  const selfCostPerHour = round2(
+    num(laborWage) + num(laborBurden) + num(materialCost) + num(overheadCost),
+  );
+  const targetSellingRate = round2(
+    selfCostPerHour * (1 + Math.min(100, num(profitMarkup)) / 100),
+  );
+  const monthlySelfCost = round2(selfCostPerHour * costingMonthlyHours);
+  const targetMonthlyRevenue = round2(targetSellingRate * costingMonthlyHours);
+  const effectiveSellingRate =
+    costingMonthlyHours > 0 ? round2(suggested / costingMonthlyHours) : 0;
+  const contribution = round2(suggested - monthlySelfCost);
+  const contributionMargin = suggested > 0 ? round2((contribution / suggested) * 100) : 0;
+  const economyLevel =
+    effectiveSellingRate >= targetSellingRate && targetSellingRate > 0
+      ? "good"
+      : effectiveSellingRate >= selfCostPerHour && selfCostPerHour > 0
+        ? "tight"
+        : "loss";
 
   /** Plausibilitätsprüfung der Eingaben (Fläche vs. Räume/Etagen/Sanitär). */
   const warnings = useMemo(
@@ -2557,6 +2591,96 @@ function KalkulationPage() {
                     <span>Zwischensumme (netto)</span>
                     <span>{formatMoney(subtotal)}</span>
                   </div>
+                </div>
+
+                <div className="space-y-3 rounded-md border p-3">
+                  <div>
+                    <p className="text-sm font-medium">Kosten & Wirtschaftlichkeit</p>
+                    <p className="text-xs text-muted-foreground">
+                      Interne Kalkulation je produktiver Stunde. Die Beispielwerte bitte an die
+                      eigenen Lohn- und Betriebskosten anpassen.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="space-y-1">
+                      <Label>Lohn brutto / Std.</Label>
+                      <Input inputMode="decimal" value={laborWage} onChange={(e) => setLaborWage(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Lohnnebenkosten / Std.</Label>
+                      <Input inputMode="decimal" value={laborBurden} onChange={(e) => setLaborBurden(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Material / Std.</Label>
+                      <Input inputMode="decimal" value={materialCost} onChange={(e) => setMaterialCost(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Gemeinkosten / Std.</Label>
+                      <Input inputMode="decimal" value={overheadCost} onChange={(e) => setOverheadCost(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Gewinnaufschlag (%)</Label>
+                      <Input inputMode="decimal" value={profitMarkup} onChange={(e) => setProfitMarkup(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-md bg-muted/40 p-3">
+                      <p className="text-xs text-muted-foreground">Selbstkosten / Std.</p>
+                      <p className="font-semibold">{formatMoney(selfCostPerHour)}</p>
+                    </div>
+                    <div className="rounded-md bg-muted/40 p-3">
+                      <p className="text-xs text-muted-foreground">Ziel-Verkaufspreis / Std.</p>
+                      <p className="font-semibold">{formatMoney(targetSellingRate)}</p>
+                    </div>
+                    <div className="rounded-md bg-muted/40 p-3">
+                      <p className="text-xs text-muted-foreground">Effektiver Erlös / Std.</p>
+                      <p className="font-semibold">{formatMoney(effectiveSellingRate)}</p>
+                    </div>
+                    <div className="rounded-md bg-muted/40 p-3">
+                      <p className="text-xs text-muted-foreground">Deckungsbeitrag / Monat</p>
+                      <p className="font-semibold">{formatMoney(contribution)}</p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={
+                      economyLevel === "good"
+                        ? "rounded-md border border-emerald-500/60 bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
+                        : economyLevel === "tight"
+                          ? "rounded-md border border-amber-500/60 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+                          : "rounded-md border border-red-500/60 bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/30 dark:text-red-200"
+                    }
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <strong>
+                        {economyLevel === "good"
+                          ? "Wirtschaftlich"
+                          : economyLevel === "tight"
+                            ? "Kostendeckend, aber unter Zielmarge"
+                            : "Nicht kostendeckend"}
+                      </strong>
+                      <span>
+                        Marge {formatNumber(contributionMargin)} % · {formatNumber(costingMonthlyHours)} Std./Monat
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs opacity-80">
+                      Monatliche Selbstkosten {formatMoney(monthlySelfCost)} · Zielumsatz bei gewünschter
+                      Marge {formatMoney(targetMonthlyRevenue)}
+                    </p>
+                  </div>
+
+                  {mode === "hours" && targetSellingRate > 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setHourlyRate(String(targetSellingRate).replace(".", ","))}
+                    >
+                      Ziel-Stundensatz übernehmen
+                    </Button>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
