@@ -1707,6 +1707,7 @@ function DokumentDetail() {
           <DocumentTotalsEditor
             discountItemPresent={discountItemPresent}
             discountPercent={discountPercent}
+            discountPercentValue={String(form["discount_percent"] ?? "0")}
             discountReason={discountReason}
             itemsTotal={itemsTotal}
             discountAmount={discountAmount}
