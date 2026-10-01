@@ -51,6 +51,7 @@ import { DocumentPaymentDialog } from "@/components/documents/DocumentPaymentDia
 import { DocumentCancellationDialog } from "@/components/documents/DocumentCancellationDialog";
 import { DocumentStatusNotices } from "@/components/documents/DocumentStatusNotices";
 import { DocumentHeaderActions } from "@/components/documents/DocumentHeaderActions";
+import { DocumentWorkflowActions } from "@/components/documents/DocumentWorkflowActions";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -1542,209 +1543,84 @@ function DokumentDetail() {
         onToggleEdit={() => setEditMode((value) => !value)}
       />
 
-      <div className="no-print flex flex-wrap items-center justify-end gap-2">
-        {editMode && (
-          <>
-            <Button
-              variant="outline"
-              onClick={() => duplicate.mutate()}
-              disabled={duplicate.isPending}
-            >
-              <Copy className="size-4" /> Duplizieren
-            </Button>
-            {isInvoice && (
-              <>
-                <Button variant="outline" onClick={() => void exportXRechnung()}>
-                  <FileCode2 className="size-4" /> XRechnung (XML)
-                </Button>
-                <Button variant="outline" onClick={() => void exportZugferd()}>
-                  <FileDown className="size-4" /> ZUGFeRD-PDF
-                </Button>
-              </>
-            )}
-          </>
-        )}
-
-        {isInvoice && !isStorno && doc.status !== "paid" && doc.status !== "cancelled" && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setPayDate(formatDate(String(form["paid_at"] ?? today())));
-              setPayOpen(true);
-            }}
-            disabled={markPaid.isPending}
-          >
-            <BadgeEuro className="size-4" /> Als bezahlt markieren
-          </Button>
-        )}
-        {isInvoice && doc.status === "paid" && (
-          <>
-            <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-              Bezahlt{form["paid_at"] ? ` am ${formatDate(String(form["paid_at"]))}` : ""}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() =>
-                setConfirmDialog({
-                  title: "Zahlung zurücknehmen",
-                  description: "Die Rechnung gilt danach wieder als offen.",
-                  confirmLabel: "Zurücknehmen",
-                  action: () => unmarkPaid.mutate(),
-                })
-              }
-              disabled={unmarkPaid.isPending}
-            >
-              <BadgeEuro className="size-4" /> Zahlung zurücknehmen
-            </Button>
-          </>
-        )}
-
-        {isInvoice &&
-          !isStorno &&
-          doc.status !== "paid" &&
-          doc.status !== "cancelled" &&
-          doc.status !== "draft" && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setConfirmDialog({
-                    title: "Zahlungserinnerung senden",
-                    description: "Freundliche Zahlungserinnerung jetzt erfassen und versenden?",
-                    confirmLabel: "Jetzt senden",
-                    action: () => reminder.mutate("erinnerung"),
-                  })
-                }
-                disabled={reminder.isPending}
-              >
-                <BellRing className="size-4" /> Zahlungserinnerung
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setConfirmDialog({
-                    title: `${mahnLabel(Math.max(2, reminderLevel + 1))} senden`,
-                    description:
-                      "Dieser Schritt wird GoBD-konform protokolliert. Jetzt offiziell mahnen?",
-                    confirmLabel: "Jetzt senden",
-                    action: () => reminder.mutate("mahnung"),
-                  })
-                }
-
-                disabled={reminder.isPending || !canMahnen}
-                title={
-                  canMahnen
-                    ? undefined
-                    : "Erst möglich, wenn die Zahlungsfrist (14 Tage) vollständig abgelaufen ist."
-                }
-              >
-                <BellRing className="size-4" />
-                {reminderLevel > 1 ? `${mahnLabel(reminderLevel)} · nächste Stufe` : "Mahnung"}
-              </Button>
-            </>
-          )}
-
-        {isQuote && (
-          <>
-            {doc.status !== "accepted" && doc.status !== "declined" && (
-              <>
-                <Button variant="outline" onClick={() => decide.mutate("accepted")}>
-                  <Check className="size-4" /> Angebot annehmen
-                </Button>
-                <Button variant="outline" onClick={() => decide.mutate("declined")}>
-                  <X className="size-4" /> Angebot ablehnen
-                </Button>
-              </>
-            )}
-            {doc.status === "accepted" && (
-              <Button
-                variant="outline"
-                onClick={() => preparePlanning.mutate()}
-                disabled={
-                  preparePlanning.isPending || plannedHoursMonth <= 0 || plannedVisitsMonth <= 0
-                }
-                title={
-                  plannedHoursMonth > 0 && plannedVisitsMonth > 0
-                    ? form["project_id"]
-                      ? "Vorhandenes Objekt in die Einsatzplanung übernehmen"
-                      : "Objekt aus dem angenommenen Angebot anlegen und Einsatzplanung vorbereiten"
-                    : "Keine Planungswerte vorhanden – bitte Angebot aus einer aktuellen Kalkulation erstellen."
-                }
-              >
-                <CalendarRange className="size-4" />
-                {form["project_id"]
-                  ? "Einsatzplanung vorbereiten"
-                  : "Objekt anlegen & Einsatzplanung vorbereiten"}
-              </Button>
-            )}
-            {!convertedId && doc.status === "accepted" && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => convert.mutate()}
-                  disabled={convert.isPending}
-                >
-                  <ArrowRightLeft className="size-4" /> Auftragsbestätigung erstellen
-                </Button>
-                <Button
-                  onClick={() => quoteToInvoice.mutate()}
-                  disabled={quoteToInvoice.isPending}
-                  title="Einmalige Dienstleistung direkt abrechnen"
-                >
-                  <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
-                </Button>
-              </>
-            )}
-          </>
-        )}
-
-        {isOrder && !convertedId && (
-          <Button onClick={() => convert.mutate()} disabled={convert.isPending}>
-            <ArrowRightLeft className="size-4" /> In Rechnung umwandeln
-          </Button>
-        )}
-
-        {isOrder && !locked && (
-          <Button
-            variant="destructive"
-            onClick={() =>
-              setConfirmDialog({
-                title: "Auftragsbestätigung löschen?",
-                description: `„${doc.number ?? ""}" wird in den Papierkorb verschoben und kann dort 30 Tage lang wiederhergestellt werden.`,
-                confirmLabel: "In Papierkorb verschieben",
-                destructive: true,
-                action: () => remove.mutate(),
-              })
-            }
-            disabled={remove.isPending}
-          >
-            <Trash2 className="size-4" /> Löschen
-          </Button>
-        )}
-
-        {!locked && editMode && (
-          <>
-            <span className="text-xs text-muted-foreground">
-              {autoSavedAt
-                ? `Automatisch gespeichert um ${autoSavedAt} Uhr`
-                : "Änderungen werden automatisch gespeichert"}
-            </span>
-            <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
-              <Save className="size-4" /> Speichern
-            </Button>
-          </>
-        )}
-
-        {locked && isInvoice && !isStorno && !cancelledBy && (
-          <Button
-            variant="destructive"
-            onClick={() => setStornoOpen(true)}
-            disabled={storno.isPending}
-          >
-            <Ban className="size-4" /> Stornorechnung
-          </Button>
-        )}
-      </div>
+      <DocumentWorkflowActions
+        editMode={editMode}
+        isInvoice={isInvoice}
+        isStorno={isStorno}
+        isQuote={isQuote}
+        isOrder={isOrder}
+        locked={locked}
+        status={doc.status}
+        paidAt={String(form["paid_at"] ?? "")}
+        convertedId={convertedId}
+        projectId={form["project_id"]}
+        documentNumber={doc.number ?? ""}
+        autoSavedAt={autoSavedAt}
+        reminderLevel={reminderLevel}
+        canMahnen={canMahnen}
+        plannedHoursMonth={plannedHoursMonth}
+        plannedVisitsMonth={plannedVisitsMonth}
+        duplicatePending={duplicate.isPending}
+        markPaidPending={markPaid.isPending}
+        unmarkPaidPending={unmarkPaid.isPending}
+        reminderPending={reminder.isPending}
+        planningPending={preparePlanning.isPending}
+        convertPending={convert.isPending}
+        quoteToInvoicePending={quoteToInvoice.isPending}
+        removePending={remove.isPending}
+        savePending={save.isPending}
+        stornoPending={storno.isPending}
+        cancelledBy={cancelledBy}
+        onDuplicate={() => duplicate.mutate()}
+        onExportXRechnung={() => void exportXRechnung()}
+        onExportZugferd={() => void exportZugferd()}
+        onOpenPayment={() => {
+          setPayDate(formatDate(String(form["paid_at"] ?? today())));
+          setPayOpen(true);
+        }}
+        onUnmarkPaid={() =>
+          setConfirmDialog({
+            title: "Zahlung zurücknehmen",
+            description: "Die Rechnung gilt danach wieder als offen.",
+            confirmLabel: "Zurücknehmen",
+            action: () => unmarkPaid.mutate(),
+          })
+        }
+        onReminder={() =>
+          setConfirmDialog({
+            title: "Zahlungserinnerung senden",
+            description: "Freundliche Zahlungserinnerung jetzt erfassen und versenden?",
+            confirmLabel: "Jetzt senden",
+            action: () => reminder.mutate("erinnerung"),
+          })
+        }
+        onMahnung={() =>
+          setConfirmDialog({
+            title: `${mahnLabel(Math.max(2, reminderLevel + 1))} senden`,
+            description: "Dieser Schritt wird GoBD-konform protokolliert. Jetzt offiziell mahnen?",
+            confirmLabel: "Jetzt senden",
+            action: () => reminder.mutate("mahnung"),
+          })
+        }
+        onAcceptQuote={() => decide.mutate("accepted")}
+        onDeclineQuote={() => decide.mutate("declined")}
+        onPreparePlanning={() => preparePlanning.mutate()}
+        onConvert={() => convert.mutate()}
+        onQuoteToInvoice={() => quoteToInvoice.mutate()}
+        onRemoveOrder={() =>
+          setConfirmDialog({
+            title: "Auftragsbestätigung löschen?",
+            description: `„${doc.number ?? ""}" wird in den Papierkorb verschoben und kann dort 30 Tage lang wiederhergestellt werden.`,
+            confirmLabel: "In Papierkorb verschieben",
+            destructive: true,
+            action: () => remove.mutate(),
+          })
+        }
+        onSave={() => save.mutate()}
+        onOpenStorno={() => setStornoOpen(true)}
+        formatDate={formatDate}
+        mahnLabel={mahnLabel}
+      />
 
       <DocumentCancellationDialog
         open={stornoOpen}
