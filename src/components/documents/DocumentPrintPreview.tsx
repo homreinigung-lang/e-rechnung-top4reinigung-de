@@ -50,7 +50,7 @@ type DocumentPrintPreviewProps = {
   grossTotal: number;
   taxNote: string;
   paymentTermsDays: number;
-  epc: string;
+  epc: string | null;
 };
 
 export function DocumentPrintPreview({
