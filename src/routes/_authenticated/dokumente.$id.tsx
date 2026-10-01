@@ -57,6 +57,7 @@ import {
 } from "@/components/documents/DocumentConfirmDialog";
 import { DocumentPaymentDialog } from "@/components/documents/DocumentPaymentDialog";
 import { DocumentCancellationDialog } from "@/components/documents/DocumentCancellationDialog";
+import { DocumentStatusNotices } from "@/components/documents/DocumentStatusNotices";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -1809,110 +1810,24 @@ function DokumentDetail() {
         onConfirm={() => storno.mutate(stornoReason)}
       />
 
-      {emailPending && (
-        <div role="alert" className="no-print rounded-lg border border-amber-500/60 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
-          <strong>Versand ausstehend:</strong> Die Rechnung ist festgeschrieben, aber ein erfolgreicher E-Mail-Versand ist nicht bestätigt. Bitte den Versandstatus prüfen und bei Bedarf über „Per E-Mail senden“ mit der archivierten Original-PDF erneut senden.
-        </div>
-      )}
-      {locked && isInvoice && doc.status === "draft" && (
-        <div className="no-print rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm" role="status">
-          <p className="font-semibold">Versand ausstehend – Rechnung bereits festgeschrieben</p>
-          <p>Die Rechnung ist nicht mehr bearbeitbar. Bitte über „Per E-Mail senden“ mit derselben Rechnungsnummer und dem geprüften Archiv-PDF erneut senden. Bei unklarem E-Mail-Ergebnis zuerst den tatsächlichen Versand prüfen.</p>
-        </div>
-      )}
-      {locked && lockedAt && (
-        <div className="no-print flex flex-wrap items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
-          <ShieldCheck className="mt-0.5 size-5 text-primary" />
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-medium">Festgeschrieben – GoBD-konform unveränderbar</p>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                  docRecord["archived_at"] || docRecord["pdf_sha256"]
-                    ? "bg-primary/15 text-primary"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {docRecord["archived_at"] || docRecord["pdf_sha256"]
-                  ? "GoBD-Archiviert"
-                  : "PDF-Archivierung ausstehend"}
-              </span>
-            </div>
-            <p className="text-muted-foreground">
-              Festgeschrieben am {formatDate(lockedAt)}
-              {docRecord["archived_at"]
-                ? ` · GoBD-Archiviert am ${formatDate(String(docRecord["archived_at"]))}`
-                : ""}
-              {docRecord["pdf_sha256"]
-                ? ` · Archiv-Prüfsumme (SHA-256): ${String(docRecord["pdf_sha256"]).slice(0, 16)}…`
-                : ""}
-              {cancelledBy
-                ? ` · Diese Rechnung wurde storniert${stornoNumber ? ` durch ${stornoNumber}` : ""}.`
-                : ""}
-              {isStorno ? ` · Stornorechnung${stornoNumber ? ` zu ${stornoNumber}` : ""}` : ""}
-              {stornoGrund ? ` · Stornogrund: ${stornoGrund}` : ""}
-            </p>
-            <p className="font-medium text-destructive">
-              Löschen und Überschreiben sind für diesen Beleg gesperrt. Korrekturen ausschließlich
-              per Stornorechnung.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {(followUpDoc || sourceDoc) && (
-        <div className="no-print rounded-lg border border-border bg-muted/40 p-4 text-sm">
-          {followUpDoc && (
-            <p>
-              {followUpDoc.type === "invoice"
-                ? "Für diesen Beleg wurde bereits eine Rechnung erstellt: "
-                : "Folgebeleg erstellt: "}
-              <Link
-                to="/dokumente/$id"
-                params={{ id: followUpDoc.id }}
-                className="font-medium underline"
-              >
-                {followUpDoc.number}
-              </Link>
-            </p>
-          )}
-          {sourceDoc && (
-            <p>
-              Erstellt aus{" "}
-              {sourceDoc.type === "quote" ? "Angebot" : DOC_TYPE_LABEL[sourceDoc.type] ?? "Beleg"}{" "}
-              <Link
-                to="/dokumente/$id"
-                params={{ id: sourceDoc.id }}
-                className="font-medium underline"
-              >
-                {sourceDoc.number}
-              </Link>
-            </p>
-          )}
-        </div>
-      )}
-
-
-      {(due || reminderLevel > 0) && (
-        <div
-          className={`no-print rounded-lg border p-4 text-sm ${
-            due?.overdue ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/40"
-          }`}
-        >
-          <span className={due?.overdue ? "font-medium text-destructive" : "font-medium"}>
-            {due?.label ?? "Offener Posten"}
-          </span>
-          {reminderLevel > 0 && (
-            <span className="text-muted-foreground">
-              {" "}
-              · {mahnLabel(reminderLevel)}
-              {docRecord["last_reminder_at"]
-                ? ` vom ${formatDate(String(docRecord["last_reminder_at"]))}`
-                : ""}
-            </span>
-          )}
-        </div>
-      )}
+      <DocumentStatusNotices
+        emailPending={emailPending}
+        locked={locked}
+        isInvoice={isInvoice}
+        status={doc.status}
+        lockedAt={lockedAt}
+        archivedAt={docRecord["archived_at"]}
+        pdfSha256={docRecord["pdf_sha256"]}
+        cancelledBy={cancelledBy}
+        stornoNumber={stornoNumber}
+        isStorno={isStorno}
+        stornoGrund={stornoGrund}
+        followUpDoc={followUpDoc}
+        sourceDoc={sourceDoc}
+        due={due}
+        reminderLevel={reminderLevel}
+        lastReminderAt={docRecord["last_reminder_at"]}
+      />
 
       <fieldset
         disabled={locked}
