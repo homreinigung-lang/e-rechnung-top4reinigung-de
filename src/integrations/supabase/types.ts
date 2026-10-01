@@ -462,6 +462,11 @@ export type Database = {
           bic: string
           city: string
           company_name: string
+          calc_worker_hourly_wage: number
+          calc_labor_burden_percent: number
+          calc_material_cost_hour: number
+          calc_overhead_cost_hour: number
+          calc_profit_markup_percent: number
           country: string
           created_at: string
           email: string
@@ -497,6 +502,11 @@ export type Database = {
           bic?: string
           city?: string
           company_name?: string
+          calc_worker_hourly_wage?: number
+          calc_labor_burden_percent?: number
+          calc_material_cost_hour?: number
+          calc_overhead_cost_hour?: number
+          calc_profit_markup_percent?: number
           country?: string
           created_at?: string
           email?: string
@@ -532,6 +542,11 @@ export type Database = {
           bic?: string
           city?: string
           company_name?: string
+          calc_worker_hourly_wage?: number
+          calc_labor_burden_percent?: number
+          calc_material_cost_hour?: number
+          calc_overhead_cost_hour?: number
+          calc_profit_markup_percent?: number
           country?: string
           created_at?: string
           email?: string

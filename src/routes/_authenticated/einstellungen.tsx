@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { saveFile } from "@/lib/download";
 import { buildCsvBlob, type DateRange } from "@/lib/table-summary";
 import { Download, Upload } from "lucide-react";
@@ -173,6 +173,11 @@ function Einstellungen() {
       email_signature_logo_url: String(d["email_signature_logo_url"] ?? ""),
       website_url: String(d["website_url"] ?? ""),
       facebook_url: String(d["facebook_url"] ?? ""),
+      calc_worker_hourly_wage: String(d["calc_worker_hourly_wage"] ?? "15"),
+      calc_labor_burden_percent: String(d["calc_labor_burden_percent"] ?? "32"),
+      calc_material_cost_hour: String(d["calc_material_cost_hour"] ?? "1.20"),
+      calc_overhead_cost_hour: String(d["calc_overhead_cost_hour"] ?? "3.50"),
+      calc_profit_markup_percent: String(d["calc_profit_markup_percent"] ?? "20"),
     });
   }, [data]);
 
@@ -185,6 +190,11 @@ function Einstellungen() {
         {
           ...form,
           smtp_port: Number(form["smtp_port"] || 587),
+          calc_worker_hourly_wage: Number(String(form["calc_worker_hourly_wage"] || "0").replace(",", ".")),
+          calc_labor_burden_percent: Number(String(form["calc_labor_burden_percent"] || "0").replace(",", ".")),
+          calc_material_cost_hour: Number(String(form["calc_material_cost_hour"] || "0").replace(",", ".")),
+          calc_overhead_cost_hour: Number(String(form["calc_overhead_cost_hour"] || "0").replace(",", ".")),
+          calc_profit_markup_percent: Number(String(form["calc_profit_markup_percent"] || "0").replace(",", ".")),
           user_id: userId,
         } as never,
         { onConflict: "user_id" },
@@ -391,6 +401,21 @@ function Einstellungen() {
     }
   }
 
+  const costNumber = (key: string, fallback = 0) => {
+    const value = Number(String(form[key] ?? fallback).replace(",", "."));
+    return Number.isFinite(value) && value >= 0 ? value : 0;
+  };
+  const settingsWage = costNumber("calc_worker_hourly_wage", 15);
+  const settingsBurdenPercent = Math.min(200, costNumber("calc_labor_burden_percent", 32));
+  const settingsBurdenPerHour = (settingsWage * settingsBurdenPercent) / 100;
+  const settingsSelfCost =
+    settingsWage +
+    settingsBurdenPerHour +
+    costNumber("calc_material_cost_hour", 1.2) +
+    costNumber("calc_overhead_cost_hour", 3.5);
+  const settingsProfitPercent = Math.min(100, costNumber("calc_profit_markup_percent", 20));
+  const settingsTargetRate = settingsSelfCost * (1 + settingsProfitPercent / 100);
+
   return (
     <div className="space-y-6">
       <div>
@@ -402,6 +427,87 @@ function Einstellungen() {
       </div>
 
       <BankdatenSection />
+
+      <div className="surface space-y-4 p-6">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Kalkulation – Kostenbasis</h2>
+          <p className="text-sm text-muted-foreground">
+            Diese Werte dienen als Standard für neue Kalkulationen und können dort weiterhin
+            angepasst werden. Beispiel: 15,00 € Stundenlohn plus Lohnnebenkosten, Material,
+            Gemeinkosten und gewünschter Gewinn.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="space-y-2">
+            <Label htmlFor="calc_worker_hourly_wage">Mitarbeiterlohn brutto / Std.</Label>
+            <Input
+              id="calc_worker_hourly_wage"
+              inputMode="decimal"
+              value={form["calc_worker_hourly_wage"] ?? "15"}
+              onChange={(e) => setForm({ ...form, calc_worker_hourly_wage: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="calc_labor_burden_percent">Lohnnebenkosten (%)</Label>
+            <Input
+              id="calc_labor_burden_percent"
+              inputMode="decimal"
+              value={form["calc_labor_burden_percent"] ?? "32"}
+              onChange={(e) => setForm({ ...form, calc_labor_burden_percent: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="calc_material_cost_hour">Material / Std.</Label>
+            <Input
+              id="calc_material_cost_hour"
+              inputMode="decimal"
+              value={form["calc_material_cost_hour"] ?? "1,20"}
+              onChange={(e) => setForm({ ...form, calc_material_cost_hour: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="calc_overhead_cost_hour">Gemeinkosten / Std.</Label>
+            <Input
+              id="calc_overhead_cost_hour"
+              inputMode="decimal"
+              value={form["calc_overhead_cost_hour"] ?? "3,50"}
+              onChange={(e) => setForm({ ...form, calc_overhead_cost_hour: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="calc_profit_markup_percent">Gewinnaufschlag (%)</Label>
+            <Input
+              id="calc_profit_markup_percent"
+              inputMode="decimal"
+              value={form["calc_profit_markup_percent"] ?? "20"}
+              onChange={(e) => setForm({ ...form, calc_profit_markup_percent: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 rounded-md border bg-muted/40 p-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Lohnnebenkosten / Std.</p>
+            <p className="font-semibold">{formatMoney(settingsBurdenPerHour)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Selbstkosten / Std.</p>
+            <p className="font-semibold">{formatMoney(settingsSelfCost)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Ziel-Verkaufspreis / Std.</p>
+            <p className="font-semibold">{formatMoney(settingsTargetRate)}</p>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Beispiel: Bei 15,00 € Stundenlohn werden die eingestellten Lohnnebenkosten automatisch
+          pro Stunde hinzugerechnet. Material und Gemeinkosten kommen anschließend dazu; auf die
+          Selbstkosten wird der gewünschte Gewinnaufschlag gerechnet. Die Werte sind intern und
+          erscheinen nicht im Kundenangebot.
+        </p>
+        <Button onClick={() => save.mutate()} disabled={save.isPending}>
+          Kostenbasis speichern
+        </Button>
+      </div>
 
       <Leistungswerte />
 
