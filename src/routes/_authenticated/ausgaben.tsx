@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,13 +104,13 @@ function Ausgaben() {
   const [receiptToRetry, setReceiptToRetry] = useState<File | null>(null);
   const [scanError, setScanError] = useState("");
   const [duplicateExpense, setDuplicateExpense] = useState<ExpenseRowData | null>(null);
-  const [exportMonth, setExportMonth] = useState(() => today().slice(0, 7));
-  const [exportYear, setExportYear] = useState(() => Number(today().slice(0, 4)));
-  const [exportFrom, setExportFrom] = useState(() => `${today().slice(0, 7)}-01`);
-  const [exportTo, setExportTo] = useState(() => {
-    const [y, m] = today().slice(0, 7).split("-").map(Number);
-    return new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10);
-  });
+  const currentYear = Number(today().slice(0, 4));
+  const currentQuarter = Math.floor((Number(today().slice(5, 7)) - 1) / 3) + 1;
+  const [filterYear, setFilterYear] = useState(currentYear);
+  const [periodMode, setPeriodMode] = useState<"quarter" | "year" | "custom">("quarter");
+  const [selectedQuarter, setSelectedQuarter] = useState(currentQuarter);
+  const [customFrom, setCustomFrom] = useState(today());
+  const [customTo, setCustomTo] = useState(today());
 
   /** Eingehende E-Rechnung (XRechnung/ZUGFeRD) einlesen und die Felder vorbelegen. */
   async function handleEInvoice(path: string, file: File) {
@@ -294,15 +294,33 @@ function Ausgaben() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const exportRows = rows.filter(
-    (row) =>
-      String(row.expense_date ?? "") >= exportFrom &&
-      String(row.expense_date ?? "") <= exportTo,
-  );
+  const { periodFrom, periodTo, periodLabel } = useMemo(() => {
+    if (periodMode === "custom") {
+      return { periodFrom: customFrom, periodTo: customTo, periodLabel: `${customFrom}_${customTo}` };
+    }
+    if (periodMode === "year") {
+      return { periodFrom: `${filterYear}-01-01`, periodTo: `${filterYear}-12-31`, periodLabel: `Jahr_${filterYear}` };
+    }
+    const startMonth = (selectedQuarter - 1) * 3 + 1;
+    const endMonth = startMonth + 2;
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const lastDay = new Date(Date.UTC(filterYear, endMonth, 0)).getUTCDate();
+    return {
+      periodFrom: `${filterYear}-${pad(startMonth)}-01`,
+      periodTo: `${filterYear}-${pad(endMonth)}-${pad(lastDay)}`,
+      periodLabel: `Q${selectedQuarter}_${filterYear}`,
+    };
+  }, [periodMode, filterYear, selectedQuarter, customFrom, customTo]);
+
+  const filteredRows = rows.filter((row) => {
+    const date = String(row.expense_date ?? "");
+    return date >= periodFrom && date <= periodTo;
+  });
+  const exportRows = filteredRows;
 
   const receiptExport = useMutation({
     mutationFn: async () => {
-      if (!exportFrom || !exportTo || exportFrom > exportTo) {
+      if (!periodFrom || !periodTo || periodFrom > periodTo) {
         throw new Error("Bitte einen gültigen Zeitraum auswählen.");
       }
       if (exportRows.length === 0) {
@@ -316,7 +334,7 @@ function Ausgaben() {
           return fetchStoredBlob(path);
         },
       });
-      await saveFile(result.blob, `Ausgabenbelege_${exportFrom}_${exportTo}.zip`);
+      await saveFile(result.blob, `Ausgabenbelege_${periodLabel}.zip`);
       return result;
     },
     onSuccess: (result) =>
@@ -338,9 +356,9 @@ function Ausgaben() {
     add.mutate();
   }
 
-  const totalNet = rows.reduce((s, r) => s + Number(r.net_amount), 0);
-  const totalGross = rows.reduce((s, r) => s + Number(r.gross_amount), 0);
-  const totalVat = rows.reduce((s, r) => s + Number(r.vat_amount), 0);
+  const totalNet = filteredRows.reduce((s, r) => s + Number(r.net_amount), 0);
+  const totalGross = filteredRows.reduce((s, r) => s + Number(r.gross_amount), 0);
+  const totalVat = filteredRows.reduce((s, r) => s + Number(r.vat_amount), 0);
 
   return (
     <div className="space-y-6">
@@ -562,109 +580,71 @@ function Ausgaben() {
 
       <div className="surface space-y-4 p-5">
         <div>
-          <h2 className="font-display text-lg font-semibold">Ausgabenbelege herunterladen</h2>
+          <h2 className="font-display text-lg font-semibold">Zeitraum & Ausgabenbelege</h2>
           <p className="text-sm text-muted-foreground">
-            Alle Belege werden einzeln in einer ZIP-Datei gespeichert. Zusätzlich enthält die ZIP eine Ausgabenübersicht.xlsx.
+            Liste, Summen und Beleg-Download verwenden immer denselben gewählten Zeitraum.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
-            <Label htmlFor="export-month">Monat</Label>
-            <div className="flex gap-2">
-              <Input
-                id="export-month"
-                type="month"
-                value={exportMonth}
-                onChange={(e) => setExportMonth(e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  if (!/^\\d{4}-\\d{2}$/.test(exportMonth)) return;
-                  const [y, m] = exportMonth.split("-").map(Number);
-                  setExportFrom(`${exportMonth}-01`);
-                  setExportTo(new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10));
-                }}
-              >
-                Übernehmen
+            <Label htmlFor="filter-year">Jahr</Label>
+            <Input id="filter-year" type="number" min="2000" max="2100" value={filterYear}
+              onChange={(e) => setFilterYear(Number(e.target.value))} disabled={periodMode === "custom"} />
+          </div>
+          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+            <Label>Zeitraum</Label>
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 4].map((quarter) => (
+                <Button key={quarter} type="button"
+                  variant={periodMode === "quarter" && selectedQuarter === quarter ? "default" : "outline"}
+                  onClick={() => { setSelectedQuarter(quarter); setPeriodMode("quarter"); }}>
+                  Q{quarter}
+                </Button>
+              ))}
+              <Button type="button" variant={periodMode === "year" ? "default" : "outline"} onClick={() => setPeriodMode("year")}>
+                Gesamtjahr
+              </Button>
+              <Button type="button" variant={periodMode === "custom" ? "default" : "outline"} onClick={() => setPeriodMode("custom")}>
+                Eigener Zeitraum
               </Button>
             </div>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="export-year">Jahr</Label>
-            <div className="flex gap-2">
-              <Input
-                id="export-year"
-                type="number"
-                min="2000"
-                max="2100"
-                value={exportYear}
-                onChange={(e) => setExportYear(Number(e.target.value))}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  if (!Number.isInteger(exportYear) || exportYear < 2000 || exportYear > 2100) return;
-                  setExportFrom(`${exportYear}-01-01`);
-                  setExportTo(`${exportYear}-12-31`);
-                }}
-              >
-                Übernehmen
-              </Button>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="export-from">Von</Label>
-            <Input
-              id="export-from"
-              type="date"
-              value={exportFrom}
-              max={exportTo || undefined}
-              onChange={(e) => setExportFrom(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="export-to">Bis</Label>
-            <Input
-              id="export-to"
-              type="date"
-              value={exportTo}
-              min={exportFrom || undefined}
-              onChange={(e) => setExportTo(e.target.value)}
-            />
-          </div>
+          {periodMode === "custom" && (
+            <>
+              <div className="space-y-1">
+                <Label htmlFor="custom-from">Von</Label>
+                <Input id="custom-from" type="date" value={customFrom} max={customTo || undefined}
+                  onChange={(e) => setCustomFrom(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="custom-to">Bis</Label>
+                <Input id="custom-to" type="date" value={customTo} min={customFrom || undefined}
+                  onChange={(e) => setCustomTo(e.target.value)} />
+              </div>
+            </>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            onClick={() => receiptExport.mutate()}
-            disabled={receiptExport.isPending || exportRows.length === 0}
-          >
-            {receiptExport.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <FileArchive className="size-4" />
-            )}
-            Alle Belege herunterladen
+          <Button type="button" onClick={() => receiptExport.mutate()}
+            disabled={receiptExport.isPending || exportRows.length === 0 || periodFrom > periodTo}>
+            {receiptExport.isPending ? <Loader2 className="size-4 animate-spin" /> : <FileArchive className="size-4" />}
+            Alle Belege für Steuerberater herunterladen
           </Button>
           <span className="text-sm text-muted-foreground">
-            {exportRows.length === 0
-              ? "Keine Ausgaben im gewählten Zeitraum."
-              : `${exportRows.length} Ausgaben ausgewählt · ${exportRows.filter((row) => Boolean(row.receipt_url)).length} mit Beleg`}
+            {exportRows.length === 0 ? "Keine Ausgaben im gewählten Zeitraum." :
+              `${exportRows.length} Ausgaben ausgewählt · ${exportRows.filter((row) => Boolean(row.receipt_url)).length} mit Beleg`}
           </span>
         </div>
       </div>
 
       <div className="surface overflow-hidden">
-        {rows.length === 0 ? (
+        {filteredRows.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-            Noch keine Ausgaben erfasst.
+            Keine Ausgaben im gewählten Zeitraum.
           </p>
         ) : (
           <ul className="divide-y">
-            {rows.map((r) => (
+            {filteredRows.map((r) => (
               <ExpenseRow
                 key={r.id}
                 row={r as never}
