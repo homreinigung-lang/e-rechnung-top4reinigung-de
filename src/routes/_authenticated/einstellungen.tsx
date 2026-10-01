@@ -174,7 +174,7 @@ function Einstellungen() {
       website_url: String(d["website_url"] ?? ""),
       facebook_url: String(d["facebook_url"] ?? ""),
       calc_worker_hourly_wage: String(d["calc_worker_hourly_wage"] ?? "15"),
-      calc_labor_burden_percent: String(d["calc_labor_burden_percent"] ?? "30"),
+      calc_labor_burden_percent: String(d["calc_labor_burden_percent"] ?? "32"),
       calc_material_cost_hour: String(d["calc_material_cost_hour"] ?? "1.20"),
       calc_overhead_cost_hour: String(d["calc_overhead_cost_hour"] ?? "3.50"),
       calc_profit_markup_percent: String(d["calc_profit_markup_percent"] ?? "20"),
@@ -406,7 +406,7 @@ function Einstellungen() {
     return Number.isFinite(value) && value >= 0 ? value : 0;
   };
   const settingsWage = costNumber("calc_worker_hourly_wage", 15);
-  const settingsBurdenPercent = Math.min(200, costNumber("calc_labor_burden_percent", 30));
+  const settingsBurdenPercent = Math.min(200, costNumber("calc_labor_burden_percent", 32));
   const settingsBurdenPerHour = (settingsWage * settingsBurdenPercent) / 100;
   const settingsSelfCost =
     settingsWage +
@@ -452,7 +452,7 @@ function Einstellungen() {
             <Input
               id="calc_labor_burden_percent"
               inputMode="decimal"
-              value={form["calc_labor_burden_percent"] ?? "30"}
+              value={form["calc_labor_burden_percent"] ?? "32"}
               onChange={(e) => setForm({ ...form, calc_labor_burden_percent: e.target.value })}
             />
           </div>
