@@ -55,7 +55,7 @@ import { DocumentMetadataEditor } from "@/components/documents/DocumentMetadataE
 import { DocumentTitleEditor } from "@/components/documents/DocumentTitleEditor";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
-import { buildSignatureHtml } from "@/lib/signature";
+import { buildDocumentMail } from "@/lib/document-mail";
 import { useFileUrl } from "@/hooks/useFileUrl";
 import { archiveDocumentPdf, createStorno, finalizeDocument, logAudit } from "@/lib/gobd";
 import { draftPlaceholderNumber, ensureOfficialNumber, isDraftPlaceholder } from "@/lib/doc-number";
@@ -1087,48 +1087,14 @@ function DokumentDetail() {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   }
 
-  function buildMail() {
-    const to = String(form["customer_email"] ?? "");
-    const label = DOC_TYPE_LABEL[doc.type];
-    const subject = `${label} ${docNumber} – ${settings?.["company_name"] ?? ""}`;
-    const baseLines = [
-      `Sehr geehrte Damen und Herren,`,
-      ``,
-      `im Anhang finden Sie ${
-        isInvoice ? "unsere Rechnung" : isOrder ? "unsere Auftragsbestätigung" : "unser Angebot"
-      } ${docNumber} vom ${formatDate(String(form["issue_date"] ?? doc.issue_date))} als PDF-Dokument.`,
-      isInvoice && form["due_date"]
-        ? `Wir bitten um Begleichung des Rechnungsbetrags bis zum ${formatDate(String(form["due_date"]))} ohne Abzug.`
-        : "",
-      ``,
-      `Alle Einzelheiten entnehmen Sie bitte dem beigefügten PDF. Für Rückfragen stehen wir Ihnen gerne zur Verfügung.`,
-      ``,
-      `Mit freundlichen Grüßen`,
-    ].filter(Boolean);
-
-    const signatureText = [
-      String(settings?.["email_signature"] ?? "") ||
-        [settings?.["company_name"] ?? "", settings?.["phone"] ?? ""].filter(Boolean).join("\n"),
-      settings?.["website_url"] ? String(settings["website_url"]) : "",
-      settings?.["facebook_url"] ? String(settings["facebook_url"]) : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const baseText = baseLines.join("\n");
-
-    return {
-      to,
-      subject,
-      body: baseText,
-      signatureText,
-      signatureHtml: buildSignatureHtml(settings as Record<string, unknown>),
-    };
-  }
-
-  const mail = buildMail();
-
-  const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
+  const mail = buildDocumentMail({
+    documentType: doc.type,
+    documentNumber: docNumber,
+    issueDate: String(form["issue_date"] ?? doc.issue_date),
+    dueDate: String(form["due_date"] ?? ""),
+    customerEmail: String(form["customer_email"] ?? ""),
+    settings,
+  });  const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
   const iban = String(settings?.["iban"] ?? "");
   const bic = String(settings?.["bic"] ?? "");
