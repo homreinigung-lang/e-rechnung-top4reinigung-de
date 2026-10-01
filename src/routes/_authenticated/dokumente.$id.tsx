@@ -51,6 +51,10 @@ import {
   quoteHeadline,
 } from "@/lib/document-texts";
 import { DocumentTitleSelector } from "@/components/DocumentTitleSelector";
+import {
+  DocumentConfirmDialog,
+  type DocumentConfirmDialogState,
+} from "@/components/documents/DocumentConfirmDialog";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -230,13 +234,7 @@ function DokumentDetail() {
   const [form, setForm] = useState<Record<string, string | boolean | null>>({});
   const [items, setItems] = useState<Item[]>([]);
   const [mailOpen, setMailOpen] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    title: string;
-    description: string;
-    confirmLabel: string;
-    destructive?: boolean;
-    action: () => void;
-  } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<DocumentConfirmDialogState | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [stornoOpen, setStornoOpen] = useState(false);
   const [stornoReason, setStornoReason] = useState("");
@@ -3027,28 +3025,7 @@ function DokumentDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={confirmDialog !== null} onOpenChange={(o) => !o && setConfirmDialog(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{confirmDialog?.title}</DialogTitle>
-            <DialogDescription>{confirmDialog?.description}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDialog(null)}>
-              Abbrechen
-            </Button>
-            <Button
-              variant={confirmDialog?.destructive ? "destructive" : "default"}
-              onClick={() => {
-                confirmDialog?.action();
-                setConfirmDialog(null);
-              }}
-            >
-              {confirmDialog?.confirmLabel ?? "Bestätigen"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DocumentConfirmDialog dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />
     </div>
   );
 }
