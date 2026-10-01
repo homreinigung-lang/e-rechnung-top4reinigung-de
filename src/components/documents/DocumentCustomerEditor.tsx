@@ -9,16 +9,16 @@ type Project = { id: string; customer_id?: unknown; name?: unknown; city?: unkno
 type DocumentCustomerEditorProps = {
   isQuote: boolean;
   isPrivat: boolean;
-  quoteRecipientMode: string;
+  quoteRecipientMode: "interessent" | "kunde";
   customerId: string;
   projectId: string;
   customers: readonly Customer[];
   projects: readonly Project[];
   values: Record<string, unknown>;
-  onQuoteRecipientModeChange: (mode: string) => void;
+  onQuoteRecipientModeChange: (mode: "interessent" | "kunde") => void;
   onResetProspect: () => void;
   onPickCustomer: (id: string) => void;
-  onFieldChange: (key: string, value: unknown) => void;
+  onFieldChange: (key: string, value: string | boolean | null) => void;
 };
 
 export function DocumentCustomerEditor({
