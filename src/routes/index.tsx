@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { usePublicPartners } from "@/lib/subscriptions";
 import { usePlans, euro, type Plan } from "@/lib/admin";
 import { PlanOrderDialog } from "@/components/PlanOrderDialog";
 import { TestimonialCarousel } from "@/components/TestimonialCarousel";
@@ -141,14 +140,6 @@ const features = [
   },
 ];
 
-const fallbackPartners = [
-  "SGS Industrial Services",
-  "Top4 Reinigung",
-  "Saar Facility GmbH",
-  "Objektservice Rhein-Main",
-  "CleanPoint Süd",
-  "Hausmeister Union",
-];
 
 const trustPoints = [
   {
@@ -175,21 +166,11 @@ const trustPoints = [
 
 function Landing() {
   const navigate = useNavigate();
-  const { data: dbPartners } = usePublicPartners();
   const { data: plans } = usePlans();
   const { data: reviews = [] } = useApprovedReviews();
   const avgRating =
     reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
   const activePlans = (plans ?? []).filter((p) => p.active);
-  const partners =
-    dbPartners && dbPartners.length > 0
-      ? dbPartners.map((p) => ({
-          key: p.id,
-          name: p.company_name,
-          city: p.city,
-        }))
-      : fallbackPartners.map((name) => ({ key: name, name, city: "" }));
-
   const [orderPlan, setOrderPlan] = useState<Plan | null>(null);
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
@@ -379,32 +360,7 @@ function Landing() {
           </div>
         </section>
 
-        <section className="border-y bg-secondary/40 py-16">
-          <div className="mx-auto max-w-6xl px-6">
-            <h2 className="text-2xl font-bold md:text-3xl">Abonnenten & Partnerfirmen</h2>
-            <p className="mt-2 max-w-2xl text-muted-foreground">
-              Reinigungs- und Facility-Betriebe, die mit GebCalc abrechnen, planen und kalkulieren.
-            </p>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {partners.map((p) => (
-                <div
-                  key={p.key}
-                  className="flex items-center gap-3 rounded-lg border bg-card px-4 py-4 text-sm font-semibold"
-                >
-                  <Building2 className="size-5 shrink-0 text-primary" />
-                  <span className="flex flex-col leading-tight">
-                    <span>{p.name}</span>
-                    {p.city ? (
-                      <span className="text-xs font-normal text-muted-foreground">{p.city}</span>
-                    ) : null}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="preise" className="mx-auto max-w-6xl px-6 py-20">
+                <section id="preise" className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-2xl font-bold md:text-3xl">Pakete & Preise</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">
             Transparente Preise – monatlich oder jährlich abrechenbar. Alle Preise zzgl.
