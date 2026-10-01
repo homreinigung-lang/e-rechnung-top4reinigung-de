@@ -53,6 +53,7 @@ import { DocumentTotalsEditor } from "@/components/documents/DocumentTotalsEdito
 import { DocumentTextEditor } from "@/components/documents/DocumentTextEditor";
 import { DocumentCustomerEditor } from "@/components/documents/DocumentCustomerEditor";
 import { DocumentTaxEditor } from "@/components/documents/DocumentTaxEditor";
+import { DocumentMetadataEditor } from "@/components/documents/DocumentMetadataEditor";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { DateRangeField } from "@/components/DateRangeField";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
@@ -1675,125 +1676,23 @@ function DokumentDetail() {
         />
 
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="number">
-              {isInvoice ? "Rechnungsnummer" : isOrder ? "Auftragsnummer" : "Angebotsnummer"}{" "}
-              (automatisch)
-            </Label>
-            <Input id="number" value={docNumber} readOnly disabled className="bg-muted" />
-            <p className="text-xs text-muted-foreground">
-              {isDraftPlaceholder(docNumber)
-                ? "Vorschau-/Testnummer. Die endgültige, fortlaufende Nummer wird erst beim Festschreiben bzw. Versenden vergeben – so entstehen keine Lücken (§ 14 UStG / GoBD)."
-                : "Wird automatisch fortlaufend und lückenlos vergeben (§ 14 UStG / GoBD) – eine manuelle Änderung ist nicht möglich."}
-            </p>
-          </div>
-          {!isPrivat && (
-            <div className="space-y-2">
-              <Label htmlFor="order_number">Bestellnummer des Kunden</Label>
-              <Input
-                id="order_number"
-                placeholder="z. B. SGS-PO-123456"
-                value={String(form["order_number"] ?? "")}
-                onChange={(e) => setField("order_number", e.target.value)}
-              />
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={String(form["status"] ?? "draft")}
-              onValueChange={(v) => setField("status", v)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(isInvoice
-                  ? ["draft", "sent", "paid", "cancelled"]
-                  : ["draft", "sent", "accepted", "declined"]
-                ).map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {STATUS_LABEL[s]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Rechnungsdatum</Label>
-            <Input
-              type="date"
-              value={String(form["issue_date"] ?? "")}
-              onChange={(e) => setField("issue_date", e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{isInvoice ? "Fällig am" : "Gültig bis (optional)"}</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                value={String(form["due_date"] ?? "")}
-                onChange={(e) => setField("due_date", e.target.value)}
-              />
-              {!isInvoice && form["due_date"] ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setField("due_date", "")}
-                >
-                  Löschen
-                </Button>
-              ) : null}
-            </div>
-            {!isInvoice && (
-              <p className="text-xs text-muted-foreground">
-                Ohne Datum wird „Gültig bis“ nicht auf dem Angebot angezeigt.
-              </p>
-            )}
-          </div>
-          {isInvoice && (
-            <div className="space-y-2">
-              <Label>Zahlungsdatum (bezahlt am)</Label>
-              <Input
-                type="date"
-                value={String(form["paid_at"] ?? "")}
-                onChange={(e) => setField("paid_at", e.target.value || null)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Sobald ein Zahlungsdatum eingetragen ist, wechselt der Status automatisch auf
-                „Bezahlt" und die Rechnung verlässt die offenen Posten.
-              </p>
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="service_period">Leistungszeitraum / Lieferdatum</Label>
-            <DateRangeField
-              value={String(form["service_period"] ?? "")}
-              onChange={(v) => setField("service_period", v)}
-              placeholder="Zeitraum im Kalender wählen"
-            />
-            {isInvoice ? (
-              <>
-                <Button type="button" variant="ghost" size="sm" onClick={applyIssueMonth}>
-                  Monat des Rechnungsdatums übernehmen
-                </Button>
-                {dateCheck.message ? (
-                  <p
-                    className={
-                      dateCheck.level === "error"
-                        ? "text-xs text-destructive"
-                        : "text-xs text-amber-600 dark:text-amber-500"
-                    }
-                  >
-                    {dateCheck.message}
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-          </div>
-        </div>
+        <DocumentMetadataEditor
+          isInvoice={isInvoice}
+          isOrder={isOrder}
+          isPrivat={isPrivat}
+          docNumber={docNumber}
+          isDraftNumber={isDraftPlaceholder(docNumber)}
+          status={String(form["status"] ?? "draft")}
+          orderNumber={String(form["order_number"] ?? "")}
+          issueDate={String(form["issue_date"] ?? "")}
+          dueDate={String(form["due_date"] ?? "")}
+          paidAt={String(form["paid_at"] ?? "")}
+          servicePeriod={String(form["service_period"] ?? "")}
+          dateCheck={dateCheck}
+          statusLabels={STATUS_LABEL}
+          onFieldChange={setField}
+          onApplyIssueMonth={applyIssueMonth}
+        />
 
         <DocumentCustomerEditor
           isQuote={isQuote}
