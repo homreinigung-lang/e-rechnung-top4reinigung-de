@@ -1012,7 +1012,9 @@ function DokumentDetail() {
     dueDate: String(form["due_date"] ?? ""),
     customerEmail: String(form["customer_email"] ?? ""),
     settings,
-  });  const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
+  });
+
+  const paymentTermsDays = Number(settings?.["payment_terms_days"] ?? 14);
 
   const iban = String(settings?.["iban"] ?? "");
   const bic = String(settings?.["bic"] ?? "");
