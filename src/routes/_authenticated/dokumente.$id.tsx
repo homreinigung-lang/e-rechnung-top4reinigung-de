@@ -58,6 +58,7 @@ import {
 import { DocumentPaymentDialog } from "@/components/documents/DocumentPaymentDialog";
 import { DocumentCancellationDialog } from "@/components/documents/DocumentCancellationDialog";
 import { DocumentStatusNotices } from "@/components/documents/DocumentStatusNotices";
+import { DocumentHeaderActions } from "@/components/documents/DocumentHeaderActions";
 import { isEmptyDraft } from "@/lib/empty-draft";
 import { GiroCode } from "@/components/GiroCode";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -1510,92 +1511,49 @@ function DokumentDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="no-print flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/dokumente">
-            <ArrowLeft className="size-4" /> Zurück
-          </Link>
-        </Button>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => void downloadPdf()}>
-            <FileDown className="size-4" /> PDF herunterladen
-          </Button>
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" /> Drucken
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              void (async () => {
-                if (!ensureHasItems()) return;
-                if (!(await persistBeforeOutput())) return;
-                // Offizielle Nummer VOR dem Versand vergeben, damit PDF,
-                // Dateiname und E-Mail-Text nie eine DEMO-Nummer enthalten.
-                try {
-                  await assignOfficialNumberNow();
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
-                  return;
-                }
-                setMailOpen(true);
-              })();
-            }}
-          >
-            <Mail className="size-4" /> Per E-Mail senden
-          </Button>
-          {doc.status === "draft" && !locked && (
-            <Button
-              variant="outline"
-              title="Beleg als versendet kennzeichnen, ohne eine E-Mail zu verschicken"
-              onClick={() => {
-                void (async () => {
-                  if (!ensureHasItems()) return;
-                  if (!(await persistBeforeOutput())) return;
-                  await setSendStatus.mutateAsync("sent");
-                  // Mit dem Versand wird aus dem Entwurf ein echter Beleg:
-                  // offizielle, fortlaufende Nummer vergeben (statt DEMO-Platzhalter).
-                  try {
-                    await ensureOfficialNumber(id);
-                    await queryClient.invalidateQueries({ queryKey: ["document", id] });
-                  } catch (e) {
-                    toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
-                  }
-                  // GoBD: Rechnungen werden beim Versand automatisch festgeschrieben.
-                  if (isInvoice) {
-                    try {
-                      await finalize.mutateAsync();
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Festschreiben fehlgeschlagen");
-                    }
-                  }
-                })();
-              }}
-              disabled={setSendStatus.isPending || save.isPending}
-            >
-              <Check className="size-4" /> Als versendet markieren
-            </Button>
-          )}
-          {doc.status === "sent" && !locked && (
-            <Button
-              variant="ghost"
-              title="Status zurück auf Entwurf setzen"
-              onClick={() => setSendStatus.mutate("draft")}
-              disabled={setSendStatus.isPending}
-            >
-              Zurück auf Entwurf
-            </Button>
-          )}
-
-          {!locked && (
-            <Button
-              variant={editMode ? "secondary" : "default"}
-              onClick={() => setEditMode((v) => !v)}
-            >
-              <Pencil className="size-4" /> {editMode ? "Vorschau" : "Bearbeiten"}
-            </Button>
-          )}
-        </div>
-      </div>
+      <DocumentHeaderActions
+        status={doc.status}
+        locked={locked}
+        editMode={editMode}
+        sendPending={setSendStatus.isPending}
+        savePending={save.isPending}
+        onDownloadPdf={() => void downloadPdf()}
+        onSendEmail={() => {
+          void (async () => {
+            if (!ensureHasItems()) return;
+            if (!(await persistBeforeOutput())) return;
+            try {
+              await assignOfficialNumberNow();
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
+              return;
+            }
+            setMailOpen(true);
+          })();
+        }}
+        onMarkSent={() => {
+          void (async () => {
+            if (!ensureHasItems()) return;
+            if (!(await persistBeforeOutput())) return;
+            await setSendStatus.mutateAsync("sent");
+            try {
+              await ensureOfficialNumber(id);
+              await queryClient.invalidateQueries({ queryKey: ["document", id] });
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Nummernvergabe fehlgeschlagen");
+            }
+            if (isInvoice) {
+              try {
+                await finalize.mutateAsync();
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Festschreiben fehlgeschlagen");
+              }
+            }
+          })();
+        }}
+        onResetDraft={() => setSendStatus.mutate("draft")}
+        onToggleEdit={() => setEditMode((value) => !value)}
+      />
 
       <div className="no-print flex flex-wrap items-center justify-end gap-2">
         {editMode && (
