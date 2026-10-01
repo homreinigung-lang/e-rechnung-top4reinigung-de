@@ -91,6 +91,13 @@ type Customer = {
   service_city: string | null;
 };
 
+type CompanyAddress = {
+  company_name: string | null;
+  address_line: string | null;
+  postal_code: string | null;
+  city: string | null;
+};
+
 type FormState = {
   id?: string;
   vehicle_id: string;
@@ -241,6 +248,26 @@ function Fahrtenbuch() {
       return (data ?? []) as Customer[];
     },
   });
+
+  const { data: companyAddressData } = useQuery<CompanyAddress | null>({
+    queryKey: ["company_address", "fahrtenbuch"],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("company_settings")
+        .select("company_name,address_line,postal_code,city")
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as CompanyAddress | null;
+    },
+  });
+
+  const companyAddress = useMemo(() => {
+    if (!companyAddressData) return "";
+    const street = companyAddressData.address_line?.trim() ?? "";
+    const postal = companyAddressData.postal_code?.trim() ?? "";
+    const city = companyAddressData.city?.trim() ?? "";
+    return [street, [postal, city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  }, [companyAddressData]);
 
   const distance = useMemo(() => {
     const start = Number(form.start_km);
@@ -680,7 +707,45 @@ function Fahrtenbuch() {
             </Select>
           </div>
           {form.trip_type === "round_trip" ? <div className="space-y-2"><Label>Rückkehrzeit</Label><Input type="time" value={form.return_time} onChange={(e) => setForm({ ...form, return_time: e.target.value })} /></div> : null}
-          <div className="space-y-2 md:col-span-2"><Label>Von (Startpunkt)</Label><Input placeholder="Betrieb, Lager oder letzter Termin" value={form.from_location} onChange={(e) => setForm({ ...form, from_location: e.target.value })} /></div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Von (Startpunkt)</Label>
+            <div className="grid gap-2 sm:grid-cols-[220px_1fr]">
+              <Select
+                value={companyAddress && form.from_location === companyAddress ? "company" : "manual"}
+                onValueChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    from_location:
+                      value === "company"
+                        ? companyAddress
+                        : current.from_location === companyAddress
+                          ? ""
+                          : current.from_location,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Startpunkt wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="company" disabled={!companyAddress}>
+                    Firmenadresse
+                  </SelectItem>
+                  <SelectItem value="manual">Manuell eingeben</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Betrieb, Lager oder letzter Termin"
+                value={form.from_location}
+                onChange={(e) => setForm({ ...form, from_location: e.target.value })}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {companyAddress
+                ? `Firmenadresse: ${companyAddress}`
+                : "Keine Firmenadresse hinterlegt. Bitte den Startpunkt manuell eingeben."}
+            </p>
+          </div>
           <div className="space-y-2">
             <Label>Kunde auswählen (optional)</Label>
             <Select value={form.customer_id} onValueChange={selectCustomer}>
