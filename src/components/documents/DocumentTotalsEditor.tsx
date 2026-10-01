@@ -5,6 +5,7 @@ import { formatMoney, formatNumber } from "@/lib/format";
 type DocumentTotalsEditorProps = {
   discountItemPresent: boolean;
   discountPercent: number;
+  discountPercentValue: string;
   discountReason: string;
   itemsTotal: number;
   discountAmount: number;
@@ -19,6 +20,7 @@ type DocumentTotalsEditorProps = {
 export function DocumentTotalsEditor({
   discountItemPresent,
   discountPercent,
+  discountPercentValue,
   discountReason,
   itemsTotal,
   discountAmount,
@@ -41,7 +43,7 @@ export function DocumentTotalsEditor({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Rabatt (%)</Label>
-          <Input inputMode="decimal" disabled={discountItemPresent} value={discountItemPresent ? "0" : String(discountPercent)} onChange={(event) => onDiscountPercentChange(event.target.value)} placeholder="0" />
+          <Input inputMode="decimal" disabled={discountItemPresent} value={discountItemPresent ? "0" : discountPercentValue} onChange={(event) => onDiscountPercentChange(event.target.value)} placeholder="0" />
         </div>
         <div className="space-y-2">
           <Label>Rabattgrund</Label>
