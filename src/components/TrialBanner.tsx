@@ -3,12 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate } from "@/lib/format";
+import { useIsAdmin } from "@/lib/subscriptions";
 
 /**
  * Zeigt der Firma prominent die verbleibenden Tage der kostenlosen
- * 60-Tage-Testphase an.
+ * 60-Tage-Testphase an. Master/Admin-Konten sind davon ausgenommen.
  */
 export function TrialBanner() {
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data } = useQuery({
     queryKey: ["my_subscription_trial"],
     staleTime: 60_000,
@@ -25,6 +27,7 @@ export function TrialBanner() {
     },
   });
 
+  if (adminLoading || isAdmin) return null;
   if (!data || data.status !== "trial" || !data.renews_on) return null;
 
   const end = new Date(`${data.renews_on}T00:00:00`);
