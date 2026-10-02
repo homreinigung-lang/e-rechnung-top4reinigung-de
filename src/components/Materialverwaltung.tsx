@@ -91,7 +91,7 @@ export function Materialverwaltung() {
   const [orderSupplier, setOrderSupplier] = useState("");
   const [orderNote, setOrderNote] = useState("");
 
-  const { data: materials = [] } = useQuery({
+  const { data: materials = [], isLoading: materialsLoading, error: materialsError } = useQuery({
     queryKey: ["materials"],
     queryFn: async () => {
       const { data, error } = await db
@@ -462,12 +462,43 @@ export function Materialverwaltung() {
           </div>
           <div className="space-y-1">
             <Label>Material</Label>
-            <Select value={assignMaterial} onValueChange={setAssignMaterial}>
-              <SelectTrigger><SelectValue placeholder="Material auswählen" /></SelectTrigger>
+            <Select
+              value={assignMaterial}
+              onValueChange={setAssignMaterial}
+              disabled={materialsLoading || Boolean(materialsError) || materials.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    materialsLoading
+                      ? "Materialien werden geladen …"
+                      : materialsError
+                        ? "Materialien konnten nicht geladen werden"
+                        : materials.length === 0
+                          ? "Zuerst Material oben anlegen"
+                          : "Material auswählen"
+                  }
+                />
+              </SelectTrigger>
               <SelectContent>
-                {materials.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                {materials.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {materials.length === 0 && !materialsLoading && !materialsError && (
+              <p className="text-xs text-muted-foreground">
+                Noch kein aktives Material vorhanden. Bitte zuerst unter „Materialstamm & Lager“
+                ein Material anlegen.
+              </p>
+            )}
+            {materialsError && (
+              <p className="text-xs text-destructive">
+                Materialliste konnte nicht geladen werden. Bitte Seite neu laden oder Datenbank-Migration prüfen.
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <Label>Sollbestand</Label>
@@ -522,16 +553,47 @@ export function Materialverwaltung() {
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-1">
             <Label>Material</Label>
-            <Select value={orderMaterial} onValueChange={(value) => {
-              setOrderMaterial(value);
-              const material = materials.find((item) => item.id === value);
-              setOrderSupplier(material?.supplier ?? "");
-            }}>
-              <SelectTrigger><SelectValue placeholder="Material auswählen" /></SelectTrigger>
+            <Select
+              value={orderMaterial}
+              onValueChange={(value) => {
+                setOrderMaterial(value);
+                const material = materials.find((item) => item.id === value);
+                setOrderSupplier(material?.supplier ?? "");
+              }}
+              disabled={materialsLoading || Boolean(materialsError) || materials.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    materialsLoading
+                      ? "Materialien werden geladen …"
+                      : materialsError
+                        ? "Materialien konnten nicht geladen werden"
+                        : materials.length === 0
+                          ? "Zuerst Material oben anlegen"
+                          : "Material auswählen"
+                  }
+                />
+              </SelectTrigger>
               <SelectContent>
-                {materials.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                {materials.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {materials.length === 0 && !materialsLoading && !materialsError && (
+              <p className="text-xs text-muted-foreground">
+                Noch kein aktives Material vorhanden. Bitte zuerst unter „Materialstamm & Lager“
+                ein Material anlegen.
+              </p>
+            )}
+            {materialsError && (
+              <p className="text-xs text-destructive">
+                Materialliste konnte nicht geladen werden. Bitte Seite neu laden oder Datenbank-Migration prüfen.
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <Label>Für Objekt</Label>
