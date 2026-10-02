@@ -83,8 +83,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { data: myEmployee } = useMyEmployee();
-  const { data: isAdmin } = useIsAdmin();
+  const { data: myEmployee, isLoading: employeeLoading } = useMyEmployee();
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: subscriptionAccess, isLoading: subscriptionLoading } = useMySubscriptionAccess();
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -104,6 +104,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (
       subscriptionLoading ||
+      employeeLoading ||
+      adminLoading ||
       isAdmin ||
       myEmployee ||
       pathname.startsWith("/mein-paket")
@@ -111,7 +113,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!subscriptionAllowed) {
       navigate({ to: "/mein-paket", replace: true });
     }
-  }, [subscriptionAllowed, subscriptionLoading, isAdmin, myEmployee, pathname, navigate]);
+  }, [
+    subscriptionAllowed,
+    subscriptionLoading,
+    employeeLoading,
+    adminLoading,
+    isAdmin,
+    myEmployee,
+    pathname,
+    navigate,
+  ]);
 
   useRealtimeSync();
 
@@ -204,8 +215,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             else navigate({ to: homeTo });
           }}><ArrowLeft className="size-4" />Zurück</Button>
         ) : null}
-        {subscriptionLoading && !isAdmin ? (
-          <div className="surface p-6 text-sm text-muted-foreground">Paketstatus wird geprüft …</div>
+        {(subscriptionLoading || employeeLoading || adminLoading) && !isAdmin ? (
+          <div className="surface p-6 text-sm text-muted-foreground">Kontozugriff wird geprüft …</div>
         ) : !isAdmin && !subscriptionAllowed && !pathname.startsWith("/mein-paket") ? (
           <div className="surface p-6 text-sm text-muted-foreground">
             Dieser Bereich ist mit dem aktuellen Paket oder nach Ablauf der Testphase nicht verfügbar.
