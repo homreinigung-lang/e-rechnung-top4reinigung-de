@@ -15,6 +15,11 @@ import {
 import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
 import { redeemInviteCode } from "@/lib/employee-invite.functions";
 import { resolveStartRoute } from "@/lib/employee";
+import {
+  checkPasswordPolicy,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_LABEL,
+} from "@/lib/password-policy";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -51,9 +56,10 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   const passwordsMatch = password === confirmPassword;
+  const passwordPolicy = checkPasswordPolicy(password);
   const isEmployeeSignup = accountType === "employee";
   const canSubmit =
-    password.length >= 6 &&
+    passwordPolicy.valid &&
     passwordsMatch &&
     (!isEmployeeSignup || inviteCode.replace(/[\s-]/g, "").length >= 4);
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -223,6 +229,10 @@ function AuthPage() {
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
+    if (!passwordPolicy.valid) {
+      toast.error(PASSWORD_POLICY_LABEL);
+      return;
+    }
     if (!passwordsMatch) {
       toast.error("Die Passwörter stimmen nicht überein.");
       return;
@@ -502,21 +512,22 @@ function AuthPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password2">Passwort (min. 6 Zeichen)</Label>
+                    <Label htmlFor="password2">Passwort</Label>
                     <PasswordInput
                       id="password2"
                       required
-                      minLength={6}
+                      minLength={PASSWORD_MIN_LENGTH}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground">{PASSWORD_POLICY_LABEL}</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password3">Passwort wiederholen</Label>
                     <PasswordInput
                       id="password3"
                       required
-                      minLength={6}
+                      minLength={PASSWORD_MIN_LENGTH}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
