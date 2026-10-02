@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BadgeEuro, CalendarDays, CalendarRange, Clock, HardHat, WalletCards } from "lucide-react";
+import { BadgeEuro, Boxes, CalendarDays, CalendarRange, Clock, HardHat, WalletCards } from "lucide-react";
 import { PersonalStammdatenPanel } from "@/components/PersonalStammdatenPanel";
 import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
 import { LohnartenPanel } from "@/components/LohnartenPanel";
 import { LohnvorbereitungPanel } from "@/components/LohnvorbereitungPanel";
+import { Materialverwaltung } from "@/components/Materialverwaltung";
 
-type TeamTab = "dienstplan" | "kalender" | "personal" | "zeiten" | "lohnarten" | "lohnvorbereitung";
+type TeamTab = "dienstplan" | "kalender" | "personal" | "zeiten" | "lohnarten" | "lohnvorbereitung" | "materialien";
 
 type TeamSearch = {
   tab?: TeamTab;
@@ -20,7 +21,7 @@ type TeamSearch = {
 
 export const Route = createFileRoute("/_authenticated/team")({
   validateSearch: (search: Record<string, unknown>): TeamSearch => {
-    const tab = ["dienstplan", "kalender", "personal", "zeiten", "lohnarten", "lohnvorbereitung"].includes(String(search["tab"]))
+    const tab = ["dienstplan", "kalender", "personal", "zeiten", "lohnarten", "lohnvorbereitung", "materialien"].includes(String(search["tab"]))
       ? (String(search["tab"]) as TeamSearch["tab"])
       : undefined;
     const stunden = Number(search["stunden"]);
@@ -66,7 +67,7 @@ function ControlCenter() {
     }
     try {
       const saved = localStorage.getItem(TAB_KEY);
-      if (saved && ["dienstplan", "kalender", "personal", "zeiten", "lohnarten", "lohnvorbereitung"].includes(saved)) {
+      if (saved && ["dienstplan", "kalender", "personal", "zeiten", "lohnarten", "lohnvorbereitung", "materialien"].includes(saved)) {
         setTab(saved as TeamTab);
       }
     } catch {
@@ -113,6 +114,9 @@ function ControlCenter() {
           <TabsTrigger value="lohnvorbereitung" className="gap-2">
             <WalletCards className="size-4" /> Lohnvorbereitung
           </TabsTrigger>
+          <TabsTrigger value="materialien" className="gap-2">
+            <Boxes className="size-4" /> Materialien
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dienstplan" className="mt-0">
@@ -142,6 +146,9 @@ function ControlCenter() {
         </TabsContent>
         <TabsContent value="lohnvorbereitung" className="mt-0">
           <LohnvorbereitungPanel />
+        </TabsContent>
+        <TabsContent value="materialien" className="mt-0">
+          <Materialverwaltung />
         </TabsContent>
       </Tabs>
     </div>
