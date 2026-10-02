@@ -89,22 +89,11 @@ export const redeemInviteCode = createServerFn({ method: "POST" })
       return { ok: true as const, employeeId: match.id, companyName: company.company_name };
     }
 
-    // … sonst neuen Personalsatz für die Firma anlegen.
-    const { data: created, error: insErr } = await supabaseAdmin
-      .from("employees")
-      .insert({
-        user_id: company.user_id,
-        auth_user_id: userId,
-        name: (data.fullName ?? "").trim() || email.split("@")[0] || "Mitarbeiter/in",
-        email,
-        role: "Reinigungskraft",
-        active: true,
-      })
-      .select("id")
-      .single();
-    if (insErr) throw new Error(insErr.message);
-
-    return { ok: true as const, employeeId: created.id, companyName: company.company_name };
+    // Kein Self-Onboarding nur anhand des Firmen-Codes:
+    // Der Arbeitgeber muss den Mitarbeiter vorher mit genau dieser E-Mail-Adresse
+    // im Personalbereich angelegt haben. Andernfalls könnte ein geleakter
+    // Unternehmens-Code zum unbefugten Beitritt zu einer Firma verwendet werden.
+    return { ok: false as const, reason: "not_precreated" as const };
   });
 
 /**
