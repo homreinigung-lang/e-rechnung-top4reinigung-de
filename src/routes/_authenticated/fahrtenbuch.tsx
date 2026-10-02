@@ -455,6 +455,9 @@ function Fahrtenbuch() {
   }
 
   function editEntry(entry: FahrtenbuchEntry) {
+    setStartPointMode(
+      companyAddress && entry.from_location.trim() === companyAddress.trim() ? "company" : "manual",
+    );
     setForm({
       id: entry.id,
       vehicle_id: entry.vehicle_id ?? "none",
@@ -734,7 +737,7 @@ function Fahrtenbuch() {
               </Select>
               <Input
                 placeholder={startPointMode === "manual" ? "Startpunkt eingeben, z. B. Lager oder letzter Termin" : "Firmenadresse"}
-                value={form.from_location}
+                value={startPointMode === "company" ? companyAddress : form.from_location}
                 readOnly={startPointMode === "company"}
                 onChange={(e) => setForm({ ...form, from_location: e.target.value })}
               />
@@ -760,7 +763,16 @@ function Fahrtenbuch() {
           <div className="space-y-2 md:col-span-3"><Label>Bemerkung (optional)</Label><Textarea rows={2} placeholder="Kundentermin, Besichtigung, Materiallieferung …" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
 
-        <Button onClick={() => saveTrip.mutate(form)} disabled={saveTrip.isPending}>
+        <Button
+          onClick={() =>
+            saveTrip.mutate({
+              ...form,
+              from_location:
+                startPointMode === "company" ? companyAddress : form.from_location,
+            })
+          }
+          disabled={saveTrip.isPending}
+        >
           {form.id ? <Save className="size-4" /> : <Plus className="size-4" />}
           {saveTrip.isPending ? "Speichern…" : form.id ? "Änderungen speichern" : "Fahrt speichern"}
         </Button>
