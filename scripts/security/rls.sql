@@ -28,18 +28,18 @@ INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_locat
 INSERT INTO storage.objects(bucket_id,name) VALUES
  ('firmen-dateien','10000000-0000-4000-8000-000000000001/test.pdf'),
  ('firmen-dateien','10000000-0000-4000-8000-000000000002/test.pdf');
-CREATE FUNCTION pg_temp.denied(statement text) RETURNS void LANGUAGE plpgsql AS $$
+CREATE FUNCTION pg_temp.denied(statement text) RETURNS void LANGUAGE plpgsql AS $denied$
 DECLARE rejected boolean := false;
 BEGIN
   BEGIN EXECUTE statement;
   EXCEPTION WHEN insufficient_privilege OR raise_exception OR foreign_key_violation THEN rejected := true;
   END;
   IF NOT rejected THEN RAISE EXCEPTION 'Expected denial: %', statement; END IF;
-END $;
+END $denied$;
 
 -- Every RLS-enabled public table must carry the restrictive blocked-account guard.
 -- This makes CI fail as soon as a future migration adds a table and forgets the guard.
-DO $
+DO $audit$
 DECLARE
   missing_tables text;
 BEGIN
@@ -66,7 +66,7 @@ BEGIN
   IF missing_tables IS NOT NULL THEN
     RAISE EXCEPTION 'RLS tables missing blocked-account guard: %', missing_tables;
   END IF;
-END $;
+END $audit$;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
@@ -106,6 +106,31 @@ SELECT pg_temp.denied($q$UPDATE public.time_entries SET hours=999$q$);
 SELECT pg_temp.denied($q$INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_location,to_location,start_km,end_km) VALUES ('10000000-0000-4000-8000-000000000002','40000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','X','Y',0,1)$q$);
 INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_location,to_location,start_km,end_km) VALUES
  ('10000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','Allowed','Trip',10,20);
+-- A stale authenticated JWT must not bypass account blocking through SECURITY DEFINER RPCs.
+RESET ROLE;
+INSERT INTO public.account_approvals(auth_user_id,email,full_name,company_name,token,status)
+VALUES (
+  '10000000-0000-4000-8000-000000000001',
+  'owner-a@example.invalid',
+  'Blocked owner',
+  'Blocked company',
+  'synthetic-blocked-owner-token',
+  'blocked'
+)
+ON CONFLICT (auth_user_id) DO UPDATE SET status = EXCLUDED.status;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+DO $blocked$
+BEGIN
+  ASSERT (SELECT count(*) FROM public.documents)=0, 'blocked account document read';
+  ASSERT (SELECT count(*) FROM public.customers)=0, 'blocked account customer read';
+END
+$blocked$;
+SELECT pg_temp.denied($q$SELECT public.next_document_number('invoice')$q$);
+SELECT pg_temp.denied($q$SELECT public.finalize_document('20000000-0000-4000-8000-000000000001')$q$);
+SELECT pg_temp.denied($q$SELECT public.list_trash()$q$);
+
 SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims','{}',true);
 DO $$ BEGIN

@@ -1581,6 +1581,7 @@ function DokumentDetail() {
 
       <SendEmailDialog
         open={mailOpen}
+        documentId={id}
         onOpenChange={setMailOpen}
         defaults={{
           to: mail.to,

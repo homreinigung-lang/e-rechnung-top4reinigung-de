@@ -8,6 +8,7 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
+        documentId: z.string().uuid(),
         to: z.string().email(),
         subject: z.string().min(1).max(300),
         body: z.string().min(1).max(20000),
@@ -26,14 +27,43 @@ export const sendInvoiceEmail = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     if (!data.pdfBase64.startsWith("JVBERi0")) throw new Error("Ungültige PDF-Datei.");
+
+    // The mail endpoint is not a generic authenticated relay: every send must
+    // correspond to a document owned by the authenticated tenant.
+    const { data: document, error: documentError } = await context.supabase
+      .from("documents")
+      .select("id")
+      .eq("id", data.documentId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (documentError || !document) throw new Error("Dokument nicht gefunden.");
+
+    const { data: settings } = await context.supabase
+      .from("company_settings")
+      .select("company_name,email")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    // Per-account outbound budget prevents a compromised account from turning
+    // the application into a bulk-mail relay.
+    const { allowPublicMail } = await import("./mail-throttle.server");
+    const allowed = await allowPublicMail({
+      email: `outbound:${context.userId}`,
+      limitPerEmail: 40,
+      windowEmailMinutes: 60,
+      limitPerIp: 80,
+      windowIpMinutes: 60,
+    });
+    if (!allowed) throw new Error("Zu viele E-Mails in kurzer Zeit. Bitte später erneut versuchen.");
+
     const { sendVerifiedEmail } = await import("./resend-email.server");
     const result = await sendVerifiedEmail({
       to: data.to,
       subject: data.subject,
       text: data.body,
       ...(data.html ? { html: data.html } : {}),
-      ...(data.companyName ? { companyName: data.companyName } : {}),
-      ...(data.companyEmail ? { companyEmail: data.companyEmail } : {}),
+      ...(settings?.company_name ? { companyName: settings.company_name } : {}),
+      ...(settings?.email ? { companyEmail: settings.email } : {}),
       attachments: [{ filename: data.filename, content: data.pdfBase64 }],
       ...(data.requestId ? { idempotencyKey: `document/${context.userId}/${data.requestId}` } : {}),
     });

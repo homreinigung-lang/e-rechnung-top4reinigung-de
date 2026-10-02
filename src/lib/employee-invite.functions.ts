@@ -135,9 +135,11 @@ export const sendEmployeeInvite = createServerFn({ method: "POST" })
 
     const companyName = settings.company_name || "Ihr Arbeitgeber";
     const companyEmail = settings.email?.trim() || undefined;
-    const origin = /^https?:\/\//.test(data.origin || "")
-      ? String(data.origin).replace(/\/$/, "")
-      : process.env["PUBLIC_SITE_URL"] || "https://e-rechnung.top4reinigung.de";
+    // Never put a client-controlled origin into a trusted invitation email.
+    const origin = (process.env["PUBLIC_SITE_URL"] || "https://e-rechnung.top4reinigung.de").replace(
+      /\/$/,
+      "",
+    );
     const link = `${origin}/auth?code=${encodeURIComponent(settings.invite_code)}`;
 
     const subject = `Einladung als Mitarbeiter/in – ${companyName}`;

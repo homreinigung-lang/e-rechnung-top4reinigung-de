@@ -35,6 +35,7 @@ export function SendEmailDialog({
   open,
   onOpenChange,
   defaults,
+  documentId,
   buildPdfBytes,
   beforeSend,
   onSent,
@@ -42,6 +43,7 @@ export function SendEmailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaults: SendEmailDefaults;
+  documentId: string;
   /**
    * Einzige PDF-Quelle: identische Erzeugung wie Vorschau und Download
    * (pdf-lib, A4, feste Ränder, gleiche Seitenumbruch-Regeln).
@@ -106,6 +108,7 @@ export function SendEmailDialog({
       }
       await sendEmail({
         data: {
+          documentId,
           to: to.trim(),
           subject,
           body: [body, defaults.signatureText].filter(Boolean).join("\n"),
