@@ -217,7 +217,9 @@ function AuthPage() {
           ? "Dieses Konto gehört bereits zu einer anderen Firma."
           : result?.reason === "own_company"
             ? "Dieser Code gehört zu Ihrem eigenen Firmenkonto."
-            : "Der Unternehmens-Code ist ungültig. Bitte fragen Sie Ihren Arbeitgeber nach einem gültigen Einladungscode.",
+            : result?.reason === "not_precreated"
+              ? "Kein vorbereiteter Mitarbeiterzugang für diese E-Mail-Adresse gefunden. Bitte bitten Sie Ihren Arbeitgeber, Sie zuerst im Personalbereich mit genau dieser E-Mail-Adresse anzulegen."
+              : "Der Unternehmens-Code ist ungültig. Bitte fragen Sie Ihren Arbeitgeber nach einem gültigen Einladungscode.",
       );
       return;
     }
