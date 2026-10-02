@@ -28,18 +28,18 @@ INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_locat
 INSERT INTO storage.objects(bucket_id,name) VALUES
  ('firmen-dateien','10000000-0000-4000-8000-000000000001/test.pdf'),
  ('firmen-dateien','10000000-0000-4000-8000-000000000002/test.pdf');
-CREATE FUNCTION pg_temp.denied(statement text) RETURNS void LANGUAGE plpgsql AS $$
+CREATE FUNCTION pg_temp.denied(statement text) RETURNS void LANGUAGE plpgsql AS $denied$
 DECLARE rejected boolean := false;
 BEGIN
   BEGIN EXECUTE statement;
   EXCEPTION WHEN insufficient_privilege OR raise_exception OR foreign_key_violation THEN rejected := true;
   END;
   IF NOT rejected THEN RAISE EXCEPTION 'Expected denial: %', statement; END IF;
-END $;
+END $denied$;
 
 -- Every RLS-enabled public table must carry the restrictive blocked-account guard.
 -- This makes CI fail as soon as a future migration adds a table and forgets the guard.
-DO $
+DO $audit$
 DECLARE
   missing_tables text;
 BEGIN
@@ -66,7 +66,7 @@ BEGIN
   IF missing_tables IS NOT NULL THEN
     RAISE EXCEPTION 'RLS tables missing blocked-account guard: %', missing_tables;
   END IF;
-END $;
+END $audit$;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
