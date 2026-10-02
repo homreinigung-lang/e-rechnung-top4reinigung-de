@@ -249,10 +249,40 @@ function sanitizeRooms(input: ScannedRoom[]): ScannedRoom[] {
   return uniformArea ? unique.map((r) => ({ ...r, area_sqm: 0 })) : unique;
 }
 
+const MAX_PROJECT_FILE_BYTES = 20 * 1024 * 1024;
+
 async function toDataUrl(fileUrl: string, mimeType: string): Promise<string> {
-  const res = await fetch(fileUrl);
+  const res = await fetch(fileUrl, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error("Datei konnte nicht geladen werden.");
-  const buffer = new Uint8Array(await res.arrayBuffer());
+
+  const declaredLength = Number(res.headers.get("content-length") ?? "0");
+  if (declaredLength > MAX_PROJECT_FILE_BYTES) {
+    throw new Error("Datei ist zu groß (maximal 20 MB).");
+  }
+
+  if (!res.body) throw new Error("Datei konnte nicht gelesen werden.");
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > MAX_PROJECT_FILE_BYTES) {
+      await reader.cancel();
+      throw new Error("Datei ist zu groß (maximal 20 MB).");
+    }
+    chunks.push(value);
+  }
+
+  const buffer = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
   let binary = "";
   for (let i = 0; i < buffer.length; i += 8192) {
     binary += String.fromCharCode(...buffer.subarray(i, i + 8192));
