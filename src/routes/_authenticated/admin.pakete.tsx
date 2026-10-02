@@ -1,13 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Package, Plus, Trash2 } from "lucide-react";
-import { euro, useCreatePlan, useDeletePlan, usePlans, useUpdatePlan } from "@/lib/admin";
+import { Package } from "lucide-react";
+import { euro, usePlans, useUpdatePlan } from "@/lib/admin";
 
 export const Route = createFileRoute("/_authenticated/admin/pakete")({
   component: PaketePage,
@@ -16,53 +14,13 @@ export const Route = createFileRoute("/_authenticated/admin/pakete")({
 function PaketePage() {
   const { data: plans = [], isLoading } = usePlans();
   const update = useUpdatePlan();
-  const create = useCreatePlan();
-  const remove = useDeletePlan();
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
 
   return (
     <div className="space-y-6">
-      <div className="surface space-y-3 p-4 sm:p-6">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <Plus className="size-4 text-primary" /> Neues Paket
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-          <div className="space-y-1.5">
-            <Label htmlFor="new-code">Kürzel</Label>
-            <Input
-              id="new-code"
-              value={code}
-              placeholder="z. B. premium"
-              onChange={(e) => setCode(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="new-name">Name</Label>
-            <Input
-              id="new-name"
-              value={name}
-              placeholder="z. B. Premium"
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <Button
-            disabled={!code.trim() || !name.trim() || create.isPending}
-            onClick={() => {
-              create.mutate(
-                { code: code.trim().toLowerCase(), name: name.trim() },
-                {
-                  onSuccess: () => {
-                    setCode("");
-                    setName("");
-                  },
-                },
-              );
-            }}
-          >
-            Anlegen
-          </Button>
-        </div>
+      <div className="rounded-md border bg-secondary/30 p-4 text-sm text-muted-foreground">
+        Für den öffentlichen Start sind die Paket-Codes <strong>Basis</strong>, <strong>Pro</strong> und
+        <strong>Enterprise</strong> fest definiert. Preise, Beschreibungen und Leistungen können hier
+        angepasst werden; neue Paket-Codes und das Löschen bestehender Pakete sind deaktiviert.
       </div>
 
       {isLoading ? (
@@ -90,14 +48,7 @@ function PaketePage() {
                       Aktiv
                     </Label>
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Paket löschen"
-                    onClick={() => remove.mutate(plan.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+
                 </div>
               </div>
 
