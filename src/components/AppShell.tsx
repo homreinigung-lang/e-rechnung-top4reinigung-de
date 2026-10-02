@@ -103,11 +103,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     (myEmployee ? subscriptionAllowsPath(subscriptionAccess ?? null, pathname) : subscriptionAllowsPath(subscriptionAccess ?? null, pathname));
 
   useEffect(() => {
-    if (subscriptionLoading || isAdmin || pathname.startsWith("/mein-paket")) return;
+    if (
+      subscriptionLoading ||
+      isAdmin ||
+      myEmployee ||
+      pathname.startsWith("/mein-paket")
+    ) return;
     if (!subscriptionAllowed) {
       navigate({ to: "/mein-paket", replace: true });
     }
-  }, [subscriptionAllowed, subscriptionLoading, isAdmin, pathname, navigate]);
+  }, [subscriptionAllowed, subscriptionLoading, isAdmin, myEmployee, pathname, navigate]);
 
   useRealtimeSync();
 
