@@ -47,6 +47,10 @@ const groups: Group[] = [
         label: "Wiederkehrende Rechnungen & Ausgaben",
         plans: { basis: false, pro: true, enterprise: true },
       },
+      {
+        label: "Lohnvorbereitung für Steuerberater",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
     ],
   },
   {
@@ -63,6 +67,16 @@ const groups: Group[] = [
         plans: { basis: false, pro: false, enterprise: true },
       },
       { label: "Einsatzkarte & Standorte", plans: { basis: false, pro: true, enterprise: true } },
+      { label: "Materialverwaltung & Objektbestand", plans: { basis: false, pro: true, enterprise: true } },
+      { label: "Materialverbrauch pro Objekt", plans: { basis: false, pro: true, enterprise: true } },
+      {
+        label: "Arbeitsnachweise & Fotos",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Digitale Objektmappe & Raumbuch",
+        plans: { basis: false, pro: false, enterprise: true },
+      },
     ],
   },
   {
@@ -89,6 +103,9 @@ const groups: Group[] = [
         label: "Quartals- und Kalkulations-Analysen",
         plans: { basis: false, pro: true, enterprise: true },
       },
+      { label: "Fahrtenbuch", plans: { basis: false, pro: true, enterprise: true } },
+      { label: "QM / Reklamationen", plans: { basis: false, pro: true, enterprise: true } },
+      { label: "Interner Chat", plans: { basis: false, pro: true, enterprise: true } },
     ],
   },
   {
@@ -112,8 +129,8 @@ const groups: Group[] = [
         plans: { basis: false, pro: false, enterprise: true },
       },
       {
-        label: "Bankabgleich (Kontoumsätze zuordnen)",
-        plans: { basis: false, pro: false, enterprise: true },
+        label: "Bankverbindung & GiroCode",
+        plans: { basis: true, pro: true, enterprise: true },
       },
       {
         label: "Backup-Export (Excel / JSON)",
