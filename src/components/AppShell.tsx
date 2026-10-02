@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee, isEmployeeAllowedPath } from "@/lib/employee";
-import { useIsAdmin } from "@/lib/subscriptions";
+import { subscriptionAllowsPath, useIsAdmin, useMySubscriptionAccess } from "@/lib/subscriptions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
 import { Vertretungswarnungen } from "@/components/Vertretungswarnungen";
@@ -85,6 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: myEmployee } = useMyEmployee();
   const { data: isAdmin } = useIsAdmin();
+  const { data: subscriptionAccess, isLoading: subscriptionLoading } = useMySubscriptionAccess();
   const [reviewOpen, setReviewOpen] = useState(false);
 
   useEffect(() => {
@@ -96,6 +97,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!myEmployee || isEmployeeAllowedPath(pathname)) return;
     navigate({ to: "/meine-zeiten", replace: true });
   }, [myEmployee, pathname, navigate]);
+
+  const subscriptionAllowed =
+    Boolean(isAdmin) ||
+    (myEmployee ? subscriptionAllowsPath(subscriptionAccess ?? null, pathname) : subscriptionAllowsPath(subscriptionAccess ?? null, pathname));
+
+  useEffect(() => {
+    if (subscriptionLoading || isAdmin || pathname.startsWith("/mein-paket")) return;
+    if (!subscriptionAllowed) {
+      navigate({ to: "/mein-paket", replace: true });
+    }
+  }, [subscriptionAllowed, subscriptionLoading, isAdmin, pathname, navigate]);
 
   useRealtimeSync();
 
@@ -109,15 +121,28 @@ export function AppShell({ children }: { children: ReactNode }) {
   const employeeHome = "/meine-zeiten";
   const homeTo = myEmployee ? employeeHome : "/dashboard";
   const showBack = pathname !== homeTo && pathname !== "/dashboard";
+  const filterAllowedItems = (groups: readonly NavGroup[]): NavGroup[] =>
+    groups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) => Boolean(isAdmin) || subscriptionAllowsPath(subscriptionAccess ?? null, item.to),
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+
   const moreGroups: readonly NavGroup[] = myEmployee
-    ? employeeGroups
+    ? filterAllowedItems(employeeGroups)
     : isAdmin
       ? [...ownerMoreGroups, { title: "Administration", items: [{ to: "/admin", label: "Plattform-Admin", icon: BadgeCheck }] }]
-      : ownerMoreGroups;
+      : filterAllowedItems(ownerMoreGroups);
 
+  const allowedQuickOwner = quickOwner.filter(
+    (item) => Boolean(isAdmin) || subscriptionAllowsPath(subscriptionAccess ?? null, item.to),
+  );
   const mobileItems: readonly NavItem[] = myEmployee
-    ? employeeGroups[0]!.items.slice(0, 3)
-    : quickOwner.slice(0, 4);
+    ? filterAllowedItems(employeeGroups)[0]?.items.slice(0, 3) ?? []
+    : allowedQuickOwner.slice(0, 4);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background pb-16 md:pb-0">
@@ -133,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           {!myEmployee ? (
             <nav className="ml-3 hidden items-center gap-1 md:flex">
-              {quickOwner.map((item) => (
+              {allowedQuickOwner.map((item) => (
                 <Link key={`${item.to}-${item.label}`} to={item.to} {...(item.search ? { search: item.search } : {})}
                   className={cn("rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted", isActive(pathname, item) && "bg-secondary text-secondary-foreground")}
                 >{item.label}</Link>
@@ -175,7 +200,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             else navigate({ to: homeTo });
           }}><ArrowLeft className="size-4" />Zurück</Button>
         ) : null}
-        {myEmployee && !isEmployeeAllowedPath(pathname) ? (
+        {subscriptionLoading && !isAdmin ? (
+          <div className="surface p-6 text-sm text-muted-foreground">Paketstatus wird geprüft …</div>
+        ) : !isAdmin && !subscriptionAllowed && !pathname.startsWith("/mein-paket") ? (
+          <div className="surface p-6 text-sm text-muted-foreground">
+            Dieser Bereich ist mit dem aktuellen Paket oder nach Ablauf der Testphase nicht verfügbar.
+          </div>
+        ) : myEmployee && !isEmployeeAllowedPath(pathname) ? (
           <div className="surface p-6 text-sm text-muted-foreground">Dieser Bereich ist dem Unternehmenskonto vorbehalten.</div>
         ) : children}
       </main>
