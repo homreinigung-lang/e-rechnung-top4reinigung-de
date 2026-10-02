@@ -31,7 +31,7 @@ function Impressum() {
       <h1 className="text-3xl font-bold">Impressum</h1>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Angaben gemäß § 5 TMG</h2>
+        <h2 className="text-lg font-semibold">Angaben gemäß § 5 DDG</h2>
         <p className="text-sm text-muted-foreground">
           Hom Reinigung Service
           <br />
@@ -74,18 +74,10 @@ function Impressum() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-semibold">EU-Streitschlichtung</h2>
+        <h2 className="text-lg font-semibold">Verbraucherstreitbeilegung</h2>
         <p className="text-sm text-muted-foreground">
-          Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{" "}
-          <a
-            className="underline"
-            href="https://ec.europa.eu/consumers/odr/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            https://ec.europa.eu/consumers/odr/
-          </a>
-          . Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer
+          Unser Angebot richtet sich ausschließlich an Unternehmer im Sinne des § 14 BGB. Wir sind
+          nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer
           Verbraucherschlichtungsstelle teilzunehmen.
         </p>
       </section>
