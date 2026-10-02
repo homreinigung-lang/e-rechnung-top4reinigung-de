@@ -10,7 +10,7 @@ declare
   role_name text := current_user;
 begin
   execute format(
-    'alter default privileges for role %I in schema public revoke select, insert, update, delete, truncate, references, trigger on tables from anon, authenticated, service_role',
+    'alter default privileges for role %I in schema public revoke select, insert, update, delete, truncate, references, trigger, maintain on tables from anon, authenticated, service_role',
     role_name
   );
   execute format(
