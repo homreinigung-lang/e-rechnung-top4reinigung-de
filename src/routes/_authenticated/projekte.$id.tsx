@@ -735,9 +735,9 @@ function ProjektDetail() {
                     project={{
                       id: project.id,
                       name: project.name,
-                      address_line: effectiveProjectAddress.address_line,
-                      postal_code: effectiveProjectAddress.postal_code,
-                      city: effectiveProjectAddress.city,
+                      address_line: effectiveProjectAddress.address_line ?? "",
+                      postal_code: effectiveProjectAddress.postal_code ?? "",
+                      city: effectiveProjectAddress.city ?? "",
                       customer_name: project.customer_name,
                     }}
                     readOnly
