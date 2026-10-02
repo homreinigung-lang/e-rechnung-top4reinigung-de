@@ -43,8 +43,14 @@ export function useIsAdmin() {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) return false;
-      const { data } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
-      return data === true;
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", uid)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (error) throw error;
+      return data?.role === "admin";
     },
   });
 }
