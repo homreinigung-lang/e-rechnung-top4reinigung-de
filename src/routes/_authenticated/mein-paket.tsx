@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePlans, euro, type Plan } from "@/lib/admin";
-import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
+import { planLabel, statusLabel, useIsAdmin, type Subscription } from "@/lib/subscriptions";
 import { usePlatformPayment, formatIban } from "@/lib/platform-payment";
 import {
   extraEmployeeCents,
@@ -78,6 +78,7 @@ function useMyEmployeeCount() {
 function MeinPaket() {
   const { data: pay, error: paymentError } = usePlatformPayment();
   const { data: sub, isLoading } = useMySubscription();
+  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: plans } = usePlans();
   const activePlans = (plans ?? []).filter((p) => p.active);
   const currentCode = sub?.plan ?? "";
@@ -113,13 +114,36 @@ function MeinPaket() {
       <div>
         <h1 className="font-display text-2xl font-bold">Mein Paket</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ihre aktuelle Testphase, Paket-Auswahl, Laufzeit und mögliche Upgrades.
+          {isAdmin
+            ? "Master-Account mit dauerhaftem, uneingeschränktem Plattformzugriff."
+            : "Ihre aktuelle Testphase, Paket-Auswahl, Laufzeit und mögliche Upgrades."}
         </p>
       </div>
 
       <section className="surface p-6">
         <h2 className="text-lg font-semibold">Aktuelles Abonnement</h2>
-        {isLoading ? (
+        {adminLoading ? (
+          <p className="mt-2 text-sm text-muted-foreground">Wird geladen …</p>
+        ) : isAdmin ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Konto</p>
+              <p className="text-base font-semibold">Master / Admin</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Status</p>
+              <Badge>Aktiv</Badge>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Zugriff</p>
+              <p className="text-base font-semibold">Unbegrenzt</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Laufzeit</p>
+              <p className="text-base font-semibold">Dauerhaft</p>
+            </div>
+          </div>
+        ) : isLoading ? (
           <p className="mt-2 text-sm text-muted-foreground">Wird geladen …</p>
         ) : sub ? (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -150,7 +174,7 @@ function MeinPaket() {
             wenden Sie sich an den Support.
           </p>
         )}
-        {sub && currentPlan ? (
+        {!isAdmin && sub && currentPlan ? (
           <div className="mt-6 rounded-md border border-border p-4 text-sm">
             <p className="font-medium">
               {sub.status === "trial" ? "Preis nach der Testphase" : "Monatlicher Preis"}
@@ -172,7 +196,7 @@ function MeinPaket() {
             </p>
           </div>
         ) : null}
-        {sub && sub.status !== "trial" ? (
+        {!isAdmin && sub && sub.status !== "trial" ? (
           <Button
             variant="secondary"
             className="mt-6"
@@ -188,7 +212,20 @@ function MeinPaket() {
         ) : null}
       </section>
 
-      {sub ? (
+      {isAdmin ? (
+        <section className="surface p-6">
+          <div className="flex items-start gap-3">
+            <Info className="mt-0.5 size-5 shrink-0 text-primary" />
+            <div>
+              <h2 className="text-lg font-semibold">Master-Account dauerhaft aktiv</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Dieses Administratorkonto ist von Testphase, Ablaufdatum, Paketbeschränkungen und
+                Verlängerungszahlungen ausgenommen. Der vollständige Plattformzugriff bleibt dauerhaft aktiv.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : sub ? (
         <section className="surface p-6">
           <div className="flex items-start gap-3">
             <Info className="mt-0.5 size-5 shrink-0 text-primary" />
@@ -257,65 +294,67 @@ function MeinPaket() {
         </section>
       ) : null}
 
-      <section>
-        <h2 className="text-lg font-semibold">Verfügbare Pakete</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {sub?.status === "trial"
-            ? "Während der Testphase können Sie bereits festlegen, welches Paket Sie danach nutzen möchten."
-            : "Hier können Sie ein anderes Paket auswählen."}
-        </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {activePlans.map((plan) => {
-            const isTrialPlan = sub?.status === "trial" && plan.code === currentCode;
-            const isCurrentPaid = sub?.status !== "trial" && plan.code === currentCode;
-            return (
-              <div
-                key={plan.id}
-                className={`surface flex flex-col p-6 ${isCurrentPaid || isTrialPlan ? "ring-2 ring-primary" : ""}`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-base font-semibold">{plan.name}</h3>
-                  {isCurrentPaid ? <Badge>Ihr Paket</Badge> : null}
-                  {isTrialPlan ? <Badge variant="secondary">Testphase</Badge> : null}
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
-                <p className="mt-4 text-2xl font-bold">
-                  {euro(plan.price_monthly_cents)}
-                  <span className="text-sm font-normal text-muted-foreground"> / Monat</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  oder {euro(plan.price_yearly_cents)} / Jahr
-                  {plan.code === "pro" ? " · ab dem 21. Mitarbeitenden +2,50 € / Monat" : ""}
-                </p>
-                <ul className="mt-4 flex-1 space-y-2 text-sm">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="mt-6"
-                  disabled={isCurrentPaid}
-                  variant={isCurrentPaid ? "secondary" : "default"}
-                  onClick={() => !isCurrentPaid && setOrderPlan(plan)}
+      {!isAdmin ? (
+        <section>
+          <h2 className="text-lg font-semibold">Verfügbare Pakete</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {sub?.status === "trial"
+              ? "Während der Testphase können Sie bereits festlegen, welches Paket Sie danach nutzen möchten."
+              : "Hier können Sie ein anderes Paket auswählen."}
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {activePlans.map((plan) => {
+              const isTrialPlan = sub?.status === "trial" && plan.code === currentCode;
+              const isCurrentPaid = sub?.status !== "trial" && plan.code === currentCode;
+              return (
+                <div
+                  key={plan.id}
+                  className={`surface flex flex-col p-6 ${isCurrentPaid || isTrialPlan ? "ring-2 ring-primary" : ""}`}
                 >
-                  <Sparkles className="size-4" />
-                  {isCurrentPaid
-                    ? "Aktuell gebucht"
-                    : sub?.status === "trial"
-                      ? "Paket für danach wählen"
-                      : "Paketwechsel bestellen"}
-                </Button>
-              </div>
-            );
-          })}
-          {activePlans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Derzeit sind keine Pakete hinterlegt.</p>
-          ) : null}
-        </div>
-      </section>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold">{plan.name}</h3>
+                    {isCurrentPaid ? <Badge>Ihr Paket</Badge> : null}
+                    {isTrialPlan ? <Badge variant="secondary">Testphase</Badge> : null}
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
+                  <p className="mt-4 text-2xl font-bold">
+                    {euro(plan.price_monthly_cents)}
+                    <span className="text-sm font-normal text-muted-foreground"> / Monat</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    oder {euro(plan.price_yearly_cents)} / Jahr
+                    {plan.code === "pro" ? " · ab dem 21. Mitarbeitenden +2,50 € / Monat" : ""}
+                  </p>
+                  <ul className="mt-4 flex-1 space-y-2 text-sm">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className="mt-6"
+                    disabled={isCurrentPaid}
+                    variant={isCurrentPaid ? "secondary" : "default"}
+                    onClick={() => !isCurrentPaid && setOrderPlan(plan)}
+                  >
+                    <Sparkles className="size-4" />
+                    {isCurrentPaid
+                      ? "Aktuell gebucht"
+                      : sub?.status === "trial"
+                        ? "Paket für danach wählen"
+                        : "Paketwechsel bestellen"}
+                  </Button>
+                </div>
+              );
+            })}
+            {activePlans.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Derzeit sind keine Pakete hinterlegt.</p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <RenewalPaymentDialog
         info={payment}
