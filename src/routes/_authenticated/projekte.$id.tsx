@@ -10,6 +10,8 @@ import { fileUrl, openStoredFile } from "@/lib/storage";
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
 import { LvPositionen } from "@/components/LvPositionen";
+import { Objektmappe } from "@/components/Objektmappe";
+import { LeistungsnachweisDialog } from "@/components/LeistungsnachweisDialog";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -197,7 +199,7 @@ function ProjektDetail() {
       const { data, error } = await supabase
         .from("time_entries")
         .select(
-          "id,hours,hourly_rate,work_date,entry_type,approval_status,completed_at,employee_name,start_time,end_time,note",
+          "id,hours,hourly_rate,work_date,entry_type,approval_status,completed_at,employee_name,start_time,end_time,note,photo_paths,performance_services,performance_note,employee_signature,customer_signature,customer_signer_name,performance_status,performance_completed_at",
         )
         .eq("project_id", id);
       if (error) throw error;
@@ -691,6 +693,58 @@ function ProjektDetail() {
               project.source_file_name
             )}
           </p>
+        )}
+      </section>
+
+      <Objektmappe projectId={id} />
+
+      <section className="surface space-y-4 p-5">
+        <div>
+          <h2 className="text-lg font-semibold">Arbeitsscheine / Leistungsnachweise</h2>
+          <p className="text-sm text-muted-foreground">
+            Vom Mitarbeiter erfasste Leistungsnachweise mit Kundenunterschrift werden automatisch
+            diesem Objekt zugeordnet.
+          </p>
+        </div>
+        {timeEntries.filter((entry) => entry.performance_status).length === 0 ? (
+          <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+            Noch keine Arbeitsscheine für dieses Objekt vorhanden.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {timeEntries
+              .filter((entry) => entry.performance_status)
+              .sort((a, b) => String(b.work_date).localeCompare(String(a.work_date)))
+              .map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {formatDate(entry.work_date)} · {entry.employee_name || "Mitarbeiter"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {Number(entry.hours ?? 0).toFixed(2).replace(".", ",")} Std. ·{" "}
+                      {entry.performance_status === "completed" ? "Abgeschlossen" : "Entwurf"}
+                      {entry.customer_signer_name ? ` · Kunde: ${entry.customer_signer_name}` : ""}
+                    </p>
+                  </div>
+                  <LeistungsnachweisDialog
+                    entry={entry}
+                    project={{
+                      id: project.id,
+                      name: project.name,
+                      address_line: effectiveProjectAddress.address_line ?? "",
+                      postal_code: effectiveProjectAddress.postal_code ?? "",
+                      city: effectiveProjectAddress.city ?? "",
+                      customer_name: project.customer_name,
+                    }}
+                    readOnly
+                  />
+                </div>
+              ))}
+          </div>
         )}
       </section>
 
