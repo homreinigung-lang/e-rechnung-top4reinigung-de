@@ -248,7 +248,7 @@ export function LohnvorbereitungPanel() {
   function exportEmployeePdf(row: LohnvorbereitungRow) {
     const employee = employees.find((item) => item.id === row.employeeId);
     const handoff = handoffByEmployee.get(row.employeeId);
-    const soll = sollHoursForMonth(employee?.weekly_hours, month, employee?.contract_start);
+    const soll = sollHoursForMonth(Number(employee?.weekly_hours ?? 0), month, employee?.contract_start);
     const ist = row.normalstunden + row.sonntagstunden;
 
     const pdf = new jsPDF();
@@ -477,7 +477,7 @@ export function LohnvorbereitungPanel() {
                   <div className="font-semibold">
                     {de(
                       sollHoursForMonth(
-                        selectedEmployee?.weekly_hours,
+                        Number(selectedEmployee?.weekly_hours ?? 0),
                         month,
                         selectedEmployee?.contract_start,
                       ),
