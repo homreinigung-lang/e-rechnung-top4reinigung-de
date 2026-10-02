@@ -35,6 +35,13 @@ export const checkDomainDns = createServerFn({ method: "POST" })
       .replace(/^https?:\/\//, "")
       .replace(/\/.*$/, "")
       .toLowerCase();
+
+    // Prevent SSRF through localhost/IP literals/private/internal hostnames.
+    // This endpoint is only for public DNS names that can point at the expected Lovable edge.
+    const hostnamePattern =
+      /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+    if (!hostnamePattern.test(domain)) throw new Error("Ungültige öffentliche Domain.");
+
     const parts = domain.split(".");
     const apex = parts.slice(-2).join(".");
     const txtNames = Array.from(new Set([`_lovable.${domain}`, `_lovable.${apex}`]));
@@ -91,11 +98,21 @@ export const checkDomainDns = createServerFn({ method: "POST" })
     }
 
     let httpStatus: number | null = null;
-    try {
-      const res = await fetch(`https://${domain}/`, { method: "GET", redirect: "manual" });
-      httpStatus = res.status;
-    } catch {
-      httpStatus = null;
+    // Never let this server-side probe become an arbitrary URL fetch. Only probe
+    // after DNS resolves exclusively to the expected public edge address.
+    const safeToProbeHttps =
+      aRecords.length > 0 && aRecords.every((address) => address === "185.158.133.1");
+    if (safeToProbeHttps) {
+      try {
+        const res = await fetch(`https://${domain}/`, {
+          method: "GET",
+          redirect: "manual",
+          signal: AbortSignal.timeout(8_000),
+        });
+        httpStatus = res.status;
+      } catch {
+        httpStatus = null;
+      }
     }
     const httpsOk = httpStatus !== null && httpStatus < 400;
     if (!httpsOk)
