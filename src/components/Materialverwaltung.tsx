@@ -298,7 +298,7 @@ export function Materialverwaltung() {
   const updateOrder = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const patch: Record<string, unknown> = { status };
-      if (status === "bestellt") patch.order_date = new Date().toISOString().slice(0, 10);
+      if (status === "bestellt") patch["order_date"] = new Date().toISOString().slice(0, 10);
       const { error } = await db.from("material_orders").update(patch).eq("id", id);
       if (error) throw error;
     },
