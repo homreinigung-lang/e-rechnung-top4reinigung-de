@@ -33,7 +33,7 @@ const groups: Group[] = [
       },
       {
         label: "EU-Reverse-Charge (§ 13b UStG)",
-        plans: { basis: false, pro: true, enterprise: true },
+        plans: { basis: true, pro: true, enterprise: true },
       },
       {
         label: "Kalkulation nach Fläche & Leistungswerten",
