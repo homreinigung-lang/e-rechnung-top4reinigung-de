@@ -174,22 +174,16 @@ export function useMySubscriptionAccess() {
     queryKey: ["my_subscription_access"],
     staleTime: 60_000,
     queryFn: async (): Promise<SubscriptionAccess | null> => {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) return null;
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select("plan,status,renews_on")
-        .eq("user_id", uid)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("current_subscription_access");
       if (error) throw error;
-      if (!data) return null;
-      const renewsOn = data.renews_on ? String(data.renews_on) : null;
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!row) return null;
+      const renewsOn = row.renews_on ? String(row.renews_on) : null;
       const today = new Date().toISOString().slice(0, 10);
       const expired = Boolean(renewsOn && renewsOn < today);
       return {
-        plan: String(data.plan ?? ""),
-        status: String(data.status ?? ""),
+        plan: String(row.plan ?? ""),
+        status: String(row.status ?? ""),
         renewsOn,
         expired,
       };
