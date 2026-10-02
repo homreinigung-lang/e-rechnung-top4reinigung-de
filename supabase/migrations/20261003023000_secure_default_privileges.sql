@@ -2,31 +2,36 @@
 -- Explicit GRANT statements in each migration opt objects into Data API access.
 begin;
 
-alter default privileges for role postgres in schema public
-  revoke select, insert, update, delete, truncate, references, trigger
-  on tables from anon, authenticated, service_role;
-alter default privileges for role postgres in schema public
-  revoke execute on functions from public, anon, authenticated, service_role;
-alter default privileges for role postgres in schema public
-  revoke usage, select, update on sequences from anon, authenticated, service_role;
-
--- supabase_admin exists on hosted Supabase, but not in the disposable CI database.
-do $supabase_admin_defaults$
+do $secure_defaults$
+declare
+  role_name text;
 begin
-  if exists (select 1 from pg_roles where rolname = 'supabase_admin') then
-    execute 'alter default privileges for role supabase_admin in schema public revoke select, insert, update, delete, truncate, references, trigger on tables from anon, authenticated, service_role';
-    execute 'alter default privileges for role supabase_admin in schema public revoke execute on functions from public, anon, authenticated, service_role';
-    execute 'alter default privileges for role supabase_admin in schema public revoke usage, select, update on sequences from anon, authenticated, service_role';
-    execute 'alter default privileges for role supabase_admin in schema app_private revoke execute on functions from public, anon, authenticated, service_role';
-  end if;
+  for role_name in
+    select distinct r
+    from unnest(array[current_user, 'postgres', 'supabase_admin']) as r
+    where exists (select 1 from pg_roles pr where pr.rolname = r)
+  loop
+    execute format(
+      'alter default privileges for role %I in schema public revoke select, insert, update, delete, truncate, references, trigger on tables from anon, authenticated, service_role',
+      role_name
+    );
+    execute format(
+      'alter default privileges for role %I in schema public revoke execute on functions from public, anon, authenticated, service_role',
+      role_name
+    );
+    execute format(
+      'alter default privileges for role %I in schema public revoke usage, select, update on sequences from anon, authenticated, service_role',
+      role_name
+    );
+    execute format(
+      'alter default privileges for role %I in schema app_private revoke execute on functions from public, anon, authenticated, service_role',
+      role_name
+    );
+  end loop;
 end
-$supabase_admin_defaults$;
+$secure_defaults$;
 
--- Internal helpers should never become generally executable by default.
-alter default privileges for role postgres in schema app_private
-  revoke execute on functions from public, anon, authenticated, service_role;
-
--- Trigger helpers are not application RPCs.
+-- Trigger helpers are implementation details, not application RPCs.
 revoke all on function public.set_recurring_expense_anchor_day()
   from public, anon, authenticated;
 revoke all on function public.set_recurring_invoice_anchor_day()
