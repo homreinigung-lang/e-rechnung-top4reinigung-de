@@ -118,3 +118,81 @@ export function useCanReverseCharge() {
     isLoading,
   };
 }
+
+
+export type SubscriptionAccess = {
+  plan: string;
+  status: string;
+  renewsOn: string | null;
+  expired: boolean;
+};
+
+const PLAN_LEVEL: Record<string, number> = { basis: 1, pro: 2, enterprise: 3 };
+
+export function requiredPlanForPath(pathname: string): "basis" | "pro" | "enterprise" {
+  if (
+    pathname.startsWith("/projekte") ||
+    pathname.startsWith("/steuerberater")
+  ) {
+    return "enterprise";
+  }
+  if (
+    pathname.startsWith("/kalkulation") ||
+    pathname.startsWith("/team") ||
+    pathname.startsWith("/karte") ||
+    pathname.startsWith("/fahrtenbuch") ||
+    pathname.startsWith("/wiederkehrend") ||
+    pathname.startsWith("/ausgaben") ||
+    pathname.startsWith("/qm-reklamationen") ||
+    pathname.startsWith("/nachrichten") ||
+    pathname.startsWith("/lv-analyse")
+  ) {
+    return "pro";
+  }
+  return "basis";
+}
+
+export function subscriptionAllowsPath(access: SubscriptionAccess | null, pathname: string): boolean {
+  if (
+    pathname.startsWith("/mein-paket") ||
+    pathname.startsWith("/profil") ||
+    pathname.startsWith("/hilfe") ||
+    pathname.startsWith("/einstellungen")
+  ) {
+    return true;
+  }
+  if (!access) return false;
+  if (access.status === "trial") return !access.expired;
+  if (access.status !== "active" || access.expired) return false;
+  const current = PLAN_LEVEL[access.plan.toLowerCase()] ?? 0;
+  const required = PLAN_LEVEL[requiredPlanForPath(pathname)] ?? 1;
+  return current >= required;
+}
+
+export function useMySubscriptionAccess() {
+  return useQuery({
+    queryKey: ["my_subscription_access"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<SubscriptionAccess | null> => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) return null;
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("plan,status,renews_on")
+        .eq("user_id", uid)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      const renewsOn = data.renews_on ? String(data.renews_on) : null;
+      const today = new Date().toISOString().slice(0, 10);
+      const expired = Boolean(renewsOn && renewsOn < today);
+      return {
+        plan: String(data.plan ?? ""),
+        status: String(data.status ?? ""),
+        renewsOn,
+        expired,
+      };
+    },
+  });
+}
