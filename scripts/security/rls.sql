@@ -106,6 +106,28 @@ SELECT pg_temp.denied($q$UPDATE public.time_entries SET hours=999$q$);
 SELECT pg_temp.denied($q$INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_location,to_location,start_km,end_km) VALUES ('10000000-0000-4000-8000-000000000002','40000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','X','Y',0,1)$q$);
 INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_location,to_location,start_km,end_km) VALUES
  ('10000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','Allowed','Trip',10,20);
+-- A stale authenticated JWT must not bypass account blocking through SECURITY DEFINER RPCs.
+RESET ROLE;
+INSERT INTO public.account_approvals(auth_user_id,email,full_name,company_name,status)
+VALUES (
+  '10000000-0000-4000-8000-000000000001',
+  'owner-a@example.invalid',
+  'Blocked owner',
+  'Blocked company',
+  'blocked'
+)
+ON CONFLICT (auth_user_id) DO UPDATE SET status = EXCLUDED.status;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+DO $ BEGIN
+  ASSERT (SELECT count(*) FROM public.documents)=0, 'blocked account document read';
+  ASSERT (SELECT count(*) FROM public.customers)=0, 'blocked account customer read';
+END $;
+SELECT pg_temp.denied($q$SELECT public.next_document_number('invoice')$q$);
+SELECT pg_temp.denied($q$SELECT public.finalize_document('20000000-0000-4000-8000-000000000001')$q$);
+SELECT pg_temp.denied($q$SELECT public.list_trash()$q$);
+
 SET LOCAL ROLE anon;
 SELECT set_config('request.jwt.claims','{}',true);
 DO $$ BEGIN
