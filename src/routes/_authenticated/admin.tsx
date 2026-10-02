@@ -4,13 +4,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  // Harte Zugangssperre: nur der Master-Account mit Administrator-Rolle.
+  // Harte Zugangssperre: nur das angemeldete Konto mit Administrator-Rolle.
+  // Die Rollenprüfung erfolgt über die eigene user_roles-Zeile und deren RLS;
+  // der interne has_role()-Helper bleibt absichtlich außerhalb der public RPC-API.
   beforeLoad: async () => {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
     if (!uid) throw redirect({ to: "/auth" });
-    const { data, error } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
-    if (error || data !== true) throw redirect({ to: "/dashboard" });
+
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", uid)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (error || data?.role !== "admin") throw redirect({ to: "/dashboard" });
     return {};
   },
   head: () => ({
