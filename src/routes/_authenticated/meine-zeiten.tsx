@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -18,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 import { toast } from "sonner";
-import { Clock, MapPin, Navigation, Trash2 } from "lucide-react";
+import { Boxes, Clock, MapPin, Navigation, Trash2 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate } from "@/lib/format";
 import { kwLabel } from "@/lib/kw";
@@ -69,6 +70,7 @@ export const Route = createFileRoute("/_authenticated/meine-zeiten")({
 });
 
 function MeineZeiten() {
+  const db = supabase as SupabaseClient;
   const queryClient = useQueryClient();
   const { data: me, isLoading } = useMyEmployee();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -133,6 +135,38 @@ function MeineZeiten() {
         ...a,
         released: !a.start_date || released.has(String(a.start_date)),
       }));
+    },
+  });
+
+  const { data: projectMaterials = [] } = useQuery({
+    queryKey: ["my_project_materials", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("project_materials")
+        .select("id,project_id,material_id,target_stock,object_stock");
+      if (error) throw error;
+      return (data ?? []) as {
+        id: string;
+        project_id: string;
+        material_id: string;
+        target_stock: number;
+        object_stock: number;
+      }[];
+    },
+  });
+
+  const { data: materials = [] } = useQuery({
+    queryKey: ["my_materials", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("materials")
+        .select("id,name,unit")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string; unit: string }[];
     },
   });
 
@@ -575,6 +609,9 @@ function MeineZeiten() {
         projectId={selectedProjectId}
         projects={projects}
         assignments={assignments}
+        entries={entries}
+        projectMaterials={projectMaterials}
+        materials={materials}
         onClose={() => setSelectedProjectId(null)}
       />
     </div>
@@ -585,6 +622,9 @@ function ProjectDetailDialog({
   projectId,
   projects,
   assignments,
+  entries,
+  projectMaterials,
+  materials,
   onClose,
 }: {
   projectId: string | null;
@@ -599,17 +639,52 @@ function ProjectDetailDialog({
     start_date: string | null;
     end_date: string | null;
   }[];
+  entries: Array<{
+    id: string;
+    project_id?: string | null;
+    work_date?: string | null;
+    hours?: number | string | null;
+    location?: string | null;
+    employee_name?: string | null;
+    start_time?: string | null;
+    end_time?: string | null;
+    break_minutes?: number | null;
+    photo_paths?: string[] | null;
+    performance_services?: string[] | null;
+    performance_note?: string | null;
+    employee_signature?: string | null;
+    customer_signature?: string | null;
+    customer_signer_name?: string | null;
+    performance_status?: string | null;
+    performance_completed_at?: string | null;
+    entry_type?: string | null;
+    absence_reason?: string | null;
+  }>;
+  projectMaterials: {
+    id: string;
+    project_id: string;
+    material_id: string;
+    target_stock: number;
+    object_stock: number;
+  }[];
+  materials: { id: string; name: string; unit: string }[];
   onClose: () => void;
 }) {
   const project = projectId ? (projects.find((p) => p.id === projectId) ?? null) : null;
   const address = project ? projectAddress(project) : "";
   const projectAssignments = assignments.filter((a) => a.project_id === projectId);
+  const assignedMaterials = projectMaterials.filter((row) => row.project_id === projectId);
+  const projectEntries = entries
+    .filter((entry) => entry.project_id === projectId && !isAbsence(entry))
+    .sort((a, b) => String(b.work_date ?? "").localeCompare(String(a.work_date ?? "")))
+    .slice(0, 5);
+
   // Tageswerte aus der Arbeitsplanung; ältere Einträge ohne Tageswerte auf Mo–Fr verteilen.
   const dayTotals = projectAssignments.reduce<number[]>((acc, a) => {
     const effective = effectiveDayHours(a.day_hours, a.hours_per_week, a.day_times);
     return acc.map((v, i) => v + (effective[i] ?? 0));
   }, normalizeDayHours(null));
-  const totalHours = dayTotals.reduce((s, n) => s + n, 0);
+  const totalHours = dayTotals.reduce((sum, value) => sum + value, 0);
   // Arbeitszeiten (Von–Bis) je Wochentag aus der Planung.
   const dayRanges = Array.from({ length: 7 }, (_, i) =>
     projectAssignments
@@ -620,28 +695,38 @@ function ProjectDetailDialog({
 
   return (
     <Dialog open={!!projectId} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{project?.name ?? "Objekt"}</DialogTitle>
-          <DialogDescription>Objekt-Details und Routenführung</DialogDescription>
+          <DialogDescription>
+            Einsatzdetails, Material, Arbeitsnachweise und Routenführung
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <div className="text-xs text-muted-foreground">Adresse</div>
-            <div className="mt-1 text-sm font-medium">{address || "Keine Adresse hinterlegt"}</div>
+        <div className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Kunde</div>
+              <div className="mt-1 text-sm font-medium">{project?.customer_name || "—"}</div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs text-muted-foreground">Adresse</div>
+              <div className="mt-1 text-sm font-medium">{address || "Keine Adresse hinterlegt"}</div>
+            </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="text-xs text-muted-foreground">Wochenstunden</div>
               <div className="mt-1 text-sm font-medium">{totalHours.toFixed(2)} Std.</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Einsätze</div>
+              <div className="text-xs text-muted-foreground">Planungen</div>
               <div className="mt-1 text-sm font-medium">{projectAssignments.length}</div>
             </div>
           </div>
+
           <div>
-            <div className="text-xs text-muted-foreground">Arbeitszeiten je Wochentag</div>
+            <div className="text-xs font-medium text-muted-foreground">Arbeitszeiten je Wochentag</div>
             <ul className="mt-1 divide-y text-sm">
               {DAY_NAMES.map((name, i) => (
                 <li key={name} className="flex items-center justify-between py-1.5">
@@ -660,6 +745,86 @@ function ProjectDetailDialog({
               </li>
             </ul>
           </div>
+
+          <div className="rounded-md border p-3">
+            <div className="flex items-center gap-2">
+              <Boxes className="size-4 text-muted-foreground" />
+              <div className="font-medium">Material am Objekt</div>
+            </div>
+            {assignedMaterials.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Für dieses Objekt ist kein Material hinterlegt.
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y text-sm">
+                {assignedMaterials.map((row) => {
+                  const material = materials.find((item) => item.id === row.material_id);
+                  const low =
+                    Number(row.target_stock ?? 0) > 0 &&
+                    Number(row.object_stock ?? 0) < Number(row.target_stock ?? 0);
+                  return (
+                    <li key={row.id} className="flex items-center justify-between gap-3 py-2">
+                      <span>
+                        <span className="font-medium">{material?.name ?? "Material"}</span>
+                        {low && (
+                          <span className="ml-2 text-xs font-medium text-amber-700">Nachfüllen</span>
+                        )}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {Number(row.object_stock ?? 0).toFixed(2)} {material?.unit ?? ""}
+                        {Number(row.target_stock ?? 0) > 0
+                          ? ` / Soll ${Number(row.target_stock).toFixed(2)}`
+                          : ""}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-md border p-3">
+            <div className="font-medium">Letzte Arbeitsnachweise / Fotos</div>
+            {projectEntries.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Für dieses Objekt gibt es noch keinen eigenen Arbeitszeiteintrag.
+              </p>
+            ) : (
+              <div className="mt-2 space-y-3">
+                {projectEntries.map((entry) => (
+                  <div key={entry.id} className="rounded-md border p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                      <span className="font-medium">
+                        {entry.work_date ? formatDate(entry.work_date) : "—"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {Number(entry.hours ?? 0).toFixed(2)} Std.
+                      </span>
+                    </div>
+                    {entry.performance_services && entry.performance_services.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {entry.performance_services.map((service) => (
+                          <span key={service} className="rounded border px-2 py-0.5 text-xs">
+                            {service}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <LeistungsnachweisDialog entry={entry as never} project={project as never} />
+                    </div>
+                    <ArbeitsnachweisFotos
+                      entryId={entry.id}
+                      paths={entry.photo_paths ?? []}
+                      canUpload
+                      invalidateKey="my_time_entries"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {address && (
             <Button asChild className="w-full">
               <a href={mapsUrl(address)} target="_blank" rel="noreferrer">
