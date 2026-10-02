@@ -38,7 +38,7 @@ const ownerMoreGroups: readonly NavGroup[] = [
     { to: "/team", label: "Control Center", icon: HardHat },
     { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
     { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },
-    { to: "/materialien", label: "Materialien", icon: Package },
+    { to: "/team", label: "Materialien", icon: Package, search: { tab: "materialien" } },
     { to: "/qm-reklamationen", label: "QM / Reklamationen", icon: ClipboardCheck },
     { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
   ]},
