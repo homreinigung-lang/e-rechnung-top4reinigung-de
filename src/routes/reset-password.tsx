@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/PasswordInput";
+import {
+  checkPasswordPolicy,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_LABEL,
+} from "@/lib/password-policy";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -65,6 +70,10 @@ function ResetPasswordPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!checkPasswordPolicy(password).valid) {
+      toast.error(PASSWORD_POLICY_LABEL);
+      return;
+    }
     if (password !== confirm) {
       toast.error("Die Passwörter stimmen nicht überein.");
       return;
@@ -112,21 +121,22 @@ function ResetPasswordPage() {
         </h1>
         <form onSubmit={submit} className="surface space-y-4 p-6">
           <div className="space-y-2">
-            <Label htmlFor="pw1">Neues Passwort (min. 6 Zeichen)</Label>
+            <Label htmlFor="pw1">Neues Passwort</Label>
             <PasswordInput
               id="pw1"
               required
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">{PASSWORD_POLICY_LABEL}</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="pw2">Passwort wiederholen</Label>
             <PasswordInput
               id="pw2"
               required
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
             />
