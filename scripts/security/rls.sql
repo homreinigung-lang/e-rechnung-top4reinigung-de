@@ -68,6 +68,32 @@ BEGIN
   END IF;
 END $audit$;
 
+-- Public Data API functions must never expose SECURITY DEFINER execution to
+-- signed-in users. Privileged implementations belong in app_private.
+DO $rpc_audit$
+DECLARE
+  exposed_functions text;
+BEGIN
+  SELECT string_agg(
+           format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)),
+           ', ' ORDER BY p.proname
+         )
+    INTO exposed_functions
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public'
+     AND p.prokind = 'f'
+     AND p.prosecdef
+     AND p.prorettype <> 'trigger'::regtype
+     AND has_function_privilege('authenticated', p.oid, 'EXECUTE');
+
+  IF exposed_functions IS NOT NULL THEN
+    RAISE EXCEPTION 'Authenticated role can execute public SECURITY DEFINER functions: %',
+      exposed_functions;
+  END IF;
+END
+$rpc_audit$;
+
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 DO $$ BEGIN
