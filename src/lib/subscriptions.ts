@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -174,7 +175,8 @@ export function useMySubscriptionAccess() {
     queryKey: ["my_subscription_access"],
     staleTime: 60_000,
     queryFn: async (): Promise<SubscriptionAccess | null> => {
-      const { data, error } = await supabase.rpc("current_subscription_access");
+      const db = supabase as SupabaseClient;
+      const { data, error } = await db.rpc("current_subscription_access");
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : null;
       if (!row) return null;
