@@ -99,8 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [myEmployee, pathname, navigate]);
 
   const subscriptionAllowed =
-    Boolean(isAdmin) ||
-    (myEmployee ? subscriptionAllowsPath(subscriptionAccess ?? null, pathname) : subscriptionAllowsPath(subscriptionAccess ?? null, pathname));
+    Boolean(isAdmin) || subscriptionAllowsPath(subscriptionAccess ?? null, pathname);
 
   useEffect(() => {
     if (
