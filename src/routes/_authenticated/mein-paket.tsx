@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePlans, euro, type Plan } from "@/lib/admin";
 import { planLabel, statusLabel, type Subscription } from "@/lib/subscriptions";
-import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
+import { usePlatformPayment, formatIban } from "@/lib/platform-payment";
 import {
   extraEmployeeCents,
   extraEmployees,
@@ -76,7 +76,7 @@ function useMyEmployeeCount() {
 }
 
 function MeinPaket() {
-  const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
+  const { data: pay, error: paymentError } = usePlatformPayment();
   const { data: sub, isLoading } = useMySubscription();
   const { data: plans } = usePlans();
   const activePlans = (plans ?? []).filter((p) => p.active);
@@ -90,6 +90,9 @@ function MeinPaket() {
   const currentPlan = (plans ?? []).find((p) => p.code === currentCode);
   const extraCount = extraEmployees(currentCode, employeeCount);
   const surchargeCents = extraEmployeeCents(currentCode, employeeCount);
+  const paymentAvailable = Boolean(
+    pay?.recipient?.trim() && pay?.iban?.trim() && pay?.bic?.trim() && pay?.bank?.trim(),
+  );
 
   function openRenewal(title: string, description: string) {
     if (!sub) return;
@@ -209,27 +212,35 @@ function MeinPaket() {
 
               {sub.status !== "trial" ? (
                 <>
-                  <div className="grid gap-2 text-sm sm:grid-cols-2">
-                    <p>
-                      <span className="text-muted-foreground">Empfänger: </span>
-                      {pay.recipient}
+                  {paymentAvailable && pay ? (
+                    <div className="grid gap-2 text-sm sm:grid-cols-2">
+                      <p>
+                        <span className="text-muted-foreground">Empfänger: </span>
+                        {pay.recipient}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Bank: </span>
+                        {pay.bank}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">IBAN: </span>
+                        {formatIban(pay.iban)}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">BIC: </span>
+                        {pay.bic}
+                      </p>
+                      <p className="sm:col-span-2 text-muted-foreground">{pay.terms}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Zahlungsdaten sind momentan nicht verfügbar.
+                      {paymentError ? " Bitte versuchen Sie es später erneut." : ""}
                     </p>
-                    <p>
-                      <span className="text-muted-foreground">Bank: </span>
-                      {pay.bank}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">IBAN: </span>
-                      {formatIban(pay.iban)}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">BIC: </span>
-                      {pay.bic}
-                    </p>
-                    <p className="sm:col-span-2 text-muted-foreground">{pay.terms}</p>
-                  </div>
+                  )}
 
                   <Button
+                    disabled={!paymentAvailable}
                     onClick={() =>
                       openRenewal(
                         "Zahlungsaufforderung zur Verlängerung",
