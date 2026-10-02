@@ -203,9 +203,9 @@ function Fahrtenbuch() {
       const { data, error } = await db
         .from("fahrtenbuch_entries")
         .select("*")
-        .order("trip_date", { ascending: false })
-        .order("trip_time", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false });
+        .order("trip_date", { ascending: true })
+        .order("trip_time", { ascending: true, nullsFirst: true })
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as FahrtenbuchEntry[];
     },
@@ -310,7 +310,7 @@ function Fahrtenbuch() {
   const privateOrUnloggedKm =
     monthlyTotalKm === null ? null : Math.max(0, monthlyTotalKm - businessKmForMonth);
 
-  const latestEntry = entries[0];
+  const latestEntry = entries.at(-1);
 
   const saveVehicle = useMutation({
     mutationFn: async () => {
@@ -781,7 +781,7 @@ function Fahrtenbuch() {
       <section className="surface overflow-hidden print-area">
         <div className="border-b px-5 py-4">
           <h2 className="text-lg font-semibold">Fahrtenbuch</h2>
-          <p className="text-sm text-muted-foreground">Neueste Fahrten zuerst · Geschäftlich erfasst: {formatKm(totalKm)} km</p>
+          <p className="text-sm text-muted-foreground">Älteste Fahrten zuerst · Geschäftlich erfasst: {formatKm(totalKm)} km</p>
         </div>
         {isLoading ? <div className="p-5 text-sm text-muted-foreground">Fahrten werden geladen…</div> : entries.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Noch keine Fahrten erfasst.</div> : (
           <div className="overflow-x-auto">
