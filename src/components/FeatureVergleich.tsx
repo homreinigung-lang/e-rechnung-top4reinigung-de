@@ -70,7 +70,11 @@ const groups: Group[] = [
       { label: "Materialverwaltung & Objektbestand", plans: { basis: false, pro: true, enterprise: true } },
       { label: "Materialverbrauch pro Objekt", plans: { basis: false, pro: true, enterprise: true } },
       {
-        label: "Arbeitsnachweise, Fotos & digitale Objektmappe",
+        label: "Arbeitsnachweise & Fotos",
+        plans: { basis: false, pro: true, enterprise: true },
+      },
+      {
+        label: "Digitale Objektmappe & Raumbuch",
         plans: { basis: false, pro: false, enterprise: true },
       },
     ],
@@ -125,8 +129,8 @@ const groups: Group[] = [
         plans: { basis: false, pro: false, enterprise: true },
       },
       {
-        label: "Bankabgleich (Kontoumsätze zuordnen)",
-        plans: { basis: false, pro: false, enterprise: true },
+        label: "Bankverbindung & GiroCode",
+        plans: { basis: true, pro: true, enterprise: true },
       },
       {
         label: "Backup-Export (Excel / JSON)",
