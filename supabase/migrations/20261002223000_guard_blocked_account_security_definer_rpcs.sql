@@ -23,22 +23,51 @@ begin
 end;
 $$;
 
-alter function public.create_storno(uuid, text) rename to create_storno_unchecked;
-revoke all on function public.create_storno_unchecked(uuid, text) from public, anon, authenticated;
-
-create or replace function public.create_storno(_id uuid, _reason text default '')
-returns uuid
-language plpgsql
-security definer
-set search_path = public
-as $$
+do $guard_storno$
 begin
-  if not public.is_account_active() then
-    raise exception 'Konto gesperrt' using errcode = '42501';
+  if to_regprocedure('public.create_storno(uuid,text)') is not null then
+    execute 'alter function public.create_storno(uuid,text) rename to create_storno_unchecked';
+    execute 'revoke all on function public.create_storno_unchecked(uuid,text) from public, anon, authenticated';
+
+    execute $fn$
+      create function public.create_storno(_id uuid, _reason text default '')
+      returns uuid
+      language plpgsql
+      security definer
+      set search_path = public
+      as $body$
+      begin
+        if not public.is_account_active() then
+          raise exception 'Konto gesperrt' using errcode = '42501';
+        end if;
+        return public.create_storno_unchecked(_id, _reason);
+      end;
+      $body$
+    $fn$;
+  elsif to_regprocedure('public.create_storno(uuid)') is not null then
+    execute 'alter function public.create_storno(uuid) rename to create_storno_unchecked';
+    execute 'revoke all on function public.create_storno_unchecked(uuid) from public, anon, authenticated';
+
+    execute $fn$
+      create function public.create_storno(_id uuid)
+      returns uuid
+      language plpgsql
+      security definer
+      set search_path = public
+      as $body$
+      begin
+        if not public.is_account_active() then
+          raise exception 'Konto gesperrt' using errcode = '42501';
+        end if;
+        return public.create_storno_unchecked(_id);
+      end;
+      $body$
+    $fn$;
+  else
+    raise exception 'create_storno RPC not found';
   end if;
-  return public.create_storno_unchecked(_id, _reason);
-end;
-$$;
+end
+$guard_storno$;
 
 alter function public.next_customer_number() rename to next_customer_number_unchecked;
 revoke all on function public.next_customer_number_unchecked() from public, anon, authenticated;
@@ -181,8 +210,19 @@ $$;
 -- RPC exposure is intentional only through the guarded names.
 revoke all on function public.finalize_document(uuid) from public, anon;
 grant execute on function public.finalize_document(uuid) to authenticated, service_role;
-revoke all on function public.create_storno(uuid, text) from public, anon;
-grant execute on function public.create_storno(uuid, text) to authenticated, service_role;
+do $grant_storno$
+begin
+  if to_regprocedure('public.create_storno(uuid,text)') is not null then
+    execute 'revoke all on function public.create_storno(uuid,text) from public, anon';
+    execute 'grant execute on function public.create_storno(uuid,text) to authenticated, service_role';
+  elsif to_regprocedure('public.create_storno(uuid)') is not null then
+    execute 'revoke all on function public.create_storno(uuid) from public, anon';
+    execute 'grant execute on function public.create_storno(uuid) to authenticated, service_role';
+  else
+    raise exception 'guarded create_storno RPC not found';
+  end if;
+end
+$grant_storno$;
 revoke all on function public.next_customer_number() from public, anon;
 grant execute on function public.next_customer_number() to authenticated, service_role;
 revoke all on function public.next_document_number(text) from public, anon;
