@@ -66,11 +66,11 @@ const sections = [
   },
   {
     title: "§ 11 Kostenlose Testphase (60 Tage)",
-    body: "Neu registrierte Firmenkonten erhalten eine unverbindliche Testphase von 60 Kalendertagen ab Registrierung mit vollem Funktionsumfang. Es sind keine Zahlungsdaten erforderlich, es entstehen keine Kosten und die Testphase geht nicht automatisch in ein kostenpflichtiges Abonnement über. Nach Ablauf der 60 Tage können kostenpflichtige Funktionen nur nach ausdrücklicher Bestellung eines Pakets weitergenutzt werden; bis dahin bleiben bereits erstellte Belege lesbar und exportierbar. Das Konto kann während der Testphase jederzeit ohne Frist und ohne Angabe von Gründen gelöscht werden; ein Widerrufsrecht wird dadurch nicht eingeschränkt.",
+    body: "Neu registrierte Firmenkonten erhalten eine unverbindliche Testphase von 60 Kalendertagen ab Registrierung mit vollem Funktionsumfang. Es sind keine Zahlungsdaten erforderlich, es entstehen keine Kosten und die Testphase geht nicht automatisch in ein kostenpflichtiges Abonnement über. Nach Ablauf der 60 Tage wird der Zugang auf Konto-, Paket- und Supportfunktionen beschränkt, bis ausdrücklich ein kostenpflichtiges Paket bestellt und freigeschaltet wurde. Die gespeicherten Daten bleiben im Rahmen der vereinbarten und gesetzlichen Fristen erhalten. Das Konto kann während der Testphase jederzeit ohne Frist und ohne Angabe von Gründen gelöscht werden.",
   },
   {
     title: "§ 12 Abonnement, Laufzeit und Kündigung der Software-Nutzung",
-    body: "Kostenpflichtige Pakete werden monatlich im Voraus abgerechnet und verlängern sich um jeweils einen Monat, sofern nicht mit einer Frist von 14 Tagen zum Laufzeitende gekündigt wird. Die Kündigung ist in Textform (z. B. per E-Mail) möglich. Preisänderungen werden mindestens 30 Tage vorher mitgeteilt; im Falle einer Erhöhung besteht ein Sonderkündigungsrecht.",
+    body: "Kostenpflichtige Pakete werden je nach Bestellung monatlich oder jährlich im Voraus abgerechnet. Bei monatlicher Abrechnung verlängert sich die Laufzeit jeweils um einen Monat, bei jährlicher Abrechnung jeweils um zwölf Monate, sofern nicht mit einer Frist von 14 Tagen zum jeweiligen Laufzeitende gekündigt wird. Die Kündigung ist in Textform (z. B. per E-Mail) möglich. Preisänderungen werden mindestens 30 Tage vorher mitgeteilt; im Falle einer Erhöhung besteht ein Sonderkündigungsrecht.",
   },
   {
     title: "§ 13 Registrierung, Konto und E-Mail-Kommunikation",

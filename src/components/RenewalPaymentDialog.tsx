@@ -14,7 +14,7 @@ import { GiroCode } from "@/components/GiroCode";
 import { buildEpcPayload } from "@/lib/epc";
 import { euro } from "@/lib/admin";
 import { VAT_RATE } from "@/lib/plan-orders";
-import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
+import { usePlatformPayment, formatIban } from "@/lib/platform-payment";
 import { buildProformaPdfBytes } from "@/lib/proforma-pdf";
 import { downloadBytes } from "@/lib/pdf";
 
@@ -35,7 +35,7 @@ export function RenewalPaymentDialog({
   info: RenewalPaymentInfo | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
+  const { data: pay, error: paymentError } = usePlatformPayment();
   const [copied, setCopied] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
@@ -55,7 +55,10 @@ export function RenewalPaymentDialog({
   }
 
   async function openPdf(download: boolean) {
-    if (!info) return;
+    if (!info || !paymentAvailable || !pay) {
+      toast.error("Zahlungsdaten sind momentan nicht verfügbar.");
+      return;
+    }
     setBusy(true);
     try {
       const bytes = await buildProformaPdfBytes({
@@ -85,26 +88,32 @@ export function RenewalPaymentDialog({
     }
   }
 
-  const rows: { key: string; label: string; value: string }[] = info
-    ? [
-        { key: "recipient", label: "Empfänger", value: pay.recipient },
-        { key: "iban", label: "IBAN", value: formatIban(pay.iban) },
-        { key: "bic", label: "BIC", value: pay.bic },
-        { key: "bank", label: "Bank", value: pay.bank },
-        { key: "amount", label: "Betrag", value: euro(grossCents) },
-        { key: "reference", label: "Verwendungszweck", value: info.reference },
-      ]
-    : [];
+  const paymentAvailable = Boolean(
+    pay?.recipient?.trim() && pay?.iban?.trim() && pay?.bic?.trim() && pay?.bank?.trim(),
+  );
 
-  const qr = info
-    ? buildEpcPayload({
-        name: pay.recipient,
-        iban: pay.iban,
-        bic: pay.bic,
-        amount: grossCents / 100,
-        reference: info.reference,
-      })
-    : null;
+  const rows: { key: string; label: string; value: string }[] =
+    info && paymentAvailable && pay
+      ? [
+          { key: "recipient", label: "Empfänger", value: pay.recipient },
+          { key: "iban", label: "IBAN", value: formatIban(pay.iban) },
+          { key: "bic", label: "BIC", value: pay.bic },
+          { key: "bank", label: "Bank", value: pay.bank },
+          { key: "amount", label: "Betrag", value: euro(grossCents) },
+          { key: "reference", label: "Verwendungszweck", value: info.reference },
+        ]
+      : [];
+
+  const qr =
+    info && paymentAvailable && pay
+      ? buildEpcPayload({
+          name: pay.recipient,
+          iban: pay.iban,
+          bic: pay.bic,
+          amount: grossCents / 100,
+          reference: info.reference,
+        })
+      : null;
 
   return (
     <Dialog open={Boolean(info)} onOpenChange={onOpenChange}>
@@ -118,7 +127,12 @@ export function RenewalPaymentDialog({
 
             <div className="space-y-4 text-sm">
               <div className="rounded-lg border">
-                {rows.map((r) => (
+                {!paymentAvailable ? (
+                  <p className="p-4 text-sm text-muted-foreground">
+                    Zahlungsdaten sind momentan nicht verfügbar.
+                    {paymentError ? " Bitte versuchen Sie es später erneut." : ""}
+                  </p>
+                ) : rows.map((r) => (
                   <div
                     key={r.key}
                     className="flex items-center justify-between gap-3 border-b p-3 last:border-b-0"
@@ -149,7 +163,7 @@ export function RenewalPaymentDialog({
                   {info.planName} · {info.intervalLabel} · Netto {euro(netCents)} zzgl.{" "}
                   {euro(vatCents)} MwSt.
                 </p>
-                <p className="mt-1">{pay.terms}</p>
+                {pay?.terms ? <p className="mt-1">{pay.terms}</p> : null}
               </div>
 
               {qr ? (
@@ -163,7 +177,7 @@ export function RenewalPaymentDialog({
                   type="button"
                   variant="secondary"
                   className="flex-1"
-                  disabled={busy}
+                  disabled={busy || !paymentAvailable}
                   onClick={() => openPdf(false)}
                 >
                   <FileText className="size-4" />
@@ -172,7 +186,7 @@ export function RenewalPaymentDialog({
                 <Button
                   type="button"
                   className="flex-1"
-                  disabled={busy}
+                  disabled={busy || !paymentAvailable}
                   onClick={() => openPdf(true)}
                 >
                   PDF herunterladen

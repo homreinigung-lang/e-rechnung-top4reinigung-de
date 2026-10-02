@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -117,4 +118,77 @@ export function useCanReverseCharge() {
     planCode: plan,
     isLoading,
   };
+}
+
+
+export type SubscriptionAccess = {
+  plan: string;
+  status: string;
+  renewsOn: string | null;
+  expired: boolean;
+};
+
+const PLAN_LEVEL: Record<string, number> = { basis: 1, pro: 2, enterprise: 3 };
+
+export function requiredPlanForPath(pathname: string): "basis" | "pro" | "enterprise" {
+  if (
+    pathname.startsWith("/projekte") ||
+    pathname.startsWith("/steuerberater")
+  ) {
+    return "enterprise";
+  }
+  if (
+    pathname.startsWith("/kalkulation") ||
+    pathname.startsWith("/team") ||
+    pathname.startsWith("/karte") ||
+    pathname.startsWith("/fahrtenbuch") ||
+    pathname.startsWith("/wiederkehrend") ||
+    pathname.startsWith("/ausgaben") ||
+    pathname.startsWith("/qm-reklamationen") ||
+    pathname.startsWith("/nachrichten") ||
+    pathname.startsWith("/lv-analyse")
+  ) {
+    return "pro";
+  }
+  return "basis";
+}
+
+export function subscriptionAllowsPath(access: SubscriptionAccess | null, pathname: string): boolean {
+  if (
+    pathname.startsWith("/mein-paket") ||
+    pathname.startsWith("/profil") ||
+    pathname.startsWith("/hilfe") ||
+    pathname.startsWith("/einstellungen")
+  ) {
+    return true;
+  }
+  if (!access) return false;
+  if (access.status === "trial") return !access.expired;
+  if (access.status !== "active" || access.expired) return false;
+  const current = PLAN_LEVEL[access.plan.toLowerCase()] ?? 0;
+  const required = PLAN_LEVEL[requiredPlanForPath(pathname)] ?? 1;
+  return current >= required;
+}
+
+export function useMySubscriptionAccess() {
+  return useQuery({
+    queryKey: ["my_subscription_access"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<SubscriptionAccess | null> => {
+      const db = supabase as SupabaseClient;
+      const { data, error } = await db.rpc("current_subscription_access");
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : null;
+      if (!row) return null;
+      const renewsOn = row.renews_on ? String(row.renews_on) : null;
+      const today = new Date().toISOString().slice(0, 10);
+      const expired = Boolean(renewsOn && renewsOn < today);
+      return {
+        plan: String(row.plan ?? ""),
+        status: String(row.status ?? ""),
+        renewsOn,
+        expired,
+      };
+    },
+  });
 }

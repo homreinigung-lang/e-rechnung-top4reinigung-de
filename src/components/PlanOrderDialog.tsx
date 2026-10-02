@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   TRIAL_DAYS,
   calcTotals,
-  planAllowsReverseCharge,
   useCreatePlanOrder,
   type OrderResult,
 } from "@/lib/plan-orders";
@@ -41,16 +41,31 @@ const emptyForm = {
   note: "",
 };
 
-import { usePlatformPayment, PLATFORM_PAYMENT_FALLBACK, formatIban } from "@/lib/platform-payment";
+import { usePlatformPayment, formatIban } from "@/lib/platform-payment";
 
 export function PlanOrderDialog({ plan, onOpenChange }: Props) {
-  const { data: pay = PLATFORM_PAYMENT_FALLBACK } = usePlatformPayment();
+  const { data: pay, error: paymentError } = usePlatformPayment();
   const [form, setForm] = useState(emptyForm);
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   const [result, setResult] = useState<OrderResult | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const createOrder = useCreatePlanOrder();
+  const { data: employeeCount = 0 } = useQuery({
+    queryKey: ["plan_order_employee_count", isAuthenticated],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("employees")
+        .select("id", { count: "exact", head: true })
+        .eq("active", true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  const paymentAvailable = Boolean(
+    pay?.recipient?.trim() && pay?.iban?.trim() && pay?.bic?.trim() && pay?.bank?.trim(),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +87,9 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
   const set = (key: keyof typeof emptyForm) => (value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const totals = plan ? calcTotals(plan, interval, form.country, form.vatId) : null;
+  const totals = plan
+    ? calcTotals(plan, interval, form.country, form.vatId, employeeCount)
+    : null;
 
   function close(open: boolean) {
     if (!open) {
@@ -224,10 +241,10 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
                     <p className="mt-2 text-xs text-muted-foreground">
                       Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge, § 13b UStG).
                     </p>
-                  ) : !planAllowsReverseCharge(plan) && form.vatId.trim().length > 3 ? (
+                  ) : null}
+                  {plan.code === "pro" && employeeCount > 20 ? (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Das Reverse-Charge-Verfahren ist erst ab den Paketen Pro und Enterprise
-                      verfügbar. Für das Basis-Paket wird die deutsche Umsatzsteuer ausgewiesen.
+                      Preis inklusive {employeeCount - 20} zusätzlicher Mitarbeitender.
                     </p>
                   ) : null}
                 </div>
@@ -265,24 +282,34 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
               </div>
               <div className="rounded-lg border p-4">
                 <p className="font-semibold">Zahlungsdetails (Rechnung / SEPA-Überweisung)</p>
-                <dl className="mt-2 space-y-1">
-                  <Row label="Empfänger" value={pay.recipient} />
-                  <Row label="IBAN" value={formatIban(pay.iban)} />
-                  <Row label="BIC" value={pay.bic} />
-                  <Row label="Bank" value={pay.bank} />
-                  <Row label="Verwendungszweck" value={result.orderNumber} />
-                  <Row label="Netto" value={euro(result.totals.netCents)} />
-                  <Row
-                    label={result.totals.vatCents > 0 ? "19 % MwSt." : "Umsatzsteuer"}
-                    value={euro(result.totals.vatCents)}
-                  />
-                  <Row label="Rechnungsbetrag" value={euro(result.totals.grossCents)} strong />
-                </dl>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {result.totals.reverseCharge
-                    ? "Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge, § 13b UStG)."
-                    : pay.terms}
-                </p>
+                {paymentAvailable && pay ? (
+                  <>
+                    <dl className="mt-2 space-y-1">
+                      <Row label="Empfänger" value={pay.recipient} />
+                      <Row label="IBAN" value={formatIban(pay.iban)} />
+                      <Row label="BIC" value={pay.bic} />
+                      <Row label="Bank" value={pay.bank} />
+                      <Row label="Verwendungszweck" value={result.orderNumber} />
+                      <Row label="Netto" value={euro(result.totals.netCents)} />
+                      <Row
+                        label={result.totals.vatCents > 0 ? "19 % MwSt." : "Umsatzsteuer"}
+                        value={euro(result.totals.vatCents)}
+                      />
+                      <Row label="Rechnungsbetrag" value={euro(result.totals.grossCents)} strong />
+                    </dl>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {result.totals.reverseCharge
+                        ? "Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge, § 13b UStG)."
+                        : pay.terms}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Zahlungsdaten sind momentan nicht verfügbar. Die Bestellung wurde gespeichert;
+                    Sie erhalten die Zahlungsinformationen mit der Rechnung.
+                    {paymentError ? " Bitte versuchen Sie es später erneut." : ""}
+                  </p>
+                )}
               </div>
               <Button className="w-full" onClick={() => close(false)}>
                 Schließen

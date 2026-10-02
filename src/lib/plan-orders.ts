@@ -4,12 +4,12 @@ import type { Plan } from "@/lib/admin";
 export const VAT_RATE = 0.19;
 export const TRIAL_DAYS = 60;
 
-/** Zahlungsdaten für die Rechnung an Neukunden. */
+/** Nicht-sensitive Fallback-Angaben. Bankdaten werden nie erfunden. */
 export const PAYMENT_DETAILS = {
-  recipient: "GebCalc – Rechnungssystem",
-  iban: "DE00 0000 0000 0000 0000 00",
-  bic: "SAKSDE55XXX",
-  bank: "Sparkasse Saarbrücken",
+  recipient: "",
+  iban: "",
+  bic: "",
+  bank: "",
   terms: "Zahlbar innerhalb von 14 Tagen nach Rechnungserhalt, ohne Abzug.",
   vatId: "DE458492078",
   email: "info@top4reinigung.de",
@@ -67,27 +67,22 @@ export type OrderTotals = {
   reverseCharge: boolean;
 };
 
-/** Pakete, die das Reverse-Charge-Verfahren nutzen dürfen (Basis ausgenommen). */
-const REVERSE_CHARGE_PLANS = new Set(["pro", "enterprise"]);
-
-/** Ist für dieses Paket Reverse-Charge grundsätzlich möglich? */
-export function planAllowsReverseCharge(plan: Plan): boolean {
-  return REVERSE_CHARGE_PLANS.has((plan.code || "").trim().toLowerCase());
-}
-
 /** Netto, Umsatzsteuer und Brutto für die gewählte Laufzeit berechnen. */
 export function calcTotals(
   plan: Plan,
   billingInterval: "monthly" | "yearly",
   country: string,
   vatId: string,
+  employeeCount = 0,
 ): OrderTotals {
+  const surchargeMonthly = extraEmployeeCents(plan.code, employeeCount);
   const netCents =
-    billingInterval === "yearly" ? plan.price_yearly_cents : plan.price_monthly_cents;
+    billingInterval === "yearly"
+      ? plan.price_yearly_cents + surchargeMonthly * 12
+      : plan.price_monthly_cents + surchargeMonthly;
   const code = (country || "DE").trim().toUpperCase();
   const isEu = EU_COUNTRIES.has(code);
-  const reverseCharge = isEu && vatId.trim().length > 3 && planAllowsReverseCharge(plan);
-  // Basis-Paket: EU-Kunden werden weiterhin mit deutscher USt. abgerechnet.
+  const reverseCharge = isEu && vatId.trim().length > 3;
   const taxable = code === "DE" || (isEu && !reverseCharge);
   const vatCents = taxable ? Math.round(netCents * VAT_RATE) : 0;
   return { netCents, vatCents, grossCents: netCents + vatCents, reverseCharge };
