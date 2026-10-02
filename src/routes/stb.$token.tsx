@@ -94,6 +94,15 @@ function downloadCsv(name: string, rows: Table[], range?: DateRange) {
   }
   download(name, blob);
 }
+function escapeExcelHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function downloadExcel(
   name: string,
   sheets: { title: string; rows: Table[] }[],
@@ -104,10 +113,10 @@ function downloadExcel(
     .filter((s) => s.rows.length > 0)
     .map((s) => {
       const headers = Object.keys(s.rows[0]!);
-      return `<h3>${s.title}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
-        .map((h) => `<th>${h}</th>`)
+      return `<h3>${escapeExcelHtml(s.title)}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
+        .map((h) => `<th>${escapeExcelHtml(h)}</th>`)
         .join("")}</tr>${s.rows
-        .map((r) => `<tr>${headers.map((h) => `<td>${r[h] ?? ""}</td>`).join("")}</tr>`)
+        .map((r) => `<tr>${headers.map((h) => `<td>${escapeExcelHtml(r[h])}</td>`).join("")}</tr>`)
         .join("")}</table>`;
     })
     .join("<br/>");
