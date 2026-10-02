@@ -22,19 +22,45 @@ begin
 end;
 $$;
 
-create or replace function public.create_storno(_id uuid)
-returns uuid
-language plpgsql
-security definer
-set search_path = public, app_private
-as $$
+do $storno_guard$
 begin
-  if not app_private.is_account_active() then
-    raise exception 'Konto gesperrt' using errcode = '42501';
+  if to_regprocedure('public.create_storno(uuid,text)') is not null then
+    execute $fn$
+      create or replace function public.create_storno(_id uuid, _reason text default '')
+      returns uuid
+      language plpgsql
+      security definer
+      set search_path = public, app_private
+      as $body$
+      begin
+        if not app_private.is_account_active() then
+          raise exception 'Konto gesperrt' using errcode = '42501';
+        end if;
+        return public.create_storno_unchecked(_id, _reason);
+      end;
+      $body$
+    $fn$;
+  elsif to_regprocedure('public.create_storno(uuid)') is not null then
+    execute $fn$
+      create or replace function public.create_storno(_id uuid)
+      returns uuid
+      language plpgsql
+      security definer
+      set search_path = public, app_private
+      as $body$
+      begin
+        if not app_private.is_account_active() then
+          raise exception 'Konto gesperrt' using errcode = '42501';
+        end if;
+        return public.create_storno_unchecked(_id);
+      end;
+      $body$
+    $fn$;
+  else
+    raise exception 'create_storno RPC not found';
   end if;
-  return public.create_storno_unchecked(_id);
-end;
-$$;
+end
+$storno_guard$;
 
 create or replace function public.next_customer_number()
 returns text
