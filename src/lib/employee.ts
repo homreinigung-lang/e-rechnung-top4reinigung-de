@@ -29,8 +29,8 @@ export type MyEmployee = {
 };
 
 /**
- * Verknüpft das angemeldete Konto (per E-Mail) mit dem Mitarbeiter-Stammsatz
- * und liefert diesen zurück. Für Inhaber-/Admin-Konten ist das Ergebnis null.
+ * Liefert den bereits verknüpften Mitarbeiter-Stammsatz zurück.
+ * Eine Verknüpfung darf ausschließlich über den geprüften Einladungsprozess erfolgen.
  */
 export function useMyEmployee() {
   return useQuery({
@@ -51,19 +51,7 @@ export function useMyEmployee() {
         )
         .eq("auth_user_id", uid)
         .maybeSingle();
-      if (existing) return asEmployee(existing as MyEmployee);
-
-      const { data: linkedId } = await supabase.rpc("link_employee_account");
-      if (!linkedId) return null;
-
-      const { data: linked } = await supabase
-        .from("employees")
-        .select(
-          "id,name,role,hourly_rate,email,phone,personnel_number,user_id,birth_date,address_line,postal_code,city,contract_type,contract_start,contract_end,weekly_hours,work_location,vacation_days_per_year,vacation_carryover_days,has_driving_license,driving_license_classes,qualification,has_experience_certificate,experience_details",
-        )
-        .eq("id", linkedId as string)
-        .maybeSingle();
-      return asEmployee((linked as MyEmployee | null) ?? null);
+      return asEmployee((existing as MyEmployee | null) ?? null);
     },
   });
 }
@@ -97,7 +85,5 @@ export async function resolveStartRoute(): Promise<"/dashboard" | "/meine-zeiten
     .eq("auth_user_id", uid)
     .maybeSingle();
   if (row && row.user_id !== uid) return "/meine-zeiten";
-  if (row) return "/dashboard";
-  const { data: linkedId } = await supabase.rpc("link_employee_account");
-  return linkedId ? "/meine-zeiten" : "/dashboard";
+  return "/dashboard";
 }
