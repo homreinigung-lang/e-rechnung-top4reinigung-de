@@ -121,10 +121,12 @@ ON CONFLICT (auth_user_id) DO UPDATE SET status = EXCLUDED.status;
 
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
-DO $ BEGIN
+DO $blocked$
+BEGIN
   ASSERT (SELECT count(*) FROM public.documents)=0, 'blocked account document read';
   ASSERT (SELECT count(*) FROM public.customers)=0, 'blocked account customer read';
-END $;
+END
+$blocked$;
 SELECT pg_temp.denied($q$SELECT public.next_document_number('invoice')$q$);
 SELECT pg_temp.denied($q$SELECT public.finalize_document('20000000-0000-4000-8000-000000000001')$q$);
 SELECT pg_temp.denied($q$SELECT public.list_trash()$q$);
