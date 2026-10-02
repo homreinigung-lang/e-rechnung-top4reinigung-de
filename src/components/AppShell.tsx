@@ -6,6 +6,7 @@ import { useMyEmployee, isEmployeeAllowedPath } from "@/lib/employee";
 import { useIsAdmin } from "@/lib/subscriptions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { AssignmentBell } from "@/components/AssignmentBell";
+import { Vertretungswarnungen } from "@/components/Vertretungswarnungen";
 import { BewertungDialog } from "@/components/BewertungDialog";
 import { OnboardingGuide } from "@/components/OnboardingGuide";
 import { Button } from "@/components/ui/button";
@@ -141,6 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ) : null}
 
           <div className="ml-auto flex items-center gap-1">
+            {!myEmployee ? <Vertretungswarnungen /> : null}
             <AssignmentBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button data-onboarding="mehr" variant="ghost" size="icon" aria-label="Mehr"><MoreVertical className="size-5" /></Button></DropdownMenuTrigger>
