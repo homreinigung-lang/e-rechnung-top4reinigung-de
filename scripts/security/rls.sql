@@ -35,7 +35,39 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege OR raise_exception OR foreign_key_violation THEN rejected := true;
   END;
   IF NOT rejected THEN RAISE EXCEPTION 'Expected denial: %', statement; END IF;
-END $$;
+END $;
+
+-- Every RLS-enabled public table must carry the restrictive blocked-account guard.
+-- This makes CI fail as soon as a future migration adds a table and forgets the guard.
+DO $
+DECLARE
+  missing_tables text;
+BEGIN
+  SELECT string_agg(format('%I.%I', n.nspname, c.relname), ', ' ORDER BY c.relname)
+    INTO missing_tables
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public'
+     AND c.relkind = 'r'
+     AND c.relrowsecurity
+     AND NOT EXISTS (
+       SELECT 1
+         FROM pg_policy p
+         JOIN pg_roles r ON r.oid = ANY (p.polroles)
+        WHERE p.polrelid = c.oid
+          AND p.polname = 'Gesperrte Konten ausgeschlossen'
+          AND p.polpermissive = false
+          AND p.polcmd = '*'
+          AND r.rolname = 'authenticated'
+          AND pg_get_expr(p.polqual, p.polrelid) ILIKE '%is_account_active%'
+          AND pg_get_expr(p.polwithcheck, p.polrelid) ILIKE '%is_account_active%'
+     );
+
+  IF missing_tables IS NOT NULL THEN
+    RAISE EXCEPTION 'RLS tables missing blocked-account guard: %', missing_tables;
+  END IF;
+END $;
+
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 DO $$ BEGIN
