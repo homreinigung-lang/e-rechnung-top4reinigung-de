@@ -85,8 +85,8 @@ export function useAllSubscriptions(enabled: boolean) {
   });
 }
 
-/** Pakete, in denen Reverse-Charge-Rechnungen erlaubt sind. */
-export const REVERSE_CHARGE_PLANS = ["pro", "enterprise"];
+/** Reverse-Charge ist steuerliche Behandlung und in allen unterstützten Paketen verfügbar. */
+export const REVERSE_CHARGE_PLANS = ["basis", "pro", "enterprise"];
 
 /** Paket-Code des angemeldeten Kontos (leer, wenn kein Abo hinterlegt ist). */
 export function useMyPlanCode() {
@@ -108,8 +108,8 @@ export function useMyPlanCode() {
 }
 
 /**
- * Feature-Gate: Reverse-Charge (Rechnung ohne MwSt. für EU-Ausland)
- * ist nur in den Paketen Pro und Enterprise verfügbar.
+ * Reverse-Charge (Rechnung ohne deutsche MwSt. bei erfüllten Voraussetzungen)
+ * ist nicht paketabhängig.
  */
 export function useCanReverseCharge() {
   const { data: plan = "", isLoading } = useMyPlanCode();
@@ -138,6 +138,7 @@ export function requiredPlanForPath(pathname: string): "basis" | "pro" | "enterp
     return "enterprise";
   }
   if (
+    pathname.startsWith("/meine-zeiten") ||
     pathname.startsWith("/kalkulation") ||
     pathname.startsWith("/team") ||
     pathname.startsWith("/karte") ||
