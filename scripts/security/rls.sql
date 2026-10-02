@@ -108,12 +108,13 @@ INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_locat
  ('10000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','Allowed','Trip',10,20);
 -- A stale authenticated JWT must not bypass account blocking through SECURITY DEFINER RPCs.
 RESET ROLE;
-INSERT INTO public.account_approvals(auth_user_id,email,full_name,company_name,status)
+INSERT INTO public.account_approvals(auth_user_id,email,full_name,company_name,token,status)
 VALUES (
   '10000000-0000-4000-8000-000000000001',
   'owner-a@example.invalid',
   'Blocked owner',
   'Blocked company',
+  'synthetic-blocked-owner-token',
   'blocked'
 )
 ON CONFLICT (auth_user_id) DO UPDATE SET status = EXCLUDED.status;
