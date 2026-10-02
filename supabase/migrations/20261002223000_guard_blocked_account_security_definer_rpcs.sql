@@ -23,7 +23,7 @@ begin
 end;
 $$;
 
-do $
+do $guard_storno$
 begin
   if to_regprocedure('public.create_storno(uuid,text)') is not null then
     execute 'alter function public.create_storno(uuid,text) rename to create_storno_unchecked';
@@ -67,7 +67,7 @@ begin
     raise exception 'create_storno RPC not found';
   end if;
 end
-$;
+$guard_storno$;
 
 alter function public.next_customer_number() rename to next_customer_number_unchecked;
 revoke all on function public.next_customer_number_unchecked() from public, anon, authenticated;
@@ -210,7 +210,7 @@ $$;
 -- RPC exposure is intentional only through the guarded names.
 revoke all on function public.finalize_document(uuid) from public, anon;
 grant execute on function public.finalize_document(uuid) to authenticated, service_role;
-do $
+do $grant_storno$
 begin
   if to_regprocedure('public.create_storno(uuid,text)') is not null then
     execute 'revoke all on function public.create_storno(uuid,text) from public, anon';
@@ -222,7 +222,7 @@ begin
     raise exception 'guarded create_storno RPC not found';
   end if;
 end
-$;
+$grant_storno$;
 revoke all on function public.next_customer_number() from public, anon;
 grant execute on function public.next_customer_number() to authenticated, service_role;
 revoke all on function public.next_document_number(text) from public, anon;
