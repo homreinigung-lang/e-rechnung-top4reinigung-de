@@ -19,10 +19,10 @@ export const PLATFORM_SETTINGS_ID = "default";
 
 /** Fallback, solange in der Administration noch keine Bankdaten gepflegt sind. */
 export const PLATFORM_PAYMENT_FALLBACK: PlatformPayment = {
-  recipient: PAYMENT_DETAILS.recipient,
-  iban: PAYMENT_DETAILS.iban,
-  bic: PAYMENT_DETAILS.bic,
-  bank: PAYMENT_DETAILS.bank,
+  recipient: "",
+  iban: "",
+  bic: "",
+  bank: "",
   terms: PAYMENT_DETAILS.terms,
   vat_id: PAYMENT_DETAILS.vatId,
   email: PAYMENT_DETAILS.email,
