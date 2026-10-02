@@ -1,5 +1,8 @@
--- SECURITY: new objects in exposed schemas must be private by default.
+-- SECURITY: new application objects in exposed schemas must be private by default.
 -- Explicit GRANT statements in each migration opt objects into Data API access.
+--
+-- Hosted Supabase executes application migrations as postgres. supabase_admin is
+-- platform-managed and postgres is not permitted to alter its default privileges.
 begin;
 
 do $secure_defaults$
@@ -8,8 +11,9 @@ declare
 begin
   for role_name in
     select distinct r
-    from unnest(array[current_user, 'postgres', 'supabase_admin']) as r
+    from unnest(array[current_user, 'postgres']) as r
     where exists (select 1 from pg_roles pr where pr.rolname = r)
+      and (r = current_user or pg_has_role(current_user, r, 'MEMBER'))
   loop
     execute format(
       'alter default privileges for role %I in schema public revoke select, insert, update, delete, truncate, references, trigger on tables from anon, authenticated, service_role',
