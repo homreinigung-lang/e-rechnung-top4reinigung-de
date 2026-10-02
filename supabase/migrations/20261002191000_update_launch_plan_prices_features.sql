@@ -21,7 +21,7 @@ set
   features = array[
     'Alles aus Basis',
     'Kalkulation & Leistungsverzeichnis',
-    'Zeiterfassung, Dienstplan & Lohnvorbereitung',
+    'Zeiterfassung, Dienstplan, Arbeitsnachweise & Lohnvorbereitung',
     'Materialverwaltung, Fahrtenbuch & QM',
     'Bis 20 Mitarbeitende (jeder weitere +2,50 € / Monat)'
   ]::text[]
@@ -34,9 +34,9 @@ set
   description = 'Voller Funktionsumfang mit Objekt- und Projektmanagement, Steuerberater/DATEV und Bankabgleich.',
   features = array[
     'Alles aus Pro',
-    'Projekte, Objekt-Mappen & Raumbuch',
-    'Arbeitsnachweise, Fotos & Objektinformationen',
-    'Steuerberater-Portal, DATEV-Export & Bankabgleich',
+    'Projekte, digitale Objektmappe & Raumbuch',
+    'Grundriss-Analyse & erweiterte Objektverwaltung',
+    'Steuerberater-Portal & DATEV-Export',
     'Unbegrenzte Mitarbeitende'
   ]::text[]
 where code = 'enterprise';
