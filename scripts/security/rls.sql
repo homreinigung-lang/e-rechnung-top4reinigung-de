@@ -94,6 +94,33 @@ BEGIN
 END
 $rpc_audit$;
 
+-- The role creating future application objects must not auto-expose them to
+-- Data API roles. This guards the secure-by-default privilege migration.
+DO $default_acl_audit$
+DECLARE
+  unsafe_defaults text;
+BEGIN
+  SELECT string_agg(
+           format('%s:%s', d.defaclobjtype, a::text),
+           ', ' ORDER BY d.defaclobjtype, a::text
+         )
+    INTO unsafe_defaults
+    FROM pg_default_acl d
+    JOIN pg_namespace n ON n.oid = d.defaclnamespace
+    CROSS JOIN LATERAL unnest(d.defaclacl) AS a
+   WHERE n.nspname IN ('public', 'app_private')
+     AND d.defaclrole = (SELECT oid FROM pg_roles WHERE rolname = current_user)
+     AND (
+       a::text ~ '^(anon|authenticated|service_role)='
+       OR (d.defaclobjtype = 'f' AND a::text ~ '^=')
+     );
+
+  IF unsafe_defaults IS NOT NULL THEN
+    RAISE EXCEPTION 'Unsafe default Data API privileges remain: %', unsafe_defaults;
+  END IF;
+END
+$default_acl_audit$;
+
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 DO $$ BEGIN
