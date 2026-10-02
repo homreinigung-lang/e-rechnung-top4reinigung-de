@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Boxes, PackagePlus, ShoppingCart, Trash2 } from "lucide-react";
+import { AlertTriangle, Boxes, PackageMinus, PackagePlus, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -68,6 +68,19 @@ type MaterialOrder = {
   updated_at: string;
 };
 
+type MaterialConsumption = {
+  id: string;
+  user_id: string;
+  project_id: string;
+  material_id: string;
+  quantity: number;
+  unit_cost: number;
+  consumed_on: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export function Materialverwaltung() {
   const db = supabase as SupabaseClient;
   const queryClient = useQueryClient();
@@ -90,6 +103,12 @@ export function Materialverwaltung() {
   const [orderQuantity, setOrderQuantity] = useState("1");
   const [orderSupplier, setOrderSupplier] = useState("");
   const [orderNote, setOrderNote] = useState("");
+
+  const [consumeProject, setConsumeProject] = useState("");
+  const [consumeMaterial, setConsumeMaterial] = useState("");
+  const [consumeQuantity, setConsumeQuantity] = useState("1");
+  const [consumeDate, setConsumeDate] = useState(new Date().toISOString().slice(0, 10));
+  const [consumeNote, setConsumeNote] = useState("");
 
   const { data: materials = [], isLoading: materialsLoading, error: materialsError } = useQuery({
     queryKey: ["materials"],
@@ -140,6 +159,19 @@ export function Materialverwaltung() {
     },
   });
 
+  const { data: consumptions = [] } = useQuery({
+    queryKey: ["material_consumptions"],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("material_consumptions")
+        .select("*")
+        .order("consumed_on", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as MaterialConsumption[];
+    },
+  });
+
   const lowStock = useMemo(
     () =>
       materials.filter(
@@ -151,6 +183,13 @@ export function Materialverwaltung() {
   );
 
   const openOrders = orders.filter((order) => !["geliefert", "storniert"].includes(order.status));
+  const assignedForConsumption = projectMaterials.filter(
+    (row) => row.project_id === consumeProject,
+  );
+  const consumptionCost = consumptions.reduce(
+    (sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_cost || 0),
+    0,
+  );
   const stockValue = materials.reduce(
     (sum, item) => sum + Number(item.current_stock || 0) * Number(item.unit_cost || 0),
     0,
@@ -164,6 +203,7 @@ export function Materialverwaltung() {
     void queryClient.invalidateQueries({ queryKey: ["materials"] });
     void queryClient.invalidateQueries({ queryKey: ["project_materials"] });
     void queryClient.invalidateQueries({ queryKey: ["material_orders"] });
+    void queryClient.invalidateQueries({ queryKey: ["material_consumptions"] });
   };
 
   const addMaterial = useMutation({
@@ -291,6 +331,59 @@ export function Materialverwaltung() {
       setOrderNote("");
       invalidate();
       toast.success("Bestellung angelegt");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const addConsumption = useMutation({
+    mutationFn: async () => {
+      if (!consumeProject || !consumeMaterial) {
+        throw new Error("Bitte Objekt und Material auswählen.");
+      }
+      const qty = Number(consumeQuantity);
+      if (!(qty > 0)) throw new Error("Verbrauchsmenge muss größer als 0 sein.");
+
+      const assignment = projectMaterials.find(
+        (row) => row.project_id === consumeProject && row.material_id === consumeMaterial,
+      );
+      if (!assignment) throw new Error("Material ist diesem Objekt noch nicht zugeordnet.");
+      if (qty > Number(assignment.object_stock || 0)) {
+        throw new Error("Nicht genügend Bestand im Objekt.");
+      }
+
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) throw new Error("Nicht angemeldet");
+      const material = materials.find((item) => item.id === consumeMaterial);
+      const { error } = await db.from("material_consumptions").insert({
+        user_id: uid,
+        project_id: consumeProject,
+        material_id: consumeMaterial,
+        quantity: qty,
+        unit_cost: Number(material?.unit_cost || 0),
+        consumed_on: consumeDate,
+        note: consumeNote.trim(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setConsumeMaterial("");
+      setConsumeQuantity("1");
+      setConsumeNote("");
+      invalidate();
+      toast.success("Materialverbrauch gebucht");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeConsumption = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await db.from("material_consumptions").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Verbrauch entfernt und Bestand zurückgebucht");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -541,6 +634,155 @@ export function Materialverwaltung() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      <section className="surface space-y-4 p-5">
+        <div className="flex items-center gap-2">
+          <PackageMinus className="size-5 text-primary" />
+          <div>
+            <h2 className="text-lg font-semibold">Materialverbrauch pro Objekt</h2>
+            <p className="text-sm text-muted-foreground">
+              Verbrauch buchen, Objektbestand automatisch reduzieren und Materialkosten je Objekt nachvollziehen.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-5 md:items-end">
+          <div className="space-y-1">
+            <Label>Objekt</Label>
+            <Select
+              value={consumeProject}
+              onValueChange={(value) => {
+                setConsumeProject(value);
+                setConsumeMaterial("");
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder="Objekt auswählen" /></SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name || "Objekt"}{project.city ? ` · ${project.city}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Material</Label>
+            <Select
+              value={consumeMaterial}
+              onValueChange={setConsumeMaterial}
+              disabled={!consumeProject || assignedForConsumption.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    !consumeProject
+                      ? "Zuerst Objekt wählen"
+                      : assignedForConsumption.length === 0
+                        ? "Kein Material zugeordnet"
+                        : "Material auswählen"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {assignedForConsumption.map((assignment) => {
+                  const material = materials.find((item) => item.id === assignment.material_id);
+                  return (
+                    <SelectItem key={assignment.id} value={assignment.material_id}>
+                      {material?.name ?? "Material"} · Bestand {formatNumber(Number(assignment.object_stock))}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Menge</Label>
+            <Input
+              type="number"
+              min={0.01}
+              step="0.01"
+              value={consumeQuantity}
+              onChange={(e) => setConsumeQuantity(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Datum</Label>
+            <Input
+              type="date"
+              value={consumeDate}
+              onChange={(e) => setConsumeDate(e.target.value)}
+            />
+          </div>
+
+          <Button
+            type="button"
+            onClick={() => addConsumption.mutate()}
+            disabled={addConsumption.isPending || !consumeProject || !consumeMaterial}
+          >
+            Verbrauch buchen
+          </Button>
+
+          <div className="space-y-1 md:col-span-5">
+            <Label>Notiz</Label>
+            <Input
+              value={consumeNote}
+              onChange={(e) => setConsumeNote(e.target.value)}
+              placeholder="z. B. Grundreinigung, Sanitärbereich …"
+            />
+          </div>
+        </div>
+
+        {consumeProject && assignedForConsumption.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Diesem Objekt ist noch kein Material zugeordnet. Bitte zuerst unter „Material je Objekt“
+            Material und Objektbestand hinterlegen.
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
+          <span className="text-muted-foreground">Erfasste Materialkosten gesamt</span>
+          <strong>{formatMoney(consumptionCost)}</strong>
+        </div>
+
+        <div className="space-y-2">
+          {consumptions.slice(0, 30).map((entry) => {
+            const material = materials.find((item) => item.id === entry.material_id);
+            return (
+              <div
+                key={entry.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+              >
+                <div>
+                  <div className="font-medium">
+                    {projectName(entry.project_id)} · {materialName(entry.material_id)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatDate(entry.consumed_on)} · {formatNumber(Number(entry.quantity))}{" "}
+                    {material?.unit || ""} · {formatMoney(Number(entry.quantity) * Number(entry.unit_cost))}
+                    {entry.note ? ` · ${entry.note}` : ""}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Verbrauch entfernen"
+                  onClick={() => removeConsumption.mutate(entry.id)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            );
+          })}
+          {consumptions.length === 0 && (
+            <p className="text-sm text-muted-foreground">Noch kein Materialverbrauch erfasst.</p>
+          )}
         </div>
       </section>
 
