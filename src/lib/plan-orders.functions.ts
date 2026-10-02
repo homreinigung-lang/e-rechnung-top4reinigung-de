@@ -149,7 +149,7 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
       vat_cents: totals.vatCents,
       gross_cents: totals.grossCents,
       reverse_charge: totals.reverseCharge,
-    });
+    } as never);
     if (error) throw new Error(error.message);
 
     return { orderNumber, totals };
