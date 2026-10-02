@@ -162,7 +162,13 @@ export function summaryLines(rows: TableRow[]): string[] {
 }
 
 function csvEscape(value: unknown) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const raw = String(value ?? "");
+  const trimmed = raw.replace(/^[\t\r\n ]+/, "");
+  const numeric = /^-?\d+(?:[.,]\d+)?(?:\s*€)?$/.test(trimmed);
+  const dangerousFormula =
+    /^[=+@]/.test(trimmed) || (trimmed.startsWith("-") && !numeric);
+  const safe = dangerousFormula ? `'${raw}` : raw;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 /**
