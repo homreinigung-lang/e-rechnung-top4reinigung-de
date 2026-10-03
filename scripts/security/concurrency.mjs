@@ -41,7 +41,9 @@ assert.equal(budgetReplies.filter(x => /^t$/m.test(x)).length, 3, 'Concurrent ma
 assert.equal(budgetReplies.filter(x => /^f$/m.test(x)).length, 5);
 console.log('PASS: 8 concurrent mail attempts allow exactly 3; 5 are rejected. No email was sent.');
 const access = randomUUID(), token = randomUUID();
-sql(`INSERT INTO public.accountant_access(id,user_id,token,access_code,access_code_hash)
+sql(`INSERT INTO public.subscriptions(user_id,plan,status,renews_on)
+ VALUES ('${owner}','enterprise','active',current_date + 30);
+ INSERT INTO public.accountant_access(id,user_id,token,access_code,access_code_hash)
  VALUES ('${access}','${owner}','${token}','','${'a'.repeat(64)}');`);
 const attempts = await Promise.all(Array.from({length: 8}, () =>
   transaction(`SET LOCAL ROLE service_role; SELECT public.check_accountant_access('${token}','${'b'.repeat(64)}')->>'status'`)));
