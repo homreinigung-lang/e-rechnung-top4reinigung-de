@@ -42,7 +42,7 @@ as $$
   limit 1
 $$;
 
-revoke all on function app_private.current_subscription_access_unchecked() from public, anon, authenticated;
-grant execute on function app_private.current_subscription_access_unchecked() to service_role;
+revoke all on function app_private.current_subscription_access_unchecked() from public, anon;
+grant execute on function app_private.current_subscription_access_unchecked() to authenticated, service_role;
 
 commit;
