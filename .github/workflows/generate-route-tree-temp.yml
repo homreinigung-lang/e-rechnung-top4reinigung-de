@@ -1,0 +1,41 @@
+name: Generate route tree temp
+
+on:
+  push:
+    branches:
+      - ux/v1-cleanup-20261003
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ux/v1-cleanup-20261003
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate route tree
+        run: bun run build || true
+
+      - name: Commit generated route tree
+        run: |
+          if git diff --quiet -- src/routeTree.gen.ts; then
+            echo "Route tree already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routeTree.gen.ts
+          git commit -m "Generate route tree for UX cleanup"
+          git push origin HEAD:ux/v1-cleanup-20261003
