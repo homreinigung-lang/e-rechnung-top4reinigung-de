@@ -37,10 +37,12 @@ import {
   AlertTriangle,
   ArrowLeft,
   Calculator,
+  FileText,
   Loader2,
   Plus,
   Sparkles,
   Trash2,
+  UserRound,
   Users,
 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
@@ -136,7 +138,7 @@ function ProjektDetail() {
       const { data, error } = await supabase
         .from("customers")
         .select(
-          "id,address_line,postal_code,city,service_address_line,service_postal_code,service_city,service_note",
+          "id,name,company,email,phone,address_line,postal_code,city,service_address_line,service_postal_code,service_city,service_note",
         )
         .eq("id", project!.customer_id!)
         .single();
@@ -192,7 +194,6 @@ function ProjektDetail() {
     },
   });
 
-  // Ist-Stunden und Kosten aus der Zeiterfassung (nur genehmigte/erfasste Arbeitszeiten)
   const { data: timeEntries = [] } = useQuery({
     queryKey: ["project_time_entries", id],
     queryFn: async () => {
@@ -465,12 +466,15 @@ function ProjektDetail() {
   if (!project) return <p className="text-muted-foreground">Projekt wird geladen …</p>;
 
   const effectiveProjectAddress = effectiveProjectAddressParts(project, projectCustomer);
+  const linkedCustomerName =
+    projectCustomer?.company || projectCustomer?.name || project.customer_name || "Kunde";
+  const linkedCustomerEmail = projectCustomer?.email || project.contact_email || "";
+  const linkedCustomerPhone = projectCustomer?.phone || project.contact_phone || "";
 
   const isTender = project.mode === "tender";
   const totalSqm = rooms.reduce((sum, r) => sum + Number(r.area_sqm || 0), 0);
   const confirmedRooms = rooms.filter((r) => r.confirmed).length;
   const expected = Math.max(project.expected_room_count || 0, rooms.length);
-  // Chronologie der abgeschlossenen Einsätze (Auswertungen liegen in der Kalkulation)
   const history = timeEntries
     .filter(
       (t) =>
@@ -574,7 +578,6 @@ function ProjektDetail() {
     };
   });
 
-  // Automatisch abgeleitete Eckdaten aus dem Raumbuch (Ergänzung zur KI-Zusammenfassung)
   const coveringTotals = new Map<string, number>();
   const usageTotals = new Map<string, number>();
   for (const r of rooms) {
@@ -614,10 +617,9 @@ function ProjektDetail() {
         to="/projekte"
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="size-4" /> Alle Projekte
+        <ArrowLeft className="size-4" /> Alle Objekte
       </Link>
 
-      {/* Projekt-Header */}
       <section className="surface space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -644,24 +646,111 @@ function ProjektDetail() {
           </div>
         </div>
 
+        <div className="flex flex-wrap gap-2 rounded-lg border bg-muted/20 p-3">
+          {project.customer_id ? (
+            <Button asChild size="sm" variant="outline">
+              <Link to="/kunden/$id" params={{ id: project.customer_id }}>
+                <UserRound className="size-4" /> Kunde
+              </Link>
+            </Button>
+          ) : null}
+          <Button asChild size="sm" variant="outline">
+            <Link
+              to="/kalkulation"
+              search={{
+                area: Math.round(totalSqm * 100) / 100,
+                objekt: project.name || "",
+                belag: topCover[0]?.[0] ?? "",
+                projekt: project.id,
+              }}
+            >
+              <Calculator className="size-4" /> Kalkulation
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <a href="#objekt-controlling">Nachkalkulation</a>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <a href="#objekt-team"><Users className="size-4" /> Mitarbeiter</a>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/dokumente">
+              <FileText className="size-4" /> Dokumente
+            </Link>
+          </Button>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            ["name", "Projektname"],
-            ["customer_name", "Kunde"],
-            ["contact_email", "E-Mail"],
-            ["contact_phone", "Telefon"],
+          <div className="space-y-2">
+            <Label htmlFor="h-name">Projektname / Objekt</Label>
+            <Input
+              id="h-name"
+              defaultValue={project.name ?? ""}
+              onBlur={(e) => patchProject.mutate({ name: e.target.value })}
+            />
+          </div>
+
+          {project.customer_id ? (
+            <div className="rounded-lg border p-3 sm:col-span-1 lg:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs text-muted-foreground">Kunde · Stammdaten</div>
+                  <div className="font-semibold">{linkedCustomerName}</div>
+                </div>
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/kunden/$id" params={{ id: project.customer_id }}>
+                    Stammdaten öffnen
+                  </Link>
+                </Button>
+              </div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                {[linkedCustomerEmail, linkedCustomerPhone].filter(Boolean).join(" · ") ||
+                  "Keine Kontaktdaten hinterlegt"}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Kundendaten werden zentral in der Kundenakte gepflegt und hier nur angezeigt.
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="h-customer_name">Kunde</Label>
+                <Input
+                  id="h-customer_name"
+                  defaultValue={project.customer_name ?? ""}
+                  onBlur={(e) => patchProject.mutate({ customer_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="h-contact_email">E-Mail</Label>
+                <Input
+                  id="h-contact_email"
+                  defaultValue={project.contact_email ?? ""}
+                  onBlur={(e) => patchProject.mutate({ contact_email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="h-contact_phone">Telefon</Label>
+                <Input
+                  id="h-contact_phone"
+                  defaultValue={project.contact_phone ?? ""}
+                  onBlur={(e) => patchProject.mutate({ contact_phone: e.target.value })}
+                />
+              </div>
+            </>
+          )}
+
+          {([
             ["address_line", "Einsatzort – Straße und Hausnummer"],
             ["postal_code", "Einsatzort – PLZ"],
             ["city", "Einsatzort – Ort"],
-          ].map(([key, label]) => {
+          ] as const).map(([key, label]) => {
             const addressValue =
               key === "address_line"
                 ? effectiveProjectAddress.address_line
                 : key === "postal_code"
                   ? effectiveProjectAddress.postal_code
-                  : key === "city"
-                    ? effectiveProjectAddress.city
-                    : String((project as Record<string, unknown>)[key!] ?? "");
+                  : effectiveProjectAddress.city;
             return (
               <div key={key} className="space-y-2">
                 <Label htmlFor={`h-${key}`}>{label}</Label>
@@ -669,7 +758,7 @@ function ProjektDetail() {
                   id={`h-${key}`}
                   key={`${key}-${addressValue}`}
                   defaultValue={String(addressValue ?? "")}
-                  onBlur={(e) => patchProject.mutate({ [key!]: e.target.value })}
+                  onBlur={(e) => patchProject.mutate({ [key]: e.target.value })}
                 />
               </div>
             );
@@ -738,7 +827,7 @@ function ProjektDetail() {
                       address_line: effectiveProjectAddress.address_line ?? "",
                       postal_code: effectiveProjectAddress.postal_code ?? "",
                       city: effectiveProjectAddress.city ?? "",
-                      customer_name: project.customer_name,
+                      customer_name: linkedCustomerName,
                     }}
                     readOnly
                   />
@@ -757,9 +846,7 @@ function ProjektDetail() {
             </p>
           </div>
           <Button asChild variant="outline">
-            <Link to="/qm-reklamationen">
-              QM öffnen
-            </Link>
+            <Link to="/qm-reklamationen">QM öffnen</Link>
           </Button>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -795,12 +882,12 @@ function ProjektDetail() {
         )}
       </section>
 
-      <section className="surface space-y-4 p-5">
+      <section id="objekt-controlling" className="surface scroll-mt-20 space-y-4 p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Objekt-Controlling / Marge</h2>
+            <h2 className="text-lg font-semibold">Nachkalkulation / Objekt-Controlling</h2>
             <p className="text-sm text-muted-foreground">
-              Umsatz, Soll-/Ist-Stunden und direkte Objektkosten im gewählten Monat.
+              Geplante und tatsächliche Stunden, Umsatz, Kosten und Marge im gewählten Monat.
             </p>
           </div>
           <div className="space-y-1">
@@ -911,7 +998,6 @@ function ProjektDetail() {
         </p>
       </section>
 
-      {/* KI-Analyse: Eckdaten & Anforderungen */}
       {hasAnalysis && (
         <section className="surface space-y-4 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -961,7 +1047,6 @@ function ProjektDetail() {
         </section>
       )}
 
-      {/* Executive Summary */}
       {(isTender || project.executive_summary) && (
         <section className="surface space-y-3 p-5">
           <div className="flex items-center gap-2">
@@ -989,7 +1074,6 @@ function ProjektDetail() {
         </section>
       )}
 
-      {/* Modus: Raumbuch */}
       {!isTender && (
         <section className="surface space-y-4 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1063,7 +1147,6 @@ function ProjektDetail() {
         </section>
       )}
 
-      {/* Modus: Leistungsverzeichnis */}
       {isTender && (
         <section className="surface space-y-4 p-5">
           <div>
@@ -1082,7 +1165,6 @@ function ProjektDetail() {
         </section>
       )}
 
-      {/* Objekt-Mappe: operative Vertrags- und Einsatzdaten */}
       <section className="surface space-y-4 p-5">
         <div>
           <h2 className="text-lg font-semibold">Objekt-Mappe</h2>
@@ -1155,8 +1237,7 @@ function ProjektDetail() {
         </div>
       </section>
 
-      {/* Einsatzhistorie: von Mitarbeitenden abgeschlossene Einsätze */}
-      <section className="surface space-y-4 p-5">
+      <section id="einsatzhistorie" className="surface scroll-mt-20 space-y-4 p-5">
         <div>
           <h2 className="text-lg font-semibold">Einsatzhistorie</h2>
           <p className="text-sm text-muted-foreground">
@@ -1188,8 +1269,7 @@ function ProjektDetail() {
         )}
       </section>
 
-      {/* Team */}
-      <section className="surface space-y-4 p-5">
+      <section id="objekt-team" className="surface scroll-mt-20 space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="size-4 text-muted-foreground" />
@@ -1226,7 +1306,6 @@ function ProjektDetail() {
         )}
       </section>
 
-      {/* Raum-Detail */}
       <Dialog open={Boolean(roomDialog)} onOpenChange={(o) => !o && setRoomDialog(null)}>
         <DialogContent>
           <DialogHeader>
@@ -1324,7 +1403,6 @@ function ProjektDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Zuweisung */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
           <DialogHeader>
