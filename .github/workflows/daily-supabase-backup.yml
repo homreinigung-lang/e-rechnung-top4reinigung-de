@@ -20,19 +20,12 @@ jobs:
       DATABASE_URL: ${{ secrets.SUPABASE_BACKUP_DATABASE_URL }}
       # Public key only. The matching private key is NEVER stored in GitHub.
       BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
-      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-      R2_BUCKET: ${{ secrets.R2_BUCKET }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: auto
-      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
-      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
     steps:
       - name: Verify required secrets are configured
         shell: bash
         run: |
           set -euo pipefail
-          for v in DATABASE_URL BACKUP_AGE_PUBLIC_KEY R2_ACCOUNT_ID R2_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+          for v in DATABASE_URL BACKUP_AGE_PUBLIC_KEY; do
             if [[ -z "${!v}" ]]; then
               echo "Missing secret for $v. Configure it in repository Actions secrets." >&2
               exit 1
@@ -53,16 +46,6 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq age
-
-      - name: Verify AWS CLI is available
-        shell: bash
-        run: |
-          set -euo pipefail
-          command -v aws >/dev/null 2>&1 || {
-            echo 'AWS CLI is required on the GitHub runner but was not found.' >&2
-            exit 1
-          }
-          aws --version
 
       - name: Dump database and verify archive
         shell: bash
@@ -88,19 +71,16 @@ jobs:
           (cd "$RUNNER_TEMP/supabase-backup" && sha256sum database.dump.age > database.dump.age.sha256)
           rm -f "$RUNNER_TEMP/supabase-backup/database.dump"
 
-      - name: Upload encrypted backup to private Cloudflare R2 bucket
-        shell: bash
-        run: |
-          set -euo pipefail
-          endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-          prefix="backups/$(date -u +%Y/%m)/hom-office-$(date -u +%Y%m%dT%H%M%SZ)-run${GITHUB_RUN_ID}"
-          for f in database.dump.age database.dump.age.sha256; do
-            aws s3 cp "$RUNNER_TEMP/supabase-backup/$f" "s3://${R2_BUCKET}/${prefix}-$f" \
-              --endpoint-url "$endpoint" --only-show-errors
-            aws s3api head-object --bucket "$R2_BUCKET" --key "${prefix}-$f" \
-              --endpoint-url "$endpoint" >/dev/null
-          done
-          echo "Uploaded encrypted backup to R2 (private bucket)."
+      - name: Upload encrypted backup as GitHub Actions artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/supabase-backup/database.dump.age
+            ${{ runner.temp }}/supabase-backup/database.dump.age.sha256
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
 
       - name: Remove temporary local backup files
         if: always()
