@@ -11,69 +11,121 @@ import { BewertungDialog } from "@/components/BewertungDialog";
 import { OnboardingGuide } from "@/components/OnboardingGuide";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
-  ArrowLeft, BadgeCheck, BarChart3, Calculator, Car, ClipboardCheck, Clock, FileSearch,
-  FileSignature, FileText, FolderKanban, HardHat, Landmark, LayoutDashboard,
-  LifeBuoy, LogOut, Map as MapIcon, MessageSquare, MoreHorizontal, MoreVertical, Package,
-  Repeat, Settings, ShieldCheck, Sparkles, Star, Trash2, TrendingDown, UserCircle, Users,
+  ArrowLeft,
+  BadgeCheck,
+  BarChart3,
+  Calculator,
+  Car,
+  ClipboardCheck,
+  Clock,
+  FileSearch,
+  FileText,
+  FolderKanban,
+  HardHat,
+  Landmark,
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  Map as MapIcon,
+  MessageSquare,
+  MoreHorizontal,
+  MoreVertical,
+  Package,
+  Repeat,
+  Settings,
+  ShieldCheck,
+  Star,
+  Trash2,
+  TrendingDown,
+  UserCircle,
+  Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; hash?: string; search?: Record<string, unknown> };
-type NavGroup = { title: string; items: readonly NavItem[] };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  hash?: string;
+  search?: Record<string, unknown>;
+};
+type NavGroup = { title: string; icon?: typeof LayoutDashboard; items: readonly NavItem[] };
 
 const quickOwner: readonly NavItem[] = [
   { to: "/dashboard", label: "Startseite", icon: LayoutDashboard },
   { to: "/kunden", label: "Kunden", icon: Users },
   { to: "/projekte", label: "Objekte", icon: FolderKanban },
   { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
-  { to: "/dokumente", label: "Angebot", icon: FileSignature, search: { tab: "quote" } },
-  { to: "/dokumente", label: "Rechnungen", icon: FileText, search: { tab: "invoice" } },
+  { to: "/dokumente", label: "Dokumente", icon: FileText },
 ];
 
 const ownerMoreGroups: readonly NavGroup[] = [
-  { title: "Arbeit", items: [
-    { to: "/team", label: "Control Center", icon: HardHat },
-    { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
-    { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },
-    { to: "/team", label: "Materialien", icon: Package, search: { tab: "materialien" } },
-    { to: "/qm-reklamationen", label: "QM / Reklamationen", icon: ClipboardCheck },
-    { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
-  ]},
-  { title: "Objekte & Ausschreibungen", items: [
-    { to: "/projekte", label: "Objekte / Projekte", icon: FolderKanban },
-    { to: "/lv-analyse", label: "LV-Analyse", icon: FileSearch },
-  ]},
-  { title: "Buchhaltung", items: [
-    { to: "/wiederkehrend", label: "Wiederkehrende Rechnung", icon: Repeat },
-    { to: "/dashboard", label: "EÜR", icon: BarChart3, hash: "euer" },
-    { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
-    { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
-  ]},
-  { title: "Verwaltung", items: [
-    { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
-    { to: "/sicherheit", label: "Sicherheit & Backup", icon: ShieldCheck },
-    { to: "/papierkorb", label: "Papierkorb", icon: Trash2 },
-  ]},
-  { title: "Konto", items: [
-    { to: "/profil", label: "Mein Profil", icon: UserCircle },
-    { to: "/einstellungen", label: "Einstellungen", icon: Settings },
-    { to: "/mein-paket", label: "Mein Paket", icon: BadgeCheck },
-    { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
-  ]},
+  {
+    title: "Arbeit",
+    icon: HardHat,
+    items: [
+      { to: "/team", label: "Control Center", icon: HardHat },
+      { to: "/karte", label: "Einsatzkarte", icon: MapIcon },
+      { to: "/fahrtenbuch", label: "Fahrtenbuch", icon: Car },
+      { to: "/team", label: "Materialien", icon: Package, search: { tab: "materialien" } },
+      { to: "/qm-reklamationen", label: "QM / Reklamationen", icon: ClipboardCheck },
+      { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
+    ],
+  },
+  {
+    title: "Ausschreibungen",
+    icon: FileSearch,
+    items: [{ to: "/lv-analyse", label: "LV-Analyse", icon: FileSearch }],
+  },
+  {
+    title: "Buchhaltung",
+    icon: BarChart3,
+    items: [
+      { to: "/wiederkehrend", label: "Wiederkehrende Rechnung", icon: Repeat },
+      { to: "/dashboard", label: "EÜR", icon: BarChart3, hash: "euer" },
+      { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
+      { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
+      { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
+    ],
+  },
+  {
+    title: "Verwaltung",
+    icon: Settings,
+    items: [
+      { to: "/profil", label: "Mein Profil", icon: UserCircle },
+      { to: "/einstellungen", label: "Einstellungen", icon: Settings },
+      { to: "/sicherheit", label: "Sicherheit & Backup", icon: ShieldCheck },
+      { to: "/papierkorb", label: "Papierkorb", icon: Trash2 },
+      { to: "/mein-paket", label: "Mein Paket", icon: BadgeCheck },
+      { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
+    ],
+  },
 ];
 
-const employeeGroups: readonly NavGroup[] = [{ title: "Mein Bereich", items: [
-  { to: "/mein-bereich", label: "Heute", icon: LayoutDashboard },
-  { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
-  { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
-  { to: "/profil", label: "Mein Profil", icon: UserCircle },
-  { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
-]}];
+const employeeGroups: readonly NavGroup[] = [
+  {
+    title: "Mein Bereich",
+    items: [
+      { to: "/mein-bereich", label: "Heute", icon: LayoutDashboard },
+      { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
+      { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
+      { to: "/profil", label: "Mein Profil", icon: UserCircle },
+      { to: "/hilfe", label: "Hilfe / Support", icon: LifeBuoy },
+    ],
+  },
+];
 
 function isActive(pathname: string, item: NavItem) {
   if (item.to === "/dokumente") return pathname.startsWith("/dokumente");
@@ -91,7 +143,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (myEmployee === undefined) return;
-    try { localStorage.setItem("homr:role", myEmployee ? "employee" : "owner"); } catch { /* noop */ }
+    try {
+      localStorage.setItem("homr:role", myEmployee ? "employee" : "owner");
+    } catch {
+      /* noop */
+    }
   }, [myEmployee]);
 
   useEffect(() => {
@@ -110,7 +166,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       isAdmin ||
       myEmployee ||
       pathname.startsWith("/mein-paket")
-    ) return;
+    )
+      return;
     if (!subscriptionAllowed) {
       navigate({ to: "/mein-paket", replace: true });
     }
@@ -137,6 +194,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const employeeHome = "/mein-bereich";
   const homeTo = myEmployee ? employeeHome : "/dashboard";
   const showBack = pathname !== homeTo && pathname !== "/dashboard";
+
   const filterAllowedItems = (groups: readonly NavGroup[]): NavGroup[] =>
     groups
       .map((group) => ({
@@ -147,25 +205,102 @@ export function AppShell({ children }: { children: ReactNode }) {
       }))
       .filter((group) => group.items.length > 0);
 
-  const moreGroups: readonly NavGroup[] = myEmployee
-    ? filterAllowedItems(employeeGroups)
-    : isAdmin
-      ? [...ownerMoreGroups, { title: "Administration", items: [{ to: "/admin", label: "Plattform-Admin", icon: BadgeCheck }] }]
-      : filterAllowedItems(ownerMoreGroups);
+  const ownerGroups = filterAllowedItems(ownerMoreGroups).map((group) =>
+    isAdmin && group.title === "Verwaltung"
+      ? {
+          ...group,
+          items: [
+            ...group.items,
+            { to: "/admin", label: "Plattform-Admin", icon: BadgeCheck },
+          ],
+        }
+      : group,
+  );
+  const employeeMenuGroups = filterAllowedItems(employeeGroups);
 
   const allowedQuickOwner = quickOwner.filter(
     (item) => Boolean(isAdmin) || subscriptionAllowsPath(subscriptionAccess ?? null, item.to),
   );
   const mobileItems: readonly NavItem[] = myEmployee
-    ? filterAllowedItems(employeeGroups)[0]?.items.slice(0, 4) ?? []
+    ? employeeMenuGroups[0]?.items.slice(0, 4) ?? []
     : allowedQuickOwner.slice(0, 4);
+
+  const renderOwnerMoreMenu = () => (
+    <>
+      {ownerGroups.map((group) => {
+        const GroupIcon = group.icon ?? Settings;
+        return (
+          <DropdownMenuSub key={group.title}>
+            <DropdownMenuSubTrigger className="py-2.5">
+              <GroupIcon className="size-4" />
+              <span>{group.title}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-64">
+              {group.items.map((item) => (
+                <DropdownMenuItem key={`${item.to}-${item.label}`} asChild>
+                  <Link
+                    to={item.to}
+                    {...(item.hash ? { hash: item.hash } : {})}
+                    {...(item.search ? { search: item.search } : {})}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-2",
+                      isActive(pathname, item) && "bg-secondary text-secondary-foreground",
+                    )}
+                  >
+                    <item.icon className="size-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        );
+      })}
+    </>
+  );
+
+  const renderEmployeeMoreMenu = () => (
+    <>
+      {employeeMenuGroups.map((group, gi) => (
+        <div key={group.title}>
+          {gi > 0 && <DropdownMenuSeparator />}
+          <DropdownMenuLabel>{group.title}</DropdownMenuLabel>
+          {group.items.map((item) => (
+            <DropdownMenuItem key={`${item.to}-${item.label}`} asChild>
+              <Link
+                to={item.to}
+                {...(item.hash ? { hash: item.hash } : {})}
+                {...(item.search ? { search: item.search } : {})}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2",
+                  isActive(pathname, item) && "bg-secondary text-secondary-foreground",
+                )}
+              >
+                <item.icon className="size-4" />
+                <span>{item.label}</span>
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </div>
+      ))}
+    </>
+  );
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background pb-16 md:pb-0">
-      <header className="no-print sticky top-0 z-30 border-b bg-card/90 backdrop-blur" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+      <header
+        className="no-print sticky top-0 z-30 border-b bg-card/90 backdrop-blur"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-2 sm:px-4">
           <Link to={homeTo} className="flex shrink-0 items-center gap-2">
-            <img src="/app-icon-192.png?v=5" alt="GebCalc Logo" width={32} height={32} className="size-8 rounded-lg" />
+            <img
+              src="/app-icon-192.png?v=5"
+              alt="GebCalc Logo"
+              width={32}
+              height={32}
+              className="size-8 rounded-lg"
+            />
             <span className="hidden flex-col leading-tight sm:flex">
               <span className="font-display text-sm font-semibold">GebCalc</span>
               <span className="text-[11px] text-muted-foreground">Reinigung & Büro</span>
@@ -175,9 +310,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           {!myEmployee ? (
             <nav className="ml-3 hidden items-center gap-1 md:flex">
               {allowedQuickOwner.map((item) => (
-                <Link key={`${item.to}-${item.label}`} to={item.to} {...(item.search ? { search: item.search } : {})}
-                  className={cn("rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted", isActive(pathname, item) && "bg-secondary text-secondary-foreground")}
-                >{item.label}</Link>
+                <Link
+                  key={`${item.to}-${item.label}`}
+                  to={item.to}
+                  {...(item.search ? { search: item.search } : {})}
+                  className={cn(
+                    "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted",
+                    isActive(pathname, item) && "bg-secondary text-secondary-foreground",
+                  )}
+                >
+                  {item.label}
+                </Link>
               ))}
             </nav>
           ) : null}
@@ -186,23 +329,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             {!myEmployee ? <Vertretungswarnungen /> : null}
             <AssignmentBell />
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button data-onboarding="mehr" variant="ghost" size="icon" aria-label="Mehr"><MoreVertical className="size-5" /></Button></DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="max-h-[82vh] w-72 overflow-y-auto">
-                {moreGroups.map((group, gi) => (
-                  <div key={group.title}>
-                    {gi > 0 && <DropdownMenuSeparator />}
-                    <DropdownMenuLabel>{group.title}</DropdownMenuLabel>
-                    {group.items.map((item) => (
-                      <DropdownMenuItem key={`${item.to}-${item.label}`} asChild>
-                        <Link to={item.to} {...(item.hash ? { hash: item.hash } : {})} {...(item.search ? { search: item.search } : {})}
-                          className={cn("flex w-full cursor-pointer items-center gap-2", isActive(pathname, item) && "bg-secondary text-secondary-foreground")}
-                        ><item.icon className="size-4" /><span>{item.label}</span></Link>
-                      </DropdownMenuItem>
-                    ))}
-                  </div>
-                ))}
+              <DropdownMenuTrigger asChild>
+                <Button data-onboarding="mehr" variant="ghost" size="icon" aria-label="Mehr">
+                  <MoreVertical className="size-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                {myEmployee ? renderEmployeeMoreMenu() : renderOwnerMoreMenu()}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => void signOut()}><LogOut className="size-4" /><span>Abmelden</span></DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void signOut()}>
+                  <LogOut className="size-4" />
+                  <span>Abmelden</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -211,54 +349,116 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
         {showBack ? (
-          <Button type="button" variant="ghost" size="sm" className="no-print mb-3 -ml-2 gap-1.5 text-muted-foreground" onClick={() => {
-            if (typeof window !== "undefined" && window.history.length > 1) window.history.back();
-            else navigate({ to: homeTo });
-          }}><ArrowLeft className="size-4" />Zurück</Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="no-print mb-3 -ml-2 gap-1.5 text-muted-foreground"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1)
+                window.history.back();
+              else navigate({ to: homeTo });
+            }}
+          >
+            <ArrowLeft className="size-4" /> Zurück
+          </Button>
         ) : null}
         {(subscriptionLoading || employeeLoading || adminLoading) && !isAdmin ? (
-          <div className="surface p-6 text-sm text-muted-foreground">Kontozugriff wird geprüft …</div>
+          <div className="surface p-6 text-sm text-muted-foreground">
+            Kontozugriff wird geprüft …
+          </div>
         ) : !isAdmin && !subscriptionAllowed && !pathname.startsWith("/mein-paket") ? (
           <div className="surface p-6 text-sm text-muted-foreground">
-            Dieser Bereich ist mit dem aktuellen Paket oder nach Ablauf der Testphase nicht verfügbar.
+            Dieser Bereich ist mit dem aktuellen Paket oder nach Ablauf der Testphase nicht
+            verfügbar.
           </div>
         ) : myEmployee && !isEmployeeAllowedPath(pathname) ? (
-          <div className="surface p-6 text-sm text-muted-foreground">Dieser Bereich ist dem Unternehmenskonto vorbehalten.</div>
-        ) : children}
+          <div className="surface p-6 text-sm text-muted-foreground">
+            Dieser Bereich ist dem Unternehmenskonto vorbehalten.
+          </div>
+        ) : (
+          children
+        )}
       </main>
 
-      <footer className="no-print border-t py-5" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}>
+      <footer
+        className="no-print border-t py-5"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
+      >
         <div className="mx-auto flex max-w-7xl flex-wrap gap-x-4 gap-y-2 px-4 text-sm text-muted-foreground">
-          <Link to="/rechtliches/impressum" className="hover:underline">Impressum</Link>
-          <Link to="/rechtliches/agb" className="hover:underline">AGB</Link>
-          <Link to="/rechtliches/datenschutz" className="hover:underline">Datenschutz</Link>
+          <Link to="/rechtliches/impressum" className="hover:underline">
+            Impressum
+          </Link>
+          <Link to="/rechtliches/agb" className="hover:underline">
+            AGB
+          </Link>
+          <Link to="/rechtliches/datenschutz" className="hover:underline">
+            Datenschutz
+          </Link>
         </div>
       </footer>
 
-      <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <nav
+        className="no-print fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         <div className="mx-auto grid max-w-lg grid-cols-5">
           {mobileItems.map((item) => (
-            <Link key={`${item.to}-${item.label}`} to={item.to} {...(item.search ? { search: item.search } : {})}
-              className={cn("flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] text-muted-foreground", isActive(pathname, item) && "text-primary")}
-            ><item.icon className="size-5" /><span className="truncate">{item.label}</span></Link>
+            <Link
+              key={`${item.to}-${item.label}`}
+              to={item.to}
+              {...(item.search ? { search: item.search } : {})}
+              className={cn(
+                "flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] text-muted-foreground",
+                isActive(pathname, item) && "text-primary",
+              )}
+            >
+              <item.icon className="size-5" />
+              <span className="truncate">{item.label}</span>
+            </Link>
           ))}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild><button data-onboarding="mehr" type="button" className="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] text-muted-foreground"><MoreHorizontal className="size-5" /><span>Mehr</span></button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="max-h-[70vh] w-72 overflow-y-auto">
-              {moreGroups.map((group, gi) => (
-                <div key={group.title}>{gi > 0 && <DropdownMenuSeparator />}<DropdownMenuLabel>{group.title}</DropdownMenuLabel>{group.items.map((item) => (
-                  <DropdownMenuItem key={`${item.to}-${item.label}`} asChild><Link to={item.to} {...(item.hash ? { hash: item.hash } : {})} {...(item.search ? { search: item.search } : {})} className="flex items-center gap-2"><item.icon className="size-4" />{item.label}</Link></DropdownMenuItem>
-                ))}</div>
-              ))}
-              <DropdownMenuSeparator /><DropdownMenuItem onSelect={() => void signOut()}><LogOut className="size-4" /><span>Abmelden</span></DropdownMenuItem>
+            <DropdownMenuTrigger asChild>
+              <button
+                data-onboarding="mehr"
+                type="button"
+                className="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] text-muted-foreground"
+              >
+                <MoreHorizontal className="size-5" />
+                <span>Mehr</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="w-64">
+              {myEmployee ? renderEmployeeMoreMenu() : renderOwnerMoreMenu()}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void signOut()}>
+                <LogOut className="size-4" />
+                <span>Abmelden</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </nav>
 
-      <div className="no-print fixed right-4 z-30 hidden flex-col items-end gap-2 md:flex" style={{ bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}>
-        {!myEmployee ? <button type="button" onClick={() => setReviewOpen(true)} className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm shadow-lg"><Star className="size-4" />Bewertung</button> : null}
-        <Link to="/hilfe" className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm shadow-lg"><LifeBuoy className="size-4" />Hilfe</Link>
+      <div
+        className="no-print fixed right-4 z-30 hidden flex-col items-end gap-2 md:flex"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+      >
+        {!myEmployee ? (
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm shadow-lg"
+          >
+            <Star className="size-4" /> Bewertung
+          </button>
+        ) : null}
+        <Link
+          to="/hilfe"
+          className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm shadow-lg"
+        >
+          <LifeBuoy className="size-4" /> Hilfe
+        </Link>
       </div>
       {!myEmployee ? <BewertungDialog open={reviewOpen} onOpenChange={setReviewOpen} /> : null}
       <OnboardingGuide />
