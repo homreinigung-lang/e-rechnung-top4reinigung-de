@@ -61,6 +61,7 @@ export function useMyEmployee() {
  * Unternehmenskonto (Rechnungen, Kunden, Einstellungen, Administration).
  */
 export const EMPLOYEE_ALLOWED_PREFIXES = [
+  "/mein-bereich",
   "/meine-zeiten",
   "/nachrichten",
   "/profil",
@@ -75,7 +76,7 @@ export function isEmployeeAllowedPath(pathname: string): boolean {
  * Prüft nach der Anmeldung, ob das Konto ein Mitarbeiterkonto ist, und liefert
  * die passende Startseite. Inhaberkonten landen im Dashboard.
  */
-export async function resolveStartRoute(): Promise<"/dashboard" | "/meine-zeiten"> {
+export async function resolveStartRoute(): Promise<"/dashboard" | "/mein-bereich"> {
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth.user?.id;
   if (!uid) return "/dashboard";
@@ -84,6 +85,6 @@ export async function resolveStartRoute(): Promise<"/dashboard" | "/meine-zeiten
     .select("id,user_id")
     .eq("auth_user_id", uid)
     .maybeSingle();
-  if (row && row.user_id !== uid) return "/meine-zeiten";
+  if (row && row.user_id !== uid) return "/mein-bereich";
   return "/dashboard";
 }
