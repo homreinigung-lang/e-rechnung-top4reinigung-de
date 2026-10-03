@@ -126,7 +126,6 @@ export function useCanReverseCharge() {
   };
 }
 
-
 export type SubscriptionAccess = {
   plan: string;
   status: string;
@@ -144,6 +143,7 @@ export function requiredPlanForPath(pathname: string): "basis" | "pro" | "enterp
     return "enterprise";
   }
   if (
+    pathname.startsWith("/mein-bereich") ||
     pathname.startsWith("/meine-zeiten") ||
     pathname.startsWith("/kalkulation") ||
     pathname.startsWith("/team") ||

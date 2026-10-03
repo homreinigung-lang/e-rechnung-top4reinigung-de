@@ -29,6 +29,7 @@ import { Route as AuthenticatedKalkulationRouteImport } from './routes/_authenti
 import { Route as AuthenticatedKalkulationAngebotRouteImport } from './routes/_authenticated/kalkulation-angebot'
 import { Route as AuthenticatedKarteRouteImport } from './routes/_authenticated/karte'
 import { Route as AuthenticatedLvAnalyseRouteImport } from './routes/_authenticated/lv-analyse'
+import { Route as AuthenticatedMeinBereichRouteImport } from './routes/_authenticated/mein-bereich'
 import { Route as AuthenticatedMeinPaketRouteImport } from './routes/_authenticated/mein-paket'
 import { Route as AuthenticatedMeineZeitenRouteImport } from './routes/_authenticated/meine-zeiten'
 import { Route as AuthenticatedNachrichtenRouteImport } from './routes/_authenticated/nachrichten'
@@ -167,6 +168,12 @@ const AuthenticatedLvAnalyseRoute = AuthenticatedLvAnalyseRouteImport.update({
   path: '/lv-analyse',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMeinBereichRoute =
+  AuthenticatedMeinBereichRouteImport.update({
+    id: '/mein-bereich',
+    path: '/mein-bereich',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMeinPaketRoute = AuthenticatedMeinPaketRouteImport.update({
   id: '/mein-paket',
   path: '/mein-paket',
@@ -357,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/kalkulation-angebot': typeof AuthenticatedKalkulationAngebotRoute
   '/karte': typeof AuthenticatedKarteRoute
   '/lv-analyse': typeof AuthenticatedLvAnalyseRoute
+  '/mein-bereich': typeof AuthenticatedMeinBereichRoute
   '/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
@@ -407,6 +415,7 @@ export interface FileRoutesByTo {
   '/kalkulation-angebot': typeof AuthenticatedKalkulationAngebotRoute
   '/karte': typeof AuthenticatedKarteRoute
   '/lv-analyse': typeof AuthenticatedLvAnalyseRoute
+  '/mein-bereich': typeof AuthenticatedMeinBereichRoute
   '/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/nachrichten': typeof AuthenticatedNachrichtenRoute
@@ -461,6 +470,7 @@ export interface FileRoutesById {
   '/_authenticated/kalkulation-angebot': typeof AuthenticatedKalkulationAngebotRoute
   '/_authenticated/karte': typeof AuthenticatedKarteRoute
   '/_authenticated/lv-analyse': typeof AuthenticatedLvAnalyseRoute
+  '/_authenticated/mein-bereich': typeof AuthenticatedMeinBereichRoute
   '/_authenticated/mein-paket': typeof AuthenticatedMeinPaketRoute
   '/_authenticated/meine-zeiten': typeof AuthenticatedMeineZeitenRoute
   '/_authenticated/nachrichten': typeof AuthenticatedNachrichtenRoute
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/kalkulation-angebot'
     | '/karte'
     | '/lv-analyse'
+    | '/mein-bereich'
     | '/mein-paket'
     | '/meine-zeiten'
     | '/nachrichten'
@@ -565,6 +576,7 @@ export interface FileRouteTypes {
     | '/kalkulation-angebot'
     | '/karte'
     | '/lv-analyse'
+    | '/mein-bereich'
     | '/mein-paket'
     | '/meine-zeiten'
     | '/nachrichten'
@@ -618,6 +630,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kalkulation-angebot'
     | '/_authenticated/karte'
     | '/_authenticated/lv-analyse'
+    | '/_authenticated/mein-bereich'
     | '/_authenticated/mein-paket'
     | '/_authenticated/meine-zeiten'
     | '/_authenticated/nachrichten'
@@ -804,6 +817,13 @@ declare module '@tanstack/react-router' {
       path: '/lv-analyse'
       fullPath: '/lv-analyse'
       preLoaderRoute: typeof AuthenticatedLvAnalyseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mein-bereich': {
+      id: '/_authenticated/mein-bereich'
+      path: '/mein-bereich'
+      fullPath: '/mein-bereich'
+      preLoaderRoute: typeof AuthenticatedMeinBereichRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/mein-paket': {
@@ -1074,6 +1094,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKalkulationAngebotRoute: typeof AuthenticatedKalkulationAngebotRoute
   AuthenticatedKarteRoute: typeof AuthenticatedKarteRoute
   AuthenticatedLvAnalyseRoute: typeof AuthenticatedLvAnalyseRoute
+  AuthenticatedMeinBereichRoute: typeof AuthenticatedMeinBereichRoute
   AuthenticatedMeinPaketRoute: typeof AuthenticatedMeinPaketRoute
   AuthenticatedMeineZeitenRoute: typeof AuthenticatedMeineZeitenRoute
   AuthenticatedNachrichtenRoute: typeof AuthenticatedNachrichtenRoute
@@ -1106,6 +1127,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKalkulationAngebotRoute: AuthenticatedKalkulationAngebotRoute,
   AuthenticatedKarteRoute: AuthenticatedKarteRoute,
   AuthenticatedLvAnalyseRoute: AuthenticatedLvAnalyseRoute,
+  AuthenticatedMeinBereichRoute: AuthenticatedMeinBereichRoute,
   AuthenticatedMeinPaketRoute: AuthenticatedMeinPaketRoute,
   AuthenticatedMeineZeitenRoute: AuthenticatedMeineZeitenRoute,
   AuthenticatedNachrichtenRoute: AuthenticatedNachrichtenRoute,

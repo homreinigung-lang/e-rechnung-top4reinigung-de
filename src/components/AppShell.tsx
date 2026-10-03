@@ -29,8 +29,9 @@ type NavGroup = { title: string; items: readonly NavItem[] };
 const quickOwner: readonly NavItem[] = [
   { to: "/dashboard", label: "Startseite", icon: LayoutDashboard },
   { to: "/kunden", label: "Kunden", icon: Users },
-  { to: "/dokumente", label: "Angebot", icon: FileSignature, search: { tab: "quote" } },
+  { to: "/projekte", label: "Objekte", icon: FolderKanban },
   { to: "/kalkulation", label: "Kalkulation", icon: Calculator },
+  { to: "/dokumente", label: "Angebot", icon: FileSignature, search: { tab: "quote" } },
   { to: "/dokumente", label: "Rechnungen", icon: FileText, search: { tab: "invoice" } },
 ];
 
@@ -43,12 +44,11 @@ const ownerMoreGroups: readonly NavGroup[] = [
     { to: "/qm-reklamationen", label: "QM / Reklamationen", icon: ClipboardCheck },
     { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
   ]},
-  { title: "Projekte & Ausschreibungen", items: [
-    { to: "/projekte", label: "Projekte", icon: FolderKanban },
+  { title: "Objekte & Ausschreibungen", items: [
+    { to: "/projekte", label: "Objekte / Projekte", icon: FolderKanban },
     { to: "/lv-analyse", label: "LV-Analyse", icon: FileSearch },
   ]},
   { title: "Buchhaltung", items: [
-    { to: "/dokumente", label: "Rechnungen", icon: FileText, search: { tab: "invoice" } },
     { to: "/wiederkehrend", label: "Wiederkehrende Rechnung", icon: Repeat },
     { to: "/dashboard", label: "EÜR", icon: BarChart3, hash: "euer" },
     { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
@@ -68,6 +68,7 @@ const ownerMoreGroups: readonly NavGroup[] = [
 ];
 
 const employeeGroups: readonly NavGroup[] = [{ title: "Mein Bereich", items: [
+  { to: "/mein-bereich", label: "Heute", icon: LayoutDashboard },
   { to: "/meine-zeiten", label: "Meine Zeiten", icon: Clock },
   { to: "/nachrichten", label: "Interner Chat", icon: MessageSquare },
   { to: "/profil", label: "Mein Profil", icon: UserCircle },
@@ -95,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!myEmployee || isEmployeeAllowedPath(pathname)) return;
-    navigate({ to: "/meine-zeiten", replace: true });
+    navigate({ to: "/mein-bereich", replace: true });
   }, [myEmployee, pathname, navigate]);
 
   const subscriptionAllowed =
@@ -133,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate({ to: "/auth", replace: true });
   }
 
-  const employeeHome = "/meine-zeiten";
+  const employeeHome = "/mein-bereich";
   const homeTo = myEmployee ? employeeHome : "/dashboard";
   const showBack = pathname !== homeTo && pathname !== "/dashboard";
   const filterAllowedItems = (groups: readonly NavGroup[]): NavGroup[] =>
@@ -156,7 +157,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     (item) => Boolean(isAdmin) || subscriptionAllowsPath(subscriptionAccess ?? null, item.to),
   );
   const mobileItems: readonly NavItem[] = myEmployee
-    ? filterAllowedItems(employeeGroups)[0]?.items.slice(0, 3) ?? []
+    ? filterAllowedItems(employeeGroups)[0]?.items.slice(0, 4) ?? []
     : allowedQuickOwner.slice(0, 4);
 
   return (
@@ -260,6 +261,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link to="/hilfe" className="inline-flex items-center gap-2 rounded-full border bg-card/90 px-3.5 py-2.5 text-sm shadow-lg"><LifeBuoy className="size-4" />Hilfe</Link>
       </div>
       {!myEmployee ? <BewertungDialog open={reviewOpen} onOpenChange={setReviewOpen} /> : null}
+      <OnboardingGuide />
     </div>
   );
 }
