@@ -36,6 +36,27 @@ type Transaction = {
 const SESSION_KEY = "enable_banking_session";
 const STATE_KEY = "enable_banking_state";
 
+const COUNTRY_OPTIONS = [
+  { code: "DE", label: "Deutschland" },
+  { code: "AT", label: "Österreich" },
+  { code: "CH", label: "Schweiz" },
+  { code: "FR", label: "Frankreich" },
+  { code: "LU", label: "Luxemburg" },
+  { code: "BE", label: "Belgien" },
+  { code: "NL", label: "Niederlande" },
+  { code: "IT", label: "Italien" },
+  { code: "ES", label: "Spanien" },
+  { code: "PT", label: "Portugal" },
+  { code: "IE", label: "Irland" },
+  { code: "GB", label: "Vereinigtes Königreich" },
+  { code: "PL", label: "Polen" },
+  { code: "CZ", label: "Tschechien" },
+  { code: "DK", label: "Dänemark" },
+  { code: "SE", label: "Schweden" },
+  { code: "NO", label: "Norwegen" },
+  { code: "FI", label: "Finnland" },
+].sort((a, b) => a.label.localeCompare(b.label, "de"));
+
 async function enableBanking<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke("enable-banking", { body });
   if (error) throw new Error(error.message);
@@ -53,6 +74,8 @@ function formatMoney(amount?: string, currency = "EUR") {
 function BankverbindungPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<BankForm>({ bank_name: "", iban: "", bic: "", owner_name: "" });
+  const [selectedCountry, setSelectedCountry] = useState("DE");
+  const [bankSearch, setBankSearch] = useState("");
   const [selectedBank, setSelectedBank] = useState("");
   const [session, setSession] = useState<EnableSession | null>(null);
   const [balances, setBalances] = useState<Balance[]>([]);
@@ -75,8 +98,8 @@ function BankverbindungPage() {
   });
 
   const { data: bankData, isLoading: banksLoading } = useQuery({
-    queryKey: ["enable-banking-banks"],
-    queryFn: () => enableBanking<{ aspsps?: EnableBank[] }>({ action: "list_banks" }),
+    queryKey: ["enable-banking-banks", selectedCountry],
+    queryFn: () => enableBanking<{ aspsps?: EnableBank[] }>({ action: "list_banks", country: selectedCountry }),
     retry: false,
   });
 
@@ -84,6 +107,17 @@ function BankverbindungPage() {
     () => [...(bankData?.aspsps ?? [])].sort((a, b) => a.name.localeCompare(b.name, "de")),
     [bankData],
   );
+
+  const filteredBanks = useMemo(() => {
+    const query = bankSearch.trim().toLocaleLowerCase("de");
+    if (!query) return banks;
+    return banks.filter((bank) => bank.name.toLocaleLowerCase("de").includes(query));
+  }, [banks, bankSearch]);
+
+  useEffect(() => {
+    setSelectedBank("");
+    setBankSearch("");
+  }, [selectedCountry]);
 
   useEffect(() => {
     if (!settings) return;
@@ -224,7 +258,7 @@ function BankverbindungPage() {
       <Card>
         <CardHeader>
           <CardTitle>Bankmonitoring (Enable Banking)</CardTitle>
-          <CardDescription>Kontostand und Umsätze über Open Banking abrufen.</CardDescription>
+          <CardDescription>Land auswählen, Bank suchen und Konto sicher über Open Banking verbinden.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -234,27 +268,69 @@ function BankverbindungPage() {
           </div>
 
           {!session ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1 space-y-2">
-                <Label htmlFor="enable-bank">Bank auswählen</Label>
-                <select
-                  id="enable-bank"
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                  value={selectedBank}
-                  onChange={(e) => setSelectedBank(e.target.value)}
-                  disabled={banksLoading || bankBusy}
-                >
-                  <option value="">{banksLoading ? "Banken werden geladen…" : "Bank auswählen…"}</option>
-                  {banks.map((bank) => (
-                    <option key={`${bank.name}-${bank.country}`} value={`${bank.name}|${bank.country}`}>
-                      {bank.name}
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="enable-country">Land</Label>
+                  <select
+                    id="enable-country"
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    value={selectedCountry}
+                    onChange={(e) => setSelectedCountry(e.target.value)}
+                    disabled={bankBusy}
+                  >
+                    {COUNTRY_OPTIONS.map((country) => (
+                      <option key={country.code} value={country.code}>{country.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="enable-bank-search">Bank suchen</Label>
+                  <Input
+                    id="enable-bank-search"
+                    value={bankSearch}
+                    onChange={(e) => setBankSearch(e.target.value)}
+                    placeholder="z. B. Sparkasse"
+                    disabled={banksLoading || bankBusy}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="enable-bank">Bank auswählen</Label>
+                  <select
+                    id="enable-bank"
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    value={selectedBank}
+                    onChange={(e) => setSelectedBank(e.target.value)}
+                    disabled={banksLoading || bankBusy}
+                  >
+                    <option value="">
+                      {banksLoading
+                        ? "Banken werden geladen…"
+                        : filteredBanks.length
+                          ? `${filteredBanks.length} Banken verfügbar`
+                          : "Keine Bank gefunden"}
                     </option>
-                  ))}
-                </select>
+                    {filteredBanks.map((bank) => (
+                      <option key={`${bank.name}-${bank.country}`} value={`${bank.name}|${bank.country}`}>
+                        {bank.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <Button onClick={() => void connectBank()} disabled={bankBusy || !selectedBank}>
-                Bankkonto verbinden
-              </Button>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  {appInfo?.environment?.toLowerCase().includes("sandbox")
+                    ? "Sandbox zeigt nur Testbanken. In Production erscheinen die echten unterstützten Banken."
+                    : `${banks.length} unterstützte Banken für das gewählte Land geladen.`}
+                </p>
+                <Button onClick={() => void connectBank()} disabled={bankBusy || !selectedBank}>
+                  Bankkonto verbinden
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
