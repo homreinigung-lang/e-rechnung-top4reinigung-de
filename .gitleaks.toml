@@ -7,3 +7,8 @@ useDefault = true
 description = "Supabase publishable API keys are intentionally public; secret and service-role keys are NOT excluded."
 regexTarget = "secret"
 regexes = ['''^sb_publishable_[A-Za-z0-9_-]+$''']
+
+[[allowlists]]
+description = "Legacy Supabase anon JWTs are public client keys; service-role JWTs are not excluded."
+regexTarget = "secret"
+regexes = ['''^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*InJvbGUiOiJhbm9uI[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+$''']
