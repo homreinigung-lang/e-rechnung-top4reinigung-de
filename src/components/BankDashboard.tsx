@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { markInvoicePaid } from "@/services/documentsService";
-import type { Tables } from "@/integrations/supabase/types";
 
 const SESSION_KEY = "enable_banking_session";
 const SHARED_PROVIDER = "enable_banking";
@@ -43,7 +41,15 @@ type EnableBalances = {
   }>;
 };
 
-type Invoice = Tables<"documents">;
+type Invoice = {
+  id: string;
+  type: string;
+  status: string;
+  number: string;
+  total: number | string;
+  customer_name?: string | null;
+  customer_company?: string | null;
+};
 
 function parseLocalSession(): EnableSession | null {
   try {
@@ -64,13 +70,7 @@ function transactionText(tx: EnableTransaction) {
   const remittance = Array.isArray(tx.remittance_information)
     ? tx.remittance_information.join(" ")
     : tx.remittance_information ?? "";
-  return [
-    tx.debtor?.name,
-    tx.creditor?.name,
-    remittance,
-    tx.reference_number,
-    tx.entry_reference,
-  ]
+  return [tx.debtor?.name, tx.creditor?.name, remittance, tx.reference_number, tx.entry_reference]
     .filter(Boolean)
     .join(" ");
 }
@@ -128,7 +128,6 @@ async function persistSharedSession(session: EnableSession) {
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-
   if (findError) throw findError;
 
   const payload = {
@@ -165,7 +164,7 @@ async function invokeEnableBanking(action: string, payload: Record<string, unkno
   return data;
 }
 
-function BankDashboard({ docs }: { docs: Invoice[] }) {
+export function BankDashboard({ docs }: { docs: Invoice[] }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<EnableSession | null>(null);
   const [balances, setBalances] = useState<EnableBalances | null>(null);
@@ -212,11 +211,9 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
   const reconcileInvoices = useCallback(
     async (rows: EnableTransaction[]) => {
       const openInvoices = docs.filter(
-        (doc) =>
-          doc.document_type === "invoice" &&
-          !doc.deleted_at &&
-          !["paid", "cancelled"].includes(String(doc.status ?? "")),
+        (doc) => doc.type === "invoice" && !["paid", "cancelled"].includes(String(doc.status ?? "")),
       );
+      let changed = false;
 
       for (const tx of rows) {
         const amount = Number(tx.transaction_amount?.amount ?? 0);
@@ -226,8 +223,8 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
         if (!text) continue;
 
         const exactNumberMatches = openInvoices.filter((invoice) => {
-          const invoiceNo = normalized(invoice.document_number);
-          const total = Number(invoice.total_amount ?? 0);
+          const invoiceNo = normalized(invoice.number);
+          const total = Number(invoice.total ?? 0);
           return invoiceNo && text.includes(invoiceNo) && Math.abs(total - amount) < 0.01;
         });
 
@@ -236,7 +233,7 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
           match = exactNumberMatches[0];
         } else {
           const nameAmountMatches = openInvoices.filter((invoice) => {
-            const total = Number(invoice.total_amount ?? 0);
+            const total = Number(invoice.total ?? 0);
             const customerName = normalized(invoice.customer_name);
             const customerCompany = normalized(invoice.customer_company);
             const hasName =
@@ -248,11 +245,15 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
         }
 
         if (match) {
-          await markInvoicePaid(match.id, tx.booking_date ?? tx.value_date ?? undefined);
+          const { error } = await supabase.from("documents").update({ status: "paid" }).eq("id", match.id);
+          if (error) throw error;
+          changed = true;
         }
       }
+
+      if (changed) await queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
-    [docs],
+    [docs, queryClient],
   );
 
   const refresh = useCallback(async () => {
@@ -265,7 +266,7 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
         invokeEnableBanking("transactions", { account_id: account.uid }),
       ]);
 
-      const newestFirst = [...(txResult?.transactions ?? [])].sort((a, b) =>
+      const newestFirst: EnableTransaction[] = [...(txResult?.transactions ?? [])].sort((a, b) =>
         transactionDate(b).localeCompare(transactionDate(a)),
       );
 
@@ -286,7 +287,7 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
   }, [account?.uid, session, reconcileInvoices, queryClient]);
 
   useEffect(() => {
-    if (account?.uid) refresh();
+    if (account?.uid) void refresh();
   }, [account?.uid, refresh]);
 
   const balance = balances?.balances?.[0]?.balance_amount;
@@ -334,7 +335,9 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
       <div>
         <div className="text-xs uppercase tracking-wide text-muted-foreground">Kontostand</div>
         <div className="mt-1 text-2xl font-semibold">
-          {balance?.amount != null ? Number(balance.amount).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "–"}{" "}
+          {balance?.amount != null
+            ? Number(balance.amount).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : "–"}{" "}
           {balance?.currency ?? "EUR"}
         </div>
       </div>
@@ -361,7 +364,8 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
                     </div>
                   </div>
                   <div className="whitespace-nowrap text-sm font-semibold">
-                    {amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tx.transaction_amount?.currency ?? "EUR"}
+                    {amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                    {tx.transaction_amount?.currency ?? "EUR"}
                   </div>
                 </div>
               );
