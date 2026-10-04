@@ -1,12 +1,12 @@
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { requireAal2 } from "@/lib/require-aal2";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  // Harte Zugangssperre: nur das angemeldete Konto mit Administrator-Rolle.
-  // Die Rollenprüfung erfolgt über die eigene user_roles-Zeile und deren RLS;
-  // der interne has_role()-Helper bleibt absichtlich außerhalb der public RPC-API.
+  // Harte Zugangssperre: nur das angemeldete Konto mit Administrator-Rolle
+  // und bestätigter zweiter Authentifizierungsstufe (AAL2).
   beforeLoad: async () => {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
       .maybeSingle();
 
     if (error || data?.role !== "admin") throw redirect({ to: "/dashboard" });
+    await requireAal2();
     return {};
   },
   head: () => ({
