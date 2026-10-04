@@ -104,10 +104,38 @@ export function OnboardingGuide() {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
       return;
     }
+
     if (pathname === "/dashboard" && stateQuery.isFetched && !stateQuery.data?.completed) {
+      const userId = stateQuery.data?.userId;
+
+      // Die automatische Einführung darf nur ein einziges Mal erscheinen.
+      // Sobald sie erstmals automatisch geöffnet wird, merken wir das lokal
+      // und kontoweit in Supabase. Manuell kann sie über Hilfe weiterhin
+      // jederzeit mit #einfuehrung gestartet werden.
+      if (userId) {
+        try {
+          if (typeof window !== "undefined") localStorage.setItem(localCompletionKey(userId), "1");
+        } catch {
+          /* noop */
+        }
+
+        queryClient.setQueryData(["onboarding-tour-state"], { userId, completed: true });
+        const now = new Date().toISOString();
+        void supabase
+          .from("onboarding_state")
+          .upsert(
+            { user_id: userId, tour_completed_at: now, updated_at: now },
+            { onConflict: "user_id" },
+          )
+          .then(({ error }) => {
+            if (error) console.error("Einführungsstatus konnte nicht gespeichert werden:", error);
+          });
+      }
+
+      setStep(0);
       setOpen(true);
     }
-  }, [hash, pathname, stateQuery.isFetched, stateQuery.data?.completed]);
+  }, [hash, pathname, queryClient, stateQuery.isFetched, stateQuery.data?.completed, stateQuery.data?.userId]);
 
   useEffect(() => {
     if (!open) return;
