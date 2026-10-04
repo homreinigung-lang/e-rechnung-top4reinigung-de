@@ -35,7 +35,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { title: "Startseite – Finanzübersicht & offene Posten" },
       {
         name: "description",
-        content: "Finanzübersicht, Einsätze, Schnellaktionen und offene Rechnungen auf einen Blick.",
+        content: "Finanzübersicht, Quartale, Einsätze, Schnellaktionen und offene Rechnungen auf einen Blick.",
       },
       { property: "og:title", content: "Startseite – Finanzübersicht" },
       {
@@ -54,7 +54,6 @@ function Dashboard() {
   return <AdminDashboard />;
 }
 
-/** Mitarbeiter-Ansicht: ausschließlich eigene Zeiterfassung und Arbeitsstunden. */
 function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
   const { data: entries = [] } = useQuery({
     queryKey: ["my_time_entries", employee.id],
@@ -120,10 +119,7 @@ function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
         ) : (
           <ul className="divide-y">
             {entries.slice(0, 10).map((e) => (
-              <li
-                key={e.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
-              >
+              <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div>
                   <div className="font-medium">{formatDate(String(e.work_date))}</div>
                   <div className="text-sm text-muted-foreground">
@@ -149,12 +145,7 @@ function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
 }
 
 const QUICK_LINKS = [
-  {
-    to: "/dashboard",
-    search: {},
-    label: "Startseite",
-    icon: LayoutDashboard,
-  },
+  { to: "/dashboard", search: {}, label: "Startseite", icon: LayoutDashboard },
   { to: "/kunden", search: {}, label: "Kunden", icon: Users },
   {
     to: "/dokumente",
@@ -172,6 +163,7 @@ const QUICK_LINKS = [
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const year = new Date().getFullYear();
 
   const { data } = useQuery({
     queryKey: ["dashboard"],
@@ -189,9 +181,11 @@ function AdminDashboard() {
       d.status !== "cancelled" &&
       !(d as unknown as Record<string, unknown>)["is_storno"],
   );
+
   const openTotal = invoices
     .filter((d) => d.status !== "paid")
     .reduce((sum, d) => sum + Number(d.total), 0);
+
   const openItems = invoices
     .filter((d) => d.status !== "paid" && d.status !== "draft")
     .map((d) => ({
@@ -201,6 +195,31 @@ function AdminDashboard() {
     }))
     .sort((a, b) => String(a.d.due_date ?? "").localeCompare(String(b.d.due_date ?? "")));
 
+  const quarters = [1, 2, 3, 4].map((q) => {
+    const inQuarter = (dateStr: string) => {
+      const date = new Date(dateStr);
+      return date.getFullYear() === year && Math.floor(date.getMonth() / 3) + 1 === q;
+    };
+
+    const paidInvoices = invoices.filter((d) => {
+      if (d.status !== "paid") return false;
+      const paidAt = String(
+        (d as unknown as Record<string, unknown>)["paid_at"] ?? d.issue_date,
+      );
+      return inQuarter(paidAt);
+    });
+    const quarterExpenses = expenses.filter((e) => inQuarter(e.expense_date));
+
+    const revenueNet = paidInvoices.reduce((sum, d) => sum + Number(d.net_total || d.total), 0);
+    const vat = paidInvoices.reduce((sum, d) => sum + Number(d.vat_amount), 0);
+    const expenseNet = quarterExpenses.reduce((sum, e) => sum + Number(e.net_amount), 0);
+    const inputVat = quarterExpenses.reduce((sum, e) => sum + Number(e.vat_amount), 0);
+    const profit = revenueNet - expenseNet;
+    const vatBalance = vat - inputVat;
+
+    return { q, revenueNet, vat, inputVat, expenseNet, profit, vatBalance };
+  });
+
   return (
     <div className="space-y-8">
       <TrialBanner />
@@ -209,7 +228,7 @@ function AdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold">Startseite</h1>
           <p className="mt-1 text-muted-foreground">
-            Finanzen, Einsätze und offene Vorgänge – kompakt ohne doppelte Auswertungen.
+            Finanzen, Quartale, Einsätze und offene Vorgänge – übersichtlich auf einen Blick.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -263,8 +282,69 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* Die zentrale Finanzübersicht ersetzt die früheren doppelten KPI-, EÜR- und Quartalsblöcke. */}
       <FinanzDashboard docs={docs} expenses={expenses} />
+
+      <section className="surface overflow-hidden" aria-label={`Quartale ${year}`}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+          <div>
+            <h2 className="font-semibold">Quartale {year} · Umsatzsteuer</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Kompakte Quartalsübersicht auf Basis bezahlter Rechnungen (Ist-Versteuerung).
+            </p>
+          </div>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/steuerberater">
+              <FileText className="size-4" /> Details öffnen
+            </Link>
+          </Button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground uppercase">
+                <th className="px-5 py-3">Quartal</th>
+                <th className="px-5 py-3 text-right">Umsatz netto</th>
+                <th className="px-5 py-3 text-right">USt</th>
+                <th className="px-5 py-3 text-right">Vorsteuer</th>
+                <th className="px-5 py-3 text-right">Ausgaben netto</th>
+                <th className="px-5 py-3 text-right">Ergebnis</th>
+                <th className="px-5 py-3 text-right">USt-Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quarters.map((quarter) => (
+                <tr key={quarter.q} className="border-b last:border-0">
+                  <td className="px-5 py-3 font-semibold">Q{quarter.q}</td>
+                  <td className="px-5 py-3 text-right">{formatMoney(quarter.revenueNet)}</td>
+                  <td className="px-5 py-3 text-right">{formatMoney(quarter.vat)}</td>
+                  <td className="px-5 py-3 text-right">{formatMoney(quarter.inputVat)}</td>
+                  <td className="px-5 py-3 text-right">{formatMoney(quarter.expenseNet)}</td>
+                  <td className="px-5 py-3 text-right font-medium">{formatMoney(quarter.profit)}</td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="font-semibold">{formatMoney(Math.abs(quarter.vatBalance))}</div>
+                    <div
+                      className={
+                        quarter.vatBalance > 0
+                          ? "text-xs font-medium text-destructive"
+                          : quarter.vatBalance < 0
+                            ? "text-xs font-medium text-primary"
+                            : "text-xs text-muted-foreground"
+                      }
+                    >
+                      {quarter.vatBalance > 0
+                        ? "Zahllast"
+                        : quarter.vatBalance < 0
+                          ? "Erstattung"
+                          : "ausgeglichen"}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <EinsaetzeHeute />
 
@@ -377,7 +457,9 @@ function AdminDashboard() {
         {openItems.length > 6 && (
           <div className="border-t px-5 py-3 text-right">
             <Button asChild variant="ghost" size="sm">
-              <Link to="/dokumente" search={{ tab: "invoice" }}>Alle Rechnungen anzeigen</Link>
+              <Link to="/dokumente" search={{ tab: "invoice" }}>
+                Alle Rechnungen anzeigen
+              </Link>
             </Button>
           </div>
         )}
@@ -387,10 +469,14 @@ function AdminDashboard() {
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
             <h2 className="font-semibold">Zuletzt erstellt</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Die letzten Dokumente zur schnellen Kontrolle.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Die letzten Dokumente zur schnellen Kontrolle.
+            </p>
           </div>
           <Button asChild variant="ghost" size="sm">
-            <Link to="/dokumente" search={{ tab: "invoice" }}>Dokumente öffnen</Link>
+            <Link to="/dokumente" search={{ tab: "invoice" }}>
+              Dokumente öffnen
+            </Link>
           </Button>
         </div>
         {docs.filter((d) => !(d as unknown as Record<string, unknown>)["is_storno"]).length === 0 ? (
