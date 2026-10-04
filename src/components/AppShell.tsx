@@ -93,8 +93,8 @@ const ownerMoreGroups: readonly NavGroup[] = [
     title: "Buchhaltung",
     icon: BarChart3,
     items: [
+      { to: "/dashboard", label: "Übersicht", icon: BarChart3 },
       { to: "/wiederkehrend", label: "Wiederkehrende Rechnung", icon: Repeat },
-      { to: "/dashboard", label: "EÜR", icon: BarChart3, hash: "euer" },
       { to: "/ausgaben", label: "Ausgaben", icon: TrendingDown },
       { to: "/steuerberater", label: "Steuerberater", icon: Calculator },
       { to: "/bankverbindung", label: "Bankverbindung", icon: Landmark },
