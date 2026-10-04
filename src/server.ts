@@ -11,7 +11,7 @@ type ServerEntry = {
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 const SUPABASE_URL = "https://squkjqvofugkanzuqtqn.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxdWtqcXZvZnVna2FuenVxdHFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MTA4NTIsImV4cCI6MjEwMjE4Njg1Mn0.Oq7zuIAaKqh32zyY6n4n0KYw13UjeKg3QLmogNzrJ58";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_rsIif73TFSCXLHwI-FSplQ_C3I6IveM";
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -47,7 +47,11 @@ async function handleEnableBankingCallback(request: Request): Promise<Response |
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state") ?? "";
   if (!code) {
-    return callbackErrorRedirect(url, "missing_code", "Die Bank hat keinen Autorisierungscode geliefert.");
+    return callbackErrorRedirect(
+      url,
+      "missing_code",
+      "Die Bank hat keinen Autorisierungscode geliefert.",
+    );
   }
 
   try {
@@ -55,15 +59,15 @@ async function handleEnableBankingCallback(request: Request): Promise<Response |
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_PUBLISHABLE_KEY,
       },
       body: JSON.stringify({ action: "exchange_code", code }),
     });
 
-    const data = await response.json().catch(() => null) as Record<string, unknown> | null;
-    if (!response.ok || !data || data.error) {
-      const message = typeof data?.error === "string" ? data.error : `HTTP ${response.status}`;
+    const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    const exchangeError = data?.["error"];
+    if (!response.ok || !data || exchangeError) {
+      const message = typeof exchangeError === "string" ? exchangeError : `HTTP ${response.status}`;
       console.error("Enable Banking callback exchange failed:", message, data);
       return callbackErrorRedirect(url, "session_exchange_failed", message);
     }
