@@ -50,6 +50,10 @@ function visibleTarget(selector: string): HTMLElement | null {
   );
 }
 
+function localCompletionKey(userId: string) {
+  return `homr:onboarding-tour-completed:${userId}`;
+}
+
 export function OnboardingGuide() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const hash = useRouterState({ select: (s) => s.location.hash });
@@ -57,7 +61,6 @@ export function OnboardingGuide() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
-  const [dismissedForSession, setDismissedForSession] = useState(false);
 
   const stateQuery = useQuery({
     queryKey: ["onboarding-tour-state"],
@@ -66,33 +69,45 @@ export function OnboardingGuide() {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id ?? null;
       if (!userId) return { userId: null, completed: true };
+
+      try {
+        if (typeof window !== "undefined" && localStorage.getItem(localCompletionKey(userId)) === "1") {
+          return { userId, completed: true };
+        }
+      } catch {
+        /* localStorage may be unavailable; fall back to database state */
+      }
+
       const { data, error } = await supabase
         .from("onboarding_state")
         .select("tour_completed_at")
         .eq("user_id", userId)
         .maybeSingle();
       if (error) throw error;
-      return { userId, completed: Boolean(data?.tour_completed_at) };
+
+      const completed = Boolean(data?.tour_completed_at);
+      if (completed) {
+        try {
+          if (typeof window !== "undefined") localStorage.setItem(localCompletionKey(userId), "1");
+        } catch {
+          /* noop */
+        }
+      }
+      return { userId, completed };
     },
   });
 
   useEffect(() => {
     if (hash === "einfuehrung") {
       setStep(0);
-      setDismissedForSession(false);
       setOpen(true);
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
       return;
     }
-    if (
-      pathname === "/dashboard" &&
-      stateQuery.isFetched &&
-      !stateQuery.data?.completed &&
-      !dismissedForSession
-    ) {
+    if (pathname === "/dashboard" && stateQuery.isFetched && !stateQuery.data?.completed) {
       setOpen(true);
     }
-  }, [hash, pathname, stateQuery.isFetched, stateQuery.data?.completed, dismissedForSession]);
+  }, [hash, pathname, stateQuery.isFetched, stateQuery.data?.completed]);
 
   useEffect(() => {
     if (!open) return;
@@ -128,7 +143,16 @@ export function OnboardingGuide() {
 
   async function complete() {
     const userId = stateQuery.data?.userId;
+
     if (userId) {
+      try {
+        if (typeof window !== "undefined") localStorage.setItem(localCompletionKey(userId), "1");
+      } catch {
+        /* noop */
+      }
+
+      queryClient.setQueryData(["onboarding-tour-state"], { userId, completed: true });
+
       const now = new Date().toISOString();
       const { error } = await supabase.from("onboarding_state").upsert(
         { user_id: userId, tour_completed_at: now, updated_at: now },
@@ -138,6 +162,7 @@ export function OnboardingGuide() {
         await queryClient.invalidateQueries({ queryKey: ["onboarding-tour-state"] });
       }
     }
+
     setOpen(false);
   }
 
@@ -179,15 +204,7 @@ export function OnboardingGuide() {
         <h2 className="mt-2 text-lg font-semibold">{current.title}</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{current.text}</p>
         <div className="mt-5 flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setOpen(false);
-              setDismissedForSession(true);
-            }}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={() => void complete()}>
             Später
           </Button>
           <div className="flex gap-2">
