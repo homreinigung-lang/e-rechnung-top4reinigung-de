@@ -41,7 +41,6 @@ import {
   Map as MapIcon,
   MessageSquare,
   MoreHorizontal,
-  MoreVertical,
   Package,
   Repeat,
   Settings,
@@ -129,6 +128,7 @@ const employeeGroups: readonly NavGroup[] = [
 
 function isActive(pathname: string, item: NavItem) {
   if (item.to === "/dokumente") return pathname.startsWith("/dokumente");
+  if (item.to === "/dashboard") return pathname === "/dashboard";
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
 
@@ -286,117 +286,167 @@ export function AppShell({ children }: { children: ReactNode }) {
     </>
   );
 
+  const renderSidebarItem = (item: NavItem) => (
+    <Link
+      key={`${item.to}-${item.label}`}
+      to={item.to}
+      {...(item.hash ? { hash: item.hash } : {})}
+      {...(item.search ? { search: item.search } : {})}
+      className={cn(
+        "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted",
+        isActive(pathname, item)
+          ? "bg-secondary font-medium text-secondary-foreground"
+          : "text-muted-foreground",
+      )}
+    >
+      <item.icon className="size-4 shrink-0" />
+      <span className="min-w-0 truncate">{item.label}</span>
+    </Link>
+  );
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-background pb-16 md:pb-0">
-      <header
-        className="no-print sticky top-0 z-30 border-b bg-card/90 backdrop-blur"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
-      >
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-2 sm:px-4">
-          <Link to={homeTo} className="flex shrink-0 items-center gap-2">
+      <aside className="no-print fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r bg-card md:flex">
+        <div className="border-b px-4 py-4">
+          <Link to={homeTo} className="flex items-center gap-3">
             <img
               src="/app-icon-192.png?v=5"
               alt="GebCalc Logo"
-              width={32}
-              height={32}
-              className="size-8 rounded-lg"
+              width={36}
+              height={36}
+              className="size-9 rounded-lg"
             />
-            <span className="hidden flex-col leading-tight sm:flex">
+            <span className="flex min-w-0 flex-col leading-tight">
               <span className="font-display text-sm font-semibold">GebCalc</span>
               <span className="text-[11px] text-muted-foreground">Reinigung & Büro</span>
             </span>
           </Link>
+        </div>
 
+        <div className="flex-1 overflow-y-auto px-3 py-4">
           {!myEmployee ? (
-            <nav className="ml-3 hidden items-center gap-1 md:flex">
-              {allowedQuickOwner.map((item) => (
-                <Link
-                  key={`${item.to}-${item.label}`}
-                  to={item.to}
-                  {...(item.search ? { search: item.search } : {})}
-                  className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted",
-                    isActive(pathname, item) && "bg-secondary text-secondary-foreground",
-                  )}
-                >
-                  {item.label}
-                </Link>
+            <>
+              <nav className="space-y-1">{allowedQuickOwner.map(renderSidebarItem)}</nav>
+              <div className="my-4 border-t" />
+              <div className="space-y-5">
+                {ownerGroups.map((group) => {
+                  const GroupIcon = group.icon ?? Settings;
+                  return (
+                    <section key={group.title}>
+                      <div className="mb-1.5 flex items-center gap-2 px-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                        <GroupIcon className="size-3.5" />
+                        <span>{group.title}</span>
+                      </div>
+                      <nav className="space-y-1">{group.items.map(renderSidebarItem)}</nav>
+                    </section>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="space-y-5">
+              {employeeMenuGroups.map((group) => (
+                <section key={group.title}>
+                  <div className="mb-1.5 px-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    {group.title}
+                  </div>
+                  <nav className="space-y-1">{group.items.map(renderSidebarItem)}</nav>
+                </section>
               ))}
-            </nav>
-          ) : null}
-
-          <div className="ml-auto flex items-center gap-1">
-            {!myEmployee ? <Vertretungswarnungen /> : null}
-            <AssignmentBell />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button data-onboarding="mehr" variant="ghost" size="icon" aria-label="Mehr">
-                  <MoreVertical className="size-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                {myEmployee ? renderEmployeeMoreMenu() : renderOwnerMoreMenu()}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => void signOut()}>
-                  <LogOut className="size-4" />
-                  <span>Abmelden</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+            </div>
+          )}
         </div>
-      </header>
 
-      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
-        {showBack ? (
-          <Button
+        <div className="border-t p-3">
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            className="no-print mb-3 -ml-2 gap-1.5 text-muted-foreground"
-            onClick={() => {
-              if (typeof window !== "undefined" && window.history.length > 1)
-                window.history.back();
-              else navigate({ to: homeTo });
-            }}
+            onClick={() => void signOut()}
+            className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <ArrowLeft className="size-4" /> Zurück
-          </Button>
-        ) : null}
-        {(subscriptionLoading || employeeLoading || adminLoading) && !isAdmin ? (
-          <div className="surface p-6 text-sm text-muted-foreground">
-            Kontozugriff wird geprüft …
-          </div>
-        ) : !isAdmin && !subscriptionAllowed && !pathname.startsWith("/mein-paket") ? (
-          <div className="surface p-6 text-sm text-muted-foreground">
-            Dieser Bereich ist mit dem aktuellen Paket oder nach Ablauf der Testphase nicht
-            verfügbar.
-          </div>
-        ) : myEmployee && !isEmployeeAllowedPath(pathname) ? (
-          <div className="surface p-6 text-sm text-muted-foreground">
-            Dieser Bereich ist dem Unternehmenskonto vorbehalten.
-          </div>
-        ) : (
-          children
-        )}
-      </main>
-
-      <footer
-        className="no-print border-t py-5"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
-      >
-        <div className="mx-auto flex max-w-7xl flex-wrap gap-x-4 gap-y-2 px-4 text-sm text-muted-foreground">
-          <Link to="/rechtliches/impressum" className="hover:underline">
-            Impressum
-          </Link>
-          <Link to="/rechtliches/agb" className="hover:underline">
-            AGB
-          </Link>
-          <Link to="/rechtliches/datenschutz" className="hover:underline">
-            Datenschutz
-          </Link>
+            <LogOut className="size-4" />
+            <span>Abmelden</span>
+          </button>
         </div>
-      </footer>
+      </aside>
+
+      <div className="md:pl-64">
+        <header
+          className="no-print sticky top-0 z-30 border-b bg-card/90 backdrop-blur"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-2 sm:px-4">
+            <Link to={homeTo} className="flex shrink-0 items-center gap-2 md:hidden">
+              <img
+                src="/app-icon-192.png?v=5"
+                alt="GebCalc Logo"
+                width={32}
+                height={32}
+                className="size-8 rounded-lg"
+              />
+              <span className="flex flex-col leading-tight">
+                <span className="font-display text-sm font-semibold">GebCalc</span>
+                <span className="text-[11px] text-muted-foreground">Reinigung & Büro</span>
+              </span>
+            </Link>
+
+            <div className="ml-auto flex items-center gap-1">
+              {!myEmployee ? <Vertretungswarnungen /> : null}
+              <AssignmentBell />
+            </div>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
+          {showBack ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="no-print mb-3 -ml-2 gap-1.5 text-muted-foreground"
+              onClick={() => {
+                if (typeof window !== "undefined" && window.history.length > 1)
+                  window.history.back();
+                else navigate({ to: homeTo });
+              }}
+            >
+              <ArrowLeft className="size-4" /> Zurück
+            </Button>
+          ) : null}
+          {(subscriptionLoading || employeeLoading || adminLoading) && !isAdmin ? (
+            <div className="surface p-6 text-sm text-muted-foreground">
+              Kontozugriff wird geprüft …
+            </div>
+          ) : !isAdmin && !subscriptionAllowed && !pathname.startsWith("/mein-paket") ? (
+            <div className="surface p-6 text-sm text-muted-foreground">
+              Dieser Bereich ist mit dem aktuellen Paket oder nach Ablauf der Testphase nicht
+              verfügbar.
+            </div>
+          ) : myEmployee && !isEmployeeAllowedPath(pathname) ? (
+            <div className="surface p-6 text-sm text-muted-foreground">
+              Dieser Bereich ist dem Unternehmenskonto vorbehalten.
+            </div>
+          ) : (
+            children
+          )}
+        </main>
+
+        <footer
+          className="no-print border-t py-5"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
+        >
+          <div className="mx-auto flex max-w-7xl flex-wrap gap-x-4 gap-y-2 px-4 text-sm text-muted-foreground">
+            <Link to="/rechtliches/impressum" className="hover:underline">
+              Impressum
+            </Link>
+            <Link to="/rechtliches/agb" className="hover:underline">
+              AGB
+            </Link>
+            <Link to="/rechtliches/datenschutz" className="hover:underline">
+              Datenschutz
+            </Link>
+          </div>
+        </footer>
+      </div>
 
       <nav
         className="no-print fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur md:hidden"
