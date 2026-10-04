@@ -1,144 +1,134 @@
-import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { ArrowDownLeft, ArrowUpRight, Landmark, RefreshCw, Settings2, WandSparkles } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { formatMoney } from "@/lib/format";
-import { markInvoicePaid } from "@/lib/workflow";
+import { markInvoicePaid } from "@/services/documentsService";
+import type { Tables } from "@/integrations/supabase/types";
 
-type DashboardInvoice = {
-  id: string;
-  type: string;
-  status: string;
-  number: string;
-  total: number | string;
-  customer_name?: string | null;
-  customer_company?: string | null;
-};
+const SESSION_KEY = "enable_banking_session";
+const SHARED_PROVIDER = "enable_banking";
 
 type EnableAccount = {
-  uid?: string;
-  account_id?: { iban?: string };
+  uid: string;
   name?: string;
-  currency?: string;
+  iban?: string;
+};
+
+type EnableBank = {
+  name?: string;
+  country?: string;
 };
 
 type EnableSession = {
   session_id: string;
   accounts?: EnableAccount[];
-  aspsp?: { name?: string; country?: string };
+  aspsp?: EnableBank;
 };
 
-type Balance = {
-  balance_amount?: { amount?: string; currency?: string };
-  balance_type?: string;
-};
-
-type Transaction = {
+type EnableTransaction = {
+  transaction_id?: string;
+  entry_reference?: string;
   booking_date?: string;
   value_date?: string;
-  transaction_amount?: { amount?: string; currency?: string };
+  transaction_amount?: { amount?: string | number; currency?: string };
   creditor?: { name?: string };
   debtor?: { name?: string };
   remittance_information?: string[] | string;
-  entry_reference?: string;
-  end_to_end_id?: string;
+  reference_number?: string;
 };
 
-const SESSION_KEY = "enable_banking_session";
-const SHARED_PROVIDER = "enable_banking";
+type EnableBalances = {
+  balances?: Array<{
+    balance_amount?: { amount?: string | number; currency?: string };
+    balance_type?: string;
+  }>;
+};
 
-async function enableBanking<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("enable-banking", { body });
-  if (error) throw new Error(error.message);
-  if (data?.error) throw new Error(String(data.error));
-  return data as T;
+type Invoice = Tables<"documents">;
+
+function parseLocalSession(): EnableSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as EnableSession;
+    return parsed?.session_id ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
-function normalize(value: unknown): string {
-  return String(value ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
+function transactionDate(tx: EnableTransaction) {
+  return tx.booking_date ?? tx.value_date ?? "";
 }
 
-function txText(tx: Transaction): string {
+function transactionText(tx: EnableTransaction) {
   const remittance = Array.isArray(tx.remittance_information)
     ? tx.remittance_information.join(" ")
     : tx.remittance_information ?? "";
-  return [remittance, tx.entry_reference, tx.end_to_end_id, tx.debtor?.name, tx.creditor?.name]
+  return [
+    tx.debtor?.name,
+    tx.creditor?.name,
+    remittance,
+    tx.reference_number,
+    tx.entry_reference,
+  ]
     .filter(Boolean)
     .join(" ");
 }
 
-function transactionName(tx: Transaction): string {
-  return tx.debtor?.name ?? tx.creditor?.name ?? "Bankumsatz";
+function normalized(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
 }
 
-function transactionInfo(tx: Transaction): string {
-  const remittance = Array.isArray(tx.remittance_information)
-    ? tx.remittance_information.join(" ")
-    : tx.remittance_information;
-  return remittance ?? tx.entry_reference ?? tx.end_to_end_id ?? tx.booking_date ?? "";
+async function loadSharedEnableSession(): Promise<EnableSession | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth.user;
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("bank_connections")
+    .select("requisition_id, institution_name, institution_id, account_ids")
+    .eq("user_id", user.id)
+    .eq("provider", SHARED_PROVIDER)
+    .eq("status", "connected")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.requisition_id) return null;
+
+  return {
+    session_id: data.requisition_id,
+    accounts: (data.account_ids ?? []).map((uid) => ({ uid })),
+    aspsp: {
+      name: data.institution_name || undefined,
+      country: data.institution_id || undefined,
+    },
+  };
 }
 
-function transactionDate(tx: Transaction): string {
-  return tx.booking_date ?? tx.value_date ?? "";
-}
+async function persistSharedSession(session: EnableSession) {
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth.user;
+  if (!user || !session.session_id) return;
 
-function incomingAmount(tx: Transaction): number {
-  const value = Number(tx.transaction_amount?.amount ?? 0);
-  return Number.isFinite(value) ? value : 0;
-}
+  const accountIds = (session.accounts ?? []).map((item) => item.uid).filter(Boolean);
+  const now = new Date().toISOString();
 
-function cents(value: number | string): number {
-  return Math.round(Number(value || 0) * 100);
-}
-
-function findInvoiceMatch(tx: Transaction, invoices: DashboardInvoice[]): DashboardInvoice | null {
-  const amount = incomingAmount(tx);
-  if (amount <= 0) return null;
-
-  const text = normalize(txText(tx));
-  const amountCents = cents(amount);
-
-  const byReference = invoices.filter((invoice) => {
-    const number = normalize(invoice.number);
-    return number.length >= 4 && text.includes(number) && cents(invoice.total) === amountCents;
-  });
-  if (byReference.length === 1) return byReference[0]!;
-
-  const byAmountAndName = invoices.filter((invoice) => {
-    if (cents(invoice.total) !== amountCents) return false;
-    const names = [invoice.customer_company, invoice.customer_name]
-      .map(normalize)
-      .filter((name) => name.length >= 4);
-    return names.some((name) => text.includes(name));
-  });
-  return byAmountAndName.length === 1 ? byAmountAndName[0]! : null;
-}
-
-async function persistSharedSession(session: EnableSession): Promise<void> {
-  const { data: auth, error: authError } = await supabase.auth.getUser();
-  if (authError || !auth.user) return;
-
-  const accountIds = (session.accounts ?? [])
-    .map((account) => account.uid)
-    .filter((uid): uid is string => Boolean(uid));
-
-  const { data: existing, error: selectError } = await supabase
+  const { data: existing, error: findError } = await supabase
     .from("bank_connections")
     .select("id")
-    .eq("user_id", auth.user.id)
+    .eq("user_id", user.id)
     .eq("provider", SHARED_PROVIDER)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (selectError) throw selectError;
+
+  if (findError) throw findError;
 
   const payload = {
     provider: SHARED_PROVIDER,
@@ -148,12 +138,16 @@ async function persistSharedSession(session: EnableSession): Promise<void> {
     institution_name: session.aspsp?.name ?? "",
     account_ids: accountIds,
     status: "connected",
-    last_sync_at: new Date().toISOString(),
-    user_id: auth.user.id,
+    last_sync_at: now,
+    user_id: user.id,
   };
 
   if (existing?.id) {
-    const { error } = await supabase.from("bank_connections").update(payload).eq("id", existing.id);
+    const { error } = await supabase
+      .from("bank_connections")
+      .update(payload)
+      .eq("id", existing.id)
+      .eq("user_id", user.id);
     if (error) throw error;
   } else {
     const { error } = await supabase.from("bank_connections").insert(payload);
@@ -161,275 +155,214 @@ async function persistSharedSession(session: EnableSession): Promise<void> {
   }
 }
 
-export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
+async function invokeEnableBanking(action: string, payload: Record<string, unknown> = {}) {
+  const { data, error } = await supabase.functions.invoke("enable-banking", {
+    body: { action, ...payload },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(String(data.error));
+  return data;
+}
+
+function BankDashboard({ docs }: { docs: Invoice[] }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<EnableSession | null>(null);
-  const [balances, setBalances] = useState<Balance[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [matched, setMatched] = useState(0);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const autoMatchRunning = useRef(false);
+  const [balances, setBalances] = useState<EnableBalances | null>(null);
+  const [transactions, setTransactions] = useState<EnableTransaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+  const migratedLocalSessionRef = useRef(false);
+  const appliedSharedSessionRef = useRef(false);
 
-  const openInvoices = useMemo(
-    () =>
-      docs.filter(
-        (doc) =>
-          doc.type === "invoice" &&
-          doc.status !== "paid" &&
-          doc.status !== "cancelled" &&
-          doc.status !== "draft",
-      ),
-    [docs],
-  );
-
-  const { data: sharedSession, isLoading: sharedLoading } = useQuery({
+  const sharedSessionQuery = useQuery({
     queryKey: ["enable-banking-connection"],
-    queryFn: async (): Promise<EnableSession | null> => {
-      const { data: auth, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
-      if (!auth.user) return null;
-
-      const { data, error } = await supabase
-        .from("bank_connections")
-        .select("requisition_id, account_ids, institution_name, institution_id, last_sync_at")
-        .eq("user_id", auth.user.id)
-        .eq("provider", SHARED_PROVIDER)
-        .eq("status", "connected")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data?.requisition_id || !data.account_ids?.length) return null;
-      if (data.last_sync_at) setLastUpdated(data.last_sync_at);
-
-      return {
-        session_id: data.requisition_id,
-        accounts: data.account_ids.map((uid) => ({ uid })),
-        aspsp: {
-          name: data.institution_name || undefined,
-          country: data.institution_id || undefined,
-        },
-      };
-    },
-    retry: false,
+    queryFn: loadSharedEnableSession,
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem(SESSION_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as EnableSession;
-        setSession(parsed);
-        void persistSharedSession(parsed)
-          .then(() => queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] }))
-          .catch((error: unknown) =>
-            console.error("Bankverbindung konnte nicht zentral gespeichert werden:", error),
-          );
-        return;
-      } catch {
-        localStorage.removeItem(SESSION_KEY);
-      }
-    }
-    if (sharedSession) setSession(sharedSession);
-  }, [queryClient, sharedSession]);
+    if (migratedLocalSessionRef.current) return;
+    migratedLocalSessionRef.current = true;
 
-  const account = session?.accounts?.find((item) => item.uid) ?? session?.accounts?.[0];
+    const local = parseLocalSession();
+    if (!local) return;
 
-  const reconcilePayments = useCallback(
-    async (rows: Transaction[]) => {
-      if (autoMatchRunning.current || openInvoices.length === 0) return;
-      autoMatchRunning.current = true;
-      try {
-        const usedInvoices = new Set<string>();
-        let count = 0;
-        for (const tx of rows) {
-          const candidates = openInvoices.filter((invoice) => !usedInvoices.has(invoice.id));
-          const invoice = findInvoiceMatch(tx, candidates);
-          if (!invoice) continue;
-          const paidDate = tx.booking_date ?? tx.value_date;
-          await markInvoicePaid(invoice.id, paidDate && paidDate.length === 10 ? paidDate : undefined);
-          usedInvoices.add(invoice.id);
-          count += 1;
+    setSession(local);
+    persistSharedSession(local)
+      .then(() => queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] }))
+      .catch((error) => console.error("Enable Banking Migration fehlgeschlagen:", error));
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (session || appliedSharedSessionRef.current) return;
+    if (!sharedSessionQuery.data) return;
+    appliedSharedSessionRef.current = true;
+    setSession(sharedSessionQuery.data);
+  }, [session, sharedSessionQuery.data]);
+
+  const account = useMemo(() => session?.accounts?.find((item) => item.uid), [session]);
+
+  const reconcileInvoices = useCallback(
+    async (rows: EnableTransaction[]) => {
+      const openInvoices = docs.filter(
+        (doc) =>
+          doc.document_type === "invoice" &&
+          !doc.deleted_at &&
+          !["paid", "cancelled"].includes(String(doc.status ?? "")),
+      );
+
+      for (const tx of rows) {
+        const amount = Number(tx.transaction_amount?.amount ?? 0);
+        if (!(amount > 0)) continue;
+
+        const text = normalized(transactionText(tx));
+        if (!text) continue;
+
+        const exactNumberMatches = openInvoices.filter((invoice) => {
+          const invoiceNo = normalized(invoice.document_number);
+          const total = Number(invoice.total_amount ?? 0);
+          return invoiceNo && text.includes(invoiceNo) && Math.abs(total - amount) < 0.01;
+        });
+
+        let match: Invoice | undefined;
+        if (exactNumberMatches.length === 1) {
+          match = exactNumberMatches[0];
+        } else {
+          const nameAmountMatches = openInvoices.filter((invoice) => {
+            const total = Number(invoice.total_amount ?? 0);
+            const customerName = normalized(invoice.customer_name);
+            const customerCompany = normalized(invoice.customer_company);
+            const hasName =
+              (customerName && text.includes(customerName)) ||
+              (customerCompany && text.includes(customerCompany));
+            return hasName && Math.abs(total - amount) < 0.01;
+          });
+          if (nameAmountMatches.length === 1) match = nameAmountMatches[0];
         }
-        if (count > 0) {
-          setMatched(count);
-          await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-          await queryClient.invalidateQueries({ queryKey: ["documents"] });
-          toast.success(`${count} Zahlung${count === 1 ? "" : "en"} automatisch zugeordnet.`);
+
+        if (match) {
+          await markInvoicePaid(match.id, tx.booking_date ?? tx.value_date ?? undefined);
         }
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Zahlungsabgleich fehlgeschlagen");
-      } finally {
-        autoMatchRunning.current = false;
       }
     },
-    [openInvoices, queryClient],
+    [docs],
   );
 
   const refresh = useCallback(async () => {
-    if (!account?.uid) return;
-    setBusy(true);
+    if (!account?.uid || !session) return;
+    setLoading(true);
+    setMessage(null);
     try {
       const [balanceResult, txResult] = await Promise.all([
-        enableBanking<{ balances?: Balance[] }>({ action: "balances", account_id: account.uid }),
-        enableBanking<{ transactions?: Transaction[] }>({ action: "transactions", account_id: account.uid }),
+        invokeEnableBanking("balances", { account_id: account.uid }),
+        invokeEnableBanking("transactions", { account_id: account.uid }),
       ]);
-      const allTransactions = txResult.transactions ?? [];
-      const newestFirst = [...allTransactions].sort((a, b) =>
+
+      const newestFirst = [...(txResult?.transactions ?? [])].sort((a, b) =>
         transactionDate(b).localeCompare(transactionDate(a)),
       );
-      setBalances(balanceResult.balances ?? []);
-      setTransactions(newestFirst.slice(0, 10));
-      setLastUpdated(new Date().toISOString());
-      await reconcilePayments(newestFirst);
 
-      if (session) {
-        await persistSharedSession(session);
-        await queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] });
-      }
+      setBalances(balanceResult ?? null);
+      setTransactions(newestFirst.slice(0, 10));
+      await reconcileInvoices(newestFirst);
+      setLastRefresh(new Date().toISOString());
+
+      persistSharedSession(session)
+        .then(() => queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] }))
+        .catch((error) => console.error("Enable Banking Sync fehlgeschlagen:", error));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Bankdaten konnten nicht geladen werden");
+      console.error(error);
+      setMessage(error instanceof Error ? error.message : "Bankdaten konnten nicht geladen werden.");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
-  }, [account?.uid, queryClient, reconcilePayments, session]);
+  }, [account?.uid, session, reconcileInvoices, queryClient]);
 
   useEffect(() => {
-    if (account?.uid) void refresh();
+    if (account?.uid) refresh();
   }, [account?.uid, refresh]);
 
-  if ((!session || !account?.uid) && sharedLoading) {
-    return (
-      <section aria-label="Bank-Dashboard" className="surface p-5">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="size-5 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">Bankverbindung wird geladen …</span>
-        </div>
-      </section>
-    );
+  const balance = balances?.balances?.[0]?.balance_amount;
+
+  if (sharedSessionQuery.isLoading && !session) {
+    return <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Bankverbindung wird geladen …</div>;
   }
 
   if (!session || !account?.uid) {
     return (
-      <section aria-label="Bank-Dashboard" className="surface p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Landmark className="size-5 text-primary" />
-              <h2 className="text-xl font-semibold">Bank-Dashboard</h2>
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Bankkonto einmal verbinden. Die Verbindung gilt danach für dieses Firmenkonto auf allen Geräten.
-            </p>
-          </div>
-          <Button asChild>
-            <Link to="/bankverbindung">
-              <Settings2 className="size-4" /> Bankverbindung einrichten
-            </Link>
-          </Button>
-        </div>
-      </section>
+      <div className="rounded-xl border bg-card p-5">
+        <h3 className="font-semibold">Bankkonto</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Verbinden Sie das Bankkonto einmal unter Bankverbindung. Danach gilt die Verbindung auf allen Geräten Ihres Kontos.
+        </p>
+      </div>
     );
   }
 
-  const primaryBalance = balances.find((b) => b.balance_type === "CLBD") ?? balances[0];
-
   return (
-    <section aria-label="Bank-Dashboard" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="rounded-xl border bg-card p-5 space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <Landmark className="size-5 text-primary" />
-            <h2 className="text-xl font-semibold">Bank-Dashboard</h2>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {session.aspsp?.name ?? "Verbundenes Bankkonto"} · {account.account_id?.iban ?? account.name ?? "Konto verbunden"}
-          </p>
-          {lastUpdated && (
+          <h3 className="font-semibold">{session.aspsp?.name || "Bankkonto"}</h3>
+          <p className="text-sm text-muted-foreground">{account.iban || account.name || "Konto verbunden"}</p>
+          {lastRefresh && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Letzter Abruf: {new Date(lastUpdated).toLocaleString("de-DE")}
+              Letzter Abruf: {new Date(lastRefresh).toLocaleString("de-DE")}
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => void refresh()} disabled={busy}>
-            <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} /> Aktualisieren
-          </Button>
-          <Button asChild variant="secondary">
-            <Link to="/bankverbindung">
-              <Settings2 className="size-4" /> Bankverbindung
-            </Link>
-          </Button>
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={loading}
+          className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
+        >
+          {loading ? "Aktualisiere …" : "Aktualisieren"}
+        </button>
+      </div>
+
+      {message && <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">{message}</div>}
+
+      <div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">Kontostand</div>
+        <div className="mt-1 text-2xl font-semibold">
+          {balance?.amount != null ? Number(balance.amount).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "–"}{" "}
+          {balance?.currency ?? "EUR"}
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="surface p-5">
-          <div className="text-sm text-muted-foreground">Kontostand</div>
-          <div className="mt-2 font-display text-2xl font-semibold">
-            {primaryBalance ? formatMoney(Number(primaryBalance.balance_amount?.amount ?? 0)) : "–"}
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            {primaryBalance?.balance_type ?? "Aktueller Saldo"}
-          </div>
+      <div>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h4 className="font-medium">Letzte Bankumsätze</h4>
+          <span className="text-xs text-muted-foreground">Neueste zuerst · letzte {transactions.length} Umsätze</span>
         </div>
-        <div className="surface p-5">
-          <div className="text-sm text-muted-foreground">Offene Rechnungen</div>
-          <div className="mt-2 font-display text-2xl font-semibold">{openInvoices.length}</div>
-          <div className="mt-1 text-xs text-muted-foreground">werden beim Bankabruf automatisch geprüft</div>
-        </div>
-        <div className="surface p-5">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <WandSparkles className="size-4 text-primary" /> Automatisch zugeordnet
-          </div>
-          <div className="mt-2 font-display text-2xl font-semibold">{matched}</div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            nur bei eindeutiger Rechnungsnummer oder Betrag + Kunde
-          </div>
-        </div>
-      </div>
-
-      <div className="surface overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-4">
-          <div>
-            <h3 className="font-semibold">Letzte Bankumsätze</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Neueste Buchung zuerst. Zahlungseingänge werden automatisch mit offenen Rechnungen abgeglichen.
-            </p>
-          </div>
-          <span className="text-xs text-muted-foreground">letzte {transactions.length} Umsätze</span>
-        </div>
-        {transactions.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-muted-foreground">Noch keine Umsätze geladen.</p>
-        ) : (
-          <ul className="divide-y">
-            {transactions.map((tx, index) => {
-              const amount = incomingAmount(tx);
+        <div className="divide-y rounded-lg border">
+          {transactions.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground">Keine Umsätze gefunden.</div>
+          ) : (
+            transactions.map((tx, index) => {
+              const amount = Number(tx.transaction_amount?.amount ?? 0);
               return (
-                <li key={`${tx.booking_date ?? "tx"}-${tx.entry_reference ?? index}`} className="flex items-center justify-between gap-4 px-5 py-3">
+                <div key={tx.transaction_id ?? tx.entry_reference ?? index} className="flex items-start justify-between gap-4 p-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {amount >= 0 ? (
-                        <ArrowDownLeft className="size-4 shrink-0 text-primary" />
-                      ) : (
-                        <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
-                      )}
-                      <span className="truncate text-sm font-medium">{transactionName(tx)}</span>
+                    <div className="truncate text-sm font-medium">
+                      {tx.debtor?.name || tx.creditor?.name || transactionText(tx) || "Bankumsatz"}
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {[transactionDate(tx), transactionInfo(tx)].filter(Boolean).join(" · ")}
-                    </p>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {transactionDate(tx) ? new Date(`${transactionDate(tx)}T00:00:00`).toLocaleDateString("de-DE") : "–"}
+                    </div>
                   </div>
-                  <span className={`whitespace-nowrap text-sm font-semibold ${amount >= 0 ? "text-primary" : ""}`}>
-                    {formatMoney(amount)}
-                  </span>
-                </li>
+                  <div className="whitespace-nowrap text-sm font-semibold">
+                    {amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tx.transaction_amount?.currency ?? "EUR"}
+                  </div>
+                </div>
               );
-            })}
-          </ul>
-        )}
+            })
+          )}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
+
+export default BankDashboard;
