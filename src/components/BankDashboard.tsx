@@ -191,6 +191,7 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
     persistSharedSession(local)
       .then(async () => {
         setSession(local);
+        localStorage.removeItem(SESSION_KEY);
         await queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] });
       })
       .catch((error) => {
