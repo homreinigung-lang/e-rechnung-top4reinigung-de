@@ -25,22 +25,40 @@ describe("DATEV EXTF",()=>{
     expect(lines).toHaveLength(4);
     expect(lines[0]!.split(";")).toHaveLength(31);
     expect(lines[0]).toContain('"EXTF";700;21;"Buchungsstapel";13');
+    expect(lines[0]).toContain(chart === "SKR03" ? ';"03";' : ';"04";');
     expect(lines[1]!.split(";")).toHaveLength(125);
     expect(lines[1]).toBe(DATEV_COLUMNS.join(";"));
     expect(lines[2]!.split(";")).toHaveLength(125);
     expect(lines[3]!.split(";")).toHaveLength(125);
     expect(lines[2]).toContain(chart==="SKR03"?"8400":"4400");
     expect(lines[3]).toContain(chart==="SKR03"?"4900":"6300");
-    expect(lines[3]).toContain('"9"');
+    expect(lines[3]).toContain('"0009"');
   });
+
+  it("keeps strict DATEV adviser and client number ranges",()=>{
+    expect(()=>buildDatevExtf([invoice],[],{...options("SKR03"),beraternummer:"1000"})).toThrow("Beraternummer");
+    expect(()=>buildDatevExtf([invoice],[],{...options("SKR03"),beraternummer:"1001"})).not.toThrow();
+    expect(()=>buildDatevExtf([invoice],[],{...options("SKR03"),beraternummer:"10000000"})).toThrow("Beraternummer");
+    expect(()=>buildDatevExtf([invoice],[],{...options("SKR03"),mandantennummer:"0"})).toThrow("Mandantennummer");
+  });
+
+  it("rejects invalid Belegfeld 1 instead of silently truncating or exporting unsupported characters",()=>{
+    expect(()=>buildDatevExtf([{...invoice,number:"RE 1"}],[],options("SKR03"))).toThrow("unzulässige Zeichen");
+    expect(()=>buildDatevExtf([{...invoice,number:"RÄ-1"}],[],options("SKR03"))).toThrow("unzulässige Zeichen");
+    expect(()=>buildDatevExtf([{...invoice,number:"R".repeat(37)}],[],options("SKR03"))).toThrow("länger als 36");
+    expect(()=>buildDatevExtf([{...invoice,number:"Rg32029/2024"}],[],options("SKR03"))).not.toThrow();
+  });
+
   it("maps EU services without treating them as domestic reverse charge",()=>{
     const text=decode(buildDatevExtf([{...invoice,total:100,net_total:100,vat_amount:0,tax_mode:"eu_reverse_charge"}],[],options("SKR03")));
     expect(text).toContain('"8336"');
   });
+
   it("blocks missing mapping and ambiguous tax instead of exporting a wrong account",()=>{
     expect(()=>buildDatevExtf([], [expense], {...options("SKR03"),expenseAccounts:{}})).toThrow("Kontenzuordnung");
     expect(()=>buildDatevExtf([{...invoice,vat_amount:12}],[],options("SKR03"))).toThrow();
   });
+
   it("includes original cancelled invoice and books its linked negative storno as reversal",()=>{
     const original = {...invoice, status:"cancelled", cancels_document_id:null};
     const cancellation = {...invoice, number:"ST-1", total:-119, net_total:-100, vat_amount:-19, status:"sent", cancels_document_id:"original-id"};
@@ -52,6 +70,7 @@ describe("DATEV EXTF",()=>{
     expect(lines[3]).toContain('119,00');
     expect(()=>buildDatevExtf([{...cancellation,cancels_document_id:null}],[],options("SKR03"))).toThrow("Stornobeleg");
   });
+
   it("does not add Excel-only summaries or UTF-8 BOM",()=>{
     const bytes=buildDatevExtf([invoice],[],options("SKR03"));
     expect(Array.from(bytes.slice(0,3))).not.toEqual([239,187,191]);
