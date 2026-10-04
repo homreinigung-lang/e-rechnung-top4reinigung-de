@@ -65,6 +65,7 @@ export function OnboardingGuide() {
   const stateQuery = useQuery({
     queryKey: ["onboarding-tour-state"],
     staleTime: 60_000,
+    retry: false,
     queryFn: async () => {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id ?? null;
@@ -83,7 +84,15 @@ export function OnboardingGuide() {
         .select("tour_completed_at")
         .eq("user_id", userId)
         .maybeSingle();
-      if (error) throw error;
+
+      // Wenn der Datenbankstatus vorübergehend nicht gelesen werden kann,
+      // darf die Einführung nicht bei jedem Öffnen der Startseite erneut erscheinen.
+      // Wir geben deshalb trotzdem die userId zurück; der Auto-Start markiert die
+      // Einführung anschließend sofort lokal als bereits gezeigt.
+      if (error) {
+        console.error("Einführungsstatus konnte nicht gelesen werden:", error);
+        return { userId, completed: false };
+      }
 
       const completed = Boolean(data?.tour_completed_at);
       if (completed) {
@@ -170,7 +179,14 @@ export function OnboardingGuide() {
   }, [rect]);
 
   async function complete() {
-    const userId = stateQuery.data?.userId;
+    let userId = stateQuery.data?.userId ?? null;
+
+    // Falls die Statusabfrage vorher fehlgeschlagen ist, ermitteln wir die userId
+    // hier noch einmal, damit „Später“ und „Verstanden“ zuverlässig gespeichert werden.
+    if (!userId) {
+      const { data: auth } = await supabase.auth.getUser();
+      userId = auth.user?.id ?? null;
+    }
 
     if (userId) {
       try {
