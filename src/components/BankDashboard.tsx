@@ -114,9 +114,10 @@ async function loadSharedEnableSession(): Promise<EnableSession | null> {
 async function persistSharedSession(session: EnableSession) {
   const { data: auth } = await supabase.auth.getUser();
   const user = auth.user;
-  if (!user || !session.session_id) return;
+  if (!user || !session.session_id) throw new Error("Keine angemeldete Benutzer-Sitzung.");
 
   const accountIds = (session.accounts ?? []).map((item) => item.uid).filter(Boolean);
+  if (accountIds.length === 0) throw new Error("Die Bankverbindung enthält kein Konto.");
   const now = new Date().toISOString();
 
   const { data: existing, error: findError } = await supabase
@@ -187,10 +188,15 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
     const local = parseLocalSession();
     if (!local) return;
 
-    setSession(local);
     persistSharedSession(local)
-      .then(() => queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] }))
-      .catch((error) => console.error("Enable Banking Migration fehlgeschlagen:", error));
+      .then(async () => {
+        setSession(local);
+        await queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] });
+      })
+      .catch((error) => {
+        console.error("Enable Banking Migration fehlgeschlagen:", error);
+        setMessage("Die vorhandene Bankverbindung konnte nicht sicher übernommen werden.");
+      });
   }, [queryClient]);
 
   useEffect(() => {
@@ -295,6 +301,7 @@ function BankDashboard({ docs }: { docs: Invoice[] }) {
         <p className="mt-1 text-sm text-muted-foreground">
           Verbinden Sie das Bankkonto einmal unter Bankverbindung. Danach gilt die Verbindung auf allen Geräten Ihres Kontos.
         </p>
+        {message && <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">{message}</div>}
       </div>
     );
   }
