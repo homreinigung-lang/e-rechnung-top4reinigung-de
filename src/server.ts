@@ -10,9 +10,6 @@ type ServerEntry = {
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
-const SUPABASE_URL = "https://squkjqvofugkanzuqtqn.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_rsIif73TFSCXLHwI-FSplQ_C3I6IveM";
-
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
@@ -54,65 +51,13 @@ async function handleEnableBankingCallback(request: Request): Promise<Response |
     );
   }
 
-  try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/enable-banking`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SUPABASE_PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({ action: "exchange_code", code }),
-    });
-
-    const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-    const exchangeError = data?.["error"];
-    if (!response.ok || !data || exchangeError) {
-      const message = typeof exchangeError === "string" ? exchangeError : `HTTP ${response.status}`;
-      console.error("Enable Banking callback exchange failed:", message, data);
-      return callbackErrorRedirect(url, "session_exchange_failed", message);
-    }
-
-    const safeSession = JSON.stringify(data).replace(/</g, "\\u003c");
-    const safeState = JSON.stringify(state).replace(/</g, "\\u003c");
-    const html = `<!doctype html>
-<html lang="de">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bankkonto wird verbunden…</title></head>
-<body>
-<script>
-(function () {
-  try {
-    var returnedState = ${safeState};
-    var expectedState = localStorage.getItem("enable_banking_state");
-    if (expectedState && returnedState && expectedState !== returnedState) {
-      location.replace("/bankverbindung?error=state_mismatch&error_description=" + encodeURIComponent("Die Bankfreigabe konnte nicht bestätigt werden."));
-      return;
-    }
-    localStorage.setItem("enable_banking_session", JSON.stringify(${safeSession}));
-    localStorage.removeItem("enable_banking_state");
-    location.replace("/bankverbindung?bank_connected=1");
-  } catch (e) {
-    location.replace("/bankverbindung?error=callback_storage_failed&error_description=" + encodeURIComponent(String(e)));
-  }
-})();
-</script>
-</body>
-</html>`;
-
-    return new Response(html, {
-      status: 200,
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-store",
-      },
-    });
-  } catch (error) {
-    console.error("Enable Banking callback failed:", error);
-    return callbackErrorRedirect(
-      url,
-      "callback_failed",
-      error instanceof Error ? error.message : "Bankverbindung fehlgeschlagen.",
-    );
-  }
+  // Der Authorization-Code wird erst auf der authentifizierten Bankverbindungsseite
+  // gegen eine Enable-Banking-Sitzung getauscht. Dadurch gelangen Session-IDs und
+  // Kontokennungen nicht mehr in Inline-JavaScript oder localStorage des Callbacks.
+  const target = new URL("/bankverbindung", url.origin);
+  target.searchParams.set("code", code);
+  if (state) target.searchParams.set("state", state);
+  return Response.redirect(target.toString(), 302);
 }
 
 // h3 swallows in-handler throws into a normal 500 Response with body
