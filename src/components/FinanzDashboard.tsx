@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
+import { BankDashboard } from "@/components/BankDashboard";
 import { supabase } from "@/integrations/supabase/client";
 import { addDays, formatDate, formatMoney, today } from "@/lib/format";
 import { aggregateExpensesByCategory, isEuerIncome } from "@/lib/euer";
@@ -47,7 +48,7 @@ function isoDay(offsetDays = 0): string {
 }
 
 /**
- * Finanz-Dashboard: Cashflow des laufenden Monats, anstehende Serien,
+ * Finanz-Dashboard: Bank, Cashflow des laufenden Monats, anstehende Serien,
  * Kostenverteilung nach Kategorie und offene Rechnungen.
  */
 export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses: ExpenseLite[] }) {
@@ -141,9 +142,11 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
       <div>
         <h2 className="text-xl font-semibold">Finanz-Dashboard</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Cashflow, anstehende Serien und offene Posten auf einen Blick.
+          Bankkonto, Cashflow, automatische Zahlungszuordnung und offene Posten auf einen Blick.
         </p>
       </div>
+
+      <BankDashboard docs={docs} />
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* 1. Cashflow des Monats */}
