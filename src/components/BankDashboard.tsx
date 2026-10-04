@@ -261,11 +261,7 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
         <div className="surface p-5">
           <div className="text-sm text-muted-foreground">Kontostand</div>
           <div className="mt-2 font-display text-2xl font-semibold">
-            {primaryBalance
-              ? formatMoney(
-                  Number(primaryBalance.balance_amount?.amount ?? 0),
-                )
-              : "–"}
+            {primaryBalance ? formatMoney(Number(primaryBalance.balance_amount?.amount ?? 0)) : "–"}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
             {primaryBalance?.balance_type ?? "Aktueller Saldo"}
@@ -303,7 +299,6 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
           <ul className="divide-y">
             {transactions.map((tx, index) => {
               const amount = incomingAmount(tx);
-              const currency = tx.transaction_amount?.currency ?? "EUR";
               return (
                 <li key={`${tx.booking_date ?? "tx"}-${tx.entry_reference ?? index}`} className="flex items-center justify-between gap-4 px-5 py-3">
                   <div className="min-w-0">
@@ -320,7 +315,7 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
                     </p>
                   </div>
                   <span className={`whitespace-nowrap text-sm font-semibold ${amount >= 0 ? "text-primary" : ""}`}>
-                    {formatMoney(amount, currency)}
+                    {formatMoney(amount)}
                   </span>
                 </li>
               );
