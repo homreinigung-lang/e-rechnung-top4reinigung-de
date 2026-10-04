@@ -126,6 +126,7 @@ export const DATEV_COLUMNS = [
   "EU-Steuersatz (Ursprung)",
   "Abw. Skontokonto"
 ] as const;
+
 export type DatevChart = "SKR03" | "SKR04";
 export type DatevAccount = { chart: string; fiscal_year: number; account_number: string; category: string; account_name: string };
 export type DatevDocument = { issue_date: string; number: string; total: number | string; net_total?: number | string | null; vat_amount?: number | string | null; tax_mode?: string | null; customer_company?: string | null; customer_name?: string | null; status?: string | null; cancels_document_id?: string | null };
@@ -136,16 +137,31 @@ const quote = (text: unknown) => '"' + String(text ?? "").replace(/"/g, '""').re
 const fmt = (amount: number) => amount.toFixed(2).replace(".", ",");
 const cents = (v: unknown) => Math.round((Number(v ?? 0) + Number.EPSILON) * 100);
 const ymd = (v: string) => v.replace(/-/g, "");
+
 function dateOf(v: string, from: string, to: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || v < from || v > to) throw new Error("DATEV: Belegdatum außerhalb des Buchungszeitraums.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || v < from || v > to) {
+    throw new Error("DATEV: Belegdatum außerhalb des Buchungszeitraums.");
+  }
   return v.slice(8, 10) + v.slice(5, 7);
 }
+
+function belegfeld1(value: unknown, label: string, required = false): string {
+  const text = String(value ?? "");
+  if (required && !text) throw new Error(`DATEV: ${label} fehlt.`);
+  if (text.length > 36) throw new Error(`DATEV: ${label} ist länger als 36 Zeichen.`);
+  if (!/^[A-Za-z0-9_$&%*+\-/]*$/.test(text)) {
+    throw new Error(`DATEV: ${label} enthält unzulässige Zeichen. Erlaubt sind Buchstaben, Ziffern, _, $, &, %, *, +, - und /.`);
+  }
+  return text;
+}
+
 function matchAccount(accounts: DatevAccount[], category: string, opts: DatevOptions, rate?: number): string {
   const candidates = accounts.filter(a => a.chart === opts.chart && a.fiscal_year === opts.fiscalYear && a.category === category);
   const found = rate === undefined ? candidates[0] : candidates.find(a => a.account_name.includes(rate + " %"));
   if (!found) throw new Error("DATEV: Fehlendes " + category + "-Konto für " + opts.chart + " (" + (rate ?? "") + ").");
   return found.account_number;
 }
+
 function taxRate(net: number, vat: number): 0 | 7 | 19 {
   if (!vat) return 0;
   if (net <= 0) throw new Error("DATEV: Umsatzsteuer ohne Nettobetrag.");
@@ -153,7 +169,9 @@ function taxRate(net: number, vat: number): 0 | 7 | 19 {
   if (Math.abs(vat - Math.round(net * 0.19)) <= 1) return 19;
   throw new Error("DATEV: Steuersatz nicht eindeutig; Buchung vor Export prüfen.");
 }
+
 const pad = (obj: Record<string, string>) => DATEV_COLUMNS.map(k => obj[k] === undefined ? "" : quote(obj[k])).join(";");
+
 /** CP1252 is needed for DATEV classic EXTF; reject unrepresentable symbols instead of corrupting fields. */
 export function cp1252(text: string): Uint8Array {
   const special: Record<number,number> = {8364:128,8218:130,402:131,8222:132,8230:133,8224:134,8225:135,710:136,8240:137,352:138,8249:139,338:140,381:142,8216:145,8217:146,8220:147,8221:148,8226:149,8211:150,8212:151,732:152,8482:153,353:154,8250:155,339:156,382:158,376:159};
@@ -164,40 +182,80 @@ export function cp1252(text: string): Uint8Array {
     throw new Error("DATEV: Nicht darstellbares Zeichen in Buchungsdaten: " + char);
   }));
 }
+
 export function buildDatevExtf(documents: DatevDocument[], expenses: DatevExpense[], opts: DatevOptions, now = new Date()): Uint8Array {
-  if (!["SKR03","SKR04"].includes(opts.chart) || !/^\d{1,7}$/.test(opts.beraternummer) || !/^\d{1,5}$/.test(opts.mandantennummer)) throw new Error("DATEV: Berater- und Mandantennummer eintragen.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(opts.from) || !/^\d{4}-\d{2}-\d{2}$/.test(opts.to) || opts.from > opts.to || opts.from.slice(0,4) !== String(opts.fiscalYear) || opts.to.slice(0,4) !== String(opts.fiscalYear)) throw new Error("DATEV: Buchungszeitraum muss innerhalb eines Wirtschaftsjahrs liegen.");
+  const beraternummer = Number(opts.beraternummer);
+  const mandantennummer = Number(opts.mandantennummer);
+  if (
+    !["SKR03", "SKR04"].includes(opts.chart) ||
+    !/^\d{4,7}$/.test(opts.beraternummer) ||
+    beraternummer < 1001 || beraternummer > 9_999_999 ||
+    !/^\d{1,5}$/.test(opts.mandantennummer) ||
+    mandantennummer < 1 || mandantennummer > 99_999
+  ) {
+    throw new Error("DATEV: Beraternummer (1001–9999999) und Mandantennummer (1–99999) prüfen.");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(opts.from) || !/^\d{4}-\d{2}-\d{2}$/.test(opts.to) || opts.from > opts.to || opts.from.slice(0,4) !== String(opts.fiscalYear) || opts.to.slice(0,4) !== String(opts.fiscalYear)) {
+    throw new Error("DATEV: Buchungszeitraum muss innerhalb eines Wirtschaftsjahrs liegen.");
+  }
 
   const yearStart = String(opts.fiscalYear) + "0101";
   const stamp = [now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0"),String(now.getHours()).padStart(2,"0"),String(now.getMinutes()).padStart(2,"0"),String(now.getSeconds()).padStart(2,"0"),String(now.getMilliseconds()).padStart(3,"0")].join("");
-  const header = ["EXTF","700","21","Buchungsstapel","13",stamp,"","RE","Hom Reinigung","",""+Number(opts.beraternummer),""+Number(opts.mandantennummer),yearStart,"4",ymd(opts.from),ymd(opts.to),"Buchungen","","1","0","0","EUR","","","","",opts.chart==="SKR03"?"3":"4","","","",""];
-  if (header.length!==31 || DATEV_COLUMNS.length!==125) throw new Error("DATEV: Fehlerhafter EXTF-Aufbau.");
-  const meta = header.map((v,i)=> [0,3,7,8,9,16].includes(i)?quote(v):v).join(";");
-  const lines = [meta,DATEV_COLUMNS.join(";")];
+  const header = ["EXTF","700","21","Buchungsstapel","13",stamp,"","RE","Hom Reinigung","",String(beraternummer),String(mandantennummer),yearStart,"4",ymd(opts.from),ymd(opts.to),"Buchungen","","1","0","0","EUR","","","","",opts.chart === "SKR03" ? "03" : "04","","","",""];
+  if (header.length !== 31 || DATEV_COLUMNS.length !== 125) throw new Error("DATEV: Fehlerhafter EXTF-Aufbau.");
+  const meta = header.map((v,i) => [0,3,7,8,9,16,26].includes(i) ? quote(v) : v).join(";");
+  const lines = [meta, DATEV_COLUMNS.join(";")];
+
   for (const doc of documents) {
     if (doc.status && !["sent", "paid", "cancelled"].includes(doc.status)) throw new Error("DATEV: Nur endgültige Rechnungen exportieren: " + doc.number);
+    const invoiceNumber = belegfeld1(doc.number, "Rechnungsnummer", true);
     const signedGross = cents(doc.total), signedVat = cents(doc.vat_amount);
     const signedNet = doc.net_total == null ? signedGross-signedVat : cents(doc.net_total);
     const reversal = signedGross < 0;
     if (reversal && !doc.cancels_document_id) throw new Error("DATEV: Negativer Betrag ohne zugehörigen Stornobeleg: " + doc.number);
-    if (signedGross===0 || Math.abs(signedNet+signedVat-signedGross)>1 || (reversal && (signedNet>0 || signedVat>0))) throw new Error("DATEV: Rechnungsbeträge prüfen: " + doc.number);
+    if (signedGross === 0 || Math.abs(signedNet+signedVat-signedGross) > 1 || (reversal && (signedNet > 0 || signedVat > 0))) throw new Error("DATEV: Rechnungsbeträge prüfen: " + doc.number);
     const gross = Math.abs(signedGross), vat = Math.abs(signedVat), net = Math.abs(signedNet);
     const reverse = doc.tax_mode === "reverse_charge" || doc.tax_mode === "eu_reverse_charge";
-    const rate=reverse?0:taxRate(net,vat);
-    if (reverse && vat!==0) throw new Error("DATEV: Reverse-Charge-Rechnung mit Umsatzsteuer: " + doc.number);
+    const rate = reverse ? 0 : taxRate(net,vat);
+    if (reverse && vat !== 0) throw new Error("DATEV: Reverse-Charge-Rechnung mit Umsatzsteuer: " + doc.number);
     if (!reverse && rate === 0 && doc.tax_mode !== "small_business") throw new Error("DATEV: Steuerfreien Umsatz bitte steuerlich zuordnen: " + doc.number);
-    const revenue = doc.tax_mode === "eu_reverse_charge" ? matchAccount(opts.accounts,"revenue_eu_reverse_charge",opts) : reverse?matchAccount(opts.accounts,"revenue_reverse_charge",opts):rate===0?matchAccount(opts.accounts,"small_business_revenue",opts):matchAccount(opts.accounts,"revenue",opts,rate);
-    lines.push(pad({"Umsatz (ohne Soll/Haben-Kz)":fmt(gross/100),"Soll/Haben-Kennzeichen":reversal?"H":"S","WKZ Umsatz":"EUR","Konto":"10000","Gegenkonto (ohne BU-Schlüssel)":revenue,"Belegdatum":dateOf(doc.issue_date,opts.from,opts.to),"Belegfeld 1":doc.number.slice(0,36),"Buchungstext":String(doc.customer_company||doc.customer_name||"Rechnung").slice(0,60)}));
+    const revenue = doc.tax_mode === "eu_reverse_charge" ? matchAccount(opts.accounts,"revenue_eu_reverse_charge",opts) : reverse ? matchAccount(opts.accounts,"revenue_reverse_charge",opts) : rate === 0 ? matchAccount(opts.accounts,"small_business_revenue",opts) : matchAccount(opts.accounts,"revenue",opts,rate);
+    lines.push(pad({
+      "Umsatz (ohne Soll/Haben-Kz)": fmt(gross/100),
+      "Soll/Haben-Kennzeichen": reversal ? "H" : "S",
+      "WKZ Umsatz": "EUR",
+      "Konto": "10000",
+      "Gegenkonto (ohne BU-Schlüssel)": revenue,
+      "Belegdatum": dateOf(doc.issue_date,opts.from,opts.to),
+      "Belegfeld 1": invoiceNumber,
+      "Buchungstext": String(doc.customer_company || doc.customer_name || "Rechnung").slice(0,60),
+    }));
   }
+
   for (const expense of expenses) {
-    const gross=cents(expense.gross_amount),vat=cents(expense.vat_amount);
-    const net=expense.net_amount==null?gross-vat:cents(expense.net_amount);
-    if(gross<=0 || Math.abs(net+vat-gross)>1) throw new Error("DATEV: Ausgabenbeträge prüfen: " + (expense.document_number||expense.supplier));
-    const rate=taxRate(net,vat);
+    const gross = cents(expense.gross_amount), vat = cents(expense.vat_amount);
+    const net = expense.net_amount == null ? gross-vat : cents(expense.net_amount);
+    if (gross <= 0 || Math.abs(net+vat-gross) > 1) throw new Error("DATEV: Ausgabenbeträge prüfen: " + (expense.document_number || expense.supplier));
+    const rate = taxRate(net,vat);
     const expenseAccount = opts.expenseAccounts[String(expense.category ?? "")];
-    if (!expenseAccount || !opts.accounts.some(a=>a.chart===opts.chart && a.fiscal_year===opts.fiscalYear && a.account_number===expenseAccount && a.category==="expense")) throw new Error("DATEV: Kontenzuordnung fehlt für " + (expense.category || "Ausgabe") + ".");
-    lines.push(pad({"Umsatz (ohne Soll/Haben-Kz)":fmt(gross/100),"Soll/Haben-Kennzeichen":"S","WKZ Umsatz":"EUR","Konto":expenseAccount,"Gegenkonto (ohne BU-Schlüssel)":"70000","BU-Schlüssel":rate===19?"9":rate===7?"8":"","Belegdatum":dateOf(expense.expense_date,opts.from,opts.to),"Belegfeld 1":String(expense.document_number||"").slice(0,36),"Buchungstext":String(expense.supplier||"Ausgabe").slice(0,60)}));
+    if (!expenseAccount || !opts.accounts.some(a => a.chart === opts.chart && a.fiscal_year === opts.fiscalYear && a.account_number === expenseAccount && a.category === "expense")) {
+      throw new Error("DATEV: Kontenzuordnung fehlt für " + (expense.category || "Ausgabe") + ".");
+    }
+    const documentNumber = belegfeld1(expense.document_number, "Belegnummer");
+    lines.push(pad({
+      "Umsatz (ohne Soll/Haben-Kz)": fmt(gross/100),
+      "Soll/Haben-Kennzeichen": "S",
+      "WKZ Umsatz": "EUR",
+      "Konto": expenseAccount,
+      "Gegenkonto (ohne BU-Schlüssel)": "70000",
+      "BU-Schlüssel": rate === 19 ? "0009" : rate === 7 ? "0008" : "",
+      "Belegdatum": dateOf(expense.expense_date,opts.from,opts.to),
+      "Belegfeld 1": documentNumber,
+      "Buchungstext": String(expense.supplier || "Ausgabe").slice(0,60),
+    }));
   }
-  if (lines.length===2) throw new Error("DATEV: Keine Buchungen im ausgewählten Zeitraum.");
-  return cp1252(lines.join("\r\n")+"\r\n");
+
+  if (lines.length === 2) throw new Error("DATEV: Keine Buchungen im ausgewählten Zeitraum.");
+  if (lines.length - 2 > 99_999) throw new Error("DATEV: Maximal 99.999 Buchungen pro Buchungsstapel erlaubt.");
+  return cp1252(lines.join("\r\n") + "\r\n");
 }
