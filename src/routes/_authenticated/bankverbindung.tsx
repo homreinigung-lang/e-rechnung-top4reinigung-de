@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Landmark, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
@@ -27,6 +27,7 @@ type EnableSession = { session_id: string; accounts?: EnableAccount[]; aspsp?: E
 type Balance = { balance_amount?: { amount?: string; currency?: string }; balance_type?: string };
 type Transaction = {
   booking_date?: string;
+  value_date?: string;
   transaction_amount?: { amount?: string; currency?: string };
   creditor?: { name?: string };
   debtor?: { name?: string };
@@ -35,6 +36,7 @@ type Transaction = {
 
 const SESSION_KEY = "enable_banking_session";
 const STATE_KEY = "enable_banking_state";
+const SHARED_PROVIDER = "enable_banking";
 
 const COUNTRY_OPTIONS = [
   { code: "DE", label: "Deutschland" },
@@ -64,6 +66,80 @@ async function enableBanking<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
+async function loadSharedSession(): Promise<EnableSession | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+
+  const { data, error } = await supabase
+    .from("bank_connections")
+    .select("requisition_id, institution_name, institution_id, account_ids")
+    .eq("user_id", auth.user.id)
+    .eq("provider", SHARED_PROVIDER)
+    .eq("status", "connected")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.requisition_id) return null;
+
+  return {
+    session_id: data.requisition_id,
+    accounts: (data.account_ids ?? []).map((uid) => ({ uid })),
+    aspsp: {
+      name: data.institution_name || undefined,
+      country: data.institution_id || undefined,
+    } as EnableBank,
+  };
+}
+
+async function persistSharedSession(session: EnableSession) {
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth.user;
+  if (!user) throw new Error("Keine angemeldete Benutzer-Sitzung.");
+
+  const accountIds = (session.accounts ?? []).map((item) => item.uid).filter((uid): uid is string => Boolean(uid));
+  if (!session.session_id || accountIds.length === 0) throw new Error("Unvollständige Bankverbindung.");
+
+  const { data: existing, error: findError } = await supabase
+    .from("bank_connections")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("provider", SHARED_PROVIDER)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (findError) throw findError;
+
+  const payload = {
+    provider: SHARED_PROVIDER,
+    requisition_id: session.session_id,
+    agreement_id: "",
+    institution_id: session.aspsp?.country ?? "",
+    institution_name: session.aspsp?.name ?? "",
+    account_ids: accountIds,
+    status: "connected",
+    last_sync_at: new Date().toISOString(),
+    user_id: user.id,
+  };
+
+  if (existing?.id) {
+    const { error } = await supabase
+      .from("bank_connections")
+      .update(payload)
+      .eq("id", existing.id)
+      .eq("user_id", user.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from("bank_connections").insert(payload);
+    if (error) throw error;
+  }
+}
+
+function transactionDate(tx: Transaction) {
+  return tx.booking_date ?? tx.value_date ?? "";
+}
+
 function formatMoney(amount?: string, currency = "EUR") {
   const value = Number(amount ?? 0);
   return Number.isFinite(value)
@@ -81,6 +157,7 @@ function BankverbindungPage() {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bankBusy, setBankBusy] = useState(false);
+  const migratedLocalRef = useRef(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["company_settings"],
@@ -89,6 +166,11 @@ function BankverbindungPage() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const sharedSessionQuery = useQuery({
+    queryKey: ["enable-banking-connection"],
+    queryFn: loadSharedSession,
   });
 
   const { data: appInfo } = useQuery({
@@ -130,15 +212,34 @@ function BankverbindungPage() {
   }, [settings]);
 
   useEffect(() => {
-    const stored = localStorage.getItem(SESSION_KEY);
-    if (stored) {
-      try {
-        setSession(JSON.parse(stored) as EnableSession);
-      } catch {
-        localStorage.removeItem(SESSION_KEY);
-      }
-    }
+    if (migratedLocalRef.current) return;
+    migratedLocalRef.current = true;
 
+    const stored = localStorage.getItem(SESSION_KEY);
+    if (!stored) return;
+
+    try {
+      const parsed = JSON.parse(stored) as EnableSession;
+      if (!parsed?.session_id) throw new Error("Ungültige Bank-Sitzung");
+      setBankBusy(true);
+      persistSharedSession(parsed)
+        .then(async () => {
+          localStorage.removeItem(SESSION_KEY);
+          setSession(parsed);
+          await queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] });
+        })
+        .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Bankverbindung konnte nicht übernommen werden"))
+        .finally(() => setBankBusy(false));
+    } catch {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!session && sharedSessionQuery.data) setSession(sharedSessionQuery.data);
+  }, [session, sharedSessionQuery.data]);
+
+  useEffect(() => {
     const url = new URL(window.location.href);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
@@ -160,10 +261,12 @@ function BankverbindungPage() {
 
     setBankBusy(true);
     enableBanking<EnableSession>({ action: "exchange_code", code })
-      .then((result) => {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(result));
+      .then(async (result) => {
+        await persistSharedSession(result);
+        localStorage.removeItem(SESSION_KEY);
         localStorage.removeItem(STATE_KEY);
         setSession(result);
+        await queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] });
         toast.success("Bankkonto verbunden");
       })
       .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Bankverbindung fehlgeschlagen"))
@@ -171,7 +274,7 @@ function BankverbindungPage() {
         setBankBusy(false);
         window.history.replaceState({}, "", "/bankverbindung");
       });
-  }, []);
+  }, [queryClient]);
 
   const account = session?.accounts?.find((item) => item.uid);
 
@@ -183,8 +286,11 @@ function BankverbindungPage() {
         enableBanking<{ balances?: Balance[] }>({ action: "balances", account_id: account.uid }),
         enableBanking<{ transactions?: Transaction[] }>({ action: "transactions", account_id: account.uid }),
       ]);
+      const newestFirst = [...(txResult.transactions ?? [])].sort((a, b) =>
+        transactionDate(b).localeCompare(transactionDate(a)),
+      );
       setBalances(balanceResult.balances ?? []);
-      setTransactions((txResult.transactions ?? []).slice(0, 10));
+      setTransactions(newestFirst.slice(0, 10));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Bankdaten konnten nicht geladen werden");
     } finally {
@@ -236,13 +342,31 @@ function BankverbindungPage() {
     }
   };
 
-  const disconnectBank = () => {
-    localStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(STATE_KEY);
-    setSession(null);
-    setBalances([]);
-    setTransactions([]);
-    toast.success("Lokale Bankverbindung entfernt");
+  const disconnectBank = async () => {
+    setBankBusy(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Keine angemeldete Benutzer-Sitzung.");
+      const { error } = await supabase
+        .from("bank_connections")
+        .update({ status: "disconnected", updated_at: new Date().toISOString() })
+        .eq("user_id", auth.user.id)
+        .eq("provider", SHARED_PROVIDER)
+        .eq("status", "connected");
+      if (error) throw error;
+
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(STATE_KEY);
+      setSession(null);
+      setBalances([]);
+      setTransactions([]);
+      await queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] });
+      toast.success("Bankverbindung getrennt");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Bankverbindung konnte nicht getrennt werden");
+    } finally {
+      setBankBusy(false);
+    }
   };
 
   return (
@@ -345,7 +469,7 @@ function BankverbindungPage() {
                   <Button variant="outline" onClick={() => void refreshBank()} disabled={bankBusy}>
                     <RefreshCw className="mr-2 size-4" /> Aktualisieren
                   </Button>
-                  <Button variant="outline" onClick={disconnectBank}>
+                  <Button variant="outline" onClick={() => void disconnectBank()} disabled={bankBusy}>
                     <Unplug className="mr-2 size-4" /> Trennen
                   </Button>
                 </div>
@@ -375,10 +499,10 @@ function BankverbindungPage() {
                         ? tx.remittance_information.join(" ")
                         : tx.remittance_information;
                       return (
-                        <div key={`${tx.booking_date ?? "tx"}-${index}`} className="flex items-center justify-between gap-4 p-3 text-sm">
+                        <div key={`${transactionDate(tx) || "tx"}-${index}`} className="flex items-center justify-between gap-4 p-3 text-sm">
                           <div className="min-w-0">
                             <p className="truncate font-medium">{tx.debtor?.name ?? tx.creditor?.name ?? "Bankumsatz"}</p>
-                            <p className="truncate text-muted-foreground">{info ?? tx.booking_date ?? ""}</p>
+                            <p className="truncate text-muted-foreground">{info ?? transactionDate(tx)}</p>
                           </div>
                           <span className="whitespace-nowrap font-medium">
                             {formatMoney(tx.transaction_amount?.amount, tx.transaction_amount?.currency)}
