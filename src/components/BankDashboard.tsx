@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowDownLeft, ArrowUpRight, Landmark, RefreshCw, Settings2, WandSparkles } from "lucide-react";
 
@@ -49,6 +49,7 @@ type Transaction = {
 };
 
 const SESSION_KEY = "enable_banking_session";
+const SHARED_PROVIDER = "enable_banking";
 
 async function enableBanking<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke("enable-banking", { body });
@@ -85,6 +86,10 @@ function transactionInfo(tx: Transaction): string {
   return remittance ?? tx.entry_reference ?? tx.end_to_end_id ?? tx.booking_date ?? "";
 }
 
+function transactionDate(tx: Transaction): string {
+  return tx.booking_date ?? tx.value_date ?? "";
+}
+
 function incomingAmount(tx: Transaction): number {
   const value = Number(tx.transaction_amount?.amount ?? 0);
   return Number.isFinite(value) ? value : 0;
@@ -101,16 +106,12 @@ function findInvoiceMatch(tx: Transaction, invoices: DashboardInvoice[]): Dashbo
   const text = normalize(txText(tx));
   const amountCents = cents(amount);
 
-  // Höchste Sicherheit: Rechnungsnummer steht im Verwendungszweck/Referenzfeld
-  // und der Betrag entspricht der offenen Rechnung.
   const byReference = invoices.filter((invoice) => {
     const number = normalize(invoice.number);
     return number.length >= 4 && text.includes(number) && cents(invoice.total) === amountCents;
   });
   if (byReference.length === 1) return byReference[0]!;
 
-  // Zweite sichere Variante: exakt ein offener Beleg mit diesem Betrag und
-  // der Kundenname/Firmenname ist im Zahlungstext oder Kontoinhaber enthalten.
   const byAmountAndName = invoices.filter((invoice) => {
     if (cents(invoice.total) !== amountCents) return false;
     const names = [invoice.customer_company, invoice.customer_name]
@@ -121,6 +122,45 @@ function findInvoiceMatch(tx: Transaction, invoices: DashboardInvoice[]): Dashbo
   return byAmountAndName.length === 1 ? byAmountAndName[0]! : null;
 }
 
+async function persistSharedSession(session: EnableSession): Promise<void> {
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) return;
+
+  const accountIds = (session.accounts ?? [])
+    .map((account) => account.uid)
+    .filter((uid): uid is string => Boolean(uid));
+
+  const { data: existing, error: selectError } = await supabase
+    .from("bank_connections")
+    .select("id")
+    .eq("user_id", auth.user.id)
+    .eq("provider", SHARED_PROVIDER)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (selectError) throw selectError;
+
+  const payload = {
+    provider: SHARED_PROVIDER,
+    requisition_id: session.session_id,
+    agreement_id: "",
+    institution_id: session.aspsp?.country ?? "",
+    institution_name: session.aspsp?.name ?? "",
+    account_ids: accountIds,
+    status: "connected",
+    last_sync_at: new Date().toISOString(),
+    user_id: auth.user.id,
+  };
+
+  if (existing?.id) {
+    const { error } = await supabase.from("bank_connections").update(payload).eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from("bank_connections").insert(payload);
+    if (error) throw error;
+  }
+}
+
 export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<EnableSession | null>(null);
@@ -128,6 +168,7 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [busy, setBusy] = useState(false);
   const [matched, setMatched] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const autoMatchRunning = useRef(false);
 
   const openInvoices = useMemo(
@@ -142,15 +183,56 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
     [docs],
   );
 
+  const { data: sharedSession, isLoading: sharedLoading } = useQuery({
+    queryKey: ["enable-banking-connection"],
+    queryFn: async (): Promise<EnableSession | null> => {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth.user) return null;
+
+      const { data, error } = await supabase
+        .from("bank_connections")
+        .select("requisition_id, account_ids, institution_name, institution_id, last_sync_at")
+        .eq("user_id", auth.user.id)
+        .eq("provider", SHARED_PROVIDER)
+        .eq("status", "connected")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.requisition_id || !data.account_ids?.length) return null;
+      if (data.last_sync_at) setLastUpdated(data.last_sync_at);
+
+      return {
+        session_id: data.requisition_id,
+        accounts: data.account_ids.map((uid) => ({ uid })),
+        aspsp: {
+          name: data.institution_name || undefined,
+          country: data.institution_id || undefined,
+        },
+      };
+    },
+    retry: false,
+  });
+
   useEffect(() => {
     const stored = localStorage.getItem(SESSION_KEY);
-    if (!stored) return;
-    try {
-      setSession(JSON.parse(stored) as EnableSession);
-    } catch {
-      localStorage.removeItem(SESSION_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as EnableSession;
+        setSession(parsed);
+        void persistSharedSession(parsed)
+          .then(() => queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] }))
+          .catch((error: unknown) =>
+            console.error("Bankverbindung konnte nicht zentral gespeichert werden:", error),
+          );
+        return;
+      } catch {
+        localStorage.removeItem(SESSION_KEY);
+      }
     }
-  }, []);
+    if (sharedSession) setSession(sharedSession);
+  }, [queryClient, sharedSession]);
 
   const account = session?.accounts?.find((item) => item.uid) ?? session?.accounts?.[0];
 
@@ -193,20 +275,40 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
         enableBanking<{ balances?: Balance[] }>({ action: "balances", account_id: account.uid }),
         enableBanking<{ transactions?: Transaction[] }>({ action: "transactions", account_id: account.uid }),
       ]);
-      const nextTransactions = txResult.transactions ?? [];
+      const allTransactions = txResult.transactions ?? [];
+      const newestFirst = [...allTransactions].sort((a, b) =>
+        transactionDate(b).localeCompare(transactionDate(a)),
+      );
       setBalances(balanceResult.balances ?? []);
-      setTransactions(nextTransactions.slice(0, 12));
-      await reconcilePayments(nextTransactions);
+      setTransactions(newestFirst.slice(0, 10));
+      setLastUpdated(new Date().toISOString());
+      await reconcilePayments(newestFirst);
+
+      if (session) {
+        await persistSharedSession(session);
+        await queryClient.invalidateQueries({ queryKey: ["enable-banking-connection"] });
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Bankdaten konnten nicht geladen werden");
     } finally {
       setBusy(false);
     }
-  }, [account?.uid, reconcilePayments]);
+  }, [account?.uid, queryClient, reconcilePayments, session]);
 
   useEffect(() => {
     if (account?.uid) void refresh();
   }, [account?.uid, refresh]);
+
+  if ((!session || !account?.uid) && sharedLoading) {
+    return (
+      <section aria-label="Bank-Dashboard" className="surface p-5">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="size-5 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">Bankverbindung wird geladen …</span>
+        </div>
+      </section>
+    );
+  }
 
   if (!session || !account?.uid) {
     return (
@@ -218,7 +320,7 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
               <h2 className="text-xl font-semibold">Bank-Dashboard</h2>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Bankkonto verbinden, damit Kontostand, Umsätze und automatische Zahlungszuordnung hier erscheinen.
+              Bankkonto einmal verbinden. Die Verbindung gilt danach für dieses Firmenkonto auf allen Geräten.
             </p>
           </div>
           <Button asChild>
@@ -244,6 +346,11 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
           <p className="mt-1 text-sm text-muted-foreground">
             {session.aspsp?.name ?? "Verbundenes Bankkonto"} · {account.account_id?.iban ?? account.name ?? "Konto verbunden"}
           </p>
+          {lastUpdated && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Letzter Abruf: {new Date(lastUpdated).toLocaleString("de-DE")}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void refresh()} disabled={busy}>
@@ -288,10 +395,10 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
           <div>
             <h3 className="font-semibold">Letzte Bankumsätze</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Zahlungseingänge werden automatisch mit offenen Rechnungen abgeglichen.
+              Neueste Buchung zuerst. Zahlungseingänge werden automatisch mit offenen Rechnungen abgeglichen.
             </p>
           </div>
-          <span className="text-xs text-muted-foreground">{transactions.length} angezeigt</span>
+          <span className="text-xs text-muted-foreground">letzte {transactions.length} Umsätze</span>
         </div>
         {transactions.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-muted-foreground">Noch keine Umsätze geladen.</p>
@@ -311,7 +418,7 @@ export function BankDashboard({ docs }: { docs: DashboardInvoice[] }) {
                       <span className="truncate text-sm font-medium">{transactionName(tx)}</span>
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {[tx.booking_date, transactionInfo(tx)].filter(Boolean).join(" · ")}
+                      {[transactionDate(tx), transactionInfo(tx)].filter(Boolean).join(" · ")}
                     </p>
                   </div>
                   <span className={`whitespace-nowrap text-sm font-semibold ${amount >= 0 ? "text-primary" : ""}`}>
