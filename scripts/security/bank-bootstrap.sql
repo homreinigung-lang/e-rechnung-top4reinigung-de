@@ -1,0 +1,20 @@
+-- Dedicated loopback database, synthetic data only.
+do $$ begin if not exists(select from pg_roles where rolname='anon') then create role anon nologin; end if;
+if not exists(select from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
+if not exists(select from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if; end $$;
+create schema auth;
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+create table auth.users(id uuid primary key);
+create table public.user_roles(user_id uuid,role text);
+create table public.account_approvals(auth_user_id uuid,status text);
+create table public.documents(id uuid primary key default gen_random_uuid(),user_id uuid not null,type text not null default 'invoice',status text not null default 'sent',number text not null,total numeric not null,customer_name text not null default 'Anna Muster',customer_company text not null default '',issue_date date not null default '2026-10-01',paid_at date,deleted_at timestamptz,is_storno boolean not null default false,locked_at timestamptz default now());
+create table public.document_audit_log(id uuid primary key default gen_random_uuid(),user_id uuid,document_id uuid,document_number text,action text,details jsonb);
+grant usage on schema public,auth to authenticated,anon,service_role;
+grant select,insert,update,delete on public.documents,public.document_audit_log to authenticated,service_role;
+grant select on public.account_approvals,public.user_roles to service_role;
+grant select on auth.users to service_role;
+alter table public.documents enable row level security;
+create policy own_docs on public.documents to authenticated using(user_id=auth.uid()) with check(user_id=auth.uid());
+create function public.update_updated_at_column() returns trigger language plpgsql as $$ begin new.updated_at=now();return new;end $$;
+create function public.audit_log_immutable() returns trigger language plpgsql as $$ begin raise exception 'Immutable audit';end $$;
+create trigger audit_immutable before update or delete on public.document_audit_log for each row execute function public.audit_log_immutable();
