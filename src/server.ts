@@ -19,6 +19,21 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
+function handleEnableBankingCallback(request: Request): Response | undefined {
+  const url = new URL(request.url);
+  if (request.method !== "GET" || url.pathname !== "/api/enable-banking/callback") {
+    return undefined;
+  }
+
+  const target = new URL("/bankverbindung", url.origin);
+  for (const key of ["code", "state", "error", "error_description"]) {
+    const value = url.searchParams.get(key);
+    if (value) target.searchParams.set(key, value);
+  }
+
+  return Response.redirect(target.toString(), 302);
+}
+
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
@@ -68,6 +83,10 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const redirect = requireHttps(request);
     if (redirect) return withSecurityHeaders(redirect, request);
+
+    const bankingCallback = handleEnableBankingCallback(request);
+    if (bankingCallback) return withSecurityHeaders(bankingCallback, request);
+
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
