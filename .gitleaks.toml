@@ -9,6 +9,6 @@ regexTarget = "secret"
 regexes = ['''^sb_publishable_[A-Za-z0-9_-]+$''']
 
 [[allowlists]]
-description = "Legacy Supabase anon JWTs are public client keys; service-role JWTs are not excluded."
+description = "Exact legacy Supabase anon JWT previously committed for client-side use; this is a public anon key, not a service-role secret."
 regexTarget = "secret"
-regexes = ['''^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*InJvbGUiOiJhbm9uI[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+$''']
+regexes = ['''^eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxdWtqcXZvZnVna2FuenVxdHFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MTA4NTIsImV4cCI6MjEwMjE4Njg1Mn0\.Oq7zuIAaKqh32zyY6n4n0KYw13UjeKg3QLmogNzrJ58$''']
