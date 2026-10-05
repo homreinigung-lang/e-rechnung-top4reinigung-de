@@ -2,6 +2,15 @@ import { jsPDF } from "jspdf";
 
 type TripRow = Record<string, string>;
 
+export type FahrtenbuchMonthlySummary = {
+  month: string;
+  startKm: number;
+  endKm: number;
+  totalKm: number;
+  businessKm: number;
+  privateKm: number;
+};
+
 export type FahrtenbuchBranding = {
   companyName: string;
   logoDataUrl: string;
@@ -20,6 +29,7 @@ export function buildAccountantFahrtenbuchPdf(
   from: string,
   to: string,
   branding?: FahrtenbuchBranding,
+  monthlySummary?: FahrtenbuchMonthlySummary,
 ): Blob {
   assertFahrtenbuchVehicleData(rows);
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -143,6 +153,22 @@ export function buildAccountantFahrtenbuchPdf(
     detail("Kilometerstand", `Start: ${value("Start-km")} | Ende: ${value("End-km")} | Geschaeftlich: ${value("Geschäftliche km")} km`, true);
     if (row["Bemerkung"]?.trim()) detail("Bemerkung", row["Bemerkung"], true);
   });
+
+  if (monthlySummary) {
+    if (y + 45 > bottom) newPage();
+    y += 5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(`Monatsuebersicht ${monthlySummary.month}`, left, y);
+    y += 5;
+    const km = (value: number) =>
+      `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(value)} km`;
+    detail("Km-Stand Monatsanfang", km(monthlySummary.startKm), false);
+    detail("Km-Stand Monatsende", km(monthlySummary.endKm), true);
+    detail("Gesamt gefahren", km(monthlySummary.totalKm), false);
+    detail("Geschaeftlich laut Fahrtenbuch", km(monthlySummary.businessKm), true);
+    detail("Privat", km(monthlySummary.privateKm), false);
+  }
 
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {

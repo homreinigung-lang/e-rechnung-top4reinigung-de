@@ -563,7 +563,23 @@ function Fahrtenbuch() {
               });
               const from = rows.length ? [...entries].map((e) => e.trip_date).sort()[0]! : now.date;
               const to = rows.length ? [...entries].map((e) => e.trip_date).sort().at(-1)! : now.date;
-              await saveFile(await buildBrandedFahrtenbuchPdf(rows, from, to), `Fahrtenbuch_${from}_${to}.pdf`);
+              const summary =
+                selectedMonthly?.end_km != null && monthlyTotalKm !== null && privateOrUnloggedKm !== null
+                  ? {
+                      month: new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" }).format(
+                        new Date(`${month}-01T12:00:00`),
+                      ),
+                      startKm: Number(selectedMonthly.start_km),
+                      endKm: Number(selectedMonthly.end_km),
+                      totalKm: monthlyTotalKm,
+                      businessKm: businessKmForMonth,
+                      privateKm: privateOrUnloggedKm,
+                    }
+                  : undefined;
+              await saveFile(
+                await buildBrandedFahrtenbuchPdf(rows, from, to, summary),
+                `Fahrtenbuch_${from}_${to}.pdf`,
+              );
             } catch (error) {
               toast.error(error instanceof Error ? error.message : "Fahrtenbuch-PDF konnte nicht erstellt werden.");
             }
