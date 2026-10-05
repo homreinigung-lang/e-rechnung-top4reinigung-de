@@ -131,7 +131,7 @@ export function BankDashboard({ docs: _docs }: { docs: unknown[] }) {
   }
 
   return (
-    <div className="rounded-xl border bg-card p-5 space-y-5">
+    <div className="space-y-5 overflow-hidden rounded-xl border bg-card p-3 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold">{session.aspsp?.name || "Bankkonto"}</h3>
@@ -174,9 +174,9 @@ export function BankDashboard({ docs: _docs }: { docs: unknown[] }) {
       </div>
 
       <div>
-        <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <h4 className="font-medium">Letzte Bankumsätze</h4>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground sm:text-right">
             Neueste zuerst · letzte {transactions.length} Umsätze
           </span>
         </div>
@@ -189,10 +189,10 @@ export function BankDashboard({ docs: _docs }: { docs: unknown[] }) {
               return (
                 <div
                   key={tx.transaction_id ?? tx.entry_reference ?? index}
-                  className="flex items-start justify-between gap-4 p-3"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 p-3"
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
+                    <div className="line-clamp-2 break-words text-sm font-medium">
                       {tx.debtor?.name || tx.creditor?.name || transactionText(tx) || "Bankumsatz"}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
@@ -201,7 +201,7 @@ export function BankDashboard({ docs: _docs }: { docs: unknown[] }) {
                         : "–"}
                     </div>
                   </div>
-                  <div className="whitespace-nowrap text-sm font-semibold">
+                  <div className="shrink-0 whitespace-nowrap text-right text-sm font-semibold tabular-nums">
                     {amount.toLocaleString("de-DE", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
