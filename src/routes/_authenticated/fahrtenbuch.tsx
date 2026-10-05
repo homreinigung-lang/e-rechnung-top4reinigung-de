@@ -680,7 +680,7 @@ function Fahrtenbuch() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Gesamt gefahren</div><div className="text-lg font-semibold">{monthlyTotalKm === null ? "–" : `${formatKm(monthlyTotalKm)} km`}</div></div>
           <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Geschäftlich laut Fahrtenbuch</div><div className="text-lg font-semibold">{formatKm(businessKmForMonth)} km</div></div>
-          <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Privat / sonstig / nicht erfasst</div><div className="text-lg font-semibold">{privateOrUnloggedKm === null ? "–" : `${formatKm(privateOrUnloggedKm)} km`}</div></div>
+          <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Privat gefahren</div><div className="text-lg font-semibold">{privateOrUnloggedKm === null ? "–" : `${formatKm(privateOrUnloggedKm)} km`}</div></div>
         </div>
         <Button className="w-full sm:w-auto" onClick={() => saveMonthly.mutate()} disabled={saveMonthly.isPending || monthlyVehicleId === "none"}>
           <Save className="size-4" /> Monatskilometer speichern
