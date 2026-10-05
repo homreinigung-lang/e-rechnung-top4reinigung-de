@@ -35,7 +35,12 @@ async function logoAsJpeg(pathOrUrl: string): Promise<string> {
 }
 
 /** Validate the trip's vehicle identification before reading account data or rendering a PDF. */
-export async function buildBrandedFahrtenbuchPdf(\n  rows: TripRow[],\n  from: string,\n  to: string,\n  monthlySummary?: FahrtenbuchMonthlySummary,\n): Promise<Blob> {
+export async function buildBrandedFahrtenbuchPdf(
+  rows: TripRow[],
+  from: string,
+  to: string,
+  monthlySummary?: FahrtenbuchMonthlySummary,
+): Promise<Blob> {
   assertFahrtenbuchVehicleData(rows);
   const { data, error } = await supabase
     .from("company_settings")
