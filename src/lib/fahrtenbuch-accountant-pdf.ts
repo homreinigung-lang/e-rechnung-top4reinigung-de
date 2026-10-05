@@ -155,11 +155,11 @@ export function buildAccountantFahrtenbuchPdf(
   });
 
   if (monthlySummary) {
-    if (y + 45 > bottom) newPage();
+    // Keep the monthly summary heading and all five summary rows together.\n    const summaryHeight = 5 + 5 + 5 * 5;\n    if (y + summaryHeight > bottom) newPage();
     y += 5;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(`Monatsuebersicht ${monthlySummary.month}`, left, y);
+    doc.text(`Monatsübersicht ${monthlySummary.month}`, left, y);
     y += 5;
     const km = (value: number) =>
       `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(value)} km`;
