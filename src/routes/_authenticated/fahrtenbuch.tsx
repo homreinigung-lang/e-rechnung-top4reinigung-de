@@ -570,7 +570,7 @@ function Fahrtenbuch() {
           }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4 no-print">
         <div>
           <div className="flex items-center gap-2">
@@ -595,7 +595,7 @@ function Fahrtenbuch() {
         </div>
       </div>
 
-      <section className="surface space-y-4 p-5 no-print">
+      <section className="surface min-w-0 space-y-4 p-4 sm:p-5 no-print">
         <div>
           <h2 className="text-lg font-semibold">Fahrzeuge</h2>
           <p className="text-sm text-muted-foreground">Fahrzeug und Kennzeichen einmal anlegen und danach bei jeder Fahrt auswählen.</p>
@@ -618,14 +618,14 @@ function Fahrtenbuch() {
         ) : null}
       </section>
 
-      <section className="surface space-y-4 p-5 no-print">
+      <section className="surface min-w-0 space-y-4 p-4 sm:p-5 no-print">
         <div>
           <h2 className="text-lg font-semibold">Monatskilometer</h2>
           <p className="text-sm text-muted-foreground">
             Monatsanfang und Monatsende je Fahrzeug erfassen. Geschäftliche Kilometer kommen automatisch aus dem Fahrtenbuch.
           </p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-2">
             <Label>Monat</Label>
             <Input
@@ -641,7 +641,7 @@ function Fahrtenbuch() {
           <div className="space-y-2">
             <Label>Fahrzeug</Label>
             <Select value={monthlyVehicleId} onValueChange={(value) => loadMonthlyRow(value)}>
-              <SelectTrigger><SelectValue placeholder="Fahrzeug auswählen" /></SelectTrigger>
+              <SelectTrigger className="min-w-0"><SelectValue placeholder="Fahrzeug auswählen" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Fahrzeug auswählen</SelectItem>
                 {vehicles.map((vehicle) => (
@@ -661,18 +661,18 @@ function Fahrtenbuch() {
             <Input type="number" min="0" step="0.1" value={monthEndKm} onChange={(e) => setMonthEndKm(e.target.value)} />
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Gesamt gefahren</div><div className="text-lg font-semibold">{monthlyTotalKm === null ? "–" : `${formatKm(monthlyTotalKm)} km`}</div></div>
           <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Geschäftlich laut Fahrtenbuch</div><div className="text-lg font-semibold">{formatKm(businessKmForMonth)} km</div></div>
           <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Privat / sonstig / nicht erfasst</div><div className="text-lg font-semibold">{privateOrUnloggedKm === null ? "–" : `${formatKm(privateOrUnloggedKm)} km`}</div></div>
         </div>
-        <Button onClick={() => saveMonthly.mutate()} disabled={saveMonthly.isPending || monthlyVehicleId === "none"}>
+        <Button className="w-full sm:w-auto" onClick={() => saveMonthly.mutate()} disabled={saveMonthly.isPending || monthlyVehicleId === "none"}>
           <Save className="size-4" /> Monatskilometer speichern
         </Button>
         {selectedMonthly ? <p className="text-xs text-muted-foreground">Für diesen Monat existiert bereits ein Eintrag. Speichern aktualisiert ihn.</p> : null}
       </section>
 
-      <section className="surface space-y-5 p-5 no-print">
+      <section className="surface min-w-0 space-y-5 p-4 sm:p-5 no-print">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">{form.id ? "Fahrt bearbeiten" : "Neue Fahrt"}</h2>
@@ -688,7 +688,7 @@ function Fahrtenbuch() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
             <Label>Fahrzeug / Kennzeichen</Label>
             <Select value={form.vehicle_id} onValueChange={(value) => setForm({ ...form, vehicle_id: value })}>
@@ -711,9 +711,9 @@ function Fahrtenbuch() {
             </Select>
           </div>
           {form.trip_type === "round_trip" ? <div className="space-y-2"><Label>Rückkehrzeit</Label><Input type="time" value={form.return_time} onChange={(e) => setForm({ ...form, return_time: e.target.value })} /></div> : null}
-          <div className="space-y-2 md:col-span-2">
+          <div className="space-y-2 sm:col-span-2">
             <Label>Von (Startpunkt)</Label>
-            <div className="grid gap-2 sm:grid-cols-[220px_1fr]">
+            <div className="grid min-w-0 gap-2 lg:grid-cols-[220px_minmax(0,1fr)]">
               <Select
                 value={startPointMode}
                 onValueChange={(value) => {
@@ -755,12 +755,12 @@ function Fahrtenbuch() {
               <SelectContent><SelectItem value="none">Keine Auswahl / manuell</SelectItem>{customers.map((customer) => <SelectItem key={customer.id} value={customer.id}>{customerLabel(customer)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-2 md:col-span-2"><Label>Kunde / Ziel / Zweck</Label><Input placeholder="z. B. Besichtigung Saarlouis, Materialeinkauf, Kunde Müller" value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value, customer_id: "none" })} /><p className="text-xs text-muted-foreground">Freie Eingabe ist immer möglich; ein Kunde aus dem Kundenstamm ist nicht erforderlich.</p></div>
-          <div className="space-y-2 md:col-span-3"><Label>Nach (Ziel / Adresse)</Label><Input placeholder="Straße, Hausnummer, PLZ, Ort" value={form.to_location} onChange={(e) => setForm({ ...form, to_location: e.target.value })} /></div>
+          <div className="space-y-2 sm:col-span-2"><Label>Kunde / Ziel / Zweck</Label><Input placeholder="z. B. Besichtigung Saarlouis, Materialeinkauf, Kunde Müller" value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value, customer_id: "none" })} /><p className="text-xs text-muted-foreground">Freie Eingabe ist immer möglich; ein Kunde aus dem Kundenstamm ist nicht erforderlich.</p></div>
+          <div className="space-y-2 sm:col-span-2 xl:col-span-3"><Label>Nach (Ziel / Adresse)</Label><Input placeholder="Straße, Hausnummer, PLZ, Ort" value={form.to_location} onChange={(e) => setForm({ ...form, to_location: e.target.value })} /></div>
           <div className="space-y-2"><Label>Start-km</Label><Input type="number" min="0" step="0.1" value={form.start_km} onChange={(e) => setForm({ ...form, start_km: e.target.value })} /></div>
           <div className="space-y-2"><Label>End-km</Label><Input type="number" min="0" step="0.1" value={form.end_km} onChange={(e) => setForm({ ...form, end_km: e.target.value })} /></div>
           <div className="space-y-2"><Label>Strecke (automatisch)</Label><div className="flex h-9 items-center rounded-md border bg-muted px-3 font-semibold">{formatKm(distance)} km</div></div>
-          <div className="space-y-2 md:col-span-3"><Label>Bemerkung (optional)</Label><Textarea rows={2} placeholder="Kundentermin, Besichtigung, Materiallieferung …" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+          <div className="space-y-2 sm:col-span-2 xl:col-span-3"><Label>Bemerkung (optional)</Label><Textarea rows={2} placeholder="Kundentermin, Besichtigung, Materiallieferung …" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
 
         <Button
