@@ -16,9 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -227,33 +224,32 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const renderOwnerMoreMenu = () => (
     <>
-      {ownerGroups.map((group) => {
+      {ownerGroups.map((group, groupIndex) => {
         const GroupIcon = group.icon ?? Settings;
         return (
-          <DropdownMenuSub key={group.title}>
-            <DropdownMenuSubTrigger className="py-2.5">
-              <GroupIcon className="size-4" />
+          <div key={group.title}>
+            {groupIndex > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel className="flex items-center gap-2 px-2 py-1.5">
+              <GroupIcon className="size-4 shrink-0" />
               <span>{group.title}</span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-64">
-              {group.items.map((item) => (
-                <DropdownMenuItem key={`${item.to}-${item.label}`} asChild>
-                  <Link
-                    to={item.to}
-                    {...(item.hash ? { hash: item.hash } : {})}
-                    {...(item.search ? { search: item.search } : {})}
-                    className={cn(
-                      "flex w-full cursor-pointer items-center gap-2",
-                      isActive(pathname, item) && "bg-secondary text-secondary-foreground",
-                    )}
-                  >
-                    <item.icon className="size-4" />
-                    <span>{item.label}</span>
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+            </DropdownMenuLabel>
+            {group.items.map((item) => (
+              <DropdownMenuItem key={`${item.to}-${item.label}`} asChild>
+                <Link
+                  to={item.to}
+                  {...(item.hash ? { hash: item.hash } : {})}
+                  {...(item.search ? { search: item.search } : {})}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-2",
+                    isActive(pathname, item) && "bg-secondary text-secondary-foreground",
+                  )}
+                >
+                  <item.icon className="size-4 shrink-0" />
+                  <span className="min-w-0 truncate">{item.label}</span>
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </div>
         );
       })}
     </>
@@ -478,7 +474,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span>Mehr</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-64">
+            <DropdownMenuContent align="end" side="top" sideOffset={8} className="max-h-[70vh] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto">
               {myEmployee ? renderEmployeeMoreMenu() : renderOwnerMoreMenu()}
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void signOut()}>
