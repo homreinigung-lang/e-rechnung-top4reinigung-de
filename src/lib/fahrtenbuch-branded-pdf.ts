@@ -4,6 +4,7 @@ import {
   assertFahrtenbuchVehicleData,
   buildAccountantFahrtenbuchPdf,
   type FahrtenbuchBranding,
+  type FahrtenbuchMonthlySummary,
 } from "@/lib/fahrtenbuch-accountant-pdf";
 
 type TripRow = Record<string, string>;
@@ -34,7 +35,7 @@ async function logoAsJpeg(pathOrUrl: string): Promise<string> {
 }
 
 /** Validate the trip's vehicle identification before reading account data or rendering a PDF. */
-export async function buildBrandedFahrtenbuchPdf(rows: TripRow[], from: string, to: string): Promise<Blob> {
+export async function buildBrandedFahrtenbuchPdf(\n  rows: TripRow[],\n  from: string,\n  to: string,\n  monthlySummary?: FahrtenbuchMonthlySummary,\n): Promise<Blob> {
   assertFahrtenbuchVehicleData(rows);
   const { data, error } = await supabase
     .from("company_settings")
@@ -47,5 +48,5 @@ export async function buildBrandedFahrtenbuchPdf(rows: TripRow[], from: string, 
     throw new Error("Bitte Firmenname und Firmenlogo in den Firmeneinstellungen hinterlegen.");
   }
   const branding: FahrtenbuchBranding = { companyName, logoDataUrl: await logoAsJpeg(logoUrl) };
-  return buildAccountantFahrtenbuchPdf(rows, from, to, branding);
+  return buildAccountantFahrtenbuchPdf(rows, from, to, branding, monthlySummary);
 }
