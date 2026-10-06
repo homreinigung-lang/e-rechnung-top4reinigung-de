@@ -16,12 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2 } from "lucide-react";
 import { euro, type Plan } from "@/lib/admin";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  TRIAL_DAYS,
-  calcTotals,
-  useCreatePlanOrder,
-  type OrderResult,
-} from "@/lib/plan-orders";
+import { TRIAL_DAYS, calcTotals, useCreatePlanOrder, type OrderResult } from "@/lib/plan-orders";
 
 type Props = {
   plan: Plan | null;
@@ -48,9 +43,18 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
   const [form, setForm] = useState(emptyForm);
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
   const [result, setResult] = useState<OrderResult | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"invoice" | "stripe">("invoice");
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const createOrder = useCreatePlanOrder();
+  const { data: checkoutAvailable = false } = useQuery({
+    queryKey: ["stripe_sandbox_available", isAuthenticated],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const { getStripeSandboxAvailability } = await import("@/lib/plan-orders.functions");
+      return getStripeSandboxAvailability();
+    },
+  });
   const { data: employeeCount = 0 } = useQuery({
     queryKey: ["plan_order_employee_count", isAuthenticated],
     enabled: isAuthenticated,
@@ -87,15 +91,14 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
   const set = (key: keyof typeof emptyForm) => (value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const totals = plan
-    ? calcTotals(plan, interval, form.country, form.vatId, employeeCount)
-    : null;
+  const totals = plan ? calcTotals(plan, interval, form.country, form.vatId, employeeCount) : null;
 
   function close(open: boolean) {
     if (!open) {
       setForm(emptyForm);
       setInterval("monthly");
       setResult(null);
+      setPaymentMethod("invoice");
       setAuthChecked(false);
       setIsAuthenticated(false);
     }
@@ -118,7 +121,12 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
       return;
     }
     try {
-      const res = await createOrder.mutateAsync({ plan, billingInterval: interval, ...form });
+      const res = await createOrder.mutateAsync({
+        plan,
+        billingInterval: interval,
+        ...form,
+        paymentMethod,
+      });
       setResult(res);
       toast.success("Bestellung eingegangen");
     } catch (err) {
@@ -253,8 +261,21 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
               <Button type="submit" className="w-full" disabled={createOrder.isPending}>
                 {createOrder.isPending ? "Wird gesendet …" : "Kostenpflichtiges Paket bestellen"}
               </Button>
+              {checkoutAvailable ? (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={paymentMethod === "stripe"}
+                    onChange={(e) => setPaymentMethod(e.target.checked ? "stripe" : "invoice")}
+                  />
+                  Online-Zahlung mit Karte / SEPA-Lastschrift
+                </label>
+              ) : null}
               <p className="text-xs text-muted-foreground">
-                Zahlung per Rechnung / SEPA-Überweisung. Eine aktive Testphase wird nicht verkürzt.
+                {paymentMethod === "stripe"
+                  ? "Zahlung mit Karte / SEPA-Lastschrift."
+                  : "Zahlung per Rechnung / SEPA-Überweisung."}{" "}
+                Eine aktive Testphase wird nicht verkürzt.
               </p>
             </form>
           </>
@@ -273,6 +294,11 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 text-sm">
+              {result.checkoutUrl ? (
+                <Button asChild className="w-full">
+                  <a href={result.checkoutUrl}>Weiter zur sicheren Zahlung</a>
+                </Button>
+              ) : null}
               <div className="rounded-lg border bg-secondary/40 p-4">
                 <p className="font-semibold">Testphase bleibt bestehen</p>
                 <p className="mt-1 text-muted-foreground">
@@ -280,37 +306,43 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
                   Enddatum weiter. Die kostenpflichtige Abrechnung beginnt anschließend.
                 </p>
               </div>
-              <div className="rounded-lg border p-4">
-                <p className="font-semibold">Zahlungsdetails (Rechnung / SEPA-Überweisung)</p>
-                {paymentAvailable && pay ? (
-                  <>
-                    <dl className="mt-2 space-y-1">
-                      <Row label="Empfänger" value={pay.recipient} />
-                      <Row label="IBAN" value={formatIban(pay.iban)} />
-                      <Row label="BIC" value={pay.bic} />
-                      <Row label="Bank" value={pay.bank} />
-                      <Row label="Verwendungszweck" value={result.orderNumber} />
-                      <Row label="Netto" value={euro(result.totals.netCents)} />
-                      <Row
-                        label={result.totals.vatCents > 0 ? "19 % MwSt." : "Umsatzsteuer"}
-                        value={euro(result.totals.vatCents)}
-                      />
-                      <Row label="Rechnungsbetrag" value={euro(result.totals.grossCents)} strong />
-                    </dl>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {result.totals.reverseCharge
-                        ? "Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge, § 13b UStG)."
-                        : pay.terms}
+              {!result.checkoutUrl ? (
+                <div className="rounded-lg border p-4">
+                  <p className="font-semibold">Zahlungsdetails (Rechnung / SEPA-Überweisung)</p>
+                  {paymentAvailable && pay ? (
+                    <>
+                      <dl className="mt-2 space-y-1">
+                        <Row label="Empfänger" value={pay.recipient} />
+                        <Row label="IBAN" value={formatIban(pay.iban)} />
+                        <Row label="BIC" value={pay.bic} />
+                        <Row label="Bank" value={pay.bank} />
+                        <Row label="Verwendungszweck" value={result.orderNumber} />
+                        <Row label="Netto" value={euro(result.totals.netCents)} />
+                        <Row
+                          label={result.totals.vatCents > 0 ? "19 % MwSt." : "Umsatzsteuer"}
+                          value={euro(result.totals.vatCents)}
+                        />
+                        <Row
+                          label="Rechnungsbetrag"
+                          value={euro(result.totals.grossCents)}
+                          strong
+                        />
+                      </dl>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {result.totals.reverseCharge
+                          ? "Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge, § 13b UStG)."
+                          : pay.terms}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Zahlungsdaten sind momentan nicht verfügbar. Die Bestellung wurde gespeichert;
+                      Sie erhalten die Zahlungsinformationen mit der Rechnung.
+                      {paymentError ? " Bitte versuchen Sie es später erneut." : ""}
                     </p>
-                  </>
-                ) : (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Zahlungsdaten sind momentan nicht verfügbar. Die Bestellung wurde gespeichert;
-                    Sie erhalten die Zahlungsinformationen mit der Rechnung.
-                    {paymentError ? " Bitte versuchen Sie es später erneut." : ""}
-                  </p>
-                )}
-              </div>
+                  )}
+                </div>
+              ) : null}
               <Button className="w-full" onClick={() => close(false)}>
                 Schließen
               </Button>

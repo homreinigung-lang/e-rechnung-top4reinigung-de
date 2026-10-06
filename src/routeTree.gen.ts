@@ -61,6 +61,7 @@ import { Route as AuthenticatedProjekteIdRouteImport } from './routes/_authentic
 import { Route as AuthenticatedSteuerberaterFahrtenbuchRouteImport } from './routes/_authenticated/steuerberater.fahrtenbuch'
 import { Route as ApiPublicFotoRetentionRouteImport } from './routes/api/public/foto-retention'
 import { Route as ApiPublicKontoFreigabeRouteImport } from './routes/api/public/konto-freigabe'
+import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -343,6 +344,11 @@ const ApiPublicKontoFreigabeRoute = ApiPublicKontoFreigabeRouteImport.update({
   path: '/api/public/konto-freigabe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
+  id: '/api/public/stripe-webhook',
+  path: '/api/public/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -392,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/steuerberater/fahrtenbuch': typeof AuthenticatedSteuerberaterFahrtenbuchRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/kunden/': typeof AuthenticatedKundenIndexRoute
@@ -443,6 +450,7 @@ export interface FileRoutesByTo {
   '/steuerberater/fahrtenbuch': typeof AuthenticatedSteuerberaterFahrtenbuchRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/dokumente': typeof AuthenticatedDokumenteIndexRoute
   '/kunden': typeof AuthenticatedKundenIndexRoute
@@ -498,6 +506,7 @@ export interface FileRoutesById {
   '/_authenticated/steuerberater/fahrtenbuch': typeof AuthenticatedSteuerberaterFahrtenbuchRoute
   '/api/public/foto-retention': typeof ApiPublicFotoRetentionRoute
   '/api/public/konto-freigabe': typeof ApiPublicKontoFreigabeRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/dokumente/': typeof AuthenticatedDokumenteIndexRoute
   '/_authenticated/kunden/': typeof AuthenticatedKundenIndexRoute
@@ -553,6 +562,7 @@ export interface FileRouteTypes {
     | '/steuerberater/fahrtenbuch'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/api/public/stripe-webhook'
     | '/admin/'
     | '/dokumente/'
     | '/kunden/'
@@ -604,6 +614,7 @@ export interface FileRouteTypes {
     | '/steuerberater/fahrtenbuch'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/api/public/stripe-webhook'
     | '/admin'
     | '/dokumente'
     | '/kunden'
@@ -658,6 +669,7 @@ export interface FileRouteTypes {
     | '/_authenticated/steuerberater/fahrtenbuch'
     | '/api/public/foto-retention'
     | '/api/public/konto-freigabe'
+    | '/api/public/stripe-webhook'
     | '/_authenticated/admin/'
     | '/_authenticated/dokumente/'
     | '/_authenticated/kunden/'
@@ -675,6 +687,7 @@ export interface RootRouteChildren {
   StbTokenRoute: typeof StbTokenRoute
   ApiPublicFotoRetentionRoute: typeof ApiPublicFotoRetentionRoute
   ApiPublicKontoFreigabeRoute: typeof ApiPublicKontoFreigabeRoute
+  ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1043,6 +1056,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicKontoFreigabeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/stripe-webhook': {
+      id: '/api/public/stripe-webhook'
+      path: '/api/public/stripe-webhook'
+      fullPath: '/api/public/stripe-webhook'
+      preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1182,6 +1202,7 @@ const rootRouteChildren: RootRouteChildren = {
   StbTokenRoute: StbTokenRoute,
   ApiPublicFotoRetentionRoute: ApiPublicFotoRetentionRoute,
   ApiPublicKontoFreigabeRoute: ApiPublicKontoFreigabeRoute,
+  ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1282,6 +1282,10 @@ export type Database = {
       }
       plan_orders: {
         Row: {
+          customer_user_id: string | null
+          subscription_id: string | null
+          stripe_checkout_session_id: string | null
+          payment_status: string
           address_line: string
           billing_interval: string
           city: string
@@ -1307,6 +1311,10 @@ export type Database = {
           vat_id: string
         }
         Insert: {
+          customer_user_id?: string | null
+          subscription_id?: string | null
+          stripe_checkout_session_id?: string | null
+          payment_status?: string
           address_line?: string
           billing_interval?: string
           city?: string
@@ -1332,6 +1340,10 @@ export type Database = {
           vat_id?: string
         }
         Update: {
+          customer_user_id?: string | null
+          subscription_id?: string | null
+          stripe_checkout_session_id?: string | null
+          payment_status?: string
           address_line?: string
           billing_interval?: string
           city?: string
