@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
-import { createStripeSubscriptionCheckout, handleStripeWebhook } from "./stripe-billing.server";
+import {
+  createStripeSubscriptionCheckout,
+  handleStripeWebhook,
+  stripeCheckoutAvailable,
+  STRIPE_API_VERSION,
+} from "./stripe-billing.server";
 
 vi.mock("@tanstack/react-start/server-only", () => ({}));
 const db = vi.hoisted(() => ({ from: vi.fn(), update: vi.fn(), eq: vi.fn(), or: vi.fn() }));
@@ -45,6 +50,8 @@ const subscription = {
 };
 
 beforeEach(() => {
+  vi.stubEnv("STRIPE_BILLING_MODE", "");
+  vi.stubEnv("STRIPE_LIVE_ENABLED", "false");
   vi.stubEnv("STRIPE_SANDBOX_ENABLED", "true");
   vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_synthetic");
   vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_synthetic");
@@ -56,6 +63,140 @@ beforeEach(() => {
   db.update.mockReturnValue(db);
   db.eq.mockReturnValue(db);
   db.or.mockResolvedValue({ error: null });
+});
+
+function configureLive() {
+  vi.stubEnv("STRIPE_BILLING_MODE", "live");
+  vi.stubEnv("STRIPE_LIVE_ENABLED", "true");
+  vi.stubEnv("STRIPE_SECRET_KEY", "rk_live_synthetic");
+  vi.stubEnv("STRIPE_LIVE_ACCOUNT_ID", "acct_synthetic");
+  vi.stubEnv("PUBLIC_SITE_URL", "https://e-rechnung.top4reinigung.de");
+  vi.stubEnv("SUPABASE_URL", "https://squkjqvofugkanzuqtqn.supabase.co");
+  vi.stubEnv("STRIPE_LIVE_PRICES", '{"basis_monthly":"price_live"}');
+  vi.stubEnv("STRIPE_LIVE_TAX_RATE_ID", "txr_live");
+}
+const liveAccount = { id: "acct_synthetic", charges_enabled: true, payouts_enabled: true };
+describe("explicit Live configuration", () => {
+  it("hides online payment until all six Live prices and the signing secret are configured", () => {
+    configureLive();
+    expect(stripeCheckoutAvailable()).toBe(false);
+    const mapping = Object.fromEntries(
+      ["basis", "pro", "enterprise"].flatMap((plan) =>
+        ["monthly", "yearly"].map((interval) => [
+          `${plan}_${interval}`,
+          `price_${plan}${interval}`,
+        ]),
+      ),
+    );
+    vi.stubEnv("STRIPE_LIVE_PRICES", JSON.stringify(mapping));
+    expect(stripeCheckoutAvailable()).toBe(true);
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", "");
+    expect(stripeCheckoutAvailable()).toBe(false);
+  });
+  it("stays disabled when Live is selected without the activation flag", async () => {
+    configureLive();
+    vi.stubEnv("STRIPE_LIVE_ENABLED", "false");
+    vi.stubGlobal("fetch", vi.fn());
+    expect(stripeCheckoutAvailable()).toBe(false);
+    expect(await createStripeSubscriptionCheckout(input)).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it.each(["off", "invalid"])("ignores the legacy Sandbox switch when mode is %s", async (mode) => {
+    vi.stubEnv("STRIPE_BILLING_MODE", mode);
+    vi.stubGlobal("fetch", vi.fn());
+    expect(await createStripeSubscriptionCheckout(input)).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("creates Checkout with Live-only prices and a pinned API version after account readiness checks", async () => {
+    configureLive();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(reply(liveAccount))
+      .mockResolvedValueOnce(reply({ ...price, livemode: true }))
+      .mockResolvedValueOnce(reply({ ...rate, livemode: true }))
+      .mockResolvedValueOnce(reply({ id: "cs_live", url: "https://checkout.stripe.com/live" }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await createStripeSubscriptionCheckout(input)).toMatchObject({ id: "cs_live" });
+    expect(fetchMock.mock.calls[0]![0]).toBe("https://api.stripe.com/v1/account");
+    expect(fetchMock.mock.calls[1]![0]).toContain("/prices/price_live");
+    expect(new Headers(fetchMock.mock.calls[3]![1].headers).get("Stripe-Version")).toBe(
+      STRIPE_API_VERSION,
+    );
+    expect((fetchMock.mock.calls[3]![1].body as URLSearchParams).get("line_items[0][price]")).toBe(
+      "price_live",
+    );
+  });
+  it.each([{ id: "acct_wrong" }, { charges_enabled: false }, { payouts_enabled: false }])(
+    "blocks an unready or incorrect account %j",
+    async (patch) => {
+      configureLive();
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply({ ...liveAccount, ...patch })));
+      await expect(createStripeSubscriptionCheckout(input)).rejects.toThrow(
+        "nicht vollständig aktiviert",
+      );
+      expect(fetch).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("rejects Sandbox prices in Live even when the Sandbox map is configured", async () => {
+    configureLive();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(reply(liveAccount)).mockResolvedValueOnce(reply(price)),
+    );
+    await expect(createStripeSubscriptionCheckout(input)).rejects.toThrow("Preis stimmt");
+  });
+  it("never falls back to Sandbox price IDs when the Live mapping is missing", async () => {
+    configureLive();
+    vi.stubEnv("STRIPE_LIVE_PRICES", "{}");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(liveAccount)));
+    await expect(createStripeSubscriptionCheckout(input)).rejects.toThrow("Preis fehlt");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it.each(["sk_test_synthetic", "rk_test_synthetic"])(
+    "rejects a test key in Live: %s",
+    async (key) => {
+      configureLive();
+      vi.stubEnv("STRIPE_SECRET_KEY", key);
+      vi.stubGlobal("fetch", vi.fn());
+      await expect(createStripeSubscriptionCheckout(input)).rejects.toThrow("Live-Schlüssel");
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects non-HTTPS Live redirects before contacting Stripe", async () => {
+    configureLive();
+    vi.stubEnv("PUBLIC_SITE_URL", "http://localhost:3000");
+    vi.stubGlobal("fetch", vi.fn());
+    await expect(createStripeSubscriptionCheckout(input)).rejects.toThrow("HTTPS-Website");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("rejects test-mode webhooks in Live without touching the database", async () => {
+    configureLive();
+    vi.stubGlobal("fetch", vi.fn());
+    expect(
+      (await handleStripeWebhook(eventRequest("invoice.paid", { subscription: "sub_test" })))
+        .status,
+    ).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(db.from).not.toHaveBeenCalled();
+  });
+  it("accepts signed Live events and still handles cancellation when charges are disabled", async () => {
+    configureLive();
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(reply({ ...liveAccount, charges_enabled: false }))
+        .mockResolvedValueOnce(reply({ ...subscription, status: "canceled" })),
+    );
+    expect(
+      (
+        await handleStripeWebhook(
+          eventRequest("customer.subscription.deleted", { id: "sub_test" }, { live: true }),
+        )
+      ).status,
+    ).toBe(200);
+    expect(db.update).toHaveBeenCalledWith(expect.objectContaining({ status: "inactive" }));
+  });
 });
 afterEach(() => {
   vi.unstubAllEnvs();

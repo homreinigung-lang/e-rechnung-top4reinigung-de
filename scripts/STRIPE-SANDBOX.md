@@ -1,7 +1,8 @@
 # Stripe Sandbox integration
 
-Only isolated testing is supported by this change. Checkout stays disabled unless
-`STRIPE_SANDBOX_ENABLED=true`; invoice/bank-transfer ordering stays the default.
+For isolated testing, set `STRIPE_BILLING_MODE=sandbox`. The legacy switch
+`STRIPE_SANDBOX_ENABLED=true` is accepted only when no explicit mode is configured.
+Checkout defaults to off; invoice/bank-transfer ordering stays the default.
 The UI only offers online payment when the server reports Sandbox availability.
 
 ## Configuration
@@ -32,6 +33,7 @@ Checkout completion alone does not prove a payment succeeded; subscription state
 is read back from Stripe. Replayed events repeat the same state update; late
 invoice events cannot force a canceled subscription back to active.
 
+See STRIPE-LIVE.md for the separately gated Live configuration.
 Live activation and production database deployment remain separate release steps.
 Do not enable Sandbox against the production Supabase project.
 

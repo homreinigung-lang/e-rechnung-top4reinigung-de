@@ -91,6 +91,8 @@ let sentParams: URLSearchParams;
 let remoteStatus: string;
 let checkoutRequests: Map<string, string>;
 beforeEach(() => {
+  vi.stubEnv("STRIPE_BILLING_MODE", "");
+  vi.stubEnv("STRIPE_LIVE_ENABLED", "false");
   checkoutRequests = new Map();
   fixture.plan = {
     id: planId,

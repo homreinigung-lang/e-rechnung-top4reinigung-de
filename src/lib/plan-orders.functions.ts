@@ -3,16 +3,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const VAT_RATE = 0.19;
-export const getStripeSandboxAvailability = createServerFn({ method: "GET" })
+export const getStripeBillingAvailability = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(
-    async () =>
-      process.env["STRIPE_SANDBOX_ENABLED"] === "true" &&
-      process.env["STRIPE_SECRET_KEY"]?.startsWith("sk_test_") === true &&
-      Boolean(process.env["PUBLIC_SITE_URL"]) &&
-      !process.env["PUBLIC_SITE_URL"]!.includes("e-rechnung.top4reinigung.de") &&
-      !process.env["SUPABASE_URL"]?.includes("squkjqvofugkanzuqtqn.supabase.co"),
-  );
+  .handler(async () => {
+    const { stripeCheckoutAvailable } = await import("@/lib/stripe-billing.server");
+    return stripeCheckoutAvailable();
+  });
 const EU_COUNTRIES = new Set([
   "AT",
   "BE",

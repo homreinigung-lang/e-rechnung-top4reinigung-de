@@ -48,11 +48,11 @@ export function PlanOrderDialog({ plan, onOpenChange }: Props) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const createOrder = useCreatePlanOrder();
   const { data: checkoutAvailable = false } = useQuery({
-    queryKey: ["stripe_sandbox_available", isAuthenticated],
+    queryKey: ["stripe_billing_available", isAuthenticated],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const { getStripeSandboxAvailability } = await import("@/lib/plan-orders.functions");
-      return getStripeSandboxAvailability();
+      const { getStripeBillingAvailability } = await import("@/lib/plan-orders.functions");
+      return getStripeBillingAvailability();
     },
   });
   const { data: employeeCount = 0 } = useQuery({

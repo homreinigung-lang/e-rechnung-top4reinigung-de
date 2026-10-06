@@ -34,19 +34,74 @@ type StripeSubscription = {
 };
 
 const stripeApi = "https://api.stripe.com/v1";
+export const STRIPE_API_VERSION = "2026-09-30.endive";
+
+export function stripeBillingMode(): "off" | "sandbox" | "live" {
+  const configured = process.env["STRIPE_BILLING_MODE"]?.trim();
+  if (configured === "live") return process.env["STRIPE_LIVE_ENABLED"] === "true" ? "live" : "off";
+  if (configured === "sandbox") return "sandbox";
+  if (configured) return "off";
+  return process.env["STRIPE_SANDBOX_ENABLED"] === "true" ? "sandbox" : "off";
+}
 
 export function stripeSandboxEnabled(): boolean {
-  return process.env["STRIPE_SANDBOX_ENABLED"] === "true";
+  return stripeBillingMode() === "sandbox";
+}
+
+export function stripeCheckoutAvailable(): boolean {
+  try {
+    if (!stripeSecret() || !process.env["STRIPE_WEBHOOK_SECRET"]?.startsWith("whsec_"))
+      return false;
+    const mode = stripeBillingMode();
+    const mapping = JSON.parse(
+      process.env[mode === "live" ? "STRIPE_LIVE_PRICES" : "STRIPE_SANDBOX_PRICES"] || "{}",
+    );
+    const rate =
+      process.env[mode === "live" ? "STRIPE_LIVE_TAX_RATE_ID" : "STRIPE_SANDBOX_TAX_RATE_ID"];
+    return Boolean(
+      rate &&
+      /^txr_[a-zA-Z0-9]+$/.test(rate) &&
+      mapping &&
+      ["basis", "pro", "enterprise"].every((plan) =>
+        ["monthly", "yearly"].every((interval) =>
+          /^price_[a-zA-Z0-9]+$/.test(mapping[`${plan}_${interval}`] || ""),
+        ),
+      ),
+    );
+  } catch {
+    return false;
+  }
 }
 
 function stripeSecret(): string | null {
-  if (!stripeSandboxEnabled()) return null;
-  if ((process.env["SUPABASE_URL"] || "").includes("squkjqvofugkanzuqtqn.supabase.co")) {
+  const mode = stripeBillingMode();
+  if (mode === "off") return null;
+  if (
+    mode === "sandbox" &&
+    (process.env["SUPABASE_URL"] || "").includes("squkjqvofugkanzuqtqn.supabase.co")
+  ) {
     throw new Error("Stripe Sandbox darf keine Produktionsdaten ändern.");
   }
   const secret = process.env["STRIPE_SECRET_KEY"]?.trim();
-  if (!secret?.startsWith("sk_test_"))
-    throw new Error("Stripe Sandbox benötigt einen Testschlüssel.");
+  const prefix = mode === "live" ? /^(sk|rk)_live_/ : /^(sk|rk)_test_/;
+  if (!secret || !prefix.test(secret))
+    throw new Error(
+      mode === "live"
+        ? "Stripe Live benötigt einen Live-Schlüssel."
+        : "Stripe Sandbox benötigt einen Testschlüssel.",
+    );
+  const site = new URL(siteUrl());
+  if (mode === "sandbox" && site.hostname === "e-rechnung.top4reinigung.de") {
+    throw new Error("Stripe Sandbox benötigt eine separate Testumgebung.");
+  }
+  if (
+    mode === "live" &&
+    (site.protocol !== "https:" ||
+      !process.env["PUBLIC_SITE_URL"] ||
+      !/^acct_[a-zA-Z0-9]+$/.test(process.env["STRIPE_LIVE_ACCOUNT_ID"] || ""))
+  ) {
+    throw new Error("Stripe Live benötigt eine HTTPS-Website und eine bestätigte Konto-ID.");
+  }
   return secret;
 }
 
@@ -64,6 +119,7 @@ async function stripeRequest<T>(path: string, init: RequestInit = {}): Promise<T
     ...init,
     headers: {
       Authorization: `Bearer ${secret}`,
+      "Stripe-Version": STRIPE_API_VERSION,
       ...(init.headers ?? {}),
     },
   });
@@ -75,17 +131,34 @@ async function stripeRequest<T>(path: string, init: RequestInit = {}): Promise<T
   return body;
 }
 
+async function verifyLiveAccount(requireReady: boolean): Promise<void> {
+  if (stripeBillingMode() !== "live") return;
+  const account = await stripeRequest<{
+    id: string;
+    charges_enabled: boolean;
+    payouts_enabled: boolean;
+  }>("/account");
+  if (
+    account.id !== process.env["STRIPE_LIVE_ACCOUNT_ID"] ||
+    (requireReady && (!account.charges_enabled || !account.payouts_enabled))
+  ) {
+    throw new Error("Stripe Live-Konto ist nicht vollständig aktiviert oder stimmt nicht überein.");
+  }
+}
+
 export async function createStripeSubscriptionCheckout(
   input: StripeCheckoutInput,
 ): Promise<StripeCheckoutResult | null> {
   if (!stripeSecret()) return null;
-  const configuredSite = new URL(siteUrl());
-  if (configuredSite.hostname === "e-rechnung.top4reinigung.de") {
-    throw new Error("Stripe Sandbox benötigt eine separate Testumgebung.");
-  }
+  const mode = stripeBillingMode();
+  await verifyLiveAccount(true);
   let prices: Record<string, string>;
   try {
-    prices = JSON.parse(process.env["STRIPE_SANDBOX_PRICES"] || "{}");
+    prices = JSON.parse(
+      process.env[mode === "live" ? "STRIPE_LIVE_PRICES" : "STRIPE_SANDBOX_PRICES"] || "{}",
+    );
+    if (!prices || typeof prices !== "object" || Array.isArray(prices))
+      throw new Error("Invalid mapping");
   } catch {
     throw new Error("Stripe-Preiskonfiguration ist ungültig.");
   }
@@ -104,7 +177,7 @@ export async function createStripeSubscriptionCheckout(
   const interval = input.billingInterval === "yearly" ? "year" : "month";
   if (
     !price.active ||
-    price.livemode ||
+    price.livemode !== (mode === "live") ||
     price.currency !== "eur" ||
     price.tax_behavior !== "exclusive" ||
     price.recurring?.interval !== interval ||
@@ -127,7 +200,8 @@ export async function createStripeSubscriptionCheckout(
   }
   let taxRateId: string | undefined;
   if (input.vatCents) {
-    taxRateId = process.env["STRIPE_SANDBOX_TAX_RATE_ID"];
+    taxRateId =
+      process.env[mode === "live" ? "STRIPE_LIVE_TAX_RATE_ID" : "STRIPE_SANDBOX_TAX_RATE_ID"];
     if (!taxRateId || !/^txr_[a-zA-Z0-9]+$/.test(taxRateId))
       throw new Error("Stripe-Steuersatz fehlt.");
     const rate = await stripeRequest<{
@@ -138,7 +212,7 @@ export async function createStripeSubscriptionCheckout(
     }>(`/tax_rates/${taxRateId}`);
     if (
       !rate.active ||
-      rate.livemode ||
+      rate.livemode !== (mode === "live") ||
       rate.inclusive ||
       rate.percentage !== 19 ||
       input.vatCents !== Math.round(input.netCents * 0.19)
@@ -310,11 +384,12 @@ async function verifyStripeSignature(
 }
 
 export async function handleStripeWebhook(request: Request): Promise<Response> {
-  if (!stripeSandboxEnabled()) return new Response("Stripe Sandbox is disabled", { status: 503 });
+  const mode = stripeBillingMode();
+  if (mode === "off") return new Response("Stripe billing is disabled", { status: 503 });
   try {
     stripeSecret();
   } catch {
-    return new Response("Invalid sandbox configuration", { status: 503 });
+    return new Response("Invalid billing configuration", { status: 503 });
   }
   const webhookSecret = process.env["STRIPE_WEBHOOK_SECRET"]?.trim();
   if (!webhookSecret) return new Response("Stripe webhook is not configured", { status: 503 });
@@ -334,7 +409,9 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
   } catch {
     return new Response("Invalid event", { status: 400 });
   }
-  if (event.livemode !== false) return new Response("Sandbox events only", { status: 400 });
+  if (event.livemode !== (mode === "live"))
+    return new Response("Stripe mode mismatch", { status: 400 });
+  await verifyLiveAccount(false);
   const object = event.data?.object ?? {};
 
   if (event.type === "checkout.session.completed") {
