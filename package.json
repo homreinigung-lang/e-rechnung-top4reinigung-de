@@ -107,6 +107,8 @@
   },
   "overrides": {
     "sharp": "^0.35.4",
-    "undici": "7.29.1"
+    "undici": "7.29.1",
+    "seroval": "1.6.8",
+    "source-map-js": "1.2.2"
   }
 }
