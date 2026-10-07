@@ -465,7 +465,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
         }
         // Abschnittstitel bleibt mit der ersten Position zusammen (keep-with-next).
         drawBandRow(
-          wanted === "regular" ? "Regelmäßige Leistungen" : "Optionale Zusatzleistungen",
+          wanted === "regular" ? "Regelmäßige Leistungen" : "Saisonale & zusätzliche Leistungen",
           undefined,
           true,
           rowH,
