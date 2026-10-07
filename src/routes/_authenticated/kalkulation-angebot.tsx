@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { computeDocumentTotals } from "@/lib/document-totals";
 import { formatMoney, formatNumber, parsePositiveNumber, taxNoteForTaxMode, vatRateForTaxMode } from "@/lib/format";
-import { STAIR_RATE_PER_FLOOR, WEEKS_PER_MONTH } from "@/lib/constants";
+import { STAIR_RATE_PER_FLOOR, recurrenceUnitLabel, visitsPerMonth, visitsPerYear, type RecurrenceUnit } from "@/lib/constants";
 import { buildConsolidatedPositions, buildDiscountPosition, positionsTotal, round2 } from "@/lib/kalkulation-engine";
 
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ function KalkulationAngebotPage() {
   const [hours, setHours] = useState("4");
   const [hourlyRate, setHourlyRate] = useState(String(selected.hourly));
   const [frequency, setFrequency] = useState("1");
-  const [frequencyUnit, setFrequencyUnit] = useState<"week" | "month">("week");
+  const [frequencyUnit, setFrequencyUnit] = useState<RecurrenceUnit>("week");
   const [travel, setTravel] = useState("0");
   const [extras, setExtras] = useState<string[]>([]);
   const [stairs, setStairs] = useState(false);
@@ -78,17 +78,22 @@ function KalkulationAngebotPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  const visitsPerMonth = useMemo(() => {
+  const monthlyVisits = useMemo(() => {
     const value = Math.max(1, num(frequency) || 1);
-    return frequencyUnit === "week" ? value * WEEKS_PER_MONTH : value;
+    return visitsPerMonth(value, frequencyUnit);
+  }, [frequency, frequencyUnit]);
+
+  const annualVisits = useMemo(() => {
+    const value = Math.max(1, num(frequency) || 1);
+    return visitsPerYear(value, frequencyUnit);
   }, [frequency, frequencyUnit]);
 
   const monthlyHours = useMemo(() => {
-    if (mode === "hours") return num(hours) * visitsPerMonth;
+    if (mode === "hours") return num(hours) * monthlyVisits;
     const rate = num(hourlyRate);
     if (rate <= 0) return 0;
-    return (num(area) * num(pricePerSqm) * visitsPerMonth) / rate;
-  }, [mode, hours, area, pricePerSqm, hourlyRate, visitsPerMonth]);
+    return (num(area) * num(pricePerSqm) * monthlyVisits) / rate;
+  }, [mode, hours, area, pricePerSqm, hourlyRate, monthlyVisits]);
 
   const basePositions = useMemo(
     () =>
@@ -100,7 +105,7 @@ function KalkulationAngebotPage() {
         pricePerSqm: num(pricePerSqm),
         hours: num(hours),
         hourlyRate: num(hourlyRate),
-        visitsPerMonth,
+        visitsPerMonth: monthlyVisits,
         stairs,
         floors: num(floors),
         stairRate: num(stairRate),
@@ -112,7 +117,7 @@ function KalkulationAngebotPage() {
         discountPercent: 0,
         discountReason: "",
       }),
-    [selected, mode, area, pricePerSqm, hours, hourlyRate, visitsPerMonth, stairs, floors, stairRate, extras, travel],
+    [selected, mode, area, pricePerSqm, hours, hourlyRate, monthlyVisits, stairs, floors, stairRate, extras, travel],
   );
 
   const discountPosition = useMemo(
@@ -160,7 +165,7 @@ function KalkulationAngebotPage() {
       const totals = computeDocumentTotals(positions, 0, vatRate);
       const description = [
         selected.label,
-        `Turnus: ${formatNumber(visitsPerMonth)} Einsätze/Monat`,
+        `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(monthlyVisits)} Einsätze/Monat`,
         note.trim(),
       ].filter(Boolean).join("\n");
 
@@ -178,7 +183,7 @@ function KalkulationAngebotPage() {
           vat_amount: totals.vatAmount,
           total: totals.grossTotal,
           planned_hours_month: monthlyHours,
-          planned_visits_month: visitsPerMonth,
+          planned_visits_month: monthlyVisits,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
@@ -264,13 +269,16 @@ function KalkulationAngebotPage() {
                 <div className="space-y-2"><Label>Einsätze</Label><Input inputMode="decimal" value={frequency} onChange={(e) => { setFrequency(e.target.value); setConfirmed(false); }} /></div>
                 <div className="space-y-2">
                   <Label>Zeitraum</Label>
-                  <Select value={frequencyUnit} onValueChange={(value) => { setFrequencyUnit(value as "week" | "month"); setConfirmed(false); }}>
+                  <Select value={frequencyUnit} onValueChange={(value) => { setFrequencyUnit(value as RecurrenceUnit); setConfirmed(false); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="week">Pro Woche</SelectItem><SelectItem value="month">Pro Monat</SelectItem></SelectContent>
+                    <SelectContent><SelectItem value="week">Pro Woche</SelectItem><SelectItem value="fortnight">Alle 2 Wochen (14-tägig)</SelectItem><SelectItem value="month">Pro Monat</SelectItem><SelectItem value="quarter">Pro Quartal</SelectItem><SelectItem value="year">Pro Jahr</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2"><Label>Anfahrt netto</Label><Input inputMode="decimal" value={travel} onChange={(e) => { setTravel(e.target.value); setConfirmed(false); }} /></div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Jahresbasis: {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = {formatNumber(monthlyVisits)} Einsätze pro Monat.
+              </p>
 
               <div className="space-y-2">
                 <Label>Zusatzoptionen</Label>

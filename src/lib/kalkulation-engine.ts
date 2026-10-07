@@ -144,7 +144,7 @@ export type ConsolidatedInput = {
  * Jede Position ist kaufmännisch auf 2 Nachkommastellen gerundet.
  */
 export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPosition[] {
-  const visits = Math.max(1, round2(input.visitsPerMonth || 1));
+  const visits = Math.max(1, Number(input.visitsPerMonth) || 1);
   const positions: CalcPosition[] = [];
   const glass = input.typeValue === "glas";
 
@@ -155,10 +155,10 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
         : input.areaSqm > 0
           ? input.areaSqm / GLASS_SQM_PER_HOUR
           : 0;
-    const qty = round2(hoursPerVisit * visits);
+    const qty = hoursPerVisit * visits;
     if (qty > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² Glasfläche, ${visits} Einsätze/Monat`,
+        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² Glasfläche, ${round2(visits)} Einsätze/Monat`,
         quantity: qty,
         unit: "Std.",
         unit_price: round2(Math.max(input.hourlyRate, GLASS_HOURLY_RATE)),
@@ -175,10 +175,10 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
       });
     }
   } else {
-    const qty = round2(input.hours * visits);
+    const qty = input.hours * visits;
     if (qty > 0 && input.hourlyRate > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.hours)} Std. je Einsatz, ${visits} Einsätze/Monat`,
+        description: `${input.typeLabel} – ${round2(input.hours)} Std. je Einsatz, ${round2(visits)} Einsätze/Monat`,
         quantity: qty,
         unit: "Std.",
         unit_price: round2(input.hourlyRate),
@@ -191,11 +191,11 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const rate = round2(input.stairRate > 0 ? input.stairRate : MIN_STAIR_RATE);
     const stairVisits =
       Number(input.stairVisitsPerMonth) > 0
-        ? Math.max(1, round2(Number(input.stairVisitsPerMonth)))
+        ? Math.max(1, Number(input.stairVisitsPerMonth))
         : visits;
     positions.push({
-      description: `Treppenhausreinigung – ${floors} Etagen, ${stairVisits} Einsätze/Monat`,
-      quantity: round2(floors * stairVisits),
+      description: `Treppenhausreinigung – ${floors} Etagen, ${round2(stairVisits)} Einsätze/Monat`,
+      quantity: floors * stairVisits,
       unit: "Etage",
       unit_price: rate,
     });
@@ -310,7 +310,7 @@ export function normalizeItems(
 /** Netto-Summe der Positionen – die einzige gültige Gesamtsumme. */
 export function positionsTotal(items: { quantity: number; unit_price: number }[]): number {
   const totalCents = items.reduce(
-    (sum, item) => sum + toCents(round2(item.quantity) * round2(item.unit_price)),
+    (sum, item) => sum + toCents(Number(item.quantity) * round2(item.unit_price)),
     0,
   );
   return fromCents(totalCents);
