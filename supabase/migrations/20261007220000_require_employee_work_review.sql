@@ -17,7 +17,7 @@ begin
     new.approval_status := 'pending';
     new.decided_at := null;
     new.decided_by := null;
-    new.decision_note := null;
+    new.decision_note := '';
   end if;
   return new;
 end;
