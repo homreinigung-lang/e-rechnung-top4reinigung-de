@@ -26,7 +26,7 @@ $pending$;
 revoke all on function public.time_entries_employee_pending_on_insert()
   from public, anon, authenticated;
 
-create trigger t_time_entries_employee_pending
+create or replace trigger t_time_entries_employee_pending
 before insert on public.time_entries
 for each row execute function public.time_entries_employee_pending_on_insert();
 
