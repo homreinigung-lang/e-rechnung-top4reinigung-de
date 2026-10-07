@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { formatDate, formatMoney, DOC_TYPE_LABEL, STATUS_LABEL } from "@/lib/format";
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import { fetchEuerDocuments, fetchEuerExpenses } from "@/lib/euer-data";
 import { FinanzDashboard } from "@/components/FinanzDashboard";
 import { EinsaetzeHeute } from "@/components/EinsaetzeHeute";
@@ -58,18 +59,37 @@ function Dashboard() {
 }
 
 function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
-  const { data: entries = [] } = useQuery({
+  const {
+    data: entries = [],
+    error,
+    isPending: entriesPending,
+    refetch,
+  } = useQuery({
     queryKey: ["my_time_entries", employee.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        .select("id, work_date, start_time, end_time, hours, location, note")
-        .eq("employee_id", employee.id)
-        .order("work_date", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchAllRows(() =>
+        supabase
+          .from("time_entries")
+          .select("id, work_date, start_time, end_time, hours, location, note")
+          .eq("employee_id", employee.id)
+          .order("work_date", { ascending: false }),
+      ),
   });
+
+  if (error)
+    return (
+      <LoadError
+        error={error}
+        title="Arbeitszeiten konnten nicht geladen werden"
+        onRetry={() => void refetch()}
+      />
+    );
+  if (entriesPending)
+    return (
+      <p role="status" className="text-muted-foreground">
+        Arbeitszeiten werden geladen …
+      </p>
+    );
 
   const month = new Date().toISOString().slice(0, 7);
   const inMonth = entries.filter((e) => String(e.work_date).startsWith(month));
