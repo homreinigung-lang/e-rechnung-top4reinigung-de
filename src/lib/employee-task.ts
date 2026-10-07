@@ -17,7 +17,16 @@ export function matchesTask(entry: TaskTimeEntry, task: TaskIdentity): boolean {
     return false;
   const start = entry.start_time?.slice(0, 5);
   const end = entry.end_time?.slice(0, 5);
-  if (task.start && task.end && start && end) return start < task.end && end > task.start;
+  if (task.start && task.end && start) {
+    const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+    const taskStart = minutes(task.start),
+      entryStart = minutes(start);
+    let taskEnd = minutes(task.end),
+      entryEnd = end ? minutes(end) : entryStart + 1;
+    if (taskEnd < taskStart) taskEnd += 24 * 60;
+    if (entryEnd < entryStart) entryEnd += 24 * 60;
+    return entryStart < taskEnd && entryEnd > taskStart;
+  }
   return true; // Legacy plans without clock times still match their own object only.
 }
 

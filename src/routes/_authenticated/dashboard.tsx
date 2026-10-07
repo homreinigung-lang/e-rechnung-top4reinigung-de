@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { LoadError } from "@/components/LoadError";
+import { summarizeOpenInvoices } from "@/lib/open-invoices";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +37,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { title: "Startseite – Finanzübersicht & offene Posten" },
       {
         name: "description",
-        content: "Finanzübersicht, Quartale, Einsätze, Schnellaktionen und offene Rechnungen auf einen Blick.",
+        content:
+          "Finanzübersicht, Quartale, Einsätze, Schnellaktionen und offene Rechnungen auf einen Blick.",
       },
       { property: "og:title", content: "Startseite – Finanzübersicht" },
       {
@@ -119,7 +122,10 @@ function EmployeeDashboard({ employee }: { employee: MyEmployee }) {
         ) : (
           <ul className="divide-y">
             {entries.slice(0, 10).map((e) => (
-              <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+              <li
+                key={e.id}
+                className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+              >
                 <div>
                   <div className="font-medium">{formatDate(String(e.work_date))}</div>
                   <div className="text-sm text-muted-foreground">
@@ -165,13 +171,28 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const year = new Date().getFullYear();
 
-  const { data } = useQuery({
+  const { data, error, isPending, refetch } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
       const [docs, expenses] = await Promise.all([fetchEuerDocuments(), fetchEuerExpenses()]);
       return { docs, expenses };
     },
   });
+
+  if (error)
+    return (
+      <LoadError
+        error={error}
+        title="Finanzübersicht konnte nicht geladen werden"
+        onRetry={() => void refetch()}
+      />
+    );
+  if (isPending)
+    return (
+      <p role="status" className="p-5 text-muted-foreground">
+        Finanzübersicht wird geladen …
+      </p>
+    );
 
   const docs = data?.docs ?? [];
   const expenses = data?.expenses ?? [];
@@ -182,12 +203,8 @@ function AdminDashboard() {
       !(d as unknown as Record<string, unknown>)["is_storno"],
   );
 
-  const openTotal = invoices
-    .filter((d) => d.status !== "paid")
-    .reduce((sum, d) => sum + Number(d.total), 0);
-
-  const openItems = invoices
-    .filter((d) => d.status !== "paid" && d.status !== "draft")
+  const { items: openInvoices, total: openTotal } = summarizeOpenInvoices(invoices);
+  const openItems = openInvoices
     .map((d) => ({
       d,
       due: dueInfo(d.due_date, d.status),
@@ -203,9 +220,7 @@ function AdminDashboard() {
 
     const paidInvoices = invoices.filter((d) => {
       if (d.status !== "paid") return false;
-      const paidAt = String(
-        (d as unknown as Record<string, unknown>)["paid_at"] ?? d.issue_date,
-      );
+      const paidAt = String((d as unknown as Record<string, unknown>)["paid_at"] ?? d.issue_date);
       return inQuarter(paidAt);
     });
     const quarterExpenses = expenses.filter((e) => inQuarter(e.expense_date));
@@ -320,7 +335,9 @@ function AdminDashboard() {
                   <td className="px-5 py-3 text-right">{formatMoney(quarter.vat)}</td>
                   <td className="px-5 py-3 text-right">{formatMoney(quarter.inputVat)}</td>
                   <td className="px-5 py-3 text-right">{formatMoney(quarter.expenseNet)}</td>
-                  <td className="px-5 py-3 text-right font-medium">{formatMoney(quarter.profit)}</td>
+                  <td className="px-5 py-3 text-right font-medium">
+                    {formatMoney(quarter.profit)}
+                  </td>
                   <td className="px-5 py-3 text-right">
                     <div className="font-semibold">{formatMoney(Math.abs(quarter.vatBalance))}</div>
                     <div
@@ -479,7 +496,8 @@ function AdminDashboard() {
             </Link>
           </Button>
         </div>
-        {docs.filter((d) => !(d as unknown as Record<string, unknown>)["is_storno"]).length === 0 ? (
+        {docs.filter((d) => !(d as unknown as Record<string, unknown>)["is_storno"]).length ===
+        0 ? (
           <p className="px-5 py-10 text-center text-sm text-muted-foreground">
             Noch keine Dokumente vorhanden.
           </p>
@@ -500,7 +518,8 @@ function AdminDashboard() {
                         {DOC_TYPE_LABEL[d.type]} {d.number}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {d.customer_company || d.customer_name || "Ohne Kunde"} · {formatDate(d.issue_date)}
+                        {d.customer_company || d.customer_name || "Ohne Kunde"} ·{" "}
+                        {formatDate(d.issue_date)}
                       </div>
                     </div>
                     <div className="text-right">
