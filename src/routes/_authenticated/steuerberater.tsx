@@ -416,7 +416,7 @@ function Steuerberater() {
   const timeList = timeEntries as unknown as Record<string, unknown>[];
 
   const timeRows: Row[] = timeList.map((t) => {
-    const emp = (t["employees"] ?? null) as { name?: string; personnel_number?: string } | null;
+    const emp = (t["employees"] ?? null) as { name?: string; personnel_number?: string; hourly_rate?: number } | null;
     const code = lohnart(t);
     const rate = workHourlyRate({ hourly_rate: num(t["hourly_rate"]) }, num(emp?.hourly_rate));
     const payableHours = code === "A"
