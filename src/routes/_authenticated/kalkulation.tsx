@@ -1717,10 +1717,9 @@ function KalkulationPage() {
                       )}
                       {kiBillingPeriod === "month" && (
                         <p>
-                          {formatNumber(num(frequency))} Einsätze{" "}
-                          {frequencyUnit === "week" ? "pro Woche" : "pro Monat"} ={" "}
-                          {formatNumber(visitsPerMonth)} Einsätze im Monatsdurchschnitt. Der Betrag
-                          wird aus dem ungerundeten Monatsfaktor berechnet.
+                          {formatNumber(num(frequency))} {recurrenceUnitLabel(frequencyUnit)} ={" "}
+                          {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 ={" "}
+                          {formatNumber(visitsPerMonth)} Einsätze im Monatsdurchschnitt.
                         </p>
                       )}
                       {mode === "area" &&
