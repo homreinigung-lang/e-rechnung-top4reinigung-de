@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { EinsatzMeldungen } from "@/components/EinsatzMeldungen";
 import { PersonalStammdatenPanel } from "@/components/PersonalStammdatenPanel";
+import { Urlaubsantraege } from "@/components/Urlaubsantraege";
 import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
 import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
@@ -179,6 +180,7 @@ function ControlCenter() {
         </TabsContent>
         <TabsContent value="personal" className="mt-0">
           <div className="space-y-4">
+            <Urlaubsantraege />
             <PersonalStammdatenPanel />
             <MitarbeiterEinladung />
           </div>

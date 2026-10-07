@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Check, X, CalendarCheck } from "lucide-react";
@@ -73,10 +74,16 @@ function toAntraege(rows: Row[]): Antrag[] {
 /** Admin-Übersicht aller offenen Urlaubs- und Abwesenheitsanträge. */
 export function Urlaubsantraege() {
   const queryClient = useQueryClient();
+  const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
-  const { data: rows = [] } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    error: requestsError,
+  } = useQuery({
     queryKey: ["absence_requests"],
+    refetchInterval: 15_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("time_entries")
@@ -128,7 +135,15 @@ export function Urlaubsantraege() {
   };
 
   const decide = useMutation({
-    mutationFn: async ({ ids, approve }: { ids: string[]; approve: boolean }) => {
+    mutationFn: async ({
+      ids,
+      approve,
+      note,
+    }: {
+      ids: string[];
+      approve: boolean;
+      note: string;
+    }) => {
       const { data: auth } = await supabase.auth.getUser();
       // Nur noch offene Anträge entscheiden – verhindert das Überschreiben
       // einer Entscheidung, die parallel bereits getroffen wurde.
@@ -136,6 +151,7 @@ export function Urlaubsantraege() {
         .from("time_entries")
         .update({
           approval_status: approve ? "approved" : "rejected",
+          decision_note: note.trim(),
           decided_at: new Date().toISOString(),
           decided_by: auth.user?.id ?? null,
         } as never)
@@ -151,6 +167,7 @@ export function Urlaubsantraege() {
       queryClient.invalidateQueries({ queryKey: ["absence_requests"] });
       queryClient.invalidateQueries({ queryKey: ["time_entries"] });
       queryClient.invalidateQueries({ queryKey: ["my_time_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["absence_year"] });
     },
     onError: (e: Error) => toast.error(e.message),
     onSettled: () => setBusy(null),
@@ -167,7 +184,13 @@ export function Urlaubsantraege() {
         </span>
       </div>
 
-      {antraege.length === 0 ? (
+      {requestsError ? (
+        <p className="mt-3 text-sm text-destructive">
+          Anträge konnten nicht geladen werden. Bitte erneut versuchen.
+        </p>
+      ) : isLoading ? (
+        <p className="mt-3 text-sm text-muted-foreground">Anträge werden geladen …</p>
+      ) : antraege.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">
           Aktuell warten keine Anträge auf Ihre Genehmigung.
         </p>
@@ -201,13 +224,23 @@ export function Urlaubsantraege() {
                   );
                 })()}
               </div>
+              <Input
+                className="w-full"
+                aria-label={`Entscheidungsnotiz für ${a.employeeName} ab ${a.from}`}
+                placeholder="Entscheidungsnotiz (optional)"
+                maxLength={1000}
+                value={decisionNotes[a.key] ?? ""}
+                onChange={(e) =>
+                  setDecisionNotes((notes) => ({ ...notes, [a.key]: e.target.value }))
+                }
+              />
               <div className="flex shrink-0 gap-2">
                 <Button
                   size="sm"
-                  disabled={busy === a.key}
+                  disabled={busy !== null}
                   onClick={() => {
                     setBusy(a.key);
-                    decide.mutate({ ids: a.ids, approve: true });
+                    decide.mutate({ ids: a.ids, approve: true, note: decisionNotes[a.key] ?? "" });
                   }}
                 >
                   <Check className="size-4" /> Genehmigen
@@ -215,10 +248,10 @@ export function Urlaubsantraege() {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={busy === a.key}
+                  disabled={busy !== null}
                   onClick={() => {
                     setBusy(a.key);
-                    decide.mutate({ ids: a.ids, approve: false });
+                    decide.mutate({ ids: a.ids, approve: false, note: decisionNotes[a.key] ?? "" });
                   }}
                 >
                   <X className="size-4" /> Ablehnen
