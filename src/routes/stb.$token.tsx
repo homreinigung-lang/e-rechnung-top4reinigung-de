@@ -29,6 +29,8 @@ import {
 
 import { PasswordInput } from "@/components/PasswordInput";
 import { saveFile } from "@/lib/download";
+import { approvedWorkHours } from "@/lib/approved-work-totals";
+import { escapeExcelHtml, excelHtmlCell } from "@/lib/excel-html";
 import { buildExpenseReceiptZip } from "@/lib/expense-receipt-export";
 import { TableSummary } from "@/components/TableSummary";
 import { buildLohnvorbereitung, lohnvorbereitungCsvRows, payrollReadinessIssues } from "@/lib/lohnvorbereitung";
@@ -94,15 +96,6 @@ function downloadCsv(name: string, rows: Table[], range?: DateRange) {
   }
   download(name, blob);
 }
-function escapeExcelHtml(value: unknown): string {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function downloadExcel(
   name: string,
   sheets: { title: string; rows: Table[] }[],
@@ -116,7 +109,7 @@ function downloadExcel(
       return `<h3>${escapeExcelHtml(s.title)}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
         .map((h) => `<th>${escapeExcelHtml(h)}</th>`)
         .join("")}</tr>${s.rows
-        .map((r) => `<tr>${headers.map((h) => `<td>${escapeExcelHtml(r[h])}</td>`).join("")}</tr>`)
+        .map((r) => `<tr>${headers.map((h) => excelHtmlCell(r[h])).join("")}</tr>`)
         .join("")}</table>`;
     })
     .join("<br/>");
@@ -160,13 +153,14 @@ async function exportHoursPdf(
   for (const e of entries) {
     const name = String(e["employee_name"] || "Ohne Zuordnung");
     const code = String(e["lohnart"] ?? "A");
-    const h = code === "A" ? num(e["hours"]) : 0;
+    const approved = String(e["approval_status"] ?? "approved") === "approved";
+    const h = code === "A" && approved ? num(e["hours"]) : 0;
     const cur = per.get(name) ?? { hours: 0, amount: 0, sick: 0, vacation: 0, personnel: "" };
     per.set(name, {
       hours: cur.hours + h,
       amount: cur.amount + h * num(e["hourly_rate"]),
-      sick: cur.sick + (code === "K" ? 1 : 0),
-      vacation: cur.vacation + (code === "U" ? 1 : 0),
+      sick: cur.sick + (approved && code === "K" ? 1 : 0),
+      vacation: cur.vacation + (approved && code === "U" ? 1 : 0),
       personnel: cur.personnel || String(e["personnel_number"] || ""),
     });
   }
@@ -234,7 +228,8 @@ async function exportHoursPdf(
       15,
       y,
     );
-    const h = code === "A" ? num(e["hours"]) : 0;
+    const h = code === "A" && String(e["approval_status"] ?? "approved") === "approved"
+      ? num(e["hours"]) : 0;
     doc.text(code === "A" ? `${de(h)} Std.` : "-", 150, y, { align: "right" });
     doc.text(formatMoney(h * num(e["hourly_rate"])), 195, y, { align: "right" });
     y += 5;
@@ -423,25 +418,33 @@ function AccountantPortal() {
     (t) => String(t["lohnart"] ?? "A") !== "A" && isConfirmed(t),
   );
 
-  const timeRows: Table[] = timeEntries.map((t) => ({
-    Datum: formatDate(String(t["work_date"] ?? "")),
-    Mitarbeiter: String(t["employee_name"] ?? ""),
-    "Personal-Nr.": String(t["personnel_number"] ?? ""),
-    Lohnart: String(t["lohnart"] ?? "A"),
-    Von: String(t["start_time"] ?? "").slice(0, 5),
-    Bis: String(t["end_time"] ?? "").slice(0, 5),
-    "Pause (Min.)": String(t["break_minutes"] ?? 0),
-    Stunden: de(num(t["hours"])),
-    Stundensatz: de(num(t["hourly_rate"])),
-    Lohn: de(num(t["hours"]) * num(t["hourly_rate"])),
-    Status: t["is_absence"]
-      ? String(t["approval_status"] ?? "")
-      : t["completed_at"]
-        ? "erledigt"
-        : "offen",
-    Einsatzort: String(t["location"] ?? ""),
-    Notiz: String(t["note"] || t["absence_reason"] || ""),
-  }));
+  const timeRows: Table[] = timeEntries.map((t) => {
+    const isWork = String(t["lohnart"] ?? "A") === "A";
+    const payableHours = isWork
+      ? approvedWorkHours({
+          entry_type: "work",
+          approval_status: String(t["approval_status"] ?? "approved"),
+          hours: num(t["hours"]),
+        })
+      : 0;
+    const rate = num(t["hourly_rate"]);
+    return {
+      Datum: formatDate(String(t["work_date"] ?? "")),
+      Mitarbeiter: String(t["employee_name"] ?? ""),
+      "Personal-Nr.": String(t["personnel_number"] ?? ""),
+      Lohnart: String(t["lohnart"] ?? "A"),
+      Von: String(t["start_time"] ?? "").slice(0, 5),
+      Bis: String(t["end_time"] ?? "").slice(0, 5),
+      "Pause (Min.)": String(t["break_minutes"] ?? 0),
+      "Erfasst (Std.)": de(isWork ? num(t["hours"]) : 0),
+      Stunden: de(payableHours),
+      Stundensatz: de(rate),
+      Lohn: de(payableHours * rate),
+      Status: String(t["approval_status"] ?? "approved"),
+      Einsatzort: String(t["location"] ?? ""),
+      Notiz: String(t["note"] || t["absence_reason"] || ""),
+    };
+  });
   /** Monatliche Lohnvorbereitung aus derselben Logik wie im internen Team-Bereich. */
   const payrollEmployees = [
     ...new Map(
