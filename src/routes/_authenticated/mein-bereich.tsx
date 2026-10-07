@@ -1,3 +1,4 @@
+import { QmEmployeeTasks } from "@/components/QmEmployeeTasks";
 import { AssistantPanel } from "@/components/AssistantPanel";
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -206,6 +207,8 @@ function MeinBereich() {
           </div>
         )}
       </section>
+
+      <QmEmployeeTasks employeeId={me.id} />
 
       <AssistantPanel mode="work" employeeId={me.id} />
 
