@@ -14,7 +14,7 @@ import {
 } from "@/lib/approval.functions";
 import { sendAuthConfirmationEmail } from "@/lib/auth-mail.functions";
 import { redeemInviteCode } from "@/lib/employee-invite.functions";
-import { resolveStartRoute } from "@/lib/employee";
+import { resolveStartRoute, resolveLoginEntry } from "@/lib/employee";
 import {
   checkPasswordPolicy,
   PASSWORD_MIN_LENGTH,
@@ -34,6 +34,7 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [employeeLinkRequired, setEmployeeLinkRequired] = useState(false);
 
   const passwordsMatch = password === confirmPassword;
   const passwordPolicy = checkPasswordPolicy(password);
@@ -46,12 +47,30 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
   const [mfaCode, setMfaCode] = useState("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        void resolveStartRoute().then((to) => navigate({ to, replace: true }));
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session || cancelled) return;
+      const { data: aal, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) throw error;
+      if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+        if (!cancelled) setMfaRequired(true);
+        return;
       }
+      const to = await resolveLoginEntry(employeeOnly);
+      if (cancelled) return;
+      if (to === "link-employee") {
+        setEmployeeLinkRequired(true);
+      } else {
+        void navigate({ to, replace: true });
+      }
+    })().catch(() => {
+      if (!cancelled) toast.error("Zugang konnte nicht geprüft werden. Bitte erneut anmelden.");
     });
-  }, [navigate]);
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeOnly, navigate]);
 
   // Einladungslink: /auth?code=XXXXXXXX öffnet direkt die Mitarbeiter-Registrierung.
   useEffect(() => {
@@ -90,7 +109,12 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
       return;
     }
     // Zwei-Faktor-Authentifizierung: falls aktiv, Bestätigungscode abfragen.
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalError) {
+      setLoading(false);
+      toast.error("Sicherheitsprüfung fehlgeschlagen. Bitte erneut anmelden.");
+      return;
+    }
     if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
       setLoading(false);
       setMfaRequired(true);
@@ -101,8 +125,13 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
       setLoading(false);
       return;
     }
-    const target = await resolveStartRoute();
+    const target = await resolveLoginEntry(employeeOnly);
     setLoading(false);
+    if (target === "link-employee") {
+      setMfaRequired(false);
+      setEmployeeLinkRequired(true);
+      return;
+    }
     navigate({ to: target, replace: true });
   }
 
@@ -131,9 +160,41 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
       setLoading(false);
       return;
     }
-    const target = await resolveStartRoute();
+    const target = await resolveLoginEntry(employeeOnly);
     setLoading(false);
+    if (target === "link-employee") {
+      setMfaRequired(false);
+      setEmployeeLinkRequired(true);
+      return;
+    }
     navigate({ to: target, replace: true });
+  }
+
+  async function linkExistingEmployee(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (!(await ensureApproved())) return;
+      const result = await redeemInviteCode({ data: { code: inviteCode.trim() } });
+      if (!result.ok) {
+        toast.error(
+          result.reason === "not_precreated"
+            ? "Ihr Arbeitgeber muss Sie zuerst mit der E-Mail-Adresse dieses Kontos im Personalbereich anlegen."
+            : result.reason === "other_company"
+              ? "Dieses Konto gehört bereits zu einer anderen Firma."
+              : result.reason === "own_company"
+                ? "Dieser Code gehört zu Ihrem eigenen Firmenkonto. Bitte nutzen Sie den Firmenzugang."
+                : "Der Unternehmens-Code ist ungültig. Bitte fragen Sie Ihren Arbeitgeber.",
+        );
+        return;
+      }
+      toast.success("Ihr bestehendes Konto ist jetzt mit Ihrem Mitarbeiterzugang verknüpft.");
+      navigate({ to: "/mein-bereich", replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Verknüpfung fehlgeschlagen.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function forgotPassword() {
@@ -404,6 +465,48 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
                 Abbrechen
               </button>
             </form>
+          ) : employeeLinkRequired ? (
+            <form onSubmit={linkExistingEmployee} className="space-y-4">
+              <h1 className="font-display text-lg font-semibold">Bestehendes Konto verknüpfen</h1>
+              <p className="text-sm text-muted-foreground">
+                Sie sind bereits angemeldet. Ihr Konto ist noch keinem Mitarbeiterzugang zugeordnet.
+                Geben Sie einmalig den Unternehmens-Code Ihres Arbeitgebers ein. Ihr Arbeitgeber
+                muss Sie zuvor mit der E-Mail-Adresse dieses Kontos im Personalbereich angelegt
+                haben.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="existing-invite">Unternehmens-Code</Label>
+                <Input
+                  id="existing-invite"
+                  required
+                  dir="ltr"
+                  autoComplete="off"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading || inviteCode.replace(/[\s-]/g, "").length < 4}
+              >
+                Mitarbeiterzugang aktivieren
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={loading}
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setEmployeeLinkRequired(false);
+                  setPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                Mit anderem Konto anmelden
+              </Button>
+            </form>
           ) : (
             <Tabs
               key={invitedTab ? "register" : "login"}
@@ -415,6 +518,13 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
               </TabsList>
 
               <TabsContent value="login">
+                {employeeOnly && (
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Schon registriert? Melden Sie sich mit Ihrem bestehenden Konto an. Ein
+                    verknüpfter Mitarbeiterzugang öffnet direkt Ihren Bereich; andernfalls
+                    verknüpfen Sie das Konto einmalig mit dem Unternehmens-Code.
+                  </p>
+                )}
                 <form onSubmit={signIn} className="mt-6 space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">E-Mail</Label>
@@ -449,6 +559,12 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
               </TabsContent>
 
               <TabsContent value="register">
+                {employeeOnly && (
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Schon registriert? Wechseln Sie oben zu „Anmelden“ und verwenden Sie Ihr
+                    vorhandenes Passwort. Sie benötigen kein neues Konto.
+                  </p>
+                )}
                 <div className="mt-6 space-y-2">
                   <h1 className="font-display text-lg font-semibold">
                     {employeeOnly ? "Mitarbeiterzugang erstellen" : "Firma registrieren"}
