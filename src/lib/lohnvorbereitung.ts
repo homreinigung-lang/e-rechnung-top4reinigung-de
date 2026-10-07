@@ -1,3 +1,5 @@
+import { countsForPayroll } from "@/lib/absence";
+
 export type LohnEntry = {
   employee_id?: string | null;
   project_id?: string | null;
@@ -130,7 +132,7 @@ export function buildLohnvorbereitung(
       const rows = entries.filter(
         (entry) =>
           entry.employee_id === employee.id &&
-          String(entry.approval_status ?? "approved") === "approved",
+          countsForPayroll(entry),
       );
       const vacation = new Set<string>();
       const sick = new Set<string>();
@@ -294,7 +296,7 @@ export function allocateSupplementsByProject(
   for (const entry of entries) {
     const employeeId = String(entry.employee_id ?? "");
     if (!employeeId) continue;
-    if (String(entry.approval_status ?? "approved") !== "approved") continue;
+    if (!countsForPayroll(entry)) continue;
     if (absenceKind(entry)) continue;
 
     const hours = n(entry.hours);
@@ -359,7 +361,7 @@ export function payrollReadinessIssues(
     }
 
     if (
-      String(entry.approval_status ?? "approved") === "approved" &&
+      countsForPayroll(entry) &&
       !absenceKind(entry) &&
       n(entry.hours) > 0 &&
       (n(entry.hourly_rate) || n(employee?.hourly_rate)) <= 0
