@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { buildDatevExtf, type DatevAccount, type DatevChart } from "@/lib/datev-extf";
 import { buildPayrollSummary } from "@/lib/payroll-export";
+import { approvedWorkHours, workHourlyRate } from "@/lib/approved-work-totals";
+import { escapeExcelHtml, excelHtmlCell } from "@/lib/excel-html";
 import { automaticExpenseAccount } from "@/lib/datev-account-mapping";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
@@ -87,10 +89,10 @@ function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[], r
   const tables = filled
     .map((s) => {
       const headers = Object.keys(s.rows[0]!);
-      return `<h3>${s.title}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
-        .map((h) => `<th>${h}</th>`)
+      return `<h3>${escapeExcelHtml(s.title)}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
+        .map((h) => `<th>${escapeExcelHtml(h)}</th>`)
         .join("")}</tr>${s.rows
-        .map((r) => `<tr>${headers.map((h) => `<td>${r[h] ?? ""}</td>`).join("")}</tr>`)
+        .map((r) => `<tr>${headers.map((h) => excelHtmlCell(r[h])).join("")}</tr>`)
         .join("")}</table>`;
     })
     .join("<br/>");
@@ -99,7 +101,7 @@ function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[], r
     return;
   }
   // Gesamtübersicht aller Blätter zuerst.
-  const overview = filled.map((s) => `<h4>${s.title}</h4>${summaryHtml(s.rows, s.title)}`).join("");
+  const overview = filled.map((s) => `<h4>${escapeExcelHtml(s.title)}</h4>${summaryHtml(s.rows, s.title)}`).join("");
   const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body><h2>Zusammenfassung (Endsummen)</h2>${overview}<hr/>${tables}</body></html>`;
   download(name, new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8" }));
 }
@@ -416,6 +418,14 @@ function Steuerberater() {
   const timeRows: Row[] = timeList.map((t) => {
     const emp = (t["employees"] ?? null) as { name?: string; personnel_number?: string } | null;
     const code = lohnart(t);
+    const rate = workHourlyRate({ hourly_rate: num(t["hourly_rate"]) }, num(emp?.hourly_rate));
+    const payableHours = code === "A"
+      ? approvedWorkHours({
+          entry_type: "work",
+          approval_status: String(t["approval_status"] ?? "approved"),
+          hours: num(t["hours"]),
+        })
+      : 0;
     return {
       Datum: formatDate(String(t["work_date"] ?? "")),
       Mitarbeiter: String(t["employee_name"] || emp?.name || ""),
@@ -424,10 +434,11 @@ function Steuerberater() {
       Von: String(t["start_time"] ?? "").slice(0, 5),
       Bis: String(t["end_time"] ?? "").slice(0, 5),
       "Pause (Min.)": String(t["break_minutes"] ?? 0),
-      Stunden: de(code === "A" ? num(t["hours"]) : 0),
-      Stundensatz: de(num(t["hourly_rate"])),
-      Lohn: de(code === "A" ? num(t["hours"]) * num(t["hourly_rate"]) : 0),
-      Status: t["completed_at"] ? "erledigt" : String(t["approval_status"] ?? "offen"),
+      "Erfasst (Std.)": de(code === "A" ? num(t["hours"]) : 0),
+      Stunden: de(payableHours),
+      Stundensatz: de(rate),
+      Lohn: de(payableHours * rate),
+      Status: String(t["approval_status"] ?? "approved"),
       Einsatzort: String(t["location"] ?? ""),
     };
   });
