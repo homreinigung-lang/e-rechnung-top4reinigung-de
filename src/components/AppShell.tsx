@@ -1,3 +1,4 @@
+import { useChatOverview, useChatRealtime } from "@/lib/chat";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -131,6 +132,18 @@ function isActive(pathname: string, item: NavItem) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  useChatRealtime();
+  const { data: chatOverview } = useChatOverview();
+  const unreadChat = (chatOverview ?? []).reduce((sum, row) => sum + Number(row.unread_count), 0);
+  const chatBadge = (to: string) =>
+    to === "/nachrichten" && unreadChat > 0 ? (
+      <span
+        className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground"
+        aria-label={`${unreadChat} ungelesene Nachrichten`}
+      >
+        {unreadChat > 99 ? "99+" : unreadChat}
+      </span>
+    ) : null;
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: myEmployee, isLoading: employeeLoading } = useMyEmployee();
@@ -206,10 +219,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     isAdmin && group.title === "Verwaltung"
       ? {
           ...group,
-          items: [
-            ...group.items,
-            { to: "/admin", label: "Plattform-Admin", icon: BadgeCheck },
-          ],
+          items: [...group.items, { to: "/admin", label: "Plattform-Admin", icon: BadgeCheck }],
         }
       : group,
   );
@@ -219,7 +229,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     (item) => Boolean(isAdmin) || subscriptionAllowsPath(subscriptionAccess ?? null, item.to),
   );
   const mobileItems: readonly NavItem[] = myEmployee
-    ? employeeMenuGroups[0]?.items.slice(0, 4) ?? []
+    ? (employeeMenuGroups[0]?.items.slice(0, 4) ?? [])
     : allowedQuickOwner.slice(0, 4);
 
   const renderOwnerMoreMenu = () => (
@@ -246,6 +256,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   <item.icon className="size-4 shrink-0" />
                   <span className="min-w-0 truncate">{item.label}</span>
+                  {chatBadge(item.to)}
                 </Link>
               </DropdownMenuItem>
             ))}
@@ -274,6 +285,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <item.icon className="size-4" />
                 <span>{item.label}</span>
+                {chatBadge(item.to)}
               </Link>
             </DropdownMenuItem>
           ))}
@@ -297,6 +309,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     >
       <item.icon className="size-4 shrink-0" />
       <span className="min-w-0 truncate">{item.label}</span>
+      {chatBadge(item.to)}
     </Link>
   );
 
@@ -461,6 +474,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <item.icon className="size-5" />
               <span className="truncate">{item.label}</span>
+              {chatBadge(item.to)}
             </Link>
           ))}
           <DropdownMenu>
@@ -474,7 +488,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span>Mehr</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" sideOffset={8} className="max-h-[70vh] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto">
+            <DropdownMenuContent
+              align="end"
+              side="top"
+              sideOffset={8}
+              className="max-h-[70vh] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto"
+            >
               {myEmployee ? renderEmployeeMoreMenu() : renderOwnerMoreMenu()}
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void signOut()}>
