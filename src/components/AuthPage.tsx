@@ -34,6 +34,7 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [companySignupId, setCompanySignupId] = useState<string | null>(null);
   const [employeeLinkRequired, setEmployeeLinkRequired] = useState(false);
 
   const passwordsMatch = password === confirmPassword;
@@ -289,7 +290,15 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
       await signUpEmployee();
       return;
     }
+    if (!fullName.trim() || !companyName.trim()) {
+      toast.error("Bitte Ihren vollständigen Namen und den Firmennamen eingeben.");
+      return;
+    }
     setLoading(true);
+    if (companySignupId) {
+      await finishCompanyRegistration(companySignupId);
+      return;
+    }
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -334,22 +343,38 @@ export function AuthPage({ employeeOnly = false }: { employeeOnly?: boolean }) {
       userId = signedIn.data.user?.id ?? userId;
     }
 
-    // Konto ist sofort aktiv – inklusive 60 Tage kostenloser Testphase.
-    if (userId) {
-      try {
-        await requestAccountApproval({
-          data: {
-            authUserId: userId,
-            email: email.trim().toLowerCase(),
-            fullName: fullName.trim(),
-            companyName: companyName.trim(),
-            employeeCount: Number(employeeCount) || 0,
-            legalForm: legalForm.trim(),
-          },
-        });
-      } catch (err) {
-        console.warn("Firmendaten konnten nicht gespeichert werden:", err);
+    if (!userId) {
+      setLoading(false);
+      toast.error("Bitte Ihre E-Mail bestätigen und erneut anmelden.");
+      return;
+    }
+    setCompanySignupId(userId);
+    await finishCompanyRegistration(userId);
+  }
+
+  async function finishCompanyRegistration(userId: string) {
+    try {
+      const registration = await requestAccountApproval({
+        data: {
+          authUserId: userId,
+          email: email.trim().toLowerCase(),
+          fullName: fullName.trim(),
+          companyName: companyName.trim(),
+          employeeCount: Number(employeeCount) || 0,
+          legalForm: legalForm.trim(),
+        },
+      });
+      if (registration.status !== "approved") {
+        await supabase.auth.signOut();
+        setLoading(false);
+        toast.error("Dieses Firmenkonto ist gesperrt. Bitte kontaktieren Sie die Verwaltung.");
+        return;
       }
+    } catch (err) {
+      console.warn("Firmendaten konnten nicht gespeichert werden:", err);
+      setLoading(false);
+      toast.error("Registrierung konnte nicht abgeschlossen werden. Bitte erneut versuchen.");
+      return;
     }
 
     setLoading(false);
