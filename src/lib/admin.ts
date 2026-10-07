@@ -6,10 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const APPROVAL_STATUS = ["pending", "approved", "blocked"] as const;
 
 export const approvalStatusLabel: Record<string, string> = {
-  pending: "Wartet auf Freigabe",
-  approved: "Freigegeben",
+  pending: "Aktiv",
+  approved: "Aktiv",
   blocked: "Gesperrt",
-  rejected: "Abgelehnt",
+  rejected: "Gesperrt",
 };
 
 export type AccountApproval = {
@@ -28,6 +28,7 @@ export function useAccountApprovals(enabled: boolean) {
   return useQuery({
     queryKey: ["admin_approvals"],
     enabled,
+    refetchInterval: 15_000,
     queryFn: async (): Promise<AccountApproval[]> => {
       const { data, error } = await supabase
         .from("account_approvals")
@@ -43,12 +44,9 @@ export function useAccountApprovals(enabled: boolean) {
 export function useSetApprovalStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
-        .from("account_approvals")
-        .update({ status, decided_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
+    mutationFn: async ({ id, status }: { id: string; status: "approved" | "blocked" }) => {
+      const { setCompanyAccountStatus } = await import("@/lib/approval.functions");
+      await setCompanyAccountStatus({ data: { id, status } });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["admin_approvals"] });

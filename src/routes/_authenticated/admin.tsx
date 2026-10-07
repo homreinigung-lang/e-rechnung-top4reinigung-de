@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
       {
         name: "description",
         content:
-          "Geschützter Administrationsbereich: Firmen freigeben oder sperren, Abonnements verwalten und Pakete sowie Preise pflegen.",
+          "Geschützter Administrationsbereich: Firmenkonten verwalten oder sperren, Abonnements verwalten und Pakete sowie Preise pflegen.",
       },
       { property: "og:title", content: "Administration – GebCalc Plattformverwaltung" },
       {
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const tabs = [
   { to: "/admin", label: "Abonnements", exact: true },
-  { to: "/admin/firmen", label: "Firmen & Freigaben", exact: false },
+  { to: "/admin/firmen", label: "Firmenkonten", exact: false },
   { to: "/admin/pakete", label: "Pakete & Preise", exact: false },
   { to: "/admin/zahlung", label: "Bankdaten", exact: false },
   { to: "/admin/system", label: "System & Domain", exact: false },

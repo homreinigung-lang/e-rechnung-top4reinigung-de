@@ -26,18 +26,17 @@ export const Route = createFileRoute("/_authenticated/admin/firmen")({
 });
 
 function variantFor(status: string): "default" | "secondary" | "destructive" | "outline" {
-  if (status === "approved") return "default";
-  if (status === "pending") return "secondary";
+  if (status === "approved" || status === "pending") return "default";
   if (status === "blocked" || status === "rejected") return "destructive";
   return "outline";
 }
 
 function FirmenPage() {
-  const { data: rows = [], isLoading } = useAccountApprovals(true);
+  const { data: rows = [], isLoading, isError, refetch } = useAccountApprovals(true);
   const setStatus = useSetApprovalStatus();
   const deleteAccount = useDeleteCompanyAccount();
 
-  const active = rows.filter((r) => r.status === "approved").length;
+  const active = rows.filter((r) => r.status === "approved" || r.status === "pending").length;
   const blocked = rows.filter((r) => r.status === "blocked" || r.status === "rejected").length;
 
   return (
@@ -46,7 +45,14 @@ function FirmenPage() {
         {rows.length} Firmenkonten · {active} aktiv · {blocked} gesperrt
       </p>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="space-y-2" role="alert">
+          <p>Firmenkonten konnten nicht geladen werden.</p>
+          <Button variant="outline" onClick={() => void refetch()}>
+            Erneut versuchen
+          </Button>
+        </div>
+      ) : isLoading ? (
         <p className="text-muted-foreground">Wird geladen …</p>
       ) : rows.length === 0 ? (
         <p className="text-muted-foreground">Noch keine Registrierungen vorhanden.</p>
@@ -72,15 +78,17 @@ function FirmenPage() {
                 <Badge variant={variantFor(row.status)}>
                   {approvalStatusLabel[row.status] ?? row.status}
                 </Badge>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={row.status === "approved" || setStatus.isPending}
-                  onClick={() => setStatus.mutate({ id: row.id, status: "approved" })}
-                >
-                  <CheckCircle2 className="size-4" />
-                  Freigeben
-                </Button>
+                {(row.status === "blocked" || row.status === "rejected") && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={setStatus.isPending}
+                    onClick={() => setStatus.mutate({ id: row.id, status: "approved" })}
+                  >
+                    <CheckCircle2 className="size-4" />
+                    Sperre aufheben
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -122,8 +130,10 @@ function FirmenPage() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Neue Registrierungen sind sofort aktiv und starten mit 60 Tagen kostenloser Testphase.
-        Gesperrte Firmen werden beim nächsten Seitenaufruf automatisch abgemeldet.
+        Firmenregistrierungen werden bei vollständigen, gültigen Angaben automatisch aktiviert und
+        starten mit 60 Tagen kostenloser Testphase. Eine manuelle Freigabe ist nicht erforderlich.
+        Bei Missbrauch können Sie Firmen sperren oder endgültig löschen. Gesperrte Firmen haben
+        keinen Zugriff mehr; eine Sperre kann wieder aufgehoben werden.
       </p>
     </div>
   );
