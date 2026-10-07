@@ -1,8 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { EinsatzMeldungen } from "@/components/EinsatzMeldungen";
+import { LoadError, firstError } from "@/components/LoadError";
+import { matchesTask, localDay } from "@/lib/employee-task";
 import { useMyEmployee } from "@/lib/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +52,22 @@ import { MeinEinsatzkalender, type DayTask } from "@/components/MeinEinsatzkalen
 import { FahrtenbuchMitarbeiterErfassung } from "@/components/FahrtenbuchMitarbeiterErfassung";
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    projekt?: string | undefined;
+    einsatz?: string | undefined;
+    datum?: string | undefined;
+    aktion?: "urlaub" | undefined;
+  } => ({
+    projekt: typeof search["projekt"] === "string" ? search["projekt"] : undefined,
+    einsatz: typeof search["einsatz"] === "string" ? search["einsatz"] : undefined,
+    datum:
+      typeof search["datum"] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(search["datum"])
+        ? search["datum"]
+        : undefined,
+    aktion: search["aktion"] === "urlaub" ? ("urlaub" as const) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Meine Arbeitszeiten – GebCalc" },
@@ -70,13 +89,17 @@ export const Route = createFileRoute("/_authenticated/meine-zeiten")({
 });
 
 function MeineZeiten() {
+  const search = Route.useSearch();
   const db = supabase as SupabaseClient;
   const queryClient = useQueryClient();
   const { data: me, isLoading } = useMyEmployee();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    search["projekt"] ?? null,
+  );
+  const [selectedTask, setSelectedTask] = useState<DayTask | null>(null);
 
-  const { data: entries = [] } = useQuery({
+  const { data: entries = [], error: entriesError } = useQuery({
     queryKey: ["my_time_entries", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
@@ -90,14 +113,14 @@ function MeineZeiten() {
     },
   });
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], error: projectsError } = useQuery({
     queryKey: ["my_projects", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
         .select("id,name,city,address_line,postal_code,customer_name");
-      if (error) return [];
+      if (error) throw error;
       return (data ?? []) as {
         id: string;
         name: string;
@@ -109,16 +132,17 @@ function MeineZeiten() {
     },
   });
 
-  const { data: releasedWeeks = [] } = useQuery({
+  const { data: releasedWeeks = [], error: releasedWeeksError } = useQuery({
     queryKey: ["plan_releases", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("plan_releases").select("week_start");
+      const { data, error } = await supabase.from("plan_releases").select("week_start");
+      if (error) throw error;
       return (data ?? []).map((r) => String(r.week_start));
     },
   });
 
-  const { data: assignments = [] } = useQuery({
+  const { data: assignments = [], error: assignmentsError } = useQuery({
     queryKey: ["my_assignments", me?.id, releasedWeeks.join(",")],
     enabled: !!me?.id,
     queryFn: async () => {
@@ -128,7 +152,7 @@ function MeineZeiten() {
           "id,project_id,assignment_role,hours_per_week,day_hours,day_times,start_date,end_date",
         )
         .eq("employee_id", me!.id);
-      if (error) return [];
+      if (error) throw error;
       // Alle Planungen sind sichtbar; noch nicht freigegebene Wochen werden markiert.
       const released = new Set(releasedWeeks);
       return (data ?? []).map((a) => ({
@@ -138,7 +162,7 @@ function MeineZeiten() {
     },
   });
 
-  const { data: projectMaterials = [] } = useQuery({
+  const { data: projectMaterials = [], error: projectMaterialsError } = useQuery({
     queryKey: ["my_project_materials", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
@@ -156,7 +180,7 @@ function MeineZeiten() {
     },
   });
 
-  const { data: materials = [] } = useQuery({
+  const { data: materials = [], error: materialsError } = useQuery({
     queryKey: ["my_materials", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
@@ -169,6 +193,40 @@ function MeineZeiten() {
       return (data ?? []) as { id: string; name: string; unit: string }[];
     },
   });
+
+  useEffect(() => {
+    if (!search["projekt"] || !search["einsatz"] || !search["datum"]) return;
+    const assignment = assignments.find(
+      (a) => a.id === search["einsatz"] && a.project_id === search["projekt"],
+    );
+    if (!assignment) return;
+    const date = search["datum"];
+    const index = (new Date(`${date}T12:00:00`).getDay() + 6) % 7;
+    const time = normalizeDayTimes(assignment.day_times)[index];
+    const project = projects.find((p) => p.id === search["projekt"]);
+    if (!project) return;
+    setSelectedProjectId(search["projekt"]);
+    setSelectedTask({
+      key: `${assignment.id}-${index}`,
+      assignmentId: assignment.id,
+      date,
+      projectId: search["projekt"],
+      name: project?.name ?? "Objekt",
+      address: "",
+      hours:
+        effectiveDayHours(assignment.day_hours, assignment.hours_per_week, assignment.day_times)[
+          index
+        ] ?? 0,
+      range: formatDayTime(time),
+      start: time?.start ?? "",
+      end: time?.end ?? "",
+      breakMin: time?.breakMin ?? 0,
+      role: assignment.assignment_role,
+      released: assignment.released,
+      done: false,
+      actual: "",
+    });
+  }, [search["projekt"], search["einsatz"], search["datum"], assignments, projects]);
 
   const projectName = useMemo(() => {
     const map = new Map(projects.map((p) => [p.id, p.name || "Projekt"]));
@@ -259,17 +317,20 @@ function MeineZeiten() {
       if (!me) throw new Error("Kein Mitarbeiter");
       if (!(task.hours > 0)) throw new Error("Für diesen Tag sind keine Stunden geplant.");
       const project = projects.find((p) => p.id === task.projectId);
-      // Doppelbuchung vermeiden: pro Tag nur eine bestätigte Arbeitszeit
+      if (!task.start || !task.end || task.end <= task.start)
+        throw new Error(
+          "Bitte die tatsächliche Start- und Endzeit über „Arbeitszeit erfassen“ eintragen.",
+        );
+      // Nur denselben Einsatz abgleichen; weitere Objekte und Zeitfenster sind erlaubt.
       const { data: existing, error: dupError } = await supabase
         .from("time_entries")
-        .select("id")
+        .select("id,work_date,project_id,start_time,end_time,entry_type,approval_status")
         .eq("employee_id", me.id)
         .eq("work_date", task.date)
-        .eq("entry_type", "work")
-        .limit(1);
+        .eq("entry_type", "work");
       if (dupError) throw dupError;
-      if (existing && existing.length > 0) {
-        throw new Error("Für diesen Tag ist bereits eine Arbeitszeit erfasst.");
+      if (existing?.some((entry) => matchesTask(entry, task))) {
+        throw new Error("Für diesen Einsatz ist bereits eine Arbeitszeit erfasst.");
       }
       const { error } = await supabase.from("time_entries").insert({
         user_id: me.user_id,
@@ -320,6 +381,17 @@ function MeineZeiten() {
 
   return (
     <div className="space-y-6">
+      <LoadError
+        error={firstError(
+          entriesError,
+          projectsError,
+          releasedWeeksError,
+          assignmentsError,
+          projectMaterialsError,
+          materialsError,
+        )}
+        title="Mitarbeiterdaten konnten nicht vollständig geladen werden"
+      />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Meine Arbeitszeiten</h1>
@@ -340,6 +412,7 @@ function MeineZeiten() {
             triggerLabel="Urlaub / Abwesenheit beantragen"
             variant="outline"
             asRequest
+            initialOpen={search["aktion"] === "urlaub"}
           />
         </div>
       </div>
@@ -390,7 +463,14 @@ function MeineZeiten() {
         assignments={assignments as never}
         projects={projects}
         entries={entries as never}
-        onSelectProject={(id) => setSelectedProjectId(id)}
+        onSelectProject={(id) => {
+          setSelectedTask(null);
+          setSelectedProjectId(id);
+        }}
+        onSelectTask={(task) => {
+          setSelectedTask(task);
+          setSelectedProjectId(task.projectId);
+        }}
         onConfirm={(task) => confirmShift.mutate(task)}
         confirmingKey={confirmingKey}
       />
@@ -421,7 +501,10 @@ function MeineZeiten() {
                   <li key={a.id}>
                     <button
                       type="button"
-                      onClick={() => setSelectedProjectId(a.project_id as string)}
+                      onClick={() => {
+                        setSelectedTask(null);
+                        setSelectedProjectId(a.project_id as string);
+                      }}
                       className="flex w-full items-center justify-between gap-3 rounded px-1 py-2 text-left transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <span className="min-w-0">
@@ -605,7 +688,14 @@ function MeineZeiten() {
         )}
       </div>
 
+      <div className="surface p-5">
+        <EinsatzMeldungen employee={me} />
+      </div>
       <ProjectDetailDialog
+        task={selectedTask}
+        employee={me}
+        onConfirm={(task) => confirmShift.mutate(task)}
+        confirming={confirmShift.isPending}
         projectId={selectedProjectId}
         projects={projects}
         assignments={assignments}
@@ -619,6 +709,10 @@ function MeineZeiten() {
 }
 
 function ProjectDetailDialog({
+  task,
+  employee,
+  onConfirm,
+  confirming,
   projectId,
   projects,
   assignments,
@@ -627,8 +721,19 @@ function ProjectDetailDialog({
   materials,
   onClose,
 }: {
+  task: DayTask | null;
+  employee: { id: string; user_id: string; name: string };
+  onConfirm: (task: DayTask) => void;
+  confirming: boolean;
   projectId: string | null;
-  projects: { id: string; name: string; city: string; address_line: string; postal_code: string; customer_name?: string }[];
+  projects: {
+    id: string;
+    name: string;
+    city: string;
+    address_line: string;
+    postal_code: string;
+    customer_name?: string;
+  }[];
   assignments: {
     id: string;
     project_id: string | null;
@@ -675,7 +780,10 @@ function ProjectDetailDialog({
   const projectAssignments = assignments.filter((a) => a.project_id === projectId);
   const assignedMaterials = projectMaterials.filter((row) => row.project_id === projectId);
   const projectEntries = entries
-    .filter((entry) => entry.project_id === projectId && !isAbsence(entry))
+    .filter(
+      (entry) =>
+        entry.project_id === projectId && !isAbsence(entry) && (!task || matchesTask(entry, task)),
+    )
     .sort((a, b) => String(b.work_date ?? "").localeCompare(String(a.work_date ?? "")))
     .slice(0, 5);
 
@@ -703,6 +811,48 @@ function ProjectDetailDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
+          {task ? (
+            <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
+              <p className="font-semibold">Einsatz am {formatDate(task.date)}</p>
+              <p className="text-sm">
+                {task.range || "Keine Uhrzeit hinterlegt"} · {task.hours.toFixed(2)} Std. geplant
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {projectEntries.length === 0 && task.date <= localDay() ? (
+                  <Button
+                    disabled={confirming || !task.start || !task.end}
+                    onClick={() => onConfirm(task)}
+                  >
+                    Geplante Arbeitszeit bestätigen
+                  </Button>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    {projectEntries.length ? "Arbeitszeit erfasst" : "Einsatz geplant"}
+                  </span>
+                )}
+                <ZeitErfassenDialog
+                  employee={employee}
+                  projects={projects}
+                  assignments={assignments}
+                  task={task}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Bei abweichenden Zeiten bitte die tatsächliche Arbeitszeit erfassen.
+              </p>
+            </div>
+          ) : null}
+          {task && task.projectId ? (
+            <EinsatzMeldungen
+              employee={employee}
+              task={{
+                assignmentId: task.assignmentId,
+                projectId: task.projectId,
+                date: task.date,
+                name: project?.name ?? task.name,
+              }}
+            />
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Kunde</div>
@@ -710,7 +860,9 @@ function ProjectDetailDialog({
             </div>
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Adresse</div>
-              <div className="mt-1 text-sm font-medium">{address || "Keine Adresse hinterlegt"}</div>
+              <div className="mt-1 text-sm font-medium">
+                {address || "Keine Adresse hinterlegt"}
+              </div>
             </div>
           </div>
 
@@ -726,7 +878,9 @@ function ProjectDetailDialog({
           </div>
 
           <div>
-            <div className="text-xs font-medium text-muted-foreground">Arbeitszeiten je Wochentag</div>
+            <div className="text-xs font-medium text-muted-foreground">
+              Arbeitszeiten je Wochentag
+            </div>
             <ul className="mt-1 divide-y text-sm">
               {DAY_NAMES.map((name, i) => (
                 <li key={name} className="flex items-center justify-between py-1.5">
@@ -767,7 +921,9 @@ function ProjectDetailDialog({
                       <span>
                         <span className="font-medium">{material?.name ?? "Material"}</span>
                         {low && (
-                          <span className="ml-2 text-xs font-medium text-amber-700">Nachfüllen</span>
+                          <span className="ml-2 text-xs font-medium text-amber-700">
+                            Nachfüllen
+                          </span>
                         )}
                       </span>
                       <span className="text-muted-foreground">
@@ -784,7 +940,11 @@ function ProjectDetailDialog({
           </div>
 
           <div className="rounded-md border p-3">
-            <div className="font-medium">Letzte Arbeitsnachweise / Fotos</div>
+            <div className="font-medium">
+              {task
+                ? "Arbeitsnachweise / Fotos dieses Einsatzes"
+                : "Letzte Arbeitsnachweise / Fotos"}
+            </div>
             {projectEntries.length === 0 ? (
               <p className="mt-2 text-sm text-muted-foreground">
                 Für dieses Objekt gibt es noch keinen eigenen Arbeitszeiteintrag.
@@ -844,9 +1004,18 @@ function ZeitErfassenDialog({
   employee,
   projects,
   assignments,
+  task,
 }: {
+  task?: DayTask | undefined;
   employee: { id: string; name: string; user_id: string; hourly_rate?: number | null };
-  projects: { id: string; name: string; city: string; address_line: string; postal_code: string; customer_name?: string }[];
+  projects: {
+    id: string;
+    name: string;
+    city: string;
+    address_line: string;
+    postal_code: string;
+    customer_name?: string;
+  }[];
   assignments: { project_id: string | null }[];
 }) {
   const queryClient = useQueryClient();
@@ -886,6 +1055,15 @@ function ZeitErfassenDialog({
     setBreakMinutes("30");
     setNote("");
   };
+
+  useEffect(() => {
+    if (!open || !task) return;
+    setWorkDate(task.date);
+    setProjectId(task.projectId ?? "");
+    setStart(task.start);
+    setEnd(task.end);
+    setBreakMinutes(String(task.breakMin));
+  }, [open, task]);
 
   const save = useMutation({
     mutationFn: async () => {

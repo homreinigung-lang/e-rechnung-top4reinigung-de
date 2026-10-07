@@ -60,6 +60,7 @@ export function AbwesenheitZeitraum({
   triggerLabel = "Abwesenheit (Zeitraum)",
   variant = "outline",
   asRequest = false,
+  initialOpen = false,
 }: {
   employees: AbsenceEmployee[];
   fixedEmployeeId?: string;
@@ -67,10 +68,11 @@ export function AbwesenheitZeitraum({
   variant?: "default" | "outline";
   /** Mitarbeiter-Modus: Buchung wird nur beantragt und muss freigegeben werden. */
   asRequest?: boolean;
+  initialOpen?: boolean;
 }) {
   const queryClient = useQueryClient();
   const today = isoDay(new Date());
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [employeeId, setEmployeeId] = useState(fixedEmployeeId ?? "");
   const [reason, setReason] = useState<AbsenceReason>("vacation");
   const [from, setFrom] = useState(today);
@@ -108,7 +110,8 @@ export function AbwesenheitZeitraum({
         approval_status: asRequest ? "pending" : "approved",
       }));
       const { error } = await supabase.from("time_entries").insert(rows);
-      if (error) throw new Error(friendlyDbError(error, "Abwesenheit konnte nicht gebucht werden."));
+      if (error)
+        throw new Error(friendlyDbError(error, "Abwesenheit konnte nicht gebucht werden."));
       return rows.length;
     },
     onSuccess: (count) => {
