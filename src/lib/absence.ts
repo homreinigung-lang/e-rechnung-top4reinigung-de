@@ -97,3 +97,54 @@ export function approvalClasses(status: ApprovalStatus) {
 export function countsForPayroll(entry: ApprovableLike) {
   return approvalStatus(entry) === "approved";
 }
+
+/** Keep different decisions separate when displaying the employee's requests. */
+export function absenceRangesFor(
+  entries: (ApprovableLike & { work_date: string; decision_note?: string | null })[],
+) {
+  const items = entries
+    .filter(isAbsence)
+    .map((entry) => ({
+      date: entry.work_date,
+      reason: absenceReason(entry),
+      status: approvalStatus(entry),
+      decisionNote: entry.decision_note ?? "",
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const ranges: {
+    from: string;
+    to: string;
+    reason: AbsenceReason | null;
+    status: ApprovalStatus;
+    days: number;
+    decisionNote: string;
+  }[] = [];
+  for (const item of items) {
+    const last = ranges[ranges.length - 1];
+    const nextDay = last
+      ? new Date(new Date(`${last.to}T12:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10)
+      : null;
+    if (
+      last &&
+      last.reason === item.reason &&
+      last.status === item.status &&
+      last.decisionNote === item.decisionNote &&
+      (nextDay === item.date || last.to === item.date)
+    ) {
+      if (last.to !== item.date) {
+        last.to = item.date;
+        last.days += 1;
+      }
+    } else {
+      ranges.push({
+        from: item.date,
+        to: item.date,
+        reason: item.reason,
+        status: item.status,
+        days: 1,
+        decisionNote: item.decisionNote,
+      });
+    }
+  }
+  return ranges.reverse();
+}

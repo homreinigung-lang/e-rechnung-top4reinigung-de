@@ -124,6 +124,8 @@ export function AbwesenheitZeitraum({
       setNote("");
       queryClient.invalidateQueries({ queryKey: ["time_entries"] });
       queryClient.invalidateQueries({ queryKey: ["my_time_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["absence_requests"] });
+      queryClient.invalidateQueries({ queryKey: ["absence_year"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -137,7 +139,11 @@ export function AbwesenheitZeitraum({
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Abwesenheit für einen Zeitraum eintragen</DialogTitle>
+          <DialogTitle>
+            {asRequest
+              ? "Urlaub / Abwesenheit beantragen"
+              : "Abwesenheit für einen Zeitraum eintragen"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -206,7 +212,10 @@ export function AbwesenheitZeitraum({
             <>
               <span className="font-medium text-foreground">{days.length} Tag(e)</span> von{" "}
               {formatDate(from)} bis {formatDate(to)} werden als{" "}
-              <span className="font-medium text-foreground">{absenceLabel(reason)}</span> gebucht.
+              <span className="font-medium text-foreground">{absenceLabel(reason)}</span>{" "}
+              {asRequest
+                ? "beantragt. Erst nach Genehmigung durch die Verwaltung gültig."
+                : "gebucht."}
             </>
           ) : (
             "Bitte einen gültigen Zeitraum wählen."
@@ -218,7 +227,7 @@ export function AbwesenheitZeitraum({
             onClick={() => book.mutate()}
             disabled={!activeEmployeeId || days.length === 0 || book.isPending}
           >
-            Zeitraum buchen
+            {asRequest ? "Antrag senden" : "Zeitraum buchen"}
           </Button>
         </DialogFooter>
       </DialogContent>

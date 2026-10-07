@@ -38,13 +38,14 @@ import {
 } from "@/lib/planung";
 import {
   absenceClasses,
+  absenceRangesFor,
+  isEffective,
   absenceLabel,
   absenceReason,
   approvalClasses,
   approvalLabel,
   approvalStatus,
   isAbsence,
-  type AbsenceReason,
 } from "@/lib/absence";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
@@ -103,6 +104,7 @@ function MeineZeiten() {
 
   const { data: entries = [], error: entriesError } = useQuery({
     queryKey: ["my_time_entries", me?.id],
+    refetchInterval: 15_000,
     enabled: !!me?.id,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -260,26 +262,7 @@ function MeineZeiten() {
   /** Abwesenheiten des Jahres zu zusammenhängenden Zeiträumen zusammengefasst. */
   const absenceRanges = useMemo(() => {
     const year = month.slice(0, 4);
-    const list = entries
-      .filter((e) => isAbsence(e) && String(e.work_date).slice(0, 4) === year)
-      .map((e) => ({ date: String(e.work_date), reason: absenceReason(e) }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const out: { from: string; to: string; reason: AbsenceReason | null; days: number }[] = [];
-    for (const item of list) {
-      const last = out[out.length - 1];
-      const prevDay = last
-        ? new Date(new Date(`${last.to}T12:00:00`).getTime() + 86400000).toISOString().slice(0, 10)
-        : null;
-      if (last && last.reason === item.reason && (prevDay === item.date || last.to === item.date)) {
-        if (last.to !== item.date) {
-          last.to = item.date;
-          last.days += 1;
-        }
-      } else {
-        out.push({ from: item.date, to: item.date, reason: item.reason, days: 1 });
-      }
-    }
-    return out.reverse();
+    return absenceRangesFor(entries.filter((e) => String(e.work_date).slice(0, 4) === year));
   }, [entries, month]);
 
   const absenceTotals = useMemo(() => {
@@ -288,7 +271,7 @@ function MeineZeiten() {
     let sick = 0;
     let other = 0;
     for (const e of entries) {
-      if (!isAbsence(e) || String(e.work_date).slice(0, 4) !== year) continue;
+      if (!isAbsence(e) || !isEffective(e) || String(e.work_date).slice(0, 4) !== year) continue;
       const r = absenceReason(e);
       if (r === "vacation") vacation += 1;
       else if (r === "sick") sick += 1;
@@ -558,17 +541,17 @@ function MeineZeiten() {
       <section className="surface p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">
-            Meine Urlaubs- und Abwesenheitsplanung {month.slice(0, 4)}
+            Meine Urlaubs- und Abwesenheitsanträge {month.slice(0, 4)}
           </h2>
           <div className="flex flex-wrap gap-2 text-xs">
             <span className={`rounded border px-2 py-1 ${absenceClasses("vacation")}`}>
-              Urlaub: {absenceTotals.vacation} Tage
+              Genehmigter Urlaub: {absenceTotals.vacation} Tage
             </span>
             <span className={`rounded border px-2 py-1 ${absenceClasses("sick")}`}>
-              Krankheit: {absenceTotals.sick} Tage
+              Genehmigte Krankheit: {absenceTotals.sick} Tage
             </span>
             <span className={`rounded border px-2 py-1 ${absenceClasses("other")}`}>
-              Sonstiges: {absenceTotals.other} Tage
+              Genehmigte sonstige Abwesenheit: {absenceTotals.other} Tage
             </span>
           </div>
         </div>
@@ -579,7 +562,10 @@ function MeineZeiten() {
         ) : (
           <ul className="mt-3 divide-y text-sm">
             {absenceRanges.map((r) => (
-              <li key={`${r.from}-${r.reason}`} className="flex items-center gap-3 py-2">
+              <li
+                key={`${r.from}-${r.reason}-${r.status}`}
+                className="flex flex-wrap items-center gap-3 py-2"
+              >
                 <span
                   className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${absenceClasses(r.reason)}`}
                 >
@@ -589,7 +575,15 @@ function MeineZeiten() {
                   {formatDate(r.from)}
                   {r.to !== r.from ? ` – ${formatDate(r.to)}` : ""}
                 </span>
+                <span
+                  className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${approvalClasses(r.status)}`}
+                >
+                  {approvalLabel(r.status)}
+                </span>
                 <span className="shrink-0 text-muted-foreground">{r.days} Tag(e)</span>
+                {r.decisionNote && (
+                  <p className="w-full text-muted-foreground">Verwaltung: {r.decisionNote}</p>
+                )}
               </li>
             ))}
           </ul>
