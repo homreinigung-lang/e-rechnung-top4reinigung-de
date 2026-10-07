@@ -332,6 +332,7 @@ function MeineZeiten() {
         location: project?.name ?? "",
         note: "Einsatz aus der Planung bestätigt",
         billed: false,
+        approval_status: "pending",
         // Aufgabe gilt damit als erledigt – fließt in die Objekt-Historie ein
         completed_at: new Date().toISOString(),
       });
@@ -497,7 +498,13 @@ function MeineZeiten() {
                 <span
                   className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${approvalClasses(approvalStatus(e))}`}
                 >
-                  {isAbsence(e) ? approvalLabel(approvalStatus(e)) : "Von der Verwaltung erfasst"}
+                  {isAbsence(e)
+                    ? approvalLabel(approvalStatus(e))
+                    : approvalStatus(e) === "pending"
+                      ? "Arbeitszeit: Zu prüfen"
+                      : approvalStatus(e) === "rejected"
+                        ? "Arbeitszeit: Abgelehnt"
+                        : "Arbeitszeit: Freigegeben"}
                 </span>
                 {isAbsence(e) && approvalStatus(e) === "pending" && (
                   <ConfirmDeleteButton
@@ -1195,6 +1202,7 @@ function ZeitErfassenDialog({
         location: location.trim() || project?.name || "",
         note: note.trim(),
         billed: false,
+        approval_status: "pending",
       });
       if (error) throw error;
     },
