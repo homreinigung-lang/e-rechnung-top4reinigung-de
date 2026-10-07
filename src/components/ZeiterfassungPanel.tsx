@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
 import { filterRowsByDateRange, summaryLines } from "@/lib/table-summary";
+import { approvedWorkAmount, approvedWorkHours, approvedWorkTotals } from "@/lib/approved-work-totals";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -247,23 +248,7 @@ export function Zeiterfassung() {
     [monthEntries, workEntries, reviewFilter],
   );
 
-  const totals = useMemo(() => {
-    const hours = monthEntries.reduce((s, e) => s + Number(e.hours || 0), 0);
-    const amount = monthEntries.reduce(
-      (s, e) => s + Number(e.hours || 0) * Number(e.hourly_rate || 0),
-      0,
-    );
-    const perEmployee = new Map<string, { hours: number; amount: number }>();
-    for (const e of monthEntries) {
-      const key = (e.employee_name as string) || "Ohne Zuordnung";
-      const prev = perEmployee.get(key) ?? { hours: 0, amount: 0 };
-      perEmployee.set(key, {
-        hours: prev.hours + Number(e.hours || 0),
-        amount: prev.amount + Number(e.hours || 0) * Number(e.hourly_rate || 0),
-      });
-    }
-    return { hours, amount, perEmployee: [...perEmployee.entries()] };
-  }, [monthEntries]);
+  const totals = useMemo(() => approvedWorkTotals(monthEntries), [monthEntries]);
 
   const saveEmployee = useMutation({
     mutationFn: async (values: typeof emptyEmployee) => {
@@ -411,11 +396,13 @@ export function Zeiterfassung() {
       "Von",
       "Bis",
       "Pause (Min.)",
+      "Erfasst (Std.)",
       "Stunden",
       "Stundensatz",
       "Betrag",
       "Einsatzort",
       "Notiz",
+      "Prüfstatus",
       "Abgerechnet",
     ];
     const rows = monthEntries.map((e) => [
@@ -425,10 +412,12 @@ export function Zeiterfassung() {
       e.end_time ? String(e.end_time).slice(0, 5) : "",
       String(e.break_minutes ?? 0),
       de(Number(e.hours || 0)),
+      de(approvedWorkHours(e)),
       de(Number(e.hourly_rate || 0)),
-      de(Number(e.hours || 0) * Number(e.hourly_rate || 0)),
+      de(approvedWorkAmount(e)),
       (e.location as string) || "",
       (e.note as string) || "",
+      e.approval_status === "pending" ? "Zu prüfen" : e.approval_status === "rejected" ? "Abgelehnt" : "Freigegeben",
       e.billed ? "Ja" : "Nein",
     ]);
     const perEmployee = totals.perEmployee.map(([name, v]) => [
@@ -437,9 +426,11 @@ export function Zeiterfassung() {
       "",
       "",
       "",
+      "",
       de(v.hours),
       "",
       de(v.amount),
+      "",
       "",
       "",
       "",
@@ -486,21 +477,7 @@ export function Zeiterfassung() {
       return;
     }
     // Kopf-Summen strikt aus denselben gefilterten Einträgen wie der Einzelnachweis.
-    const pdfTotals = (() => {
-      const perEmployee = new Map<string, { hours: number; amount: number }>();
-      let hours = 0;
-      let amount = 0;
-      for (const e of pdfEntries) {
-        const h = Number(e.hours || 0);
-        const a = h * Number(e.hourly_rate || 0);
-        hours += h;
-        amount += a;
-        const key = (e.employee_name as string) || "Ohne Zuordnung";
-        const cur = perEmployee.get(key) ?? { hours: 0, amount: 0 };
-        perEmployee.set(key, { hours: cur.hours + h, amount: cur.amount + a });
-      }
-      return { hours, amount, perEmployee: [...perEmployee.entries()] };
-    })();
+    const pdfTotals = approvedWorkTotals(pdfEntries);
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "mm", format: "a4" });
 
@@ -516,7 +493,7 @@ export function Zeiterfassung() {
       .select("company_name")
       .maybeSingle();
     const companyName = String(companySettings?.company_name ?? "").trim();
-    doc.text([companyName, "Stundenübersicht je Mitarbeiter"].filter(Boolean).join(" · "), 15, y);
+    doc.text([companyName, "Freigegebene Arbeitsstunden je Mitarbeiter"].filter(Boolean).join(" · "), 15, y);
     y += 10;
 
     doc.setFontSize(10);
@@ -564,10 +541,14 @@ export function Zeiterfassung() {
         15,
         y,
       );
-      doc.text(`${de(Number(e.hours || 0))} Std.`, 150, y, { align: "right" });
-      doc.text(formatMoney(Number(e.hours || 0) * Number(e.hourly_rate || 0)), 195, y, {
-        align: "right",
-      });
+      doc.text(`${de(approvedWorkHours(e))} Std.`, 150, y, { align: "right" });
+      doc.text(formatMoney(approvedWorkAmount(e)), 195, y, { align: "right" });
+      y += 4;
+      doc.text(
+        `Erfasst: ${de(Number(e.hours || 0))} Std. · ${e.approval_status === "pending" ? "Zu prüfen" : e.approval_status === "rejected" ? "Abgelehnt" : "Freigegeben"}`,
+        15,
+        y,
+      );
       y += 5;
     }
     // Die PDF bleibt vollständig im Browser: kein Plattform- oder externer Link.
@@ -1018,11 +999,11 @@ export function Zeiterfassung() {
           />
         </div>
         <div className="surface p-5">
-          <div className="text-sm text-muted-foreground">Stunden gesamt</div>
+          <div className="text-sm text-muted-foreground">Freigegebene Arbeitsstunden</div>
           <div className="mt-2 text-2xl font-bold">{totals.hours.toFixed(2)} Std.</div>
         </div>
         <div className="surface p-5">
-          <div className="text-sm text-muted-foreground">Lohnwert (Stunden × Satz)</div>
+          <div className="text-sm text-muted-foreground">Freigegebener Lohnwert (Stunden × Satz)</div>
           <div className="mt-2 text-2xl font-bold">{formatMoney(totals.amount)}</div>
         </div>
       </div>
@@ -1060,7 +1041,7 @@ export function Zeiterfassung() {
 
       {totals.perEmployee.length > 0 && (
         <div className="surface p-5">
-          <h2 className="text-lg font-semibold">Summen je Mitarbeiter</h2>
+          <h2 className="text-lg font-semibold">Freigegebene Summen je Mitarbeiter</h2>
           <ul className="mt-3 divide-y">
             {totals.perEmployee.map(([name, v]) => (
               <li key={name} className="flex items-center justify-between py-2 text-sm">
@@ -1144,7 +1125,7 @@ export function Zeiterfassung() {
                   )}
                 </div>
                 <div className="text-right text-sm">
-                  {formatMoney(Number(e.hours) * Number(e.hourly_rate || 0))}
+                  {formatMoney(approvedWorkAmount(e))}
                 </div>
                 {e.entry_type !== "absence" && e.approval_status === "pending" && (
                   <Button
