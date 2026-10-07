@@ -303,28 +303,39 @@ function ReportForm({
   const [id, setId] = useState(() => crypto.randomUUID());
   const [kind, setKind] = useState("material");
   const [material, setMaterial] = useState("");
+  const [materialChoice, setMaterialChoice] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("Stk.");
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const { data: materials = [] } = useQuery({
+  const {
+    data: materials = [],
+    isLoading: materialsLoading,
+    error: materialsError,
+    refetch: reloadMaterials,
+  } = useQuery({
     queryKey: ["report_materials", task.projectId],
     enabled: open,
     queryFn: async () => {
       const { data, error } = await db
         .from("project_materials")
-        .select("materials(name,unit)")
+        .select("materials(id,name,unit)")
         .eq("project_id", task.projectId);
       if (error) throw error;
       return (data ?? []).flatMap((row) =>
-        row.materials ? [row.materials as unknown as { name: string; unit: string }] : [],
+        row.materials
+          ? [row.materials as unknown as { id: string; name: string; unit: string }]
+          : [],
       );
     },
   });
   const save = useMutation({
     mutationFn: async () => {
-      if (!description.trim()) throw new Error("Bitte die Meldung kurz beschreiben.");
+      const details =
+        description.trim() ||
+        (kind === "material" && material.trim() ? `Material fehlt: ${material.trim()}` : "");
+      if (!details) throw new Error("Bitte die Meldung kurz beschreiben.");
       if (kind === "material" && !material.trim())
         throw new Error("Bitte das fehlende Material angeben.");
       const amount = quantity.trim() ? Number(quantity.replace(",", ".")) : null;
@@ -341,7 +352,7 @@ function ReportForm({
         material_name: kind === "material" ? material.trim() : "",
         quantity: kind === "material" ? amount : null,
         unit: kind === "material" ? unit.trim() : "",
-        description: description.trim(),
+        description: details,
         photo_paths: photos,
       });
       if (error) throw error;
@@ -354,6 +365,8 @@ function ReportForm({
       setPhotos([]);
       setDescription("");
       setMaterial("");
+      setMaterialChoice("");
+      setUnit("Stk.");
       setQuantity("");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -394,34 +407,57 @@ function ReportForm({
           {kind === "material" ? (
             <>
               <Label htmlFor="report-material">Material</Label>
-              {materials.length ? (
-                <select
-                  aria-label="Material am Objekt auswählen"
-                  className="w-full rounded-md border bg-background p-2 text-sm"
-                  value=""
-                  onChange={(e) => {
-                    const found = materials[Number(e.target.value)];
-                    if (found) {
-                      setMaterial(found.name);
-                      setUnit(found.unit);
-                    }
-                  }}
-                >
-                  <option value="">Aus Objektmaterial wählen …</option>
-                  {materials.map((m, i) => (
-                    <option value={i} key={`${m.name}-${i}`}>
-                      {m.name}
+              <LoadError
+                error={materialsError}
+                title="Materialliste konnte nicht geladen werden"
+                onRetry={() => void reloadMaterials()}
+              />
+              <select
+                id="report-material"
+                className="min-h-11 w-full rounded-md border bg-background p-2 text-sm"
+                value={materialChoice}
+                disabled={materialsLoading}
+                onChange={(e) => {
+                  const choice = e.target.value;
+                  setMaterialChoice(choice);
+                  const found = materials.find((m) => m.id === choice);
+                  setMaterial(found?.name ?? "");
+                  setUnit(found?.unit || "Stk.");
+                }}
+              >
+                <option value="">
+                  {materialsLoading
+                    ? "Materialien werden geladen …"
+                    : "Fehlendes Material auswählen …"}
+                </option>
+                {[...materials]
+                  .sort((a, b) => a.name.localeCompare(b.name, "de"))
+                  .map((m) => (
+                    <option value={m.id} key={m.id}>
+                      {m.name} · {m.unit}
                     </option>
                   ))}
-                </select>
-              ) : null}
-              <Input
-                id="report-material"
-                value={material}
-                maxLength={180}
-                placeholder="z. B. Müllbeutel, Bodenreiniger"
-                onChange={(e) => setMaterial(e.target.value)}
-              />
+                <option value="other">Anderes Material / nicht in der Liste</option>
+              </select>
+              {!materialsLoading && !materialsError && materials.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Für dieses Objekt sind noch keine Materialien hinterlegt. Wählen Sie „Anderes
+                  Material“ und geben Sie den Namen ein. Die Verwaltung kann die Objektmaterialien
+                  ergänzen.
+                </p>
+              )}
+              {materialChoice === "other" && (
+                <div className="space-y-2">
+                  <Label htmlFor="report-material-other">Materialname</Label>
+                  <Input
+                    id="report-material-other"
+                    value={material}
+                    maxLength={180}
+                    placeholder="z. B. Müllbeutel, Bodenreiniger"
+                    onChange={(e) => setMaterial(e.target.value)}
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="report-quantity">Benötigte Menge (optional)</Label>
@@ -437,6 +473,7 @@ function ReportForm({
                   <Input
                     id="report-unit"
                     maxLength={30}
+                    readOnly={materialChoice !== "other"}
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
                   />
@@ -444,7 +481,9 @@ function ReportForm({
               </div>
             </>
           ) : null}
-          <Label htmlFor="report-description">Beschreibung</Label>
+          <Label htmlFor="report-description">
+            {kind === "material" ? "Zusätzliche Angaben (optional)" : "Beschreibung"}
+          </Label>
           <Textarea
             id="report-description"
             maxLength={2000}
@@ -489,7 +528,7 @@ function ReportForm({
             disabled={
               busy ||
               save.isPending ||
-              !description.trim() ||
+              (kind === "problem" && !description.trim()) ||
               (kind === "material" && !material.trim())
             }
             onClick={() => save.mutate()}
