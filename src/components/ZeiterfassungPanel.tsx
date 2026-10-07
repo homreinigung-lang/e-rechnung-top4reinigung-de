@@ -248,7 +248,14 @@ export function Zeiterfassung() {
     [monthEntries, workEntries, reviewFilter],
   );
 
-  const totals = useMemo(() => approvedWorkTotals(monthEntries), [monthEntries]);
+  const employeeRates = useMemo(
+    () => new Map(employees.map((employee) => [employee.id, Number(employee.hourly_rate || 0)] as const)),
+    [employees],
+  );
+  const totals = useMemo(
+    () => approvedWorkTotals(monthEntries, employeeRates),
+    [monthEntries, employeeRates],
+  );
 
   const saveEmployee = useMutation({
     mutationFn: async (values: typeof emptyEmployee) => {
@@ -414,7 +421,7 @@ export function Zeiterfassung() {
       de(Number(e.hours || 0)),
       de(approvedWorkHours(e)),
       de(Number(e.hourly_rate || 0)),
-      de(approvedWorkAmount(e)),
+      de(approvedWorkAmount(e, employeeRates.get(e.employee_id ?? "") ?? 0)),
       (e.location as string) || "",
       (e.note as string) || "",
       e.approval_status === "pending" ? "Zu prüfen" : e.approval_status === "rejected" ? "Abgelehnt" : "Freigegeben",
@@ -477,7 +484,7 @@ export function Zeiterfassung() {
       return;
     }
     // Kopf-Summen strikt aus denselben gefilterten Einträgen wie der Einzelnachweis.
-    const pdfTotals = approvedWorkTotals(pdfEntries);
+    const pdfTotals = approvedWorkTotals(pdfEntries, employeeRates);
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "mm", format: "a4" });
 
@@ -542,7 +549,7 @@ export function Zeiterfassung() {
         y,
       );
       doc.text(`${de(approvedWorkHours(e))} Std.`, 150, y, { align: "right" });
-      doc.text(formatMoney(approvedWorkAmount(e)), 195, y, { align: "right" });
+      doc.text(formatMoney(approvedWorkAmount(e, employeeRates.get(e.employee_id ?? "") ?? 0)), 195, y, { align: "right" });
       y += 4;
       doc.text(
         `Erfasst: ${de(Number(e.hours || 0))} Std. · ${e.approval_status === "pending" ? "Zu prüfen" : e.approval_status === "rejected" ? "Abgelehnt" : "Freigegeben"}`,
@@ -1125,7 +1132,7 @@ export function Zeiterfassung() {
                   )}
                 </div>
                 <div className="text-right text-sm">
-                  {formatMoney(approvedWorkAmount(e))}
+                  {formatMoney(approvedWorkAmount(e, employeeRates.get(e.employee_id ?? "") ?? 0))}
                 </div>
                 {e.entry_type !== "absence" && e.approval_status === "pending" && (
                   <Button
