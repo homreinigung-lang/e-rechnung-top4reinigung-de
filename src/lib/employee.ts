@@ -88,3 +88,9 @@ export async function resolveStartRoute(): Promise<"/dashboard" | "/mein-bereich
   if (row && row.user_id !== uid) return "/mein-bereich";
   return "/dashboard";
 }
+
+/** Employee entry never sends an unlinked account into the company dashboard. */
+export async function resolveLoginEntry(employeeOnly: boolean) {
+  const target = await resolveStartRoute();
+  return employeeOnly && target === "/dashboard" ? ("link-employee" as const) : target;
+}
