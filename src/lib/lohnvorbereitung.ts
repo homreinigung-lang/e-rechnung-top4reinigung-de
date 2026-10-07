@@ -356,13 +356,12 @@ export function payrollReadinessIssues(
       pendingEmployeeIds.add(employeeId);
     }
 
-    if (!countsForPayroll(entry)) continue;
-
     if (!String(employee?.personnel_number ?? "").trim()) {
       missingPersonnel.add(employeeId);
     }
 
     if (
+      countsForPayroll(entry) &&
       !absenceKind(entry) &&
       n(entry.hours) > 0 &&
       (n(entry.hourly_rate) || n(employee?.hourly_rate)) <= 0
