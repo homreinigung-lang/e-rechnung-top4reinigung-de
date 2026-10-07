@@ -311,7 +311,7 @@ export function MeinEinsatzkalender({
                         className="flex w-full items-center justify-center gap-1 rounded-b border-t border-primary/20 px-1 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/15 disabled:opacity-50"
                       >
                         <Check className="h-3 w-3" />
-                        {confirmingKey === t.key ? "…" : "Erledigt bestätigen"}
+                        {confirmingKey === t.key ? "…" : "Planzeit übernehmen"}
                       </button>
                     )}
                   </div>
