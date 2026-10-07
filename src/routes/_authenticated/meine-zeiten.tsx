@@ -608,8 +608,9 @@ function MeineZeiten() {
       />
 
       <p className="text-sm text-muted-foreground">
-        Arbeitszeiten und Zeitkonto werden ausschließlich von der Verwaltung gepflegt (Nur-Lesen).
-        Urlaub und Abwesenheiten können Sie beantragen – sie gelten erst nach Genehmigung.
+        Arbeitszeiten können Sie für Ihre Einsätze selbst erfassen. Korrekturen am Zeitkonto werden
+        ausschließlich durch die Verwaltung vorgenommen. Urlaub und Abwesenheiten können Sie
+        beantragen – sie gelten erst nach Genehmigung.
       </p>
 
       <div className="surface overflow-hidden">
@@ -782,6 +783,12 @@ function ProjectDetailDialog({
     )
     .sort((a, b) => String(b.work_date ?? "").localeCompare(String(a.work_date ?? "")))
     .slice(0, 5);
+  const activeEntry = task ? (projectEntries[0] ?? null) : null;
+  const workTimeDone = Boolean(activeEntry);
+  const performanceDone = Boolean(
+    activeEntry?.performance_status === "completed" || activeEntry?.performance_completed_at,
+  );
+  const photosDone = Boolean(activeEntry?.photo_paths?.length);
 
   // Tageswerte aus der Arbeitsplanung; ältere Einträge ohne Tageswerte auf Mo–Fr verteilen.
   const dayTotals = projectAssignments.reduce<number[]>((acc, a) => {
@@ -808,18 +815,54 @@ function ProjectDetailDialog({
         </DialogHeader>
         <div className="space-y-5">
           {task ? (
-            <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
-              <p className="font-semibold">Einsatz am {formatDate(task.date)}</p>
-              <p className="text-sm">
-                {task.range || "Keine Uhrzeit hinterlegt"} · {task.hours.toFixed(2)} Std. geplant
-              </p>
+            <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+              <div>
+                <p className="font-semibold">Einsatz am {formatDate(task.date)}</p>
+                <p className="text-sm">
+                  {task.range || "Keine Uhrzeit hinterlegt"} · {task.hours.toFixed(2)} Std. geplant
+                </p>
+              </div>
+
+              <div className="rounded-lg border bg-background p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Einsatz-Status
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                  <span className={workTimeDone ? "font-medium text-foreground" : "text-muted-foreground"}>
+                    {workTimeDone ? "✓" : "○"} Arbeitszeit
+                  </span>
+                  <span className={performanceDone ? "font-medium text-foreground" : "text-muted-foreground"}>
+                    {performanceDone ? "✓" : "○"} Leistungsnachweis
+                  </span>
+                  <span className={photosDone ? "font-medium text-foreground" : "text-muted-foreground"}>
+                    {photosDone ? "✓" : "○"} Fotos
+                  </span>
+                </div>
+              </div>
+
+              {activeEntry ? (
+                <div className="rounded-lg border bg-background px-3 py-2 text-sm">
+                  <span className="font-medium">✓ Arbeitszeit erfasst</span>
+                  {activeEntry.start_time && activeEntry.end_time ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {activeEntry.start_time.slice(0, 5)}–{activeEntry.end_time.slice(0, 5)}
+                    </span>
+                  ) : null}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {Number(activeEntry.hours ?? 0).toFixed(2)} Std.
+                  </span>
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap gap-2">
                 {projectEntries.length === 0 && task.date <= localDay() ? (
                   <Button
                     disabled={confirming || !task.start || !task.end}
                     onClick={() => onConfirm(task)}
                   >
-                    Geplante Arbeitszeit bestätigen
+                    Planzeit als Arbeitszeit übernehmen
                   </Button>
                 ) : (
                   <span className="text-sm text-muted-foreground">
@@ -845,9 +888,11 @@ function ProjectDetailDialog({
                   task={task}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Bei abweichenden Zeiten bitte die tatsächliche Arbeitszeit erfassen.
-              </p>
+              {!workTimeDone ? (
+                <p className="text-xs text-muted-foreground">
+                  Stimmt die Planzeit nicht, erfassen Sie stattdessen die tatsächliche Arbeitszeit.
+                </p>
+              ) : null}
             </div>
           ) : null}
           {task && task.projectId ? (
@@ -1122,7 +1167,7 @@ function ZeitErfassenDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Clock className="size-4" /> Zeit erfassen
+          <Clock className="size-4" /> {task ? "Tatsächliche Zeit erfassen" : "Zeit erfassen"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
