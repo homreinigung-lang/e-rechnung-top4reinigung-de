@@ -3,7 +3,6 @@ begin;
 alter table public.account_approvals add column deletion_started_at timestamptz;
 comment on column public.account_approvals.deletion_started_at is
   'Keeps a company blocked while Auth deletion or retryable cleanup is in progress.';
-create index if not exists employees_auth_user_id_access_idx on public.employees(auth_user_id);
 
 -- SECURITY DEFINER is needed to inspect the parent company's status without
 -- granting employees direct access to company approvals or auth.users.

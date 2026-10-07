@@ -47,13 +47,12 @@ update public.account_approvals set status='approved' where id='92000000-0000-40
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"91000000-0000-4000-8000-000000000003","role":"authenticated"}',true);
 do $$ begin assert public.get_account_access_status()='none','unblock restores worker access'; end $$;
-reset role;
+select set_config('request.jwt.claims','{"sub":"91000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 update public.employees set active=false where id='93000000-0000-4000-8000-000000000001';
-set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"91000000-0000-4000-8000-000000000003","role":"authenticated"}',true);
 do $$ begin assert public.get_account_access_status()='blocked','inactive worker cannot enter portal'; end $$;
-reset role;
+select set_config('request.jwt.claims','{"sub":"91000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 update public.employees set active=true where id='93000000-0000-4000-8000-000000000001';
-set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"91000000-0000-4000-8000-000000000005","role":"authenticated"}',true);
 select pg_temp.access_denied($q$select public.prepare_company_account_deletion('92000000-0000-4000-8000-000000000005')$q$);
 select public.prepare_company_account_deletion('92000000-0000-4000-8000-000000000001');
