@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -239,6 +240,11 @@ function ReportCard({
         </p>
       ) : null}
       <p className="whitespace-pre-wrap break-words text-sm">{r.description}</p>
+      <Button asChild variant="outline" size="sm">
+        <Link to="/nachrichten" search={{ mitarbeiter: r.employee_id, meldung: r.id }}>
+          Im Chat besprechen
+        </Link>
+      </Button>
       <div className="flex flex-wrap gap-2">
         {r.photo_paths.map((path) => (
           <ReportPhoto key={path} path={path} />

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -830,6 +831,18 @@ function ProjectDetailDialog({
                     {projectEntries.length ? "Arbeitszeit erfasst" : "Einsatz geplant"}
                   </span>
                 )}
+                <Button asChild variant="outline">
+                  <Link
+                    to="/nachrichten"
+                    search={{
+                      mitarbeiter: employee.id,
+                      einsatz: task.assignmentId,
+                      datum: task.date,
+                    }}
+                  >
+                    Einsatz im Chat besprechen
+                  </Link>
+                </Button>
                 <ZeitErfassenDialog
                   employee={employee}
                   projects={projects}
