@@ -1,3 +1,4 @@
+import { AssistantPanel } from "@/components/AssistantPanel";
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -205,6 +206,8 @@ function MeinBereich() {
           </div>
         )}
       </section>
+
+      <AssistantPanel mode="work" employeeId={me.id} />
 
       <section className="grid grid-cols-2 gap-3">
         <Button asChild variant="outline" className="h-auto min-h-20 flex-col gap-2 py-4">

@@ -11,6 +11,7 @@ type GeminiJsonOptions = {
   mimeType?: string;
   validate?: (value: Record<string, unknown>) => boolean;
   timeoutMs?: number;
+  maxOutputTokens?: number;
 };
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
@@ -77,6 +78,7 @@ export async function generateGeminiJson({
   mimeType,
   validate,
   timeoutMs = 60_000,
+  maxOutputTokens,
 }: GeminiJsonOptions): Promise<Record<string, unknown>> {
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
@@ -101,6 +103,7 @@ export async function generateGeminiJson({
         contents: [{ role: "user", parts }],
         generationConfig: {
           temperature: 0,
+          ...(maxOutputTokens ? { maxOutputTokens } : {}),
           responseMimeType: "application/json",
           ...(withSchema ? { responseJsonSchema: schema } : {}),
         },
