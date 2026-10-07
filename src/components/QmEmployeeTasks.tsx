@@ -57,9 +57,13 @@ export function QmFeedbackList({
   caseId,
   employeeId,
   onComplete,
+  currentEmployeeId,
+  employeeNames,
 }: {
   caseId: string;
   employeeId?: string;
+  currentEmployeeId?: string;
+  employeeNames?: Record<string, string>;
   onComplete?: (message: string) => void;
 }) {
   const {
@@ -94,6 +98,12 @@ export function QmFeedbackList({
           <p className="text-sm font-semibold">
             {qmFeedbackLabels[row.kind]} · {formatDate(row.created_at)}
           </p>
+          {employeeNames && (
+            <p className="text-xs text-muted-foreground">
+              {employeeNames[row.employee_id] ?? "Früherer Mitarbeiter"}
+              {row.employee_id !== currentEmployeeId ? " · Frühere Zuordnung" : ""}
+            </p>
+          )}
           <p className="whitespace-pre-wrap break-words text-sm">{row.message}</p>
           <div className="flex flex-wrap gap-2">
             {row.photo_paths.map((path, i) => (
@@ -102,7 +112,7 @@ export function QmFeedbackList({
               </Button>
             ))}
           </div>
-          {onComplete && row.kind === "bearbeitet" && (
+          {onComplete && row.employee_id === currentEmployeeId && row.kind === "bearbeitet" && (
             <Button size="sm" variant="outline" onClick={() => onComplete(row.message)}>
               Rückmeldung als Lösung übernehmen
             </Button>

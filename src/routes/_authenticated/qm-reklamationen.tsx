@@ -700,6 +700,8 @@ function QmReklamationen() {
               </p>
               <QmFeedbackList
                 caseId={form.id}
+                currentEmployeeId={form.assigned_employee_id}
+                employeeNames={Object.fromEntries(employees.map((e) => [e.id, e.name]))}
                 onComplete={
                   form.status === "erledigt"
                     ? undefined
