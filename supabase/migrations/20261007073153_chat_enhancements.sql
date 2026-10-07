@@ -18,24 +18,24 @@ create policy "Recipient marks messages read" on public.chat_messages for update
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
  values ('chat-dateien','chat-dateien',false,10485760,array['image/jpeg','image/png','image/webp','application/pdf','text/plain']);
 create policy "Chat participant reads attachments" on storage.objects for select to authenticated using (
- bucket_id = 'chat-dateien' and exists(select 1 from public.employees e where e.id::text = (storage.foldername(name))[1]
+ bucket_id = 'chat-dateien' and exists(select 1 from public.employees e where e.id::text = (storage.foldername(storage.objects.name))[1]
  and (e.user_id = (select auth.uid()) or (e.auth_user_id = (select auth.uid()) and e.active)))
- and ((storage.foldername(name))[3] = (select auth.uid())::text or exists(
- select 1 from public.chat_messages m where m.id::text = (storage.foldername(name))[2]
- and m.thread_employee_id::text = (storage.foldername(name))[1]
+ and ((storage.foldername(storage.objects.name))[3] = (select auth.uid())::text or exists(
+ select 1 from public.chat_messages m where m.id::text = (storage.foldername(storage.objects.name))[2]
+ and m.thread_employee_id::text = (storage.foldername(storage.objects.name))[1]
  and exists(select 1 from jsonb_array_elements(m.attachments) a where a->>'path' = storage.objects.name)))
 );
 create policy "Chat participant uploads draft attachments" on storage.objects for insert to authenticated with check (
- bucket_id = 'chat-dateien' and array_length(storage.foldername(name),1) = 3
- and (storage.foldername(name))[3] = (select auth.uid())::text
- and name !~ '(^|/)\.\.(/|$)'
- and exists(select 1 from public.employees e where e.id::text = (storage.foldername(name))[1]
+ bucket_id = 'chat-dateien' and array_length(storage.foldername(storage.objects.name),1) = 3
+ and (storage.foldername(storage.objects.name))[3] = (select auth.uid())::text
+ and storage.objects.name !~ '(^|/)\.\.(/|$)'
+ and exists(select 1 from public.employees e where e.id::text = (storage.foldername(storage.objects.name))[1]
  and (e.user_id = (select auth.uid()) or (e.auth_user_id = (select auth.uid()) and e.active)))
- and not exists(select 1 from public.chat_messages m where m.id::text = (storage.foldername(name))[2])
+ and not exists(select 1 from public.chat_messages m where m.id::text = (storage.foldername(storage.objects.name))[2])
 );
 create policy "Chat uploader removes unused drafts" on storage.objects for delete to authenticated using (
- bucket_id = 'chat-dateien' and (storage.foldername(name))[3] = (select auth.uid())::text
- and exists(select 1 from public.employees e where e.id::text = (storage.foldername(name))[1]
+ bucket_id = 'chat-dateien' and (storage.foldername(storage.objects.name))[3] = (select auth.uid())::text
+ and exists(select 1 from public.employees e where e.id::text = (storage.foldername(storage.objects.name))[1]
  and (e.user_id = (select auth.uid()) or (e.auth_user_id = (select auth.uid()) and e.active)))
  and not exists(select 1 from public.chat_messages m where exists(
  select 1 from jsonb_array_elements(m.attachments) a where a->>'path' = storage.objects.name))
