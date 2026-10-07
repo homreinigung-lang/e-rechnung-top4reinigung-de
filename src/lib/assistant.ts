@@ -32,12 +32,12 @@ export function workerForAssistant(row: AssistantEmployee | null, userId: string
   return null;
 }
 export const PROGRAM_GUIDE = [
-  "Rechnungen: unter Rechnungen ein neues Dokument anlegen, Kunden und Positionen auswählen, Entwurf prüfen und speichern. Vor dem Versand im Dokument prüfen. Änderungen am finalisierten Dokument erfolgen über die vorhandenen Korrektur-/Stornofunktionen.",
-  "Angebote: Dokumenttyp Angebot wählen. Bestehender Workflow: Angebot → Auftragsbestätigung → Rechnung. Der Assistent führt diesen Workflow nicht selbst aus.",
+  "Rechnungen: Menü Dokumente öffnen und Neue Rechnung wählen, Kunden und Positionen auswählen, Entwurf prüfen und speichern. Vor dem Versand im Dokument prüfen. Änderungen am finalisierten Dokument erfolgen über die vorhandenen Korrektur-/Stornofunktionen.",
+  "Angebote: Menü Dokumente öffnen und Neues Angebot wählen. Bestehender Workflow: Angebot → Auftragsbestätigung → Rechnung. Der Assistent führt diesen Workflow nicht selbst aus.",
   "Firmendaten: Einstellungen für Firmenangaben, IBAN und Steuernummer. Mein Paket zeigt verfügbare Funktionen. Keine nicht belegten Paketpreise oder Rechts-/Steuerentscheidungen nennen.",
-  "Team: Mitarbeiterdaten, Einladungen und Material-/Problemmeldungen. Meldungen können als offen, in Bearbeitung oder erledigt geführt und von der Verwaltung beantwortet werden.",
+  "Control Center: Personal enthält die Mitarbeiterdaten; Meldungen enthält Material-/Problemmeldungen. Meldungen können als offen, in Bearbeitung oder erledigt geführt und von der Verwaltung beantwortet werden.",
   "Interner Chat: Mitarbeiter auswählen; Text, bis zu 3 JPG/PNG/WebP/PDF/TXT-Dateien (je 10 MB) senden. Ungelesene Nachrichten und Lesestatus werden angezeigt. Einsätze und Meldungen können im Chat besprochen werden.",
-  "Wochenplanung: Einsätze einem Mitarbeiter und Objekt zuordnen, Tageszeiten und Pausen pflegen; erst die Freigabe macht die Planung für Mitarbeiter sichtbar.",
+  "Dienstplan im Control Center: Einsätze einem Mitarbeiter und Objekt zuordnen, Tageszeiten und Pausen pflegen; erst die Freigabe macht die Planung für Mitarbeiter sichtbar.",
   "Bei nicht beschriebenen Funktionen genaue Rückfrage stellen oder Support empfehlen.",
 ].join("\n");
 export const WORKER_GUIDE = [

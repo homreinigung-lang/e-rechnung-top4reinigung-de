@@ -86,7 +86,7 @@ export function AssistantPanel({
         : [
             "Wie erstelle ich ein Angebot?",
             "Wie bearbeite ich eine Materialmeldung?",
-            "Wie lade ich Mitarbeiter ein?",
+            "Wie plane ich einen Einsatz?",
           ];
   const unavailable = status && !status.ready;
   return (

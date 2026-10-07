@@ -35,7 +35,7 @@ export const Route = createFileRoute("/_authenticated/hilfe")({
 const faqs: readonly { q: string; a: string }[] = [
   {
     q: "Wie erstelle ich eine Rechnung oder ein Angebot?",
-    a: "Unter „Rechnungen“ legen Sie ein neues Dokument an, wählen den Kunden, ergänzen Positionen und speichern. Aus einem Angebot lässt sich per Workflow eine Auftragsbestätigung und daraus eine Rechnung erzeugen.",
+    a: "Unter „Dokumente“ wählen Sie „Neue Rechnung“ oder „Neues Angebot“, wählen den Kunden, ergänzen Positionen und speichern. Aus einem Angebot lässt sich per Workflow eine Auftragsbestätigung und daraus eine Rechnung erzeugen.",
   },
   {
     q: "Warum kann ich Reverse-Charge nicht auswählen?",
