@@ -553,8 +553,8 @@ function KalkulationPage() {
     () =>
       round2(
         stairs
-          ? round2(num(floors) * stairVisitsPerMonth) * round2(num(stairRate)) +
-              (hasLift ? round2(stairVisitsPerMonth) * round2(num(liftRate)) : 0)
+          ? num(floors) * stairVisitsPerMonth * round2(num(stairRate)) +
+              (hasLift ? stairVisitsPerMonth * round2(num(liftRate)) : 0)
           : 0,
       ),
     [stairs, floors, stairRate, hasLift, liftRate, stairVisitsPerMonth],
