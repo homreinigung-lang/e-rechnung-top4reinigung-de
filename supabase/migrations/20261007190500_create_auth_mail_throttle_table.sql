@@ -16,4 +16,13 @@ ALTER TABLE public.auth_mail_throttle ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE public.auth_mail_throttle FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON TABLE public.auth_mail_throttle TO service_role;
-GRANT USAGE, SELECT ON SEQUENCE public.auth_mail_throttle_id_seq TO service_role;
+
+-- Older/local schemas may already contain the throttle table without the
+-- identity column used by the production repair. Grant sequence access only
+-- when that sequence exists so a full migration replay remains compatible.
+DO $$
+BEGIN
+  IF to_regclass('public.auth_mail_throttle_id_seq') IS NOT NULL THEN
+    GRANT USAGE, SELECT ON SEQUENCE public.auth_mail_throttle_id_seq TO service_role;
+  END IF;
+END $$;
