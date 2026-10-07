@@ -4,17 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 
 /** Tabellen, die live mit dem Frontend synchronisiert werden. */
 const TABLES: { table: string; keys: string[] }[] = [
-  { table: "customers", keys: ["customers"] },
-  { table: "documents", keys: ["documents", "document"] },
+  { table: "customers", keys: ["customers", "einsaetze_heute"] },
+  { table: "documents", keys: ["documents", "document", "dashboard", "management_dashboard"] },
+  { table: "time_entries", keys: ["einsaetze_heute", "dashboard", "management_dashboard"] },
+  { table: "projects", keys: ["einsaetze_heute", "management_dashboard"] },
+  { table: "employees", keys: ["einsaetze_heute", "management_dashboard"] },
   { table: "document_items", keys: ["documents", "document", "document-items"] },
   // Wochenplanung: Änderungen der Verwaltung erscheinen sofort im Mitarbeiterkalender.
   {
     table: "project_assignments",
-    keys: ["project_assignments", "my_assignments", "my_projects"],
+    keys: [
+      "project_assignments",
+      "my_assignments",
+      "my_projects",
+      "einsaetze_heute",
+      "management_dashboard",
+    ],
   },
   {
     table: "plan_releases",
-    keys: ["plan_release", "plan_releases", "my_assignments"],
+    keys: ["plan_release", "plan_releases", "my_assignments", "einsaetze_heute"],
   },
 ];
 

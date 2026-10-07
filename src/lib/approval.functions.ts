@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /** Länge der kostenlosen Testphase für neue Firmen. */
@@ -77,13 +78,12 @@ export const sendAccountRecoveryLink = createServerFn({ method: "POST" })
 export const getApprovalStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("account_approvals")
-      .select("status")
-      .eq("auth_user_id", context.userId)
-      .maybeSingle();
-    return { status: (row?.status as string | undefined) ?? "none" };
+    const { data, error } = await (context.supabase as SupabaseClient).rpc(
+      "get_account_access_status",
+    );
+    if (error || typeof data !== "string")
+      throw new Error("Kontostatus konnte nicht geprüft werden.");
+    return { status: data };
   });
 
 /** Firmen sperren oder eine bestehende Sperre aufheben – nur für Administratoren. */
@@ -134,19 +134,6 @@ export const deleteCompanyAccount = createServerFn({ method: "POST" })
       throw new Error("Nur Administratoren dürfen Konten löschen.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("account_approvals")
-      .select("id,auth_user_id")
-      .eq("id", data.approvalId)
-      .maybeSingle();
-    if (!row) throw new Error("Konto nicht gefunden.");
-    if (row.auth_user_id === context.userId)
-      throw new Error("Das eigene Administrationskonto kann nicht gelöscht werden.");
-
-    await supabaseAdmin.from("subscriptions").delete().eq("user_id", row.auth_user_id);
-    await supabaseAdmin.from("account_approvals").delete().eq("id", row.id);
-    const del = await supabaseAdmin.auth.admin.deleteUser(row.auth_user_id);
-    if (del.error) throw new Error(del.error.message);
-
-    return { deleted: true };
+    const { deleteCompanySafely } = await import("./company-deletion.server");
+    return deleteCompanySafely(context.supabase, supabaseAdmin, data.approvalId);
   });

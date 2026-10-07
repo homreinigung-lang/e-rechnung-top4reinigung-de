@@ -29,7 +29,8 @@ function validateProjectStorageUrl(fileUrl: string, userId: string): string {
   const configured = process.env["SUPABASE_URL"];
   if (!configured) throw new Error("Supabase ist serverseitig nicht konfiguriert.");
   const allowedHost = new URL(configured).hostname;
-  if (url.hostname !== allowedHost) throw new Error("Datei muss aus dem eigenen Dateispeicher stammen.");
+  if (url.hostname !== allowedHost)
+    throw new Error("Datei muss aus dem eigenen Dateispeicher stammen.");
 
   const path = decodeURIComponent(url.pathname);
   const prefix = `/storage/v1/object/sign/firmen-dateien/${userId}/`;
@@ -57,5 +58,7 @@ export const analyzeProject = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ScannedProject> => {
     const { analyzeProjectFile } = await import("@/lib/project-scan.server");
     const safeUrl = validateProjectStorageUrl(data.fileUrl, context.userId);
+    const { consumeCompanyAiQuota } = await import("./company-ai-access.server");
+    await consumeCompanyAiQuota(context.supabase, context.userId);
     return analyzeProjectFile(safeUrl, data.mimeType, data.mode);
   });

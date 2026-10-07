@@ -76,19 +76,22 @@ function FirmenPage() {
 
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={variantFor(row.status)}>
-                  {approvalStatusLabel[row.status] ?? row.status}
+                  {row.deletion_started_at
+                    ? "Löschung begonnen"
+                    : (approvalStatusLabel[row.status] ?? row.status)}
                 </Badge>
-                {(row.status === "blocked" || row.status === "rejected") && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={setStatus.isPending}
-                    onClick={() => setStatus.mutate({ id: row.id, status: "approved" })}
-                  >
-                    <CheckCircle2 className="size-4" />
-                    Sperre aufheben
-                  </Button>
-                )}
+                {!row.deletion_started_at &&
+                  (row.status === "blocked" || row.status === "rejected") && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={setStatus.isPending}
+                      onClick={() => setStatus.mutate({ id: row.id, status: "approved" })}
+                    >
+                      <CheckCircle2 className="size-4" />
+                      Sperre aufheben
+                    </Button>
+                  )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -103,7 +106,7 @@ function FirmenPage() {
                   <AlertDialogTrigger asChild>
                     <Button size="sm" variant="destructive" disabled={deleteAccount.isPending}>
                       <Trash2 className="size-4" />
-                      Löschen
+                      {row.deletion_started_at ? "Löschung erneut versuchen" : "Löschen"}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>

@@ -8,7 +8,9 @@ export const suggestItems = createServerFn({ method: "POST" })
     if (prompt.length < 5) throw new Error("Bitte die Leistung kurz beschreiben.");
     return { prompt: prompt.slice(0, 4000) };
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { consumeCompanyAiQuota } = await import("./company-ai-access.server");
+    await consumeCompanyAiQuota(context.supabase, context.userId);
     const { generateItems } = await import("@/lib/item-ai.server");
     return { items: await generateItems(data.prompt) };
   });
@@ -20,7 +22,9 @@ export const analyzeCalculation = createServerFn({ method: "POST" })
     if (prompt.length < 5) throw new Error("Bitte die Leistung kurz beschreiben.");
     return { prompt: prompt.slice(0, 4000) };
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { consumeCompanyAiQuota } = await import("./company-ai-access.server");
+    await consumeCompanyAiQuota(context.supabase, context.userId);
     const { generateCalculation } = await import("@/lib/item-ai.server");
     return await generateCalculation(data.prompt);
   });

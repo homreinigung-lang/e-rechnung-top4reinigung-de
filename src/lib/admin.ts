@@ -21,6 +21,7 @@ export type AccountApproval = {
   status: string;
   created_at: string;
   decided_at: string | null;
+  deletion_started_at: string | null;
 };
 
 /** Alle registrierten Firmenkonten – nur für Administratoren (RLS). */
@@ -32,10 +33,12 @@ export function useAccountApprovals(enabled: boolean) {
     queryFn: async (): Promise<AccountApproval[]> => {
       const { data, error } = await supabase
         .from("account_approvals")
-        .select("id,auth_user_id,email,full_name,company_name,status,created_at,decided_at")
+        .select(
+          "id,auth_user_id,email,full_name,company_name,status,created_at,decided_at,deletion_started_at",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as AccountApproval[];
+      return (data ?? []) as unknown as AccountApproval[];
     },
   });
 }

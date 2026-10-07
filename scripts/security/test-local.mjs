@@ -7,3 +7,5 @@ console.log(sql(readFileSync('scripts/security/chat.sql', 'utf8')).split('\n').a
 console.log(sql(readFileSync('scripts/security/assistant.sql', 'utf8')).split('\n').at(-1));
 
 console.log(sql(readFileSync('scripts/security/qm.sql', 'utf8')).split('\n').at(-1));
+
+console.log(sql(readFileSync('scripts/security/account-access.sql', 'utf8')).split('\n').at(-1));

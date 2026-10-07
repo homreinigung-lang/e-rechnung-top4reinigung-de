@@ -3,9 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { LoadError } from "@/components/LoadError";
+import { dailyVisits, weekStartForDay } from "@/lib/daily-assignments";
 import { today } from "@/lib/format";
 import { mapsUrl, serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
-import { STATUS_CLASSES, STATUS_LABELS, einsatzStatus } from "@/lib/einsatz-status";
+import { STATUS_CLASSES, STATUS_LABELS } from "@/lib/einsatz-status";
 
 type CustomerLite = {
   id: string;
@@ -23,23 +25,46 @@ type CustomerLite = {
 const hm = (v?: string | null) => (v ? String(v).slice(0, 5) : "");
 
 /**
- * Tagesübersicht der geplanten Einsätze – liest ausschließlich vorhandene
- * Zeiterfassungs-/Planungsdaten (time_entries) und den Einsatzort des Kunden.
+ * Tagesübersicht aus freigegebenem Dienstplan und tatsächlicher Zeiterfassung.
  */
 export function EinsaetzeHeute() {
   const day = today();
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, error, refetch } = useQuery({
     queryKey: ["einsaetze_heute", day],
     queryFn: async () => {
-      const { data: entries, error } = await supabase
-        .from("time_entries")
-        .select(
-          "id, work_date, start_time, end_time, hours, location, note, entry_type, absence_reason, approval_status, completed_at, employee_name, customer_id, project_id",
-        )
-        .eq("work_date", day)
-        .order("start_time", { ascending: true, nullsFirst: false });
-      if (error) throw error;
+      const [times, assignments, releases, employees, projects] = await Promise.all([
+        supabase
+          .from("time_entries")
+          .select(
+            "id,employee_id,work_date,start_time,end_time,hours,location,entry_type,approval_status,completed_at,employee_name,customer_id,project_id",
+          )
+          .eq("work_date", day)
+          .eq("entry_type", "work"),
+        supabase
+          .from("project_assignments")
+          .select(
+            "id,user_id,employee_id,project_id,start_date,end_date,day_hours,day_times,hours_per_week",
+          )
+          .or(`start_date.is.null,start_date.lte.${day}`)
+          .or(`end_date.is.null,end_date.gte.${day}`),
+        supabase
+          .from("plan_releases")
+          .select("user_id,week_start")
+          .eq("week_start", weekStartForDay(day)),
+        supabase.from("employees").select("id,name"),
+        supabase.from("projects").select("id,name,customer_id,address_line,postal_code,city"),
+      ]);
+      for (const result of [times, assignments, releases, employees, projects])
+        if (result.error) throw result.error;
+      const entries = dailyVisits({
+        day,
+        entries: times.data ?? [],
+        assignments: assignments.data ?? [],
+        releases: releases.data ?? [],
+        employees: employees.data ?? [],
+        projects: projects.data ?? [],
+      });
 
       const ids = [...new Set((entries ?? []).map((e) => e.customer_id).filter(Boolean))];
       let customers: CustomerLite[] = [];
@@ -60,7 +85,9 @@ export function EinsaetzeHeute() {
   const entries = data?.entries ?? [];
   const byId = new Map((data?.customers ?? []).map((c) => [c.id, c]));
 
-  const totalHours = entries.reduce((s, e) => s + Number(e.hours || 0), 0);
+  const plannedHours = entries.reduce((s, e) => s + e.plannedHours, 0);
+  const actualHours = entries.reduce((s, e) => s + e.actualHours, 0);
+  const hoursLabel = (hours: number) => hours.toFixed(2).replace(".", ",");
 
   return (
     <section aria-label="Einsätze heute" className="surface overflow-hidden">
@@ -74,16 +101,27 @@ export function EinsaetzeHeute() {
             </p>
           </div>
         </div>
-        <span className="text-sm text-muted-foreground">
-          {entries.length} Einsätze · {totalHours.toFixed(2).replace(".", ",")} Std.
-        </span>
+        {!isPending && !error && (
+          <span className="text-sm text-muted-foreground">
+            {entries.length} Einsätze · {hoursLabel(plannedHours)} Std. geplant ·{" "}
+            {hoursLabel(actualHours)} Std. erfasst
+          </span>
+        )}
       </div>
 
-      {isPending ? (
+      {error ? (
+        <div className="p-5">
+          <LoadError
+            error={error}
+            title="Einsätze konnten nicht geladen werden"
+            onRetry={() => void refetch()}
+          />
+        </div>
+      ) : isPending ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">Wird geladen …</p>
       ) : entries.length === 0 ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-          Heute sind keine Einsätze geplant.
+          Heute gibt es keine freigegebenen Einsätze oder erfassten Arbeitszeiten.
         </p>
       ) : (
         <ul className="divide-y">
@@ -92,12 +130,14 @@ export function EinsaetzeHeute() {
             const site = serviceAddressOrBilling(c);
             const ownSite = Boolean(serviceAddress(c));
             const address = e.location || site;
-            const status = einsatzStatus(e);
+            const status = e.status;
             return (
               <li key={e.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{c?.company || c?.name || "Ohne Kunde"}</span>
+                    <span className="font-medium">
+                      {e.project_name || c?.company || c?.name || "Ohne Objekt"}
+                    </span>
                     <span
                       className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_CLASSES[status]}`}
                     >
@@ -139,10 +179,8 @@ export function EinsaetzeHeute() {
                       : "ganztägig"}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {Number(e.hours || 0)
-                      .toFixed(2)
-                      .replace(".", ",")}{" "}
-                    Std.
+                    {hoursLabel(e.plannedHours)} Std. geplant · {hoursLabel(e.actualHours)} Std.
+                    erfasst
                   </div>
                 </div>
               </li>
