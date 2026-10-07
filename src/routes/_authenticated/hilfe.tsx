@@ -1,3 +1,5 @@
+import { AssistantPanel } from "@/components/AssistantPanel";
+import { useMyEmployee } from "@/lib/employee";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Accordion,
@@ -60,6 +62,21 @@ const faqs: readonly { q: string; a: string }[] = [
 const SUPPORT_MAIL = "info@top4reinigung.de";
 
 function HilfePage() {
+  const { data: me, isLoading } = useMyEmployee();
+  const workerFaqs = [
+    {
+      q: "Wie erfasse ich meine Arbeitszeit?",
+      a: "Öffnen Sie Meine Zeiten und den betreffenden Einsatz. Bestätigen Sie nach der Arbeit die geplante Zeit oder erfassen Sie bei Abweichungen die tatsächliche Zeit mit Pause.",
+    },
+    {
+      q: "Wie melde ich fehlendes Material oder ein Problem?",
+      a: "Öffnen Sie die Einsatzdetails und wählen Sie Material fehlt / Problem melden. Beschreiben Sie die Situation, ergänzen Sie bei Bedarf Fotos und senden Sie die Meldung ab. Antworten finden Sie unter Meine Meldungen.",
+    },
+    {
+      q: "Wie erreiche ich die Verwaltung?",
+      a: "Unter Interner Chat schreiben Sie direkt an die Verwaltung. Mit Im Chat besprechen können Sie eine Aufgabe oder Meldung verknüpfen.",
+    },
+  ];
   return (
     <div className="space-y-6">
       <header className="space-y-1">
@@ -68,6 +85,8 @@ function HilfePage() {
           Antworten auf häufige Fragen – und ein direkter Draht zu uns, wenn etwas unklar ist.
         </p>
       </header>
+
+      <AssistantPanel mode="program" employeeId={me?.id} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -90,21 +109,24 @@ function HilfePage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <BookOpen className="size-4 text-primary" /> Paket &amp; Funktionen
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              Manche Funktionen sind an Ihr Paket gebunden. Aktuellen Umfang prüfen oder erweitern:
-            </p>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/mein-paket">Mein Paket ansehen</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        {!isLoading && !me ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BookOpen className="size-4 text-primary" /> Paket &amp; Funktionen
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                Manche Funktionen sind an Ihr Paket gebunden. Aktuellen Umfang prüfen oder
+                erweitern:
+              </p>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/mein-paket">Mein Paket ansehen</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <Card>
@@ -115,7 +137,7 @@ function HilfePage() {
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
-            {faqs.map((item, i) => (
+            {(me ? workerFaqs : faqs).map((item, i) => (
               <AccordionItem key={item.q} value={`faq-${i}`}>
                 <AccordionTrigger className="text-left text-sm">{item.q}</AccordionTrigger>
                 <AccordionContent className="text-sm text-muted-foreground">

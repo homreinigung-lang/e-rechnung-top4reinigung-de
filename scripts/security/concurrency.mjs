@@ -54,4 +54,8 @@ assert.match(await transaction(`SET LOCAL ROLE service_role; SELECT public.check
 sql(`UPDATE public.accountant_access SET locked_until=now()-interval '1 minute' WHERE id='${access}'`);
 assert.match(await transaction(`SET LOCAL ROLE service_role; SELECT public.check_accountant_access('${token}','${'a'.repeat(64)}')->>'status'`), /^ok$/m);
 assert.equal(sql(`SELECT failed_attempts FROM public.accountant_access WHERE id='${access}'`),'0');
-console.log('PASS: parallel accountant guesses lock after 5 failures; valid credentials work after the lock expires.');
+console.log('PASS: parallel accountant guesses lock after 5 failures; valid credentials work after the lock expires.');const assistantAttempts = await Promise.allSettled(Array.from({length: 12}, () => transaction('INSERT INTO public.assistant_requests DEFAULT VALUES')));
+assert.equal(assistantAttempts.filter(r=>r.status==='fulfilled').length,8,'Concurrent assistant calls exceeded minute quota');
+assert.equal(assistantAttempts.filter(r=>r.status==='rejected').length,4);
+assert.equal(sql(`SELECT count(*) FROM public.assistant_requests WHERE user_id='${owner}'`),'8');
+console.log('PASS: 12 concurrent assistant requests reserve exactly 8 slots; 4 are rejected. No model was called.');

@@ -1,3 +1,4 @@
+import { AssistantPanel } from "@/components/AssistantPanel";
 import { Link } from "@tanstack/react-router";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
@@ -865,6 +866,19 @@ function ProjectDetailDialog({
                 name: project?.name ?? task.name,
               }}
             />
+          ) : null}
+          {task ? (
+            <details key={`${task.assignmentId}-${task.date}`} className="rounded-xl border p-3">
+              <summary className="cursor-pointer font-medium">KI-Frage zu diesem Einsatz</summary>
+              <div className="mt-3">
+                <AssistantPanel
+                  mode="work"
+                  assignmentId={task.assignmentId}
+                  date={task.date}
+                  employeeId={employee.id}
+                />
+              </div>
+            </details>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border p-3">
