@@ -125,11 +125,10 @@ export const sendEmployeeInvite = createServerFn({ method: "POST" })
     const companyName = settings.company_name || "Ihr Arbeitgeber";
     const companyEmail = settings.email?.trim() || undefined;
     // Never put a client-controlled origin into a trusted invitation email.
-    const origin = (process.env["PUBLIC_SITE_URL"] || "https://e-rechnung.top4reinigung.de").replace(
-      /\/$/,
-      "",
-    );
-    const link = `${origin}/auth?code=${encodeURIComponent(settings.invite_code)}`;
+    const origin = (
+      process.env["PUBLIC_SITE_URL"] || "https://e-rechnung.top4reinigung.de"
+    ).replace(/\/$/, "");
+    const link = `${origin}/mitarbeiter-anmeldung?code=${encodeURIComponent(settings.invite_code)}`;
 
     const subject = `Einladung als Mitarbeiter/in – ${companyName}`;
     const text = `Guten Tag,\n\n${companyName} lädt Sie zur Mitarbeiter-Nutzung von GebCalc ein.\n\nRegistrierungslink: ${link}\nUnternehmens-Code: ${settings.invite_code}\n\nBitte verwenden Sie für die Registrierung die E-Mail-Adresse, an die diese Einladung gesendet wurde.\n\nMit freundlichen Grüßen\n${companyName}`;

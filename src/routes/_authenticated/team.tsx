@@ -133,29 +133,29 @@ function ControlCenter() {
       </div>
 
       <Tabs value={tab} onValueChange={change} className="space-y-4">
-        <TabsList className="flex w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="dienstplan" className="gap-2">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="dienstplan" className="min-h-11 gap-2">
             <CalendarRange className="size-4" /> Dienstplan
           </TabsTrigger>
-          <TabsTrigger value="kalender" className="gap-2">
+          <TabsTrigger value="kalender" className="min-h-11 gap-2">
             <CalendarDays className="size-4" /> Kalender
           </TabsTrigger>
-          <TabsTrigger value="personal" className="gap-2">
+          <TabsTrigger value="personal" className="min-h-11 gap-2">
             <HardHat className="size-4" /> Personal
           </TabsTrigger>
-          <TabsTrigger value="zeiten" className="gap-2">
+          <TabsTrigger value="zeiten" className="min-h-11 gap-2">
             <Clock className="size-4" /> Zeiterfassung
           </TabsTrigger>
-          <TabsTrigger value="lohnarten" className="gap-2">
+          <TabsTrigger value="lohnarten" className="min-h-11 gap-2">
             <BadgeEuro className="size-4" /> Lohnarten
           </TabsTrigger>
-          <TabsTrigger value="lohnvorbereitung" className="gap-2">
+          <TabsTrigger value="lohnvorbereitung" className="min-h-11 gap-2">
             <WalletCards className="size-4" /> Lohnvorbereitung
           </TabsTrigger>
-          <TabsTrigger value="meldungen" className="gap-2">
+          <TabsTrigger value="meldungen" className="min-h-11 gap-2">
             <Boxes className="size-4" /> Meldungen
           </TabsTrigger>
-          <TabsTrigger value="materialien" className="gap-2">
+          <TabsTrigger value="materialien" className="min-h-11 gap-2">
             <Boxes className="size-4" /> Materialien
           </TabsTrigger>
         </TabsList>
