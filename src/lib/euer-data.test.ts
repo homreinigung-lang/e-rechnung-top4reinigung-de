@@ -27,7 +27,7 @@ vi.mock("@/integrations/supabase/client", () => ({
           return query;
         },
         range: async (from: number, to: number) => {
-          const visible = state.tables[table].filter((row) =>
+          const visible = (state.tables[table] ?? []).filter((row) =>
             filters.every((filter) => filter(row)),
           );
           visible.sort((a, b) => {
@@ -56,12 +56,12 @@ beforeEach(() => {
     total: 10,
     net_amount: 8,
   }));
-  state.tables.documents = [
+  state.tables["documents"] = [
     ...records,
     { id: "deleted", issue_date: "2026-10-07", deleted_at: "2026-10-08" },
     { id: "outside", issue_date: "2026-09-30", deleted_at: null },
   ];
-  state.tables.expenses = [
+  state.tables["expenses"] = [
     ...records,
     { id: "deleted", expense_date: "2026-10-07", deleted_at: "2026-10-08" },
     { id: "outside", expense_date: "2026-09-30", deleted_at: null },
