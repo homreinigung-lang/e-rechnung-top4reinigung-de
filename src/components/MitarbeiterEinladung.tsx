@@ -88,7 +88,7 @@ export function MitarbeiterEinladung() {
   const code = data?.invite_code ?? "";
   const link =
     typeof window !== "undefined" && code
-      ? `${window.location.origin}/auth?code=${encodeURIComponent(code)}`
+      ? `${window.location.origin}/mitarbeiter-anmeldung?code=${encodeURIComponent(code)}`
       : "";
 
   async function copy(value: string, label: string) {
@@ -164,7 +164,8 @@ export function MitarbeiterEinladung() {
               onChange={(e) => setInviteEmail(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Die Einladung wird direkt per E-Mail gesendet. Die Firmen-E-Mail erhält automatisch eine Kopie als Versandbestätigung.
+              Die Einladung wird direkt per E-Mail gesendet. Die Firmen-E-Mail erhält automatisch
+              eine Kopie als Versandbestätigung.
             </p>
           </div>
           <Button

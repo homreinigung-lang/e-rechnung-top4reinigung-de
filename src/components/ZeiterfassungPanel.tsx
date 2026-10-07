@@ -181,9 +181,19 @@ export function Zeiterfassung() {
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id,name,address_line,postal_code,city,customer_name").order("name");
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id,name,address_line,postal_code,city,customer_name")
+        .order("name");
       if (error) throw error;
-      return data as { id: string; name: string; address_line: string; postal_code: string; city: string; customer_name?: string }[];
+      return data as {
+        id: string;
+        name: string;
+        address_line: string;
+        postal_code: string;
+        city: string;
+        customer_name?: string;
+      }[];
     },
   });
 
@@ -534,8 +544,8 @@ export function Zeiterfassung() {
         <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
           <li>Hier unter „Mitarbeiter“ den Mitarbeiter mit seiner E-Mail-Adresse anlegen.</li>
           <li>
-            Mitarbeiter öffnet die Anmeldeseite, wählt „Registrieren“ und legt mit genau dieser
-            E-Mail ein Passwort an (Bestätigungs-Link in der E-Mail anklicken).
+            Mitarbeiter öffnet den Einladungslink, wählt „Registrieren“ und erstellt mit genau
+            dieser E-Mail und Ihrem Unternehmens-Code seinen Mitarbeiterzugang.
           </li>
           <li>
             Nach dem Login erscheint der Bereich „Meine Zeiten“ – dort erfasst er nur seine eigenen
@@ -544,7 +554,7 @@ export function Zeiterfassung() {
         </ol>
         <div className="flex flex-wrap gap-2 pt-1">
           <Button variant="outline" size="sm" asChild>
-            <a href="/auth" target="_blank" rel="noopener">
+            <a href="/mitarbeiter-anmeldung" target="_blank" rel="noopener">
               Anmeldeseite öffnen
             </a>
           </Button>
@@ -669,8 +679,9 @@ export function Zeiterfassung() {
                     onChange={(e) => setEmp({ ...emp, email: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Mit dieser E-Mail kann sich der Mitarbeiter selbst registrieren und danach unter
-                    „Meine Zeiten“ nur die eigenen Arbeitszeiten erfassen.
+                    Mit dieser E-Mail und Ihrem Unternehmens-Code kann sich der Mitarbeiter im
+                    Mitarbeiterzugang registrieren und danach unter „Meine Zeiten“ nur die eigenen
+                    Arbeitszeiten erfassen.
                   </p>
                 </div>
 
@@ -1011,12 +1022,11 @@ export function Zeiterfassung() {
                     paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
                     invalidateKey="time_entries"
                   />
-                  {(
-                    (((e as { performance_services?: string[] }).performance_services ?? []).length > 0) ||
+                  {(((e as { performance_services?: string[] }).performance_services ?? []).length >
+                    0 ||
                     Boolean((e as { performance_note?: string }).performance_note) ||
                     Boolean((e as { employee_signature?: string }).employee_signature) ||
-                    Boolean((e as { customer_signature?: string }).customer_signature)
-                  ) && (
+                    Boolean((e as { customer_signature?: string }).customer_signature)) && (
                     <div className="mt-2">
                       <LeistungsnachweisDialog
                         readOnly
