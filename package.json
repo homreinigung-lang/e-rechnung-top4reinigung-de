@@ -106,7 +106,7 @@
     "wrangler": "^4.129.1"
   },
   "overrides": {
-    "sharp": "^0.35.4",
+    "sharp": "0.35.5",
     "undici": "7.29.1",
     "seroval": "1.6.8",
     "source-map-js": "1.2.2"
