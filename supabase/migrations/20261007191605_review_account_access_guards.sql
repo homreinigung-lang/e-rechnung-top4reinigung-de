@@ -42,15 +42,21 @@ revoke all on function app_private.is_account_active() from public, anon;
 grant execute on function app_private.is_account_active() to authenticated, service_role;
 
 -- A narrow, caller-only API for route guards and privileged server functions.
-create function public.get_account_access_status() returns text
+create function app_private.get_account_access_status() returns text
 language sql stable security definer set search_path = '' as $$
   select case when not app_private.is_account_active() then 'blocked'
     else coalesce((select a.status from public.account_approvals a where a.auth_user_id = auth.uid()), 'none') end;
 $$;
+revoke all on function app_private.get_account_access_status() from public, anon;
+grant execute on function app_private.get_account_access_status() to authenticated;
+create function public.get_account_access_status() returns text
+language sql stable security invoker set search_path = '' as $$
+  select app_private.get_account_access_status();
+$$;
 revoke all on function public.get_account_access_status() from public, anon;
 grant execute on function public.get_account_access_status() to authenticated;
 
-create function public.prepare_company_account_deletion(_approval_id uuid) returns uuid
+create function app_private.prepare_company_account_deletion(_approval_id uuid) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare target uuid;
 begin
@@ -69,6 +75,12 @@ begin
     where id = _approval_id;
   return target;
 end;
+$$;
+revoke all on function app_private.prepare_company_account_deletion(uuid) from public, anon;
+grant execute on function app_private.prepare_company_account_deletion(uuid) to authenticated;
+create function public.prepare_company_account_deletion(_approval_id uuid) returns uuid
+language sql security invoker set search_path = '' as $$
+  select app_private.prepare_company_account_deletion(_approval_id);
 $$;
 revoke all on function public.prepare_company_account_deletion(uuid) from public, anon;
 grant execute on function public.prepare_company_account_deletion(uuid) to authenticated;

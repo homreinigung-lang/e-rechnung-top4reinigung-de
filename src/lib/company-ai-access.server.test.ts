@@ -12,10 +12,10 @@ function database(overrides: Record<string, Reply> = {}) {
     assistant_requests: { data: null, error: null },
     ...overrides,
   };
-  const insert = vi.fn(async () => replies.assistant_requests);
+  const insert = vi.fn(async () => replies["assistant_requests"]);
   const filters: [string, string, unknown][] = [];
   const db = {
-    rpc: vi.fn(async () => replies.status),
+    rpc: vi.fn(async () => replies["status"]),
     from: (table: string) => {
       const chain = {
         select: () => chain,
