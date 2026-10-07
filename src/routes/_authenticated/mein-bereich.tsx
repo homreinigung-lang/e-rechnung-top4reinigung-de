@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
 import { mapsUrl, projectAddress } from "@/lib/maps";
 import { effectiveDayHours, formatDayTime, normalizeDayTimes } from "@/lib/planung";
+import { matchesTask } from "@/lib/employee-task";
 
 export const Route = createFileRoute("/_authenticated/mein-bereich")({
   head: () => ({
@@ -79,6 +80,26 @@ function MeinBereich() {
     },
   });
 
+  const {
+    data: todayEntries = [],
+    error: entriesError,
+    isLoading: entriesLoading,
+  } = useQuery({
+    queryKey: ["mobile_today_time_entries", me?.id, today],
+    enabled: Boolean(me?.id),
+    refetchInterval: 15_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select("id,work_date,project_id,start_time,end_time,entry_type,approval_status")
+        .eq("employee_id", me!.id)
+        .eq("work_date", today)
+        .eq("entry_type", "work");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const todayAssignments = useMemo(() => {
     return assignments
       .map((assignment) => {
@@ -121,7 +142,7 @@ function MeinBereich() {
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <LoadError
-        error={firstError(assignmentsError, projectsError)}
+        error={firstError(assignmentsError, projectsError, entriesError)}
         title="Einsätze konnten nicht geladen werden"
       />
       <header>
@@ -143,7 +164,9 @@ function MeinBereich() {
           <h2 className="text-lg font-semibold">Meine Einsätze heute</h2>
         </div>
 
-        {assignmentsError || projectsError ? null : assignmentsLoading || projectsLoading ? (
+        {assignmentsError || projectsError || entriesError ? null : assignmentsLoading ||
+          projectsLoading ||
+          entriesLoading ? (
           <p className="text-sm text-muted-foreground">Einsätze werden geladen …</p>
         ) : todayAssignments.length === 0 ? (
           <div className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">
@@ -154,6 +177,14 @@ function MeinBereich() {
             {todayAssignments.map(({ assignment, hours, time, project }) => {
               const address = project ? projectAddress(project) : "";
               const timeLabel = formatDayTime(time);
+              const workTimeDone = todayEntries.some((entry) =>
+                matchesTask(entry, {
+                  date: today,
+                  projectId: assignment.project_id,
+                  start: time?.start ?? "",
+                  end: time?.end ?? "",
+                }),
+              );
               return (
                 <article key={assignment.id} className="rounded-xl border p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -163,6 +194,15 @@ function MeinBereich() {
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {project?.customer_name || assignment.assignment_role || "Einsatz"}
+                      </p>
+                      <p
+                        className={
+                          workTimeDone
+                            ? "mt-1 text-xs font-medium text-foreground"
+                            : "mt-1 text-xs text-muted-foreground"
+                        }
+                      >
+                        {workTimeDone ? "✓ Arbeitszeit erfasst" : "○ Arbeitszeit noch offen"}
                       </p>
                     </div>
                     <div className="shrink-0 rounded-lg bg-muted px-3 py-2 text-right text-sm">
@@ -197,7 +237,7 @@ function MeinBereich() {
                           datum: today,
                         }}
                       >
-                        <Clock className="size-4" /> Aufgabe / Zeit / Meldung
+                        <Clock className="size-4" /> {workTimeDone ? "Details öffnen" : "Einsatz öffnen"}
                       </Link>
                     </Button>
                   </div>
