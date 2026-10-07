@@ -16,6 +16,7 @@ create table public.qm_employee_tasks (
   updated_at timestamptz not null default now()
 );
 create index qm_employee_tasks_employee_idx on public.qm_employee_tasks(employee_id,due_date);
+create index qm_employee_tasks_owner_idx on public.qm_employee_tasks(user_id,status,due_date);
 create table public.qm_employee_feedback (
   id uuid primary key default gen_random_uuid(),
   case_id uuid not null references public.qm_employee_tasks(case_id) on delete cascade,
@@ -26,7 +27,9 @@ create table public.qm_employee_feedback (
   photo_paths text[] not null default '{}' check (cardinality(photo_paths) <= 3),
   created_at timestamptz not null default now()
 );
-create index qm_employee_feedback_case_idx on public.qm_employee_feedback(case_id,created_at desc);
+create index qm_employee_feedback_case_idx on public.qm_employee_feedback(case_id,employee_id,created_at desc,id desc);
+create index qm_employee_feedback_owner_idx on public.qm_employee_feedback(user_id,created_at desc);
+create index qm_employee_feedback_employee_idx on public.qm_employee_feedback(employee_id,created_at desc);
 alter table public.qm_employee_tasks enable row level security;
 alter table public.qm_employee_feedback enable row level security;
 revoke all on public.qm_employee_tasks,public.qm_employee_feedback from public,anon,authenticated;
@@ -116,4 +119,5 @@ end;
 $$;
 revoke all on function app_private.validate_qm_employee_feedback() from public,anon,authenticated,service_role;
 create trigger validate_qm_employee_feedback before insert on public.qm_employee_feedback for each row execute function app_private.validate_qm_employee_feedback();
+notify pgrst, 'reload schema';
 commit;
