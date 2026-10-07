@@ -163,7 +163,7 @@ export function DocumentPrintPreview({
                   {hasOptionalItems && item.is_optional && !orderedItems[index - 1]?.is_optional && (
                     <>
                       <tr className="border-b border-border"><td colSpan={5} className="px-2 py-2 text-sm font-semibold">Monatlicher Festpreis (netto)</td><td className="px-2 py-2 text-right text-sm font-semibold tabular-nums whitespace-nowrap">{formatMoney(regularTotal)}</td></tr>
-                      <tr className="bg-muted/70"><td colSpan={6} className="px-2 py-2 text-sm font-semibold">Optionale Zusatzleistungen</td></tr>
+                      <tr className="bg-muted/70"><td colSpan={6} className="px-2 py-2 text-sm font-semibold">Saisonale & zusätzliche Leistungen</td></tr>
                     </>
                   )}
                   <tr className="border-b border-border align-top">
