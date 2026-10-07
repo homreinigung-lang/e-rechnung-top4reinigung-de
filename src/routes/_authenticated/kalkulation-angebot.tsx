@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { computeDocumentTotals } from "@/lib/document-totals";
 import { formatMoney, formatNumber, parsePositiveNumber, taxNoteForTaxMode, vatRateForTaxMode } from "@/lib/format";
-import { STAIR_RATE_PER_FLOOR, recurrenceUnitLabel, monthlyVisits, visitsPerYear, type RecurrenceUnit } from "@/lib/constants";
+import { STAIR_RATE_PER_FLOOR, recurrenceUnitLabel, visitsPerMonth, visitsPerYear, type RecurrenceUnit } from "@/lib/constants";
 import { buildConsolidatedPositions, buildDiscountPosition, positionsTotal, round2 } from "@/lib/kalkulation-engine";
 
 import { Button } from "@/components/ui/button";
@@ -89,11 +89,11 @@ function KalkulationAngebotPage() {
   }, [frequency, frequencyUnit]);
 
   const monthlyHours = useMemo(() => {
-    if (mode === "hours") return num(hours) * visitsPerMonth;
+    if (mode === "hours") return num(hours) * monthlyVisits;
     const rate = num(hourlyRate);
     if (rate <= 0) return 0;
     return (num(area) * num(pricePerSqm) * monthlyVisits) / rate;
-  }, [mode, hours, area, pricePerSqm, hourlyRate, visitsPerMonth]);
+  }, [mode, hours, area, pricePerSqm, hourlyRate, monthlyVisits]);
 
   const basePositions = useMemo(
     () =>
@@ -105,7 +105,7 @@ function KalkulationAngebotPage() {
         pricePerSqm: num(pricePerSqm),
         hours: num(hours),
         hourlyRate: num(hourlyRate),
-        monthlyVisits,
+        visitsPerMonth: monthlyVisits,
         stairs,
         floors: num(floors),
         stairRate: num(stairRate),
