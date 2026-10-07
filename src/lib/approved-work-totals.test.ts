@@ -35,6 +35,17 @@ describe("approved work totals", () => {
     expect(approvedWorkAmount(entries[2]!)).toBe(0);
   });
 
+  it("uses the employee's hourly rate when an entry rate is missing", () => {
+    expect(approvedWorkTotals(
+      [{ employee_id: "e1", employee_name: "A", approval_status: "approved", hours: 2, hourly_rate: 0 }],
+      new Map([["e1", 17]]),
+    )).toEqual({
+      hours: 2,
+      amount: 34,
+      perEmployee: [["A", { hours: 2, amount: 34 }]],
+    });
+  });
+
   it("ignores invalid or negative values", () => {
     expect(approvedWorkTotals([
       { employee_name: "A", approval_status: "approved", hours: -4, hourly_rate: 20 },
