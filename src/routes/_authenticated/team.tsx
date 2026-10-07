@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { EinsatzMeldungen } from "@/components/EinsatzMeldungen";
 import { PersonalStammdatenPanel } from "@/components/PersonalStammdatenPanel";
+import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
 import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
@@ -177,7 +178,10 @@ function ControlCenter() {
           <TeamKalenderPanel />
         </TabsContent>
         <TabsContent value="personal" className="mt-0">
-          <PersonalStammdatenPanel />
+          <div className="space-y-4">
+            <PersonalStammdatenPanel />
+            <MitarbeiterEinladung />
+          </div>
         </TabsContent>
         <TabsContent value="zeiten" className="mt-0">
           <Zeiterfassung />
