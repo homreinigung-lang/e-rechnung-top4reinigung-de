@@ -16,11 +16,14 @@ export function approvedWorkHours(entry: WorkTotalsEntry): number {
   return Number.isFinite(hours) && hours > 0 ? hours : 0;
 }
 
+/** Match the hourly-rate fallback used by Lohnvorbereitung. */
+export function workHourlyRate(entry: WorkTotalsEntry, employeeRate = 0): number {
+  const rate = Number(entry.hourly_rate ?? 0) || employeeRate;
+  return Number.isFinite(rate) ? rate : 0;
+}
+
 export function approvedWorkAmount(entry: WorkTotalsEntry, employeeRate = 0): number {
-  const entryRate = Number(entry.hourly_rate ?? 0);
-  // Same fallback as Lohnvorbereitung: an unset entry rate uses the employee rate.
-  const rate = entryRate || employeeRate;
-  return approvedWorkHours(entry) * (Number.isFinite(rate) ? rate : 0);
+  return approvedWorkHours(entry) * workHourlyRate(entry, employeeRate);
 }
 
 export function approvedWorkTotals(
