@@ -2,6 +2,7 @@ import { countsForPayroll, isAbsence } from "@/lib/absence";
 
 export type WorkTotalsEntry = {
   employee_name?: string | null;
+  employee_id?: string | null;
   entry_type?: string | null;
   approval_status?: string | null;
   hours?: number | string | null;
@@ -15,19 +16,24 @@ export function approvedWorkHours(entry: WorkTotalsEntry): number {
   return Number.isFinite(hours) && hours > 0 ? hours : 0;
 }
 
-export function approvedWorkAmount(entry: WorkTotalsEntry): number {
-  const rate = Number(entry.hourly_rate ?? 0);
-  return approvedWorkHours(entry) * (Number.isFinite(rate) && rate > 0 ? rate : 0);
+export function approvedWorkAmount(entry: WorkTotalsEntry, employeeRate = 0): number {
+  const entryRate = Number(entry.hourly_rate ?? 0);
+  // Same fallback as Lohnvorbereitung: an unset entry rate uses the employee rate.
+  const rate = entryRate || employeeRate;
+  return approvedWorkHours(entry) * (Number.isFinite(rate) ? rate : 0);
 }
 
-export function approvedWorkTotals(entries: WorkTotalsEntry[]) {
+export function approvedWorkTotals(
+  entries: WorkTotalsEntry[],
+  employeeRates: ReadonlyMap<string, number> = new Map(),
+) {
   let hours = 0;
   let amount = 0;
   const perEmployee = new Map<string, { hours: number; amount: number }>();
   for (const entry of entries) {
     const approvedHours = approvedWorkHours(entry);
     if (approvedHours <= 0) continue;
-    const approvedAmount = approvedWorkAmount(entry);
+    const approvedAmount = approvedWorkAmount(entry, employeeRates.get(entry.employee_id ?? "") ?? 0);
     hours += approvedHours;
     amount += approvedAmount;
     const name = entry.employee_name || "Ohne Zuordnung";
