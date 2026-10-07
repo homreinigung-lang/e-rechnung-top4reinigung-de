@@ -16,7 +16,7 @@ import { formatDate } from "@/lib/format";
 export function ChatContext({ context, employee }: { context: Context; employee: boolean }) {
   const [open, setOpen] = useState(false);
   const { data, error, isLoading } = useQuery({
-    queryKey: ["chat_context", context.assignment_id, context.report_id],
+    queryKey: ["chat_context", context.assignment_id, context.work_date, context.report_id],
     enabled: open,
     queryFn: async () => {
       if (context.report_id) {
