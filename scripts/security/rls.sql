@@ -156,14 +156,17 @@ DO $$ BEGIN
 END $$;
 SELECT pg_temp.denied($q$UPDATE public.employees SET hourly_rate=999 WHERE auth_user_id='10000000-0000-4000-8000-000000000003'$q$);
 SELECT pg_temp.denied($q$UPDATE public.time_entries SET hours=999$q$);
--- Employees may only create work entries that await administrative review.
-SELECT pg_temp.denied($q$INSERT INTO public.time_entries(user_id,employee_id,work_date,start_time,end_time,hours,approval_status)
-VALUES ('10000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001',CURRENT_DATE,'09:00','10:00',1,'approved')$q$);
+-- Even an old employee client (column default: approved) or a forged approved
+-- status must result in pending review, not immediate payroll approval.
+INSERT INTO public.time_entries(user_id,employee_id,work_date,start_time,end_time,hours)
+VALUES ('10000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001',CURRENT_DATE,'09:00','10:00',1);
 INSERT INTO public.time_entries(user_id,employee_id,work_date,start_time,end_time,hours,approval_status)
-VALUES ('10000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001',CURRENT_DATE,'09:00','10:00',1,'pending');
+VALUES ('10000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001',CURRENT_DATE,'10:00','11:00',1,'approved');
 DO $approval_check$ BEGIN
-  ASSERT (SELECT count(*) FROM public.time_entries WHERE approval_status='pending')=1,
+  ASSERT (SELECT count(*) FROM public.time_entries WHERE approval_status='pending')=2,
     'employee time was not queued for review';
+  ASSERT (SELECT count(*) FROM public.time_entries WHERE approval_status='approved')=1,
+    'employee inserted an immediately approved work entry';
 END $approval_check$;
 SELECT pg_temp.denied($q$INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_location,to_location,start_km,end_km) VALUES ('10000000-0000-4000-8000-000000000002','40000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','X','Y',0,1)$q$);
 INSERT INTO public.fahrtenbuch_entries(user_id,vehicle_id,employee_id,from_location,to_location,start_km,end_km) VALUES
