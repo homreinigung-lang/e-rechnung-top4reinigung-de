@@ -151,6 +151,7 @@ export function Zeiterfassung() {
   const [form, setForm] = useState<EntryForm>(emptyEntry());
   const [emp, setEmp] = useState(emptyEmployee);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [reviewFilter, setReviewFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   // Mitarbeiterkonten haben keinen Zugriff auf die Verwaltungsansicht.
   useEffect(() => {
@@ -215,6 +216,35 @@ export function Zeiterfassung() {
         .filter((e) => monthKey(e.work_date as string) === month)
         .sort((a, b) => String(a.work_date).localeCompare(String(b.work_date))),
     [entries, month],
+  );
+
+  // Abwesenheiten werden weiterhin ausschließlich im bestehenden Urlaubsworkflow geprüft.
+  const workEntries = useMemo(
+    () => monthEntries.filter((entry) => entry.entry_type !== "absence"),
+    [monthEntries],
+  );
+  const reviewCounts = useMemo(
+    () => ({
+      pending: workEntries.filter((entry) => entry.approval_status === "pending").length,
+      approved: workEntries.filter((entry) => (entry.approval_status ?? "approved") === "approved").length,
+      rejected: workEntries.filter((entry) => entry.approval_status === "rejected").length,
+      proofOpen: workEntries.filter(
+        (entry) =>
+          entry.approval_status !== "rejected" &&
+          entry.performance_status !== "completed" &&
+          !entry.performance_completed_at,
+      ).length,
+    }),
+    [workEntries],
+  );
+  const visibleEntries = useMemo(
+    () =>
+      reviewFilter === "all"
+        ? monthEntries
+        : workEntries.filter(
+            (entry) => (entry.approval_status ?? "approved") === reviewFilter,
+          ),
+    [monthEntries, workEntries, reviewFilter],
   );
 
   const totals = useMemo(() => {
@@ -338,6 +368,31 @@ export function Zeiterfassung() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["time_entries"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const approveWorkEntry = useMutation({
+    mutationFn: async (id: string) => {
+      const userId = await requireUserId();
+      const { data, error } = await supabase
+        .from("time_entries")
+        .update({
+          approval_status: "approved",
+          decided_at: new Date().toISOString(),
+          decided_by: userId,
+        })
+        .eq("id", id)
+        .eq("entry_type", "work")
+        .eq("approval_status", "pending")
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("Eintrag ist nicht mehr zur Prüfung offen. Bitte aktualisieren.");
+    },
+    onSuccess: () => {
+      toast.success("Arbeitszeit freigegeben");
+      queryClient.invalidateQueries({ queryKey: ["time_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["lohnvorbereitung-time"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -972,6 +1027,37 @@ export function Zeiterfassung() {
         </div>
       </div>
 
+      <section className="surface space-y-3 p-5" aria-label="Arbeitszeiten prüfen">
+        <h2 className="text-lg font-semibold">Prüfung der Arbeitszeiten</h2>
+        <p className="text-sm text-muted-foreground">
+          Freigaben für Arbeitszeiten; Urlaubs- und Abwesenheitsanträge bleiben im bestehenden Antragsbereich.
+          Ein offener Leistungsnachweis ist ein Hinweis und nicht automatisch eine Pflicht.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Zu prüfen</div><div className="text-xl font-bold">{reviewCounts.pending}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Freigegeben</div><div className="text-xl font-bold">{reviewCounts.approved}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Abgelehnt</div><div className="text-xl font-bold">{reviewCounts.rejected}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Leistungsnachweis offen</div><div className="text-xl font-bold">{reviewCounts.proofOpen}</div></div>
+        </div>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Arbeitszeiten filtern">
+          {([
+            ["all", "Alle"],
+            ["pending", "Zu prüfen"],
+            ["approved", "Freigegeben"],
+            ["rejected", "Abgelehnt"],
+          ] as const).map(([value, label]) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={reviewFilter === value ? "default" : "outline"}
+              onClick={() => setReviewFilter(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      </section>
+
       {totals.perEmployee.length > 0 && (
         <div className="surface p-5">
           <h2 className="text-lg font-semibold">Summen je Mitarbeiter</h2>
@@ -989,13 +1075,13 @@ export function Zeiterfassung() {
       )}
 
       <div className="surface overflow-hidden">
-        {monthEntries.length === 0 ? (
+        {visibleEntries.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-            Für diesen Monat sind noch keine Arbeitszeiten erfasst.
+            Keine Einträge für diesen Filter im gewählten Monat.
           </p>
         ) : (
           <ul className="divide-y">
-            {monthEntries.map((e) => (
+            {visibleEntries.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">
@@ -1016,6 +1102,27 @@ export function Zeiterfassung() {
                       .join(" · ")}
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
+                  {e.entry_type !== "absence" && (
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded border px-2 py-1">
+                        {e.approval_status === "pending"
+                          ? "Arbeitszeit: Zu prüfen"
+                          : e.approval_status === "rejected"
+                            ? "Arbeitszeit: Abgelehnt"
+                            : "Arbeitszeit: Freigegeben"}
+                      </span>
+                      <span className="rounded border px-2 py-1">
+                        {e.performance_status === "completed" || e.performance_completed_at
+                          ? "Leistungsnachweis abgeschlossen"
+                          : "Leistungsnachweis offen"}
+                      </span>
+                      <span className="rounded border px-2 py-1">
+                        {Array.isArray(e.photo_paths) && e.photo_paths.length > 0
+                          ? "Fotos vorhanden"
+                          : "Keine Fotos"}
+                      </span>
+                    </div>
+                  )}
                   <ArbeitsnachweisFotos
                     canDelete
                     entryId={e.id as string}
@@ -1039,6 +1146,15 @@ export function Zeiterfassung() {
                 <div className="text-right text-sm">
                   {formatMoney(Number(e.hours) * Number(e.hourly_rate || 0))}
                 </div>
+                {e.entry_type !== "absence" && e.approval_status === "pending" && (
+                  <Button
+                    size="sm"
+                    disabled={approveWorkEntry.isPending}
+                    onClick={() => approveWorkEntry.mutate(e.id as string)}
+                  >
+                    <Check className="size-4" /> Arbeitszeit freigeben
+                  </Button>
+                )}
                 <Button
                   variant={e.billed ? "secondary" : "ghost"}
                   size="sm"
