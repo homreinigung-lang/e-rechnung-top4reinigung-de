@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyEmployee } from "@/lib/employee";
 import { filterRowsByDateRange, summaryLines } from "@/lib/table-summary";
-import { approvedWorkAmount, approvedWorkHours, approvedWorkTotals } from "@/lib/approved-work-totals";
+import { approvedWorkAmount, approvedWorkHours, approvedWorkTotals, workHourlyRate } from "@/lib/approved-work-totals";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -420,7 +420,7 @@ export function Zeiterfassung() {
       String(e.break_minutes ?? 0),
       de(Number(e.hours || 0)),
       de(approvedWorkHours(e)),
-      de(Number(e.hourly_rate || 0)),
+      de(workHourlyRate(e, employeeRates.get(e.employee_id ?? "") ?? 0)),
       de(approvedWorkAmount(e, employeeRates.get(e.employee_id ?? "") ?? 0)),
       (e.location as string) || "",
       (e.note as string) || "",
