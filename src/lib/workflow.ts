@@ -67,11 +67,22 @@ export async function sendReminder(id: string, kind: ReminderKind): Promise<numb
   await ensureOfficialNumber(id);
   const current = Number(doc.reminder_level ?? 0);
   const level = kind === "erinnerung" ? Math.max(1, current) : Math.max(2, current + 1);
-  const { error: updateError } = await supabase
+  let reminderUpdate = supabase
     .from("documents")
     .update({ reminder_level: level, last_reminder_at: new Date().toISOString() } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "invoice")
+    .eq("status", doc.status)
+    .or("is_storno.is.false,is_storno.is.null");
+  reminderUpdate =
+    doc.reminder_level == null
+      ? reminderUpdate.is("reminder_level", null)
+      : reminderUpdate.eq("reminder_level", doc.reminder_level);
+  const { data: updated, error: updateError } = await reminderUpdate.select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) {
+    throw new Error("Der Rechnungsstatus oder Mahnstand hat sich geändert. Bitte erneut laden.");
+  }
   await logAudit(
     kind === "erinnerung" ? "zahlungserinnerung" : "mahnung",
     { id, number: doc.number },
@@ -104,11 +115,18 @@ export async function markInvoicePaid(id: string, paidDate?: string): Promise<st
   assertInvoiceActionAllowed(doc, "payment");
   await ensureOfficialNumber(id);
 
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: "paid", paid_at: paid } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "invoice")
+    .eq("status", doc.status)
+    .or("is_storno.is.false,is_storno.is.null")
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) {
+    throw new Error("Der Rechnungsstatus hat sich geändert. Bitte erneut laden.");
+  }
 
   await logAudit("payment_received", { id, number: doc.number }, { paid_at: paid });
   return paid;
