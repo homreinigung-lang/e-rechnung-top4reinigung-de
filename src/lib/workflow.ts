@@ -4,6 +4,7 @@ import { addDays, today } from "@/lib/format";
 import { draftPlaceholderNumber, ensureOfficialNumber } from "@/lib/doc-number";
 import { assertInvoiceActionAllowed, assertInvoicePaymentReversible } from "@/lib/invoice-action-eligibility";
 import { assertQuoteDecisionAllowed, assertQuoteCompletionAllowed } from "@/lib/quote-decision-eligibility";
+import { assertDocumentConversionAllowed } from "@/lib/document-conversion-eligibility";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -243,31 +244,7 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .single();
   if (error) throw error;
 
-  // Angebot → Auftragsbestätigung, Auftragsbestätigung → Rechnung und
-  // (für einmalige Dienstleistungen) Angebot → Rechnung direkt.
-  const allowed = target === "order" ? ["quote"] : ["order", "quote"];
-  if (!allowed.includes(String(src.type))) {
-    throw new Error(
-      target === "order"
-        ? "Nur Angebote können in eine Auftragsbestätigung umgewandelt werden."
-        : "Nur Angebote und Auftragsbestätigungen können in eine Rechnung umgewandelt werden.",
-    );
-  }
-  // Nur angenommene Angebote dürfen umgewandelt werden – ein abgelehntes oder
-  // abgeschlossenes Angebot darf niemals stillschweigend fakturiert werden.
-  if (src.type === "quote" && src.status !== "accepted") {
-    throw new Error(
-      "Nur angenommene Angebote können umgewandelt werden. Bitte das Angebot zuerst annehmen.",
-    );
-  }
-  if (src.is_storno || src.status === "cancelled" || src.deleted_at) {
-    throw new Error("Stornierte oder gelöschte Belege können nicht umgewandelt werden.");
-  }
-  if (src.type === "order" && !["draft", "sent"].includes(src.status)) {
-    throw new Error("Nur offene Auftragsbestätigungen können in Rechnungen umgewandelt werden.");
-  }
-  const converted = (src as unknown as Record<string, unknown>)["converted_document_id"];
-  if (converted) throw new Error("Dieser Beleg wurde bereits umgewandelt.");
+  assertDocumentConversionAllowed(src, target);
 
   // Der Quellbeleg wird mit der Umwandlung verbindlich – offizielle Nummer vergeben.
   const sourceNumber = await ensureOfficialNumber(sourceId);
