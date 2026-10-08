@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { invoiceBelongsToProject, isApprovedWorkEntry, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { invoiceBelongsToProject, isApprovedWorkEntry, isProjectRevenueInvoice, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 
 describe("object controlling accuracy", () => {
   it("uses service period month before invoice issue month", () => {
@@ -247,5 +247,23 @@ describe("invoice project attribution", () => {
   });
   it("keeps historical attribution when customer has only one project", () => {
     expect(invoiceBelongsToProject({ project_id: null, customer_id: "c1" }, project, new Map([["c1", 1]]))).toBe(true);
+  });
+});
+
+
+describe("project revenue invoice eligibility", () => {
+  it("excludes drafts from project revenue until issued", () => {
+    expect(isProjectRevenueInvoice({ status: "draft", is_storno: false })).toBe(false);
+  });
+
+  it("excludes cancelled invoices and storno documents", () => {
+    expect(isProjectRevenueInvoice({ status: "cancelled", is_storno: false })).toBe(false);
+    expect(isProjectRevenueInvoice({ status: "sent", is_storno: true })).toBe(false);
+  });
+
+  it("includes issued, overdue, and paid invoices", () => {
+    for (const status of ["sent", "overdue", "paid"]) {
+      expect(isProjectRevenueInvoice({ status, is_storno: false })).toBe(true);
+    }
   });
 });
