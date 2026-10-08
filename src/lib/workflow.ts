@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
 import { draftPlaceholderNumber, ensureOfficialNumber } from "@/lib/doc-number";
+import { assertInvoiceActionAllowed } from "@/lib/invoice-action-eligibility";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -53,19 +54,17 @@ export function mahnungAllowed(dueDate?: string | null): boolean {
 export async function sendReminder(id: string, kind: ReminderKind): Promise<number> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number, status, reminder_level, due_date")
+    .select("id, number, type, status, is_storno, reminder_level, due_date")
     .eq("id", id)
     .single();
   if (error) throw error;
-  await ensureOfficialNumber(id);
-  if (doc.status === "paid" || doc.status === "cancelled") {
-    throw new Error("Für bezahlte oder stornierte Rechnungen ist keine Mahnung möglich.");
-  }
+  assertInvoiceActionAllowed(doc, "reminder");
   if (kind === "mahnung" && !mahnungAllowed(doc.due_date)) {
     throw new Error(
       "Eine Mahnung ist erst zulässig, wenn die Zahlungsfrist (14 Tage) vollständig abgelaufen ist. Bitte zunächst eine Zahlungserinnerung senden.",
     );
   }
+  await ensureOfficialNumber(id);
   const current = Number(doc.reminder_level ?? 0);
   const level = kind === "erinnerung" ? Math.max(1, current) : Math.max(2, current + 1);
   const { error: updateError } = await supabase
@@ -98,13 +97,11 @@ export async function markInvoicePaid(id: string, paidDate?: string): Promise<st
   const paid = paidDate && paidDate.length === 10 ? paidDate : today();
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number, status, type")
+    .select("id, number, status, type, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
-  if (doc.type !== "invoice") throw new Error("Nur Rechnungen können als bezahlt markiert werden.");
-  if (doc.status === "cancelled")
-    throw new Error("Stornierte Rechnungen können nicht bezahlt werden.");
+  assertInvoiceActionAllowed(doc, "payment");
   await ensureOfficialNumber(id);
 
   const { error: updateError } = await supabase

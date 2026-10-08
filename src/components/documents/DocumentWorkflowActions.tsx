@@ -82,7 +82,7 @@ export function DocumentWorkflowActions(props: DocumentWorkflowActionsProps) {
         </>
       )}
 
-      {props.isInvoice && !props.isStorno && props.status !== "paid" && props.status !== "cancelled" && (
+      {props.isInvoice && !props.isStorno && props.status !== "paid" && props.status !== "cancelled" && props.status !== "draft" && (
         <Button variant="outline" onClick={props.onOpenPayment} disabled={props.markPaidPending}>
           <BadgeEuro className="size-4" /> Als bezahlt markieren
         </Button>
