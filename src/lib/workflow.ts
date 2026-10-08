@@ -3,6 +3,7 @@ import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
 import { draftPlaceholderNumber, ensureOfficialNumber } from "@/lib/doc-number";
 import { assertInvoiceActionAllowed, assertInvoicePaymentReversible } from "@/lib/invoice-action-eligibility";
+import { assertQuoteDecisionAllowed } from "@/lib/quote-decision-eligibility";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -158,15 +159,21 @@ export async function unmarkInvoicePaid(id: string): Promise<void> {
 export async function setQuoteDecision(id: string, decision: "accepted" | "declined") {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number")
+    .select("id, number, type, status, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
-  const { error: updateError } = await supabase
+  assertQuoteDecisionAllowed(doc);
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: decision } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "quote")
+    .eq("status", doc.status)
+    .or("is_storno.is.false,is_storno.is.null")
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   if (decision === "accepted") await ensureOfficialNumber(id);
   await logAudit(decision === "accepted" ? "quote_accepted" : "quote_declined", doc, {});
 }
@@ -175,19 +182,25 @@ export async function setQuoteDecision(id: string, decision: "accepted" | "decli
 export async function declineQuote(id: string, reason: string): Promise<void> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number, notes")
+    .select("id, number, notes, type, status, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
+  assertQuoteDecisionAllowed(doc);
   const trimmed = reason.trim();
   const note = trimmed
-    ? `${doc.notes ? `${doc.notes}\n\n` : ""}Ablehnungsgrund (${formatToday()}): ${trimmed}`
+    ? `${doc.notes ? `${doc.notes}\\n\\n` : ""}Ablehnungsgrund (${formatToday()}): ${trimmed}`
     : doc.notes;
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: "declined", notes: note } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "quote")
+    .eq("status", doc.status)
+    .or("is_storno.is.false,is_storno.is.null")
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("quote_declined", { id, number: doc.number }, { reason: trimmed });
 }
 
