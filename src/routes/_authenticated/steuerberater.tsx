@@ -137,6 +137,24 @@ function Steuerberater() {
     },
   });
 
+  // EÜR is cash-based: a payment may be received in this period for an older invoice.
+  // Keep the issue-date query above unchanged for the other accountant exports.
+  const { data: receivedInvoices = [] } = useQuery({
+    queryKey: ["stb_received_invoices", from, to],
+    queryFn: () =>
+      fetchAllRows(() =>
+        supabase
+          .from("documents")
+          .select("*")
+          .is("deleted_at", null)
+          .eq("type", "invoice")
+          .eq("status", "paid")
+          .gte("paid_at", from)
+          .lte("paid_at", to)
+          .order("paid_at"),
+      ),
+  });
+
   const { data: expenses = [] } = useQuery({
     queryKey: ["stb_expenses", from, to],
     queryFn: async () => {
@@ -217,12 +235,12 @@ function Steuerberater() {
   const euer = useMemo(
     () =>
       computeEuer(
-        documents as unknown as Record<string, unknown>[],
+        receivedInvoices as unknown as Record<string, unknown>[],
         expenses as unknown as Record<string, unknown>[],
         from,
         to,
       ),
-    [documents, expenses, from, to],
+    [receivedInvoices, expenses, from, to],
   );
 
   const euerPdf = useMutation({
