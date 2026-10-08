@@ -114,51 +114,51 @@ function ProjekteIndex() {
   const { data: controllingDocuments = [] } = useQuery({
     queryKey: ["projects_controlling_documents", controllingMonth],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("documents")
-        .select("id,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id")
-        .eq("type", "invoice")
-        .is("deleted_at", null);
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        db
+          .from("documents")
+          .select("id,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id")
+          .eq("type", "invoice")
+          .is("deleted_at", null),
+      );
     },
   });
 
   const { data: controllingExpenses = [] } = useQuery({
     queryKey: ["projects_controlling_expenses", controllingMonth],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("expenses")
-        .select("id,expense_date,net_amount,project_id")
-        .is("deleted_at", null)
-        .gte("expense_date", monthStart)
-        .lte("expense_date", monthEnd);
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        db
+          .from("expenses")
+          .select("id,expense_date,net_amount,project_id")
+          .is("deleted_at", null)
+          .gte("expense_date", monthStart)
+          .lte("expense_date", monthEnd),
+      );
     },
   });
 
   const { data: controllingTimeEntries = [] } = useQuery({
     queryKey: ["projects_controlling_time_entries", controllingMonth],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        .select("id,project_id,work_date,hours,hourly_rate,entry_type,approval_status")
-        .gte("work_date", monthStart)
-        .lte("work_date", monthEnd);
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("time_entries")
+          .select("id,project_id,work_date,hours,hourly_rate,entry_type,approval_status")
+          .gte("work_date", monthStart)
+          .lte("work_date", monthEnd),
+      );
     },
   });
 
   const { data: controllingAssignments = [] } = useQuery({
     queryKey: ["projects_controlling_assignments", controllingMonth],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("project_assignments")
-        .select("id,project_id,hours_per_week,start_date,end_date,day_hours,day_times");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("project_assignments")
+          .select("id,project_id,hours_per_week,start_date,end_date,day_hours,day_times"),
+      );
     },
   });
 
