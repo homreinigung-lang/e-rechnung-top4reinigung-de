@@ -7,6 +7,8 @@
  * erzeugt – ohne externe Dienste.
  */
 import { PDFDocument, PDFName, PDFHexString, AFRelationship } from "pdf-lib";
+import { roundCents } from "./money";
+import { parseServicePeriod } from "./invoice-period";
 import { normalizeTaxMode } from "@/lib/tax-mode";
 
 export type ERechnungItem = {
@@ -37,8 +39,9 @@ const esc = (v: unknown) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-const dec = (v: number) => (Number.isFinite(v) ? v : 0).toFixed(2);
-const qty = (v: number) => (Number.isFinite(v) ? v : 0).toFixed(3);
+const dec = (v: number) => roundCents(Number.isFinite(v) ? v : 0).toFixed(2);
+const qty = (v: number) => (Number.isFinite(v) ? v : 0).toFixed(6).replace(/0{1,3}$/, "");
+const priceAmount = (v: number) => (Number.isFinite(v) ? v : 0).toFixed(8).replace(/0{1,6}$/, "");
 const ymd = (v: unknown) => String(v ?? "").slice(0, 10);
 const validIssueDate = (value: string): boolean => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -111,11 +114,35 @@ function buildModel(input: ERechnungInput) {
   const s = settings ?? {};
   const taxMode = normalizeTaxMode(doc["tax_mode"]);
   const smallBusiness = taxMode === "kleinunternehmer";
-  const reverseCharge = taxMode === "eu_reverse_charge";
+  const reverseCharge = taxMode === "eu_reverse_charge" || taxMode === "domestic_reverse_charge";
   const zeroVat = reverseCharge || smallBusiness;
   const isStorno = Boolean(doc["is_storno"]);
 
+  // Internal cancellations are signed invoices; CreditNote syntax uses reversed amounts.
+  const sign = isStorno ? -1 : 1;
+  const xmlItems = items.map((i, idx) => {
+    const price = Number(i.unit_price) || 0;
+    const quantity = (Number(i.quantity) || 0) * sign;
+    return {
+      id: String(i.position || idx + 1),
+      name: i.description || "Leistung",
+      quantity: price < 0 ? -quantity : quantity,
+      unitCode: unitCode(i.unit),
+      unitPrice: Math.abs(price),
+      lineTotal: roundCents(quantity * price),
+    };
+  });
+  const lineTotal = roundCents(xmlItems.reduce((sum, i) => sum + i.lineTotal, 0));
+  const headerNet = roundCents(netTotal * sign);
+  const discount = roundCents(lineTotal - headerNet);
+  const period = parseServicePeriod(String(doc["service_period"] ?? ""));
+  const serviceDates =
+    period && validIssueDate(period.start) && validIssueDate(period.end) ? period : null;
   return {
+    isStorno,
+    lineTotal,
+    discount,
+    serviceDates,
     number,
     // 380 = Rechnung, 381 = Gutschrift/Storno
     typeCode: isStorno ? "381" : "380",
@@ -124,13 +151,17 @@ function buildModel(input: ERechnungInput) {
     servicePeriod: String(doc["service_period"] ?? ""),
     buyerReference: String(doc["order_number"] ?? "").trim() || "N/A",
     orderNumber: String(doc["order_number"] ?? "").trim(),
-    notes: [String(doc["intro_text"] ?? ""), String(doc["notes"] ?? "")].filter(Boolean),
+    notes: [
+      String(doc["intro_text"] ?? ""),
+      String(doc["notes"] ?? ""),
+      !serviceDates && doc["service_period"] ? `Leistungszeitraum: ${doc["service_period"]}` : "",
+    ].filter(Boolean),
     reverseCharge,
     smallBusiness,
     vatRate: zeroVat ? 0 : vatRate,
-    netTotal,
-    vatAmount: zeroVat ? 0 : vatAmount,
-    grossTotal,
+    netTotal: headerNet,
+    vatAmount: zeroVat ? 0 : roundCents(vatAmount * sign),
+    grossTotal: roundCents(grossTotal * sign),
     seller: {
       name: String(s["company_name"] ?? ""),
       street: String(s["address_line"] ?? ""),
@@ -156,14 +187,7 @@ function buildModel(input: ERechnungInput) {
       vatId: String(doc["customer_vat_id"] ?? "").replace(/\s+/g, ""),
       email: String(doc["customer_email"] ?? ""),
     },
-    items: items.map((i, idx) => ({
-      id: String(i.position || idx + 1),
-      name: i.description || "Leistung",
-      quantity: Number(i.quantity) || 0,
-      unitCode: unitCode(i.unit),
-      unitPrice: Number(i.unit_price) || 0,
-      lineTotal: (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
-    })),
+    items: xmlItems,
   };
 }
 
@@ -176,11 +200,14 @@ export function buildXRechnungXml(input: ERechnungInput): string {
   const cat = m.reverseCharge ? "AE" : m.smallBusiness ? "E" : "S";
   const paymentTerms = m.dueDate ? `Zahlbar ohne Abzug bis ${m.dueDate}` : "";
 
+  const root = m.isStorno ? "CreditNote" : "Invoice";
+  const lineTag = m.isStorno ? "CreditNoteLine" : "InvoiceLine";
+  const quantityTag = m.isStorno ? "CreditedQuantity" : "InvoicedQuantity";
   const lines = m.items
     .map(
-      (i) => `  <cac:InvoiceLine>
+      (i) => `  <cac:${lineTag}>
     <cbc:ID>${esc(i.id)}</cbc:ID>
-    <cbc:InvoicedQuantity unitCode="${i.unitCode}">${qty(i.quantity)}</cbc:InvoicedQuantity>
+    <cbc:${quantityTag} unitCode="${i.unitCode}">${qty(i.quantity)}</cbc:${quantityTag}>
     <cbc:LineExtensionAmount currencyID="EUR">${dec(i.lineTotal)}</cbc:LineExtensionAmount>
     <cac:Item>
       <cbc:Name>${esc(i.name.slice(0, 100))}</cbc:Name>
@@ -191,27 +218,27 @@ export function buildXRechnungXml(input: ERechnungInput): string {
       </cac:ClassifiedTaxCategory>
     </cac:Item>
     <cac:Price>
-      <cbc:PriceAmount currencyID="EUR">${dec(i.unitPrice)}</cbc:PriceAmount>
+      <cbc:PriceAmount currencyID="EUR">${priceAmount(i.unitPrice)}</cbc:PriceAmount>
     </cac:Price>
-  </cac:InvoiceLine>`,
+  </cac:${lineTag}>`,
     )
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+<${root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${root}-2"
          xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
          xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0</cbc:CustomizationID>
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0</cbc:CustomizationID>
   <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>
   <cbc:ID>${esc(m.number)}</cbc:ID>
   <cbc:IssueDate>${m.issueDate}</cbc:IssueDate>
-${m.dueDate ? `  <cbc:DueDate>${m.dueDate}</cbc:DueDate>\n` : ""}  <cbc:InvoiceTypeCode>${m.typeCode}</cbc:InvoiceTypeCode>
+${m.dueDate && !m.isStorno ? `  <cbc:DueDate>${m.dueDate}</cbc:DueDate>\n` : ""}  <cbc:${root}TypeCode>${m.typeCode}</cbc:${root}TypeCode>
 ${m.notes.map((n) => `  <cbc:Note>${esc(n.slice(0, 1000))}</cbc:Note>`).join("\n")}
   <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
   <cbc:BuyerReference>${esc(m.buyerReference)}</cbc:BuyerReference>
 ${
-  m.servicePeriod
-    ? `  <cac:InvoicePeriod><cbc:Description>${esc(m.servicePeriod)}</cbc:Description></cac:InvoicePeriod>\n`
+  m.serviceDates
+    ? `  <cac:InvoicePeriod><cbc:StartDate>${m.serviceDates?.start}</cbc:StartDate><cbc:EndDate>${m.serviceDates?.end}</cbc:EndDate></cac:InvoicePeriod>\n`
     : ""
 }${
     m.orderNumber
@@ -219,7 +246,7 @@ ${
       : ""
   }  <cac:AccountingSupplierParty>
     <cac:Party>
-      <cac:PartyName><cbc:Name>${esc(m.seller.name)}</cbc:Name></cac:PartyName>
+${m.seller.email ? `      <cbc:EndpointID schemeID="EM">${esc(m.seller.email)}</cbc:EndpointID>\n` : ""}${m.seller.taxNumber ? `      <cac:PartyIdentification><cbc:ID>${esc(m.seller.taxNumber)}</cbc:ID></cac:PartyIdentification>\n` : ""}      <cac:PartyName><cbc:Name>${esc(m.seller.name)}</cbc:Name></cac:PartyName>
       <cac:PostalAddress>
         <cbc:StreetName>${esc(m.seller.street)}</cbc:StreetName>
         <cbc:CityName>${esc(m.seller.city)}</cbc:CityName>
@@ -244,7 +271,7 @@ ${
   </cac:AccountingSupplierParty>
   <cac:AccountingCustomerParty>
     <cac:Party>
-      <cac:PartyName><cbc:Name>${esc(m.buyer.name)}</cbc:Name></cac:PartyName>
+${m.buyer.email ? `      <cbc:EndpointID schemeID="EM">${esc(m.buyer.email)}</cbc:EndpointID>\n` : ""}      <cac:PartyName><cbc:Name>${esc(m.buyer.name)}</cbc:Name></cac:PartyName>
       <cac:PostalAddress>
         <cbc:StreetName>${esc(m.buyer.street)}</cbc:StreetName>
         <cbc:CityName>${esc(m.buyer.city)}</cbc:CityName>
@@ -258,7 +285,7 @@ ${
 }      <cac:PartyLegalEntity><cbc:RegistrationName>${esc(m.buyer.name)}</cbc:RegistrationName></cac:PartyLegalEntity>
 ${
   m.buyer.email || m.buyer.contact
-    ? `      <cac:Contact><cbc:Name>${esc(m.buyer.contact)}</cbc:Name><cbc:ElectronicMail>${esc(m.buyer.email)}</cbc:ElectronicMail></cac:Contact>\n`
+    ? `      <cac:Contact>${m.buyer.contact ? `<cbc:Name>${esc(m.buyer.contact)}</cbc:Name>` : ""}${m.buyer.email ? `<cbc:ElectronicMail>${esc(m.buyer.email)}</cbc:ElectronicMail>` : ""}</cac:Contact>\n`
     : ""
 }    </cac:Party>
   </cac:AccountingCustomerParty>
@@ -272,8 +299,17 @@ ${
       <cbc:Name>${esc(m.seller.name)}</cbc:Name>
 ${m.seller.bic ? `      <cac:FinancialInstitutionBranch><cbc:ID>${esc(m.seller.bic)}</cbc:ID></cac:FinancialInstitutionBranch>\n` : ""}    </cac:PayeeFinancialAccount>
   </cac:PaymentMeans>\n`
-    : ""
-}${paymentTerms ? `  <cac:PaymentTerms><cbc:Note>${esc(paymentTerms)}</cbc:Note></cac:PaymentTerms>\n` : ""}  <cac:TaxTotal>
+    : `  <cac:PaymentMeans><cbc:PaymentMeansCode>1</cbc:PaymentMeansCode></cac:PaymentMeans>\n`
+}${paymentTerms ? `  <cac:PaymentTerms><cbc:Note>${esc(paymentTerms)}</cbc:Note></cac:PaymentTerms>\n` : ""}${
+    m.discount > 0
+      ? `  <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+    <cbc:AllowanceChargeReason>Rabatt</cbc:AllowanceChargeReason>
+    <cbc:Amount currencyID="EUR">${dec(m.discount)}</cbc:Amount>
+    <cac:TaxCategory><cbc:ID>${cat}</cbc:ID><cbc:Percent>${dec(m.vatRate)}</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory>
+  </cac:AllowanceCharge>\n`
+      : ""
+  }  <cac:TaxTotal>
     <cbc:TaxAmount currencyID="EUR">${dec(m.vatAmount)}</cbc:TaxAmount>
     <cac:TaxSubtotal>
       <cbc:TaxableAmount currencyID="EUR">${dec(m.netTotal)}</cbc:TaxableAmount>
@@ -286,13 +322,13 @@ ${m.reverseCharge || m.smallBusiness ? `        <cbc:TaxExemptionReason>${esc(m.
     </cac:TaxSubtotal>
   </cac:TaxTotal>
   <cac:LegalMonetaryTotal>
-    <cbc:LineExtensionAmount currencyID="EUR">${dec(m.netTotal)}</cbc:LineExtensionAmount>
+    <cbc:LineExtensionAmount currencyID="EUR">${dec(m.lineTotal)}</cbc:LineExtensionAmount>
     <cbc:TaxExclusiveAmount currencyID="EUR">${dec(m.netTotal)}</cbc:TaxExclusiveAmount>
     <cbc:TaxInclusiveAmount currencyID="EUR">${dec(m.grossTotal)}</cbc:TaxInclusiveAmount>
-    <cbc:PayableAmount currencyID="EUR">${dec(m.grossTotal)}</cbc:PayableAmount>
+${m.discount > 0 ? `    <cbc:AllowanceTotalAmount currencyID="EUR">${dec(m.discount)}</cbc:AllowanceTotalAmount>\n` : ""}    <cbc:PayableAmount currencyID="EUR">${dec(m.grossTotal)}</cbc:PayableAmount>
   </cac:LegalMonetaryTotal>
 ${lines}
-</Invoice>
+</${root}>
 `;
 }
 
@@ -307,7 +343,7 @@ export function buildZugferdXml(input: ERechnungInput): string {
     <ram:AssociatedDocumentLineDocument><ram:LineID>${esc(i.id)}</ram:LineID></ram:AssociatedDocumentLineDocument>
     <ram:SpecifiedTradeProduct><ram:Name>${esc(i.name.slice(0, 100))}</ram:Name></ram:SpecifiedTradeProduct>
     <ram:SpecifiedLineTradeAgreement>
-      <ram:NetPriceProductTradePrice><ram:ChargeAmount>${dec(i.unitPrice)}</ram:ChargeAmount></ram:NetPriceProductTradePrice>
+      <ram:NetPriceProductTradePrice><ram:ChargeAmount>${priceAmount(i.unitPrice)}</ram:ChargeAmount></ram:NetPriceProductTradePrice>
     </ram:SpecifiedLineTradeAgreement>
     <ram:SpecifiedLineTradeDelivery>
       <ram:BilledQuantity unitCode="${i.unitCode}">${qty(i.quantity)}</ram:BilledQuantity>
@@ -346,7 +382,7 @@ ${lines}
     <ram:ApplicableHeaderTradeAgreement>
       <ram:BuyerReference>${esc(m.buyerReference)}</ram:BuyerReference>
       <ram:SellerTradeParty>
-        <ram:Name>${esc(m.seller.name)}</ram:Name>
+${m.seller.taxNumber ? `        <ram:ID>${esc(m.seller.taxNumber)}</ram:ID>\n` : ""}        <ram:Name>${esc(m.seller.name)}</ram:Name>
         <ram:DefinedTradeContact>
           <ram:PersonName>${esc(m.seller.contact)}</ram:PersonName>
           <ram:TelephoneUniversalCommunication><ram:CompleteNumber>${esc(m.seller.phone)}</ram:CompleteNumber></ram:TelephoneUniversalCommunication>
@@ -391,15 +427,26 @@ ${m.reverseCharge || m.smallBusiness ? `        <ram:ExemptionReason>${esc(m.sma
         <ram:RateApplicablePercent>${dec(m.vatRate)}</ram:RateApplicablePercent>
       </ram:ApplicableTradeTax>
 ${
-  m.servicePeriod
-    ? `      <ram:BillingSpecifiedPeriod><ram:Description>${esc(m.servicePeriod)}</ram:Description></ram:BillingSpecifiedPeriod>\n`
+  m.serviceDates
+    ? `      <ram:BillingSpecifiedPeriod><ram:StartDateTime><udt:DateTimeString format="102">${cii(m.serviceDates.start)}</udt:DateTimeString></ram:StartDateTime><ram:EndDateTime><udt:DateTimeString format="102">${cii(m.serviceDates.end)}</udt:DateTimeString></ram:EndDateTime></ram:BillingSpecifiedPeriod>\n`
     : ""
 }${
+    m.discount > 0
+      ? `      <ram:SpecifiedTradeAllowanceCharge>
+        <ram:ChargeIndicator><udt:Indicator>false</udt:Indicator></ram:ChargeIndicator>
+        <ram:ActualAmount>${dec(m.discount)}</ram:ActualAmount>
+        <ram:Reason>Rabatt</ram:Reason>
+        <ram:CategoryTradeTax><ram:TypeCode>VAT</ram:TypeCode><ram:CategoryCode>${cat}</ram:CategoryCode><ram:RateApplicablePercent>${dec(m.vatRate)}</ram:RateApplicablePercent></ram:CategoryTradeTax>
+      </ram:SpecifiedTradeAllowanceCharge>\n`
+      : ""
+  }${
     m.dueDate
       ? `      <ram:SpecifiedTradePaymentTerms><ram:DueDateDateTime><udt:DateTimeString format="102">${cii(m.dueDate)}</udt:DateTimeString></ram:DueDateDateTime></ram:SpecifiedTradePaymentTerms>\n`
       : ""
   }      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>
-        <ram:LineTotalAmount>${dec(m.netTotal)}</ram:LineTotalAmount>
+        <ram:LineTotalAmount>${dec(m.lineTotal)}</ram:LineTotalAmount>
+        <ram:ChargeTotalAmount>0.00</ram:ChargeTotalAmount>
+        <ram:AllowanceTotalAmount>${dec(Math.max(0, m.discount))}</ram:AllowanceTotalAmount>
         <ram:TaxBasisTotalAmount>${dec(m.netTotal)}</ram:TaxBasisTotalAmount>
         <ram:TaxTotalAmount currencyID="EUR">${dec(m.vatAmount)}</ram:TaxTotalAmount>
         <ram:GrandTotalAmount>${dec(m.grossTotal)}</ram:GrandTotalAmount>
@@ -496,7 +543,10 @@ export function downloadXml(xml: string, filename: string) {
 }
 
 /** Pflichtangaben-Prüfung vor dem Export (EN 16931 / § 14 UStG). */
-export function validateERechnung(input: ERechnungInput): string[] {
+export function validateERechnung(
+  input: ERechnungInput,
+  format: "xrechnung" | "zugferd" = "zugferd",
+): string[] {
   const m = buildModel(input);
   const problems: string[] = [];
   if (!m.number) problems.push("Rechnungsnummer fehlt.");
@@ -513,5 +563,19 @@ export function validateERechnung(input: ERechnungInput): string[] {
   if (m.reverseCharge && !m.buyer.vatId)
     problems.push("Bei Reverse-Charge ist die USt-IdNr. des Kunden erforderlich.");
   if (m.items.length === 0) problems.push("Es ist keine Position erfasst.");
+  if (format === "xrechnung") {
+    const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.test(m.seller.email))
+      problems.push("Gültige E-Mail-Adresse des Rechnungsstellers fehlt (XRechnung).");
+    if (!email.test(m.buyer.email))
+      problems.push("Gültige E-Mail-Adresse des Kunden fehlt (XRechnung).");
+    if (!m.seller.contact.trim())
+      problems.push("Ansprechpartner des Rechnungsstellers fehlt (XRechnung).");
+    if (!m.seller.phone.trim())
+      problems.push("Telefonnummer des Rechnungsstellers fehlt (XRechnung).");
+  }
+  if (m.discount < 0) problems.push("Positionssummen und Rechnungsbetrag stimmen nicht überein.");
+  if (roundCents(m.netTotal + m.vatAmount) !== m.grossTotal)
+    problems.push("Netto, Steuer und Brutto stimmen nicht überein.");
   return problems;
 }

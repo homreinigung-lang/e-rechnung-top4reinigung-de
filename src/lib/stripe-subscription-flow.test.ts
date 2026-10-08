@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
 import { createAuthenticatedPlanOrder } from "./plan-orders.functions";
+import { managedStripeCheckout } from "./stripe-checkout-attempt.server";
 import { handleStripeWebhook } from "./stripe-billing.server";
 
 // Synthetic local integration: real order/Checkout/webhook logic, in-memory DB and Stripe transport.
@@ -30,21 +31,26 @@ const fixture = vi.hoisted(() => ({
   subscription: {} as Record<string, unknown>,
   orders: [] as Record<string, unknown>[],
   employees: 0,
+  attempts: [] as Record<string, unknown>[],
 }));
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     from: (table: string) => {
       const filters: [string, unknown][] = [];
       let patch: Record<string, unknown> | undefined;
+      let remove = false;
       const run = () => {
         const rows =
           table === "plans"
             ? [fixture.plan]
             : table === "subscriptions"
               ? [fixture.subscription]
-              : fixture.orders;
+              : table === "stripe_checkout_attempts"
+                ? fixture.attempts
+                : fixture.orders;
         const matches = rows.filter((row) => filters.every(([key, value]) => row[key] === value));
         if (patch) matches.forEach((row) => Object.assign(row, patch));
+        if (remove) fixture.attempts = fixture.attempts.filter((row) => !matches.includes(row));
         return { data: matches[0] ?? null, error: null, count: fixture.employees };
       };
       const chain = {
@@ -53,10 +59,38 @@ vi.mock("@/integrations/supabase/client.server", () => ({
           filters.push([key, value]);
           return chain;
         },
+        not: (key: string) => {
+          if (table === "plan_orders") filters.push(["stripe_checkout_session_id", "cs_synthetic"]);
+          return chain;
+        },
+        order: () => chain,
+        limit: () => chain,
+        delete: () => {
+          remove = true;
+          return chain;
+        },
+        upsert: async (row: Record<string, unknown>) => {
+          if (
+            !fixture.attempts.some(
+              (old) =>
+                old["subscription_id"] === row["subscription_id"] &&
+                old["billing_mode"] === row["billing_mode"],
+            )
+          )
+            fixture.attempts.push({ ...row, session_id: null });
+          return { error: null };
+        },
         maybeSingle: async () => run(),
         single: async () => run(),
         or: () => chain,
         insert: async (row: Record<string, unknown>) => {
+          if (
+            row["stripe_checkout_session_id"] &&
+            fixture.orders.some(
+              (old) => old["stripe_checkout_session_id"] === row["stripe_checkout_session_id"],
+            )
+          )
+            return { error: { code: "23505", message: "Duplicate session" } };
           fixture.orders.push({ ...row });
           return { error: null };
         },
@@ -88,13 +122,17 @@ const orderInput = {
 };
 const response = (value: unknown) => new Response(JSON.stringify(value));
 let sentParams: URLSearchParams;
+let remoteCheckoutStatus: string;
 let remoteStatus: string;
 let remoteInvoiceStatus: string;
 let checkoutRequests: Map<string, string>;
-beforeEach(() => {
+let timeoutAfterCreation = false;
+beforeEach(async () => {
+  await import("@/integrations/supabase/client.server");
   vi.stubEnv("STRIPE_BILLING_MODE", "");
   vi.stubEnv("STRIPE_LIVE_ENABLED", "false");
   checkoutRequests = new Map();
+  timeoutAfterCreation = false;
   fixture.plan = {
     id: planId,
     code: "basis",
@@ -110,7 +148,9 @@ beforeEach(() => {
     renews_on: null,
   };
   fixture.orders = [];
+  fixture.attempts = [];
   fixture.employees = 0;
+  remoteCheckoutStatus = "open";
   remoteStatus = "active";
   remoteInvoiceStatus = "paid";
   vi.stubEnv("STRIPE_SANDBOX_ENABLED", "true");
@@ -154,6 +194,12 @@ beforeEach(() => {
       }
       if (url.includes("/tax_rates/"))
         return response({ active: true, livemode: false, percentage: 19, inclusive: false });
+      if (url.endsWith("/checkout/sessions/cs_synthetic"))
+        return response({
+          id: "cs_synthetic",
+          status: remoteCheckoutStatus,
+          url: "https://checkout.stripe.com/test/synthetic",
+        });
       if (url.endsWith("/checkout/sessions")) {
         sentParams = init!.body as URLSearchParams;
         const key = new Headers(init?.headers).get("Idempotency-Key")!;
@@ -165,7 +211,15 @@ beforeEach(() => {
           );
         }
         checkoutRequests.set(key, sentParams.toString());
-        return response({ id: "cs_synthetic", url: "https://checkout.stripe.com/test/synthetic" });
+        if (timeoutAfterCreation) {
+          timeoutAfterCreation = false;
+          throw new Error("Synthetic network timeout");
+        }
+        return response({
+          id:
+            checkoutRequests.size === 1 ? "cs_synthetic" : `cs_synthetic_${checkoutRequests.size}`,
+          url: "https://checkout.stripe.com/test/synthetic",
+        });
       }
       if (url.includes("/subscriptions/sub_synthetic?"))
         return response({
@@ -189,14 +243,58 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
-it("prevents two Checkout sessions before the first webhook arrives", async () => {
-  vi.spyOn(Math, "random").mockReturnValueOnce(0.1).mockReturnValueOnce(0.2);
-  await createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } });
-  await expect(
-    createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } }),
-  ).rejects.toThrow("already in progress");
+it("reuses one open Checkout and order after repeated submissions", async () => {
+  const first = await createAuthenticatedPlanOrder({
+    data: { ...orderInput, paymentMethod: "stripe" },
+  });
+  const second = await createAuthenticatedPlanOrder({
+    data: { ...orderInput, paymentMethod: "stripe" },
+  });
+  expect(second).toEqual(first);
   expect(checkoutRequests.size).toBe(1);
   expect(fixture.orders).toHaveLength(1);
+});
+it("reserves one immutable attempt across simultaneous workers", async () => {
+  const candidate = {
+    orderNumber: "BEST-synthetic",
+    userId: "synthetic-owner",
+    subscriptionId: "local-sub",
+    planCode: "basis",
+    planName: "Basis",
+    billingInterval: "monthly" as const,
+    netCents: 2999,
+    baseNetCents: 2999,
+    vatCents: 570,
+    grossCents: 3569,
+    email: orderInput.email,
+    companyName: orderInput.companyName,
+  };
+  const order = { order_number: candidate.orderNumber };
+  const results = await Promise.all(
+    [1, 2].map((worker) =>
+      managedStripeCheckout(
+        { ...candidate, orderNumber: `BEST-${worker}` },
+        { ...order, order_number: `BEST-${worker}` },
+      ),
+    ),
+  );
+  expect(results[0]).toEqual(results[1]);
+  expect(checkoutRequests.size).toBe(1);
+  expect(fixture.attempts).toHaveLength(1);
+});
+it("blocks a completed Checkout before the subscription webhook arrives", async () => {
+  await createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } });
+  remoteCheckoutStatus = "complete";
+  await expect(
+    createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } }),
+  ).rejects.toThrow("verarbeitet");
+  expect(checkoutRequests.size).toBe(1);
+});
+it("starts a new attempt only after Stripe confirms expiration", async () => {
+  await createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } });
+  remoteCheckoutStatus = "expired";
+  await createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } });
+  expect(checkoutRequests.size).toBe(2);
 });
 async function deliver(type: string, object: unknown) {
   const payload = JSON.stringify({ type, livemode: false, data: { object } });
@@ -302,4 +400,41 @@ it("rejects an inactive plan", async () => {
     "nicht mehr verfügbar",
   );
   expect(fixture.orders).toHaveLength(0);
+});
+
+it("recovers an unknown Stripe outcome with unchanged persisted parameters", async () => {
+  timeoutAfterCreation = true;
+  await expect(
+    createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } }),
+  ).rejects.toThrow("network timeout");
+  expect(fixture.orders).toHaveLength(0);
+  expect(fixture.attempts).toHaveLength(1);
+  await createAuthenticatedPlanOrder({
+    data: { ...orderInput, paymentMethod: "stripe" },
+  });
+  expect(checkoutRequests.size).toBe(1);
+  expect(fixture.orders).toHaveLength(1);
+  expect(sentParams.get("customer_email")).toBe(orderInput.email);
+});
+it("reuses a legacy open session created before Checkout reservation was deployed", async () => {
+  const first = await createAuthenticatedPlanOrder({
+    data: { ...orderInput, paymentMethod: "stripe" },
+  });
+  fixture.attempts = [];
+  expect(
+    await createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } }),
+  ).toEqual(first);
+  expect(checkoutRequests.size).toBe(1);
+  expect(fixture.orders).toHaveLength(1);
+});
+
+it("rejects changed purchase data while an existing Checkout remains payable", async () => {
+  await createAuthenticatedPlanOrder({ data: { ...orderInput, paymentMethod: "stripe" } });
+  await expect(
+    createAuthenticatedPlanOrder({
+      data: { ...orderInput, billingInterval: "yearly", paymentMethod: "stripe" },
+    }),
+  ).rejects.toThrow("anderen Bestelldaten");
+  expect(checkoutRequests.size).toBe(1);
+  expect(fixture.orders).toHaveLength(1);
 });

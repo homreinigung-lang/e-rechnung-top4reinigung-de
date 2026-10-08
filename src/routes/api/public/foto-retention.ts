@@ -104,7 +104,7 @@ export const Route = createFileRoute("/api/public/foto-retention")({
           const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
           const { data: entries, error } = await supabaseAdmin
             .from("time_entries")
-            .select("id, photo_paths")
+            .select("id, photo_paths, employees(auth_user_id)")
             .eq("user_id", userId)
             .lt("work_date", cutoff);
           if (error) {
@@ -119,6 +119,7 @@ export const Route = createFileRoute("/api/public/foto-retention")({
             try {
               const removed = await removeRetainedPhotos(
                 paths,
+                { ownerId: userId, entryId: e.id, employeeAuthId: e.employees?.auth_user_id },
                 async (toRemove) => {
                   const { error: storageError } = await supabaseAdmin.storage
                     .from("firmen-dateien")

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDatevExtf, DATEV_COLUMNS, type DatevOptions } from "./datev-extf";
+import { buildDatevExtf, buildIssuedDatevExtf, DATEV_COLUMNS, type DatevOptions } from "./datev-extf";
 
 const accounts: DatevOptions["accounts"] = [
   { chart:"SKR03", fiscal_year:2026,account_number:"8400",account_name:"Erlöse 19 % USt",category:"revenue" },
@@ -76,4 +76,10 @@ describe("DATEV EXTF",()=>{
     expect(Array.from(bytes.slice(0,3))).not.toEqual([239,187,191]);
     expect(decode(bytes)).not.toContain("Zusammenfassung");
   });
+});
+
+it("exports issued owner invoices without a draft blocking the whole period", () => {
+ const text = decode(buildIssuedDatevExtf([{ ...invoice, status: "draft", number: "DEMO-invalid" }, { ...invoice, status: "paid", number: "RE-ISSUED" }], [expense], options("SKR03")));
+ expect(text).toContain("RE-ISSUED"); expect(text).toContain("A-1"); expect(text).not.toContain("DEMO-invalid");
+ expect(text.trim().split("\r\n")).toHaveLength(4);
 });

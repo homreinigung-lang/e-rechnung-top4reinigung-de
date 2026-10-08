@@ -998,10 +998,10 @@ function DokumentDetail() {
     };
   }
 
-  function warnIfIncomplete(input: ERechnungInput) {
-    const problems = validateERechnung(input);
+  function warnIfIncomplete(input: ERechnungInput, format: "xrechnung" | "zugferd" = "zugferd") {
+    const problems = validateERechnung(input, format);
     if (problems.length > 0) {
-      toast.warning("Pflichtangaben unvollständig", { description: problems.join(" ") });
+      throw new Error(problems.join(" "));
     }
   }
 
@@ -1019,9 +1019,11 @@ function DokumentDetail() {
 
   async function exportXRechnung() {
     try {
+      if (!ensureHasItems()) return;
+      if (!(await persistBeforeOutput())) return;
       const number = await assignOfficialNumberNow();
       const input = eRechnungInput(number);
-      warnIfIncomplete(input);
+      warnIfIncomplete(input, "xrechnung");
       downloadXml(buildXRechnungXml(input), `XRechnung_${number.replace(/\W+/g, "_")}.xml`);
       await logAudit("xrechnung_export", { id, number }, { format: "XRechnung 3.0 (UBL)" });
       toast.success("XRechnung (XML) erstellt");

@@ -1,3 +1,4 @@
+import { fetchAllRows } from "./fetch-all-rows";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -56,15 +57,19 @@ export const createAccountantAccess = createServerFn({ method: "POST" })
 
     const { hashAccessCode } = await import("./accountant-access.server");
 
-    const { data: created, error } = await context.supabase.from("accountant_access").insert({
-      user_id: context.userId,
-      email: data.email,
-      token,
-      // Klartext wird nicht gespeichert – nur die Prüfsumme.
-      access_code: "",
-      access_code_hash: await hashAccessCode(token, accessCode),
-      expires_at: expiryFrom(data.validDays),
-    }).select("id").single();
+    const { data: created, error } = await context.supabase
+      .from("accountant_access")
+      .insert({
+        user_id: context.userId,
+        email: data.email,
+        token,
+        // Klartext wird nicht gespeichert – nur die Prüfsumme.
+        access_code: "",
+        access_code_hash: await hashAccessCode(token, accessCode),
+        expires_at: expiryFrom(data.validDays),
+      })
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
 
     return { id: created.id as string, token, accessCode };
@@ -109,7 +114,6 @@ export const setAccountantPassword = createServerFn({ method: "POST" })
     return { ok: true, accessCode: data.password };
   });
 
-
 /** Prüft Token + Passwort und liefert die Auswertung des Zeitraums (nur Lesen). */
 export const getAccountantReport = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; from: string; to: string }) => data)
@@ -119,83 +123,112 @@ export const getAccountantReport = createServerFn({ method: "POST" })
 
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
 
-    const [documents, expenses, timeEntries, employees, wageTypes, holidays, adjustments, settings, fahrtenbuchEntries, fahrtenbuchVehicles] = await Promise.all([
-      supabaseAdmin
-        .from("documents")
-        .select("*")
-        .eq("user_id", access.user_id)
-        .eq("type", "invoice")
-        // Wie in der Belegliste: keine Papierkorb-Belege, keine Stornorechnungen,
-        // keine stornierten Originale.
-        .is("deleted_at", null)
-        .eq("is_storno", false)
-        .neq("status", "cancelled")
-        .gte("issue_date", data.from)
-        .lte("issue_date", data.to)
-        .order("issue_date"),
-      supabaseAdmin
-        .from("expenses")
-        .select("*")
-        .eq("user_id", access.user_id)
-        .is("deleted_at", null)
-        .gte("expense_date", data.from)
-        .lte("expense_date", data.to)
-        .order("expense_date"),
-      supabaseAdmin
-        .from("time_entries")
-        // Fotos (photo_paths) sind rein interne Nachweise – nie an den Steuerberater.
-        .select(
-          "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at",
-        )
-        .eq("user_id", access.user_id)
-        .gte("work_date", data.from)
-        .lte("work_date", data.to)
-        .order("work_date"),
-      supabaseAdmin
-        .from("employees")
-        .select("id, name, personnel_number, hourly_rate, weekly_hours, contract_type, contract_start")
-        .eq("user_id", access.user_id),
-      supabaseAdmin
-        .from("wage_types")
-        .select("kind,surcharge_percent,active,time_from,time_to")
-        .eq("user_id", access.user_id),
-      supabaseAdmin
-        .from("company_holidays")
-        .select("holiday_date,name,active,surcharge_percent")
-        .eq("user_id", access.user_id)
-        .eq("active", true)
-        .gte("holiday_date", data.from)
-        .lte("holiday_date", data.to),
-      supabaseAdmin
-        .from("time_account_adjustments")
-        .select("*")
-        .eq("user_id", access.user_id)
-        .gte("entry_date", data.from)
-        .lte("entry_date", data.to)
-        .order("entry_date"),
+    const [
+      documents,
+      expenses,
+      timeEntries,
+      employees,
+      wageTypes,
+      holidays,
+      adjustments,
+      settings,
+      fahrtenbuchEntries,
+      fahrtenbuchVehicles,
+    ] = await Promise.all([
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("documents")
+          .select("*")
+          .eq("user_id", access.user_id)
+          .eq("type", "invoice")
+          // Keine Papierkorb-Belege, Stornorechnungen oder stornierten Originale.
+          .is("deleted_at", null)
+          .eq("is_storno", false)
+          .neq("status", "cancelled")
+          .gte("issue_date", data.from)
+          .lte("issue_date", data.to)
+          .order("issue_date"),
+      ),
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("expenses")
+          .select("*")
+          .eq("user_id", access.user_id)
+          .is("deleted_at", null)
+          .gte("expense_date", data.from)
+          .lte("expense_date", data.to)
+          .order("expense_date"),
+      ),
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("time_entries")
+          // Fotos (photo_paths) sind rein interne Nachweise – nie an den Steuerberater.
+          .select(
+            "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at",
+          )
+          .eq("user_id", access.user_id)
+          .gte("work_date", data.from)
+          .lte("work_date", data.to)
+          .order("work_date"),
+      ),
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("employees")
+          .select(
+            "id, name, personnel_number, hourly_rate, weekly_hours, contract_type, contract_start",
+          )
+          .eq("user_id", access.user_id),
+      ),
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("wage_types")
+          .select("id,kind,surcharge_percent,active,time_from,time_to")
+          .eq("user_id", access.user_id),
+      ),
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("company_holidays")
+          .select("id,holiday_date,name,active,surcharge_percent")
+          .eq("user_id", access.user_id)
+          .eq("active", true)
+          .gte("holiday_date", data.from)
+          .lte("holiday_date", data.to),
+      ),
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("time_account_adjustments")
+          .select("*")
+          .eq("user_id", access.user_id)
+          .gte("entry_date", data.from)
+          .lte("entry_date", data.to)
+          .order("entry_date"),
+      ),
       supabaseAdmin
         .from("company_settings")
         .select("company_name")
         .eq("user_id", access.user_id)
         .maybeSingle(),
-      (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
-        .from("fahrtenbuch_entries")
-        .select("*")
-        .eq("user_id", access.user_id)
-        .gte("trip_date", data.from)
-        .lte("trip_date", data.to)
-        .order("trip_date")
-        .order("trip_time"),
-      (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
-        .from("fahrtenbuch_vehicles")
-        .select("id,vehicle_name,license_plate")
-        .eq("user_id", access.user_id)
-        .order("vehicle_name"),
+      fetchAllRows(() =>
+        (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
+          .from("fahrtenbuch_entries")
+          .select("*")
+          .eq("user_id", access.user_id)
+          .gte("trip_date", data.from)
+          .lte("trip_date", data.to)
+          .order("trip_date")
+          .order("trip_time"),
+      ),
+      fetchAllRows(() =>
+        (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
+          .from("fahrtenbuch_vehicles")
+          .select("id,vehicle_name,license_plate")
+          .eq("user_id", access.user_id)
+          .order("vehicle_name"),
+      ),
     ]);
+    if (settings.error) throw new Error("Firmendaten konnten nicht geladen werden.");
 
-    const empById = new Map(
-      (employees.data ?? []).map((e) => [e.id as string, e as Record<string, unknown>]),
-    );
+    const empById = new Map(employees.map((e) => [e.id as string, e as Record<string, unknown>]));
 
     /** Kürzel für die Lohnabrechnung: A = Arbeit, U = Urlaub, K = Krank, F = Feiertag, S = Sonstige. */
     function absenceCode(entryType: string, reason: string) {
@@ -210,7 +243,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       return "S";
     }
 
-    const enrichedTime = (timeEntries.data ?? [])
+    const enrichedTime = timeEntries
       // Abgelehnte Anträge fließen nicht in die Lohnabrechnung ein.
       .filter((t) => String(t.approval_status ?? "") !== "rejected")
       .map((t) => {
@@ -236,14 +269,14 @@ export const getAccountantReport = createServerFn({ method: "POST" })
 
     return {
       companyName: settings.data?.company_name ?? "",
-      documents: (documents.data ?? []) as unknown as Row[],
-      expenses: (expenses.data ?? []) as unknown as Row[],
+      documents: documents as unknown as Row[],
+      expenses: expenses as unknown as Row[],
       timeEntries: enrichedTime as unknown as Row[],
-      wageTypes: (wageTypes.data ?? []) as unknown as Row[],
-      holidays: (holidays.data ?? []) as unknown as Row[],
-      adjustments: (adjustments.data ?? []) as unknown as Row[],
-      fahrtenbuchEntries: (fahrtenbuchEntries.data ?? []) as unknown as Row[],
-      fahrtenbuchVehicles: (fahrtenbuchVehicles.data ?? []) as unknown as Row[],
+      wageTypes: wageTypes as unknown as Row[],
+      holidays: holidays as unknown as Row[],
+      adjustments: adjustments as unknown as Row[],
+      fahrtenbuchEntries: fahrtenbuchEntries as unknown as Row[],
+      fahrtenbuchVehicles: fahrtenbuchVehicles as unknown as Row[],
     };
   });
 
@@ -280,10 +313,15 @@ export const getAccountantDatevSettings = createServerFn({ method: "POST" })
   });
 
 export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
-  .inputValidator((data: {
-    token: string; code: string; chart: string;
-    datev_beraternummer: string; datev_mandantennummer: string;
-  }) => data)
+  .inputValidator(
+    (data: {
+      token: string;
+      code: string;
+      chart: string;
+      datev_beraternummer: string;
+      datev_mandantennummer: string;
+    }) => data,
+  )
   .handler(async ({ data }): Promise<AccountantDatevSettings> => {
     // Validate before any privileged database write; accept only the three visible DATEV fields.
     if (data.chart !== "SKR03" && data.chart !== "SKR04") {
@@ -306,7 +344,10 @@ export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
       .maybeSingle();
     if (readError) throw new Error("DATEV-Einstellungen konnten nicht geprüft werden.");
 
-    const values: Pick<AccountantDatevSettings, "chart" | "datev_beraternummer" | "datev_mandantennummer"> & { chart: "SKR03" | "SKR04" } = {
+    const values: Pick<
+      AccountantDatevSettings,
+      "chart" | "datev_beraternummer" | "datev_mandantennummer"
+    > & { chart: "SKR03" | "SKR04" } = {
       chart: data.chart,
       datev_beraternummer: beraternummer,
       datev_mandantennummer: mandantennummer,
@@ -315,28 +356,37 @@ export const saveAccountantDatevSettings = createServerFn({ method: "POST" })
     let fiscal_year: number;
     if (existing) {
       fiscal_year = existing.fiscal_year;
-      const { error } = await accountingDb.from("company_accounting_settings")
-        .update(values).eq("user_id", access.user_id);
+      const { error } = await accountingDb
+        .from("company_accounting_settings")
+        .update(values)
+        .eq("user_id", access.user_id);
       if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
     } else {
-      const { data: company, error: companyError } = await supabaseAdmin.from("company_settings")
-        .select("user_id").eq("user_id", access.user_id).maybeSingle();
+      const { data: company, error: companyError } = await supabaseAdmin
+        .from("company_settings")
+        .select("user_id")
+        .eq("user_id", access.user_id)
+        .maybeSingle();
       if (companyError || !company) throw new Error("Mandant nicht gefunden.");
       fiscal_year = new Date().getUTCFullYear();
-      const { error } = await accountingDb.from("company_accounting_settings")
+      const { error } = await accountingDb
+        .from("company_accounting_settings")
         .insert({ ...values, user_id: access.user_id, fiscal_year });
       if (error) throw new Error("DATEV-Einstellungen konnten nicht gespeichert werden.");
     }
 
     // Account mapping stays invisible in the portal: selecting SKR03/SKR04 creates/updates it automatically.
-    const { data: expenseCategories, error: expenseError } = await supabaseAdmin
-      .from("expenses")
-      .select("category")
-      .eq("user_id", access.user_id)
-      .is("deleted_at", null);
-    if (expenseError) throw new Error("DATEV-Kontenzuordnung konnte nicht ermittelt werden.");
+    const expenseCategories = await fetchAllRows(() =>
+      supabaseAdmin
+        .from("expenses")
+        .select("id,category")
+        .eq("user_id", access.user_id)
+        .is("deleted_at", null),
+    );
 
-    const categories = [...new Set((expenseCategories ?? []).map((row) => String(row.category ?? "")))];
+    const categories = [
+      ...new Set((expenseCategories ?? []).map((row) => String(row.category ?? ""))),
+    ];
     const automaticMappings = buildAutomaticExpenseMappings(categories, data.chart);
     if (categories.length > 0) {
       const { error: mappingError } = await accountingDb.from("company_account_mappings").upsert(
@@ -363,7 +413,11 @@ export type AccountantDatevExport = {
 export const getAccountantDatevExport = createServerFn({ method: "POST" })
   .inputValidator((data: { token: string; code: string; from: string; to: string }) => data)
   .handler(async ({ data }): Promise<AccountantDatevExport> => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.from) || !/^\d{4}-\d{2}-\d{2}$/.test(data.to) || data.from > data.to) {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(data.from) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(data.to) ||
+      data.from > data.to
+    ) {
       throw new Error("Ungültiger DATEV-Zeitraum.");
     }
 
@@ -385,44 +439,53 @@ export const getAccountantDatevExport = createServerFn({ method: "POST" })
     }
 
     const [documents, expenses, accounts, mappings] = await Promise.all([
-      supabaseAdmin
-        .from("documents")
-        .select("issue_date,number,total,net_total,vat_amount,tax_mode,customer_company,customer_name,status,cancels_document_id")
-        .eq("user_id", access.user_id)
-        .eq("type", "invoice")
-        .is("deleted_at", null)
-        .in("status", ["sent", "paid", "cancelled"])
-        .gte("issue_date", data.from)
-        .lte("issue_date", data.to)
-        .order("issue_date"),
-      supabaseAdmin
-        .from("expenses")
-        .select("expense_date,document_number,supplier,gross_amount,category,net_amount,vat_amount")
-        .eq("user_id", access.user_id)
-        .is("deleted_at", null)
-        .gte("expense_date", data.from)
-        .lte("expense_date", data.to)
-        .order("expense_date"),
-      accountingDb
-        .from("accounting_chart_accounts")
-        .select("chart,fiscal_year,account_number,category,account_name")
-        .eq("chart", settings.chart)
-        .eq("fiscal_year", settings.fiscal_year)
-        .eq("is_active", true),
-      accountingDb
-        .from("company_account_mappings")
-        .select("mapping_key,chart,fiscal_year,account_number")
-        .eq("user_id", access.user_id)
-        .eq("chart", settings.chart)
-        .eq("fiscal_year", settings.fiscal_year),
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("documents")
+          .select(
+            "id,issue_date,number,total,net_total,vat_amount,tax_mode,customer_company,customer_name,status,cancels_document_id",
+          )
+          .eq("user_id", access.user_id)
+          .eq("type", "invoice")
+          .is("deleted_at", null)
+          .in("status", ["sent", "paid", "cancelled"])
+          .gte("issue_date", data.from)
+          .lte("issue_date", data.to)
+          .order("issue_date"),
+      ),
+      fetchAllRows(() =>
+        supabaseAdmin
+          .from("expenses")
+          .select(
+            "id,expense_date,document_number,supplier,gross_amount,category,net_amount,vat_amount",
+          )
+          .eq("user_id", access.user_id)
+          .is("deleted_at", null)
+          .gte("expense_date", data.from)
+          .lte("expense_date", data.to)
+          .order("expense_date"),
+      ),
+      fetchAllRows(() =>
+        accountingDb
+          .from("accounting_chart_accounts")
+          .select("id,chart,fiscal_year,account_number,category,account_name")
+          .eq("chart", settings.chart)
+          .eq("fiscal_year", settings.fiscal_year)
+          .eq("is_active", true),
+      ),
+      fetchAllRows(() =>
+        accountingDb
+          .from("company_account_mappings")
+          .select("id,mapping_key,chart,fiscal_year,account_number")
+          .eq("user_id", access.user_id)
+          .eq("chart", settings.chart)
+          .eq("fiscal_year", settings.fiscal_year),
+      ),
     ]);
-    if (documents.error || expenses.error || accounts.error || mappings.error) {
-      throw new Error("DATEV-Daten konnten nicht geladen werden.");
-    }
 
-    const categories = [...new Set((expenses.data ?? []).map((row) => String(row.category ?? "")))];
+    const categories = [...new Set(expenses.map((row) => String(row.category ?? "")))];
     const expenseAccounts = buildAutomaticExpenseMappings(categories, settings.chart);
-    for (const mapping of mappings.data ?? []) {
+    for (const mapping of mappings) {
       const key = String(mapping.mapping_key ?? "");
       if (!key.startsWith("expense:")) continue;
       const category = key.slice("expense:".length);
@@ -430,8 +493,8 @@ export const getAccountantDatevExport = createServerFn({ method: "POST" })
       expenseAccounts[category] = String(mapping.account_number ?? "");
     }
     const bytes = buildDatevExtf(
-      (documents.data ?? []) as unknown as Parameters<typeof buildDatevExtf>[0],
-      (expenses.data ?? []) as unknown as Parameters<typeof buildDatevExtf>[1],
+      documents as unknown as Parameters<typeof buildDatevExtf>[0],
+      expenses as unknown as Parameters<typeof buildDatevExtf>[1],
       {
         chart: settings.chart,
         fiscalYear: settings.fiscal_year,
@@ -440,7 +503,7 @@ export const getAccountantDatevExport = createServerFn({ method: "POST" })
         expenseAccounts,
         from: data.from,
         to: data.to,
-        accounts: (accounts.data ?? []) as unknown as Parameters<typeof buildDatevExtf>[2]["accounts"],
+        accounts: accounts as unknown as Parameters<typeof buildDatevExtf>[2]["accounts"],
       },
     );
 
@@ -508,15 +571,16 @@ export const getAccountantReceiptExport = createServerFn({ method: "POST" })
     }
 
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
-    const { data: expenses, error } = await supabaseAdmin
-      .from("expenses")
-      .select("*")
-      .eq("user_id", access.user_id)
-      .is("deleted_at", null)
-      .gte("expense_date", data.from)
-      .lte("expense_date", data.to)
-      .order("expense_date", { ascending: true });
-    if (error) throw new Error("Ausgaben konnten nicht geladen werden.");
+    const expenses = await fetchAllRows(() =>
+      supabaseAdmin
+        .from("expenses")
+        .select("*")
+        .eq("user_id", access.user_id)
+        .is("deleted_at", null)
+        .gte("expense_date", data.from)
+        .lte("expense_date", data.to)
+        .order("expense_date", { ascending: true }),
+    );
 
     const out: AccountantReceiptExportRow[] = [];
     for (const raw of expenses ?? []) {
@@ -530,7 +594,9 @@ export const getAccountantReceiptExport = createServerFn({ method: "POST" })
           const { data: signed, error: signedError } = await supabaseAdmin.storage
             .from("firmen-dateien")
             .createSignedUrl(path, 60 * 30);
-          if (!signedError && signed?.signedUrl) receiptUrl = signed.signedUrl;
+          if (signedError || !signed?.signedUrl)
+            throw new Error("Beleg konnte nicht geladen werden.");
+          receiptUrl = signed.signedUrl;
         }
       }
 
@@ -562,15 +628,16 @@ export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { verifyAccountantAccess } = await import("./accountant-access.server");
     const access = await verifyAccountantAccess(data.token, data.code ?? "");
-    const { data: expenses, error } = await supabaseAdmin
-      .from("expenses")
-      .select("expense_date,supplier,category,receipt_url")
-      .eq("user_id", access.user_id)
-      .is("deleted_at", null)
-      .gte("expense_date", from)
-      .lte("expense_date", to)
-      .order("expense_date", { ascending: true });
-    if (error) throw new Error("Ausgaben konnten nicht geladen werden.");
+    const expenses = await fetchAllRows(() =>
+      supabaseAdmin
+        .from("expenses")
+        .select("id,expense_date,supplier,category,receipt_url")
+        .eq("user_id", access.user_id)
+        .is("deleted_at", null)
+        .gte("expense_date", from)
+        .lte("expense_date", to)
+        .order("expense_date", { ascending: true }),
+    );
 
     const out: Array<{ name: string; url: string }> = [];
     let index = 1;
@@ -581,16 +648,23 @@ export const getAccountantMonthReceipts = createServerFn({ method: "POST" })
       const label = [
         String(index).padStart(2, "0"),
         e.expense_date,
-        String(e.supplier || "Beleg").replace(/[^\w\s-]+/g, "").trim().replace(/\s+/g, "-"),
+        String(e.supplier || "Beleg")
+          .replace(/[^\w\s-]+/g, "")
+          .trim()
+          .replace(/\s+/g, "-"),
         String(e.category || "").replace(/[^\w-]+/g, ""),
-      ].filter(Boolean).join("_");
+      ]
+        .filter(Boolean)
+        .join("_");
       if (/^https?:/.test(storedPath)) {
         out.push({ name: `${label}.${ext}`, url: storedPath });
       } else {
-        const { data: signed } = await supabaseAdmin.storage
+        const { data: signed, error: signedError } = await supabaseAdmin.storage
           .from("firmen-dateien")
           .createSignedUrl(storedPath, 60 * 30);
-        if (signed?.signedUrl) out.push({ name: `${label}.${ext}`, url: signed.signedUrl });
+        if (signedError || !signed?.signedUrl)
+          throw new Error("Beleg konnte nicht geladen werden.");
+        out.push({ name: `${label}.${ext}`, url: signed.signedUrl });
       }
       index += 1;
     }
@@ -678,7 +752,6 @@ ${companyName}`;
       <p style="color:#64748b;font-size:13px">Falls der Button nicht funktioniert: ${escapeHtml(link)}</p>
       <p style="margin-top:28px;color:#64748b;font-size:12px">${escapeHtml(companyName)}</p>
     </div>`;
-
 
     const delivery = await sendMail({
       to: data.email,
