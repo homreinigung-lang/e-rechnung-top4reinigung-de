@@ -52,3 +52,29 @@ it("rejects overlapping pages rather than counting records twice", async () => {
   });
   await expect(fetchAllRows(query)).rejects.toThrow("erneut laden");
 });
+
+it("preserves primary list ordering with a unique id tie-breaker across pages", async () => {
+  const records = [
+    { id: "c", created_at: "2026-10-08" },
+    { id: "a", created_at: "2026-10-08" },
+    { id: "b", created_at: "2026-10-07" },
+    { id: "d", created_at: "2026-10-07" },
+  ];
+  const calls: string[] = [];
+  const query = () => ({
+    order: (column: string, options: { ascending: boolean }) => {
+      calls.push(`${column}:${options.ascending}`);
+      return {
+        range: async (from: number, to: number) => ({
+          data: [...records]
+            .sort((a, b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id))
+            .slice(from, Math.min(to + 1, from + 2)),
+          error: null,
+        }),
+      };
+    },
+  });
+  const rows = await fetchAllRows(query);
+  expect(rows.map((row) => row.id)).toEqual(["a", "c", "b", "d"]);
+  expect(calls).toEqual(["id:true", "id:true", "id:true"]);
+});
