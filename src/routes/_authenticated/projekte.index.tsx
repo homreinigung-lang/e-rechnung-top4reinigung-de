@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all-rows";
+import { approvedProjectWorkTotals } from "@/lib/approved-work-totals";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeProject, type ScannedProject } from "@/lib/project-scan.functions";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
@@ -138,13 +139,22 @@ function ProjekteIndex() {
     },
   });
 
+  const { data: controllingEmployees = [] } = useQuery({
+    queryKey: ["projects_controlling_employees"],
+    queryFn: async () => {
+      return fetchAllRows(() =>
+        supabase.from("employees").select("id,hourly_rate"),
+      );
+    },
+  });
+
   const { data: controllingTimeEntries = [] } = useQuery({
     queryKey: ["projects_controlling_time_entries", controllingMonth],
     queryFn: async () => {
       return fetchAllRows(() =>
         supabase
           .from("time_entries")
-          .select("id,project_id,work_date,hours,hourly_rate,entry_type,approval_status")
+          .select("id,project_id,employee_id,work_date,hours,hourly_rate,entry_type,approval_status")
           .gte("work_date", monthStart)
           .lte("work_date", monthEnd),
       );
@@ -329,19 +339,17 @@ function ProjekteIndex() {
     );
   }
 
+  const employeeRates = new Map(
+    controllingEmployees.map((employee) => [employee.id, Number(employee.hourly_rate ?? 0)] as const),
+  );
+  const projectWorkTotals = approvedProjectWorkTotals(controllingTimeEntries, employeeRates);
+
   const controllingRows = projects
     .map((p) => {
-      const entries = controllingTimeEntries.filter(
-        (t) =>
-          t.project_id === p.id &&
-          (t.entry_type ?? "work") === "work" &&
-          (t.approval_status ?? "approved") !== "rejected",
-      );
-      const actualHours = entries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
-      const wageCosts = entries.reduce(
-        (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
-        0,
-      );
+      const { hours: actualHours, amount: wageCosts } = projectWorkTotals.get(p.id) ?? {
+        hours: 0,
+        amount: 0,
+      };
       const directCosts = controllingExpenses
         .filter((e) => e.project_id === p.id)
         .reduce((sum, e) => sum + Number(e.net_amount || 0), 0);
