@@ -29,6 +29,7 @@ import {
 import { buildDatevExtf, type DatevAccount, type DatevChart } from "@/lib/datev-extf";
 import { buildPayrollSummary } from "@/lib/payroll-export";
 import { approvedWorkHours, workHourlyRate } from "@/lib/approved-work-totals";
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import { escapeExcelHtml, excelHtmlCell } from "@/lib/excel-html";
 import { automaticExpenseAccount } from "@/lib/datev-account-mapping";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
@@ -123,31 +124,31 @@ function Steuerberater() {
   const { data: documents = [] } = useQuery({
     queryKey: ["stb_documents", from, to],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .is("deleted_at", null)
-        .eq("type", "invoice")
-        .gte("issue_date", from)
-        .lte("issue_date", to)
-        .order("issue_date");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("documents")
+          .select("*")
+          .is("deleted_at", null)
+          .eq("type", "invoice")
+          .gte("issue_date", from)
+          .lte("issue_date", to)
+          .order("issue_date"),
+      );
     },
   });
 
   const { data: expenses = [] } = useQuery({
     queryKey: ["stb_expenses", from, to],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .is("deleted_at", null)
-        .gte("expense_date", from)
-        .lte("expense_date", to)
-        .order("expense_date");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("expenses")
+          .select("*")
+          .is("deleted_at", null)
+          .gte("expense_date", from)
+          .lte("expense_date", to)
+          .order("expense_date"),
+      );
     },
   });
 
@@ -155,33 +156,33 @@ function Steuerberater() {
   const { data: timeEntries = [] } = useQuery({
     queryKey: ["stb_time_entries", from, to],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        // Ohne photo_paths: Fotos bleiben ausschließlich intern (Verwaltung).
-        .select(
-          "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at, employees(name, personnel_number, contract_type, weekly_hours, hourly_rate)",
-        )
-        .gte("work_date", from)
-        .lte("work_date", to)
-        .neq("approval_status", "rejected")
-        .order("work_date");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("time_entries")
+          // Ohne photo_paths: Fotos bleiben ausschließlich intern (Verwaltung).
+          .select(
+            "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at, employees(name, personnel_number, contract_type, weekly_hours, hourly_rate)",
+          )
+          .gte("work_date", from)
+          .lte("work_date", to)
+          .neq("approval_status", "rejected")
+          .order("work_date"),
+      );
     },
   });
 
   const { data: fahrtenbuchEntries = [] } = useQuery({
     queryKey: ["stb_fahrtenbuch_entries", from, to],
     queryFn: async () => {
-      const { data, error } = await fahrtenbuchClient
-        .from("fahrtenbuch_entries")
-        .select("*")
-        .gte("trip_date", from)
-        .lte("trip_date", to)
-        .order("trip_date")
-        .order("trip_time");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        fahrtenbuchClient
+          .from("fahrtenbuch_entries")
+          .select("*")
+          .gte("trip_date", from)
+          .lte("trip_date", to)
+          .order("trip_date")
+          .order("trip_time"),
+      );
     },
   });
 
