@@ -3,7 +3,7 @@ import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
 import { draftPlaceholderNumber, ensureOfficialNumber } from "@/lib/doc-number";
 import { assertInvoiceActionAllowed, assertInvoicePaymentReversible } from "@/lib/invoice-action-eligibility";
-import { assertQuoteDecisionAllowed } from "@/lib/quote-decision-eligibility";
+import { assertQuoteDecisionAllowed, assertQuoteCompletionAllowed } from "@/lib/quote-decision-eligibility";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -208,15 +208,21 @@ export async function declineQuote(id: string, reason: string): Promise<void> {
 export async function completeQuote(id: string): Promise<void> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number")
+    .select("id, number, type, status, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
-  const { error: updateError } = await supabase
+  assertQuoteCompletionAllowed(doc);
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: "paid", paid_at: today() } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "quote")
+    .eq("status", "accepted")
+    .or("is_storno.is.false,is_storno.is.null")
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("quote_completed", { id, number: doc.number }, {});
 }
 
