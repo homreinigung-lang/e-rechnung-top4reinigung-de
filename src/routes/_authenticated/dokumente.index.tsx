@@ -1032,8 +1032,7 @@ function AngebotsTabelle({
 
 
                         {!isOrder &&
-                          (d.status === "accepted" || Boolean(d.converted_document_id)) &&
-                          d.status !== "paid" && (
+                          d.status === "accepted" && (
                             <DropdownMenuItem
                               onClick={() => complete.mutate(d.id)}
                               disabled={complete.isPending}
