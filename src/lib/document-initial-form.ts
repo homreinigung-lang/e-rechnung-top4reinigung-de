@@ -1,4 +1,5 @@
 import { defaultQuoteIntro } from "@/lib/document-texts";
+import { normalizeTaxMode } from "@/lib/tax-mode";
 
 type DocumentDetailData = {
   doc: unknown;
@@ -14,7 +15,7 @@ export function buildInitialDocumentForm(data: DocumentDetailData) {
     issue_date: String(d["issue_date"] ?? ""),
     due_date: (d["due_date"] as string) ?? "",
     service_period: String(d["service_period"] ?? ""),
-    tax_mode: String(d["tax_mode"] ?? "eu_reverse_charge"),
+    tax_mode: normalizeTaxMode(d["tax_mode"]),
     customer_id: (d["customer_id"] as string) ?? null,
     project_id: (d["project_id"] as string) ?? null,
     customer_type: String(d["customer_type"] ?? "firma"),
