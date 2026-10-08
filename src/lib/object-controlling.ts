@@ -233,3 +233,19 @@ export function planIstDeviationPercent(actualHours: number, plannedHours: numbe
   if (!Number.isFinite(actual) || !Number.isFinite(planned) || planned <= 0) return null;
   return ((actual - planned) / planned) * 100;
 }
+
+/**
+ * A direct project link is authoritative, even when a historical invoice has
+ * no customer_id. Unlinked invoices can only be assigned when the customer
+ * has exactly one project; never duplicate revenue across multiple projects.
+ */
+export function invoiceBelongsToProject(
+  invoice: { project_id?: string | null; customer_id?: string | null },
+  project: { id: string; customer_id?: string | null },
+  projectCountByCustomer: ReadonlyMap<string, number>,
+): boolean {
+  if (invoice.project_id) return invoice.project_id === project.id;
+  return Boolean(project.customer_id) &&
+    invoice.customer_id === project.customer_id &&
+    projectCountByCustomer.get(project.customer_id!) === 1;
+}
