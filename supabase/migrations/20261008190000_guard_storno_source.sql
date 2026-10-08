@@ -104,4 +104,9 @@ begin
 end;
 $$;
 
+-- Reassert the restricted grant boundary after CREATE OR REPLACE.
+revoke all on function public.create_storno_unchecked(uuid, text)
+  from public, anon, authenticated;
+grant execute on function public.create_storno_unchecked(uuid, text) to service_role;
+
 commit;
