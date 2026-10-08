@@ -113,7 +113,7 @@ function buildModel(input: ERechnungInput) {
     number,
     // 380 = Rechnung, 381 = Gutschrift/Storno
     typeCode: isStorno ? "381" : "380",
-    issueDate: ymd(doc["issue_date"]) || new Date().toISOString().slice(0, 10),
+    issueDate: ymd(doc["issue_date"]),
     dueDate: ymd(doc["due_date"]),
     servicePeriod: String(doc["service_period"] ?? ""),
     buyerReference: String(doc["order_number"] ?? "").trim() || "N/A",
@@ -494,7 +494,9 @@ export function validateERechnung(input: ERechnungInput): string[] {
   const m = buildModel(input);
   const problems: string[] = [];
   if (!m.number) problems.push("Rechnungsnummer fehlt.");
-  if (!m.issueDate) problems.push("Rechnungsdatum fehlt.");
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(m.issueDate) || Number.isNaN(Date.parse(`${m.issueDate}T00:00:00Z`)))
+    problems.push("Gültiges Rechnungsdatum fehlt.");
+  if (!m.seller.name.trim()) problems.push("Firmenname des Rechnungsstellers fehlt (Einstellungen).");
   if (!m.seller.street || !m.seller.zip || !m.seller.city)
     problems.push("Anschrift des Rechnungsstellers unvollständig (Einstellungen).");
   if (!m.seller.vatId && !m.seller.taxNumber)
