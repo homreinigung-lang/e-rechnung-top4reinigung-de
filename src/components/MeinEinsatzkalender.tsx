@@ -2,6 +2,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { DAY_LABELS, effectiveDayHours, normalizeDayTimes, formatDayTime } from "@/lib/planung";
+import { matchesTask } from "@/lib/employee-task";
 import { projectAddress } from "@/lib/maps";
 
 export type KalenderAssignment = {
@@ -47,6 +48,7 @@ export type DayTask = {
   key: string;
   date: string;
   projectId: string | null;
+  assignmentId: string;
   name: string;
   address: string;
   hours: number;
@@ -65,6 +67,7 @@ export type KalenderZeiteintrag = {
   work_date: string;
   project_id: string | null;
   entry_type?: string | null;
+  approval_status?: string | null;
   start_time?: string | null;
   end_time?: string | null;
   hours?: number | string | null;
@@ -79,6 +82,7 @@ export function MeinEinsatzkalender({
   projects,
   entries = [],
   onSelectProject,
+  onSelectTask,
   onConfirm,
   confirmingKey = null,
 }: {
@@ -86,6 +90,7 @@ export function MeinEinsatzkalender({
   projects: KalenderProjekt[];
   entries?: KalenderZeiteintrag[];
   onSelectProject?: (projectId: string) => void;
+  onSelectTask?: (task: DayTask) => void;
   /** Einsatz als erledigt bestätigen – überträgt die Planzeit in die Arbeitszeit. */
   onConfirm?: (task: DayTask) => void;
   confirmingKey?: string | null;
@@ -124,14 +129,21 @@ export function MeinEinsatzkalender({
         const date = isoDay(addDays(monday, i));
         const p = a.project_id ? projectMap.get(a.project_id) : undefined;
         const candidates = (workByDay.get(date) ?? []).filter((e) => !used.has(e.id));
-        const hit =
-          candidates.find((e) => a.project_id && e.project_id === a.project_id) ?? candidates[0];
+        const hit = candidates.find((e) =>
+          matchesTask(e, {
+            date,
+            projectId: a.project_id,
+            start: times[i]?.start ?? "",
+            end: times[i]?.end ?? "",
+          }),
+        );
         if (hit) used.add(hit.id);
         const list = m.get(date) ?? [];
         list.push({
           key: `${a.id}-${i}`,
           date,
           projectId: a.project_id,
+          assignmentId: a.id,
           name: p?.name || "Objekt",
           address: p ? projectAddress(p) : "",
           hours,
@@ -248,7 +260,11 @@ export function MeinEinsatzkalender({
                   >
                     <button
                       type="button"
-                      onClick={() => t.projectId && onSelectProject?.(t.projectId)}
+                      onClick={() =>
+                        onSelectTask
+                          ? onSelectTask(t)
+                          : t.projectId && onSelectProject?.(t.projectId)
+                      }
                       className="block w-full px-1.5 py-1 text-left"
                     >
                       <span className="flex items-center gap-1 font-medium">
@@ -295,7 +311,7 @@ export function MeinEinsatzkalender({
                         className="flex w-full items-center justify-center gap-1 rounded-b border-t border-primary/20 px-1 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/15 disabled:opacity-50"
                       >
                         <Check className="h-3 w-3" />
-                        {confirmingKey === t.key ? "…" : "Erledigt bestätigen"}
+                        {confirmingKey === t.key ? "…" : "Planzeit übernehmen"}
                       </button>
                     )}
                   </div>

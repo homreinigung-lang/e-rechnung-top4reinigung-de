@@ -534,7 +534,7 @@ export default function LvAnalyse() {
 
       {/* Auswertung */}
       <Tabs defaultValue="items">
-        <TabsList className="flex flex-wrap">
+        <TabsList className="flex h-auto flex-wrap gap-1">
           <TabsTrigger value="items">Positionen</TabsTrigger>
           <TabsTrigger value="area">Flächen</TabsTrigger>
           <TabsTrigger value="hours">Arbeitsstunden</TabsTrigger>

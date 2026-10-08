@@ -12,7 +12,9 @@ export const scanReceipt = createServerFn({ method: "POST" })
     if (data.dataUrl.length > 14_000_000) throw new Error("Datei ist zu groß (max. ca. 10 MB).");
     return { dataUrl: data.dataUrl, mimeType: data.mimeType || "application/pdf" };
   })
-  .handler(async ({ data }): Promise<ScannedReceipt> => {
+  .handler(async ({ data, context }): Promise<ScannedReceipt> => {
+    const { consumeCompanyAiQuota } = await import("./company-ai-access.server");
+    await consumeCompanyAiQuota(context.supabase, context.userId);
     const { extractReceipt } = await import("@/lib/receipt-scan.server");
     return extractReceipt(data.dataUrl, data.mimeType);
   });

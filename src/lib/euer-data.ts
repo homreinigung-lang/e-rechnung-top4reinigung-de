@@ -3,6 +3,7 @@
  * Beide Auswertungen lesen exakt dieselben Tabellen (`documents`, `expenses`),
  * mit denselben Filtern: keine Papierkorb-Einträge, Zeitraum inklusive Grenzen.
  */
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import { supabase } from "@/integrations/supabase/client";
 
 /** Spalten, die für Auswertungen benötigt werden. */
@@ -15,26 +16,26 @@ export type EuerRange = { from: string; to: string };
 
 /** Rechnungen/Belege im Zeitraum – ohne gelöschte (Papierkorb) Einträge. */
 export async function fetchEuerDocuments(range?: EuerRange) {
-  let q = supabase
-    .from("documents")
-    .select(EUER_DOCUMENT_COLUMNS)
-    .is("deleted_at", null)
-    .order("issue_date", { ascending: false });
-  if (range) q = q.gte("issue_date", range.from).lte("issue_date", range.to);
-  const { data, error } = await q;
-  if (error) throw error;
-  return data ?? [];
+  return fetchAllRows(() => {
+    let q = supabase
+      .from("documents")
+      .select(EUER_DOCUMENT_COLUMNS)
+      .is("deleted_at", null)
+      .order("issue_date", { ascending: false });
+    if (range) q = q.gte("issue_date", range.from).lte("issue_date", range.to);
+    return q;
+  });
 }
 
 /** Ausgaben im Zeitraum – ohne gelöschte (Papierkorb) Einträge. */
 export async function fetchEuerExpenses(range?: EuerRange) {
-  let q = supabase
-    .from("expenses")
-    .select(EUER_EXPENSE_COLUMNS)
-    .is("deleted_at", null)
-    .order("expense_date", { ascending: false });
-  if (range) q = q.gte("expense_date", range.from).lte("expense_date", range.to);
-  const { data, error } = await q;
-  if (error) throw error;
-  return data ?? [];
+  return fetchAllRows(() => {
+    let q = supabase
+      .from("expenses")
+      .select(EUER_EXPENSE_COLUMNS)
+      .is("deleted_at", null)
+      .order("expense_date", { ascending: false });
+    if (range) q = q.gte("expense_date", range.from).lte("expense_date", range.to);
+    return q;
+  });
 }

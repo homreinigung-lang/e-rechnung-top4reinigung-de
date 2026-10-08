@@ -323,18 +323,15 @@ async function applyStripeSubscription(subscription: StripeSubscription) {
   const renewsOn = isoDateFromUnix(
     subscription.current_period_end ?? subscription.items?.data?.[0]?.current_period_end,
   );
-  if (renewsOn) patch["renews_on"] = renewsOn;
-
   const effectiveStatus = subscription.status ?? "";
-  if (
+  const paidActive =
     effectiveStatus === "active" &&
     typeof subscription.latest_invoice === "object" &&
-    subscription.latest_invoice?.status === "paid"
-  )
-    patch["status"] = "active";
-  if (effectiveStatus === "trialing") patch["status"] = "trial";
-  if (["canceled", "unpaid", "incomplete_expired"].includes(effectiveStatus))
-    patch["status"] = "inactive";
+    subscription.latest_invoice?.status === "paid";
+  // Never leave previously granted access active when payment is no longer valid.
+  const entitled = paidActive || effectiveStatus === "trialing";
+  patch["status"] = paidActive ? "active" : effectiveStatus === "trialing" ? "trial" : "inactive";
+  if (entitled && renewsOn) patch["renews_on"] = renewsOn;
 
   const query = supabaseAdmin
     .from("subscriptions")

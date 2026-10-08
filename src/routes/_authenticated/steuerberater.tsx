@@ -28,6 +28,9 @@ import {
 } from "lucide-react";
 import { buildDatevExtf, type DatevAccount, type DatevChart } from "@/lib/datev-extf";
 import { buildPayrollSummary } from "@/lib/payroll-export";
+import { approvedWorkHours, workHourlyRate } from "@/lib/approved-work-totals";
+import { fetchAllRows } from "@/lib/fetch-all-rows";
+import { escapeExcelHtml, excelHtmlCell } from "@/lib/excel-html";
 import { automaticExpenseAccount } from "@/lib/datev-account-mapping";
 import { buildEuerCsv, buildEuerPdf, computeEuer } from "@/lib/euer";
 import { AccountantAccessCard } from "@/components/AccountantAccessCard";
@@ -87,10 +90,10 @@ function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[], r
   const tables = filled
     .map((s) => {
       const headers = Object.keys(s.rows[0]!);
-      return `<h3>${s.title}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
-        .map((h) => `<th>${h}</th>`)
+      return `<h3>${escapeExcelHtml(s.title)}</h3>${summaryHtml(s.rows, s.title)}<table border="1"><tr>${headers
+        .map((h) => `<th>${escapeExcelHtml(h)}</th>`)
         .join("")}</tr>${s.rows
-        .map((r) => `<tr>${headers.map((h) => `<td>${r[h] ?? ""}</td>`).join("")}</tr>`)
+        .map((r) => `<tr>${headers.map((h) => excelHtmlCell(r[h])).join("")}</tr>`)
         .join("")}</table>`;
     })
     .join("<br/>");
@@ -99,7 +102,7 @@ function downloadExcel(name: string, sheets: { title: string; rows: Row[] }[], r
     return;
   }
   // Gesamtübersicht aller Blätter zuerst.
-  const overview = filled.map((s) => `<h4>${s.title}</h4>${summaryHtml(s.rows, s.title)}`).join("");
+  const overview = filled.map((s) => `<h4>${escapeExcelHtml(s.title)}</h4>${summaryHtml(s.rows, s.title)}`).join("");
   const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body><h2>Zusammenfassung (Endsummen)</h2>${overview}<hr/>${tables}</body></html>`;
   download(name, new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8" }));
 }
@@ -121,31 +124,49 @@ function Steuerberater() {
   const { data: documents = [] } = useQuery({
     queryKey: ["stb_documents", from, to],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .is("deleted_at", null)
-        .eq("type", "invoice")
-        .gte("issue_date", from)
-        .lte("issue_date", to)
-        .order("issue_date");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("documents")
+          .select("*")
+          .is("deleted_at", null)
+          .eq("type", "invoice")
+          .gte("issue_date", from)
+          .lte("issue_date", to)
+          .order("issue_date"),
+      );
     },
+  });
+
+  // EÜR is cash-based: a payment may be received in this period for an older invoice.
+  // Keep the issue-date query above unchanged for the other accountant exports.
+  const { data: receivedInvoices = [] } = useQuery({
+    queryKey: ["stb_received_invoices", from, to],
+    queryFn: () =>
+      fetchAllRows(() =>
+        supabase
+          .from("documents")
+          .select("*")
+          .is("deleted_at", null)
+          .eq("type", "invoice")
+          .eq("status", "paid")
+          .gte("paid_at", from)
+          .lte("paid_at", to)
+          .order("paid_at"),
+      ),
   });
 
   const { data: expenses = [] } = useQuery({
     queryKey: ["stb_expenses", from, to],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .is("deleted_at", null)
-        .gte("expense_date", from)
-        .lte("expense_date", to)
-        .order("expense_date");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("expenses")
+          .select("*")
+          .is("deleted_at", null)
+          .gte("expense_date", from)
+          .lte("expense_date", to)
+          .order("expense_date"),
+      );
     },
   });
 
@@ -153,33 +174,33 @@ function Steuerberater() {
   const { data: timeEntries = [] } = useQuery({
     queryKey: ["stb_time_entries", from, to],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        // Ohne photo_paths: Fotos bleiben ausschließlich intern (Verwaltung).
-        .select(
-          "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at, employees(name, personnel_number, contract_type, weekly_hours, hourly_rate)",
-        )
-        .gte("work_date", from)
-        .lte("work_date", to)
-        .neq("approval_status", "rejected")
-        .order("work_date");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("time_entries")
+          // Ohne photo_paths: Fotos bleiben ausschließlich intern (Verwaltung).
+          .select(
+            "id, user_id, employee_id, employee_name, customer_id, project_id, work_date, start_time, end_time, break_minutes, hours, hourly_rate, location, note, billed, entry_type, absence_reason, approval_status, decided_at, decided_by, decision_note, completed_at, created_at, updated_at, employees(name, personnel_number, contract_type, weekly_hours, hourly_rate)",
+          )
+          .gte("work_date", from)
+          .lte("work_date", to)
+          .neq("approval_status", "rejected")
+          .order("work_date"),
+      );
     },
   });
 
   const { data: fahrtenbuchEntries = [] } = useQuery({
     queryKey: ["stb_fahrtenbuch_entries", from, to],
     queryFn: async () => {
-      const { data, error } = await fahrtenbuchClient
-        .from("fahrtenbuch_entries")
-        .select("*")
-        .gte("trip_date", from)
-        .lte("trip_date", to)
-        .order("trip_date")
-        .order("trip_time");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        fahrtenbuchClient
+          .from("fahrtenbuch_entries")
+          .select("*")
+          .gte("trip_date", from)
+          .lte("trip_date", to)
+          .order("trip_date")
+          .order("trip_time"),
+      );
     },
   });
 
@@ -214,12 +235,12 @@ function Steuerberater() {
   const euer = useMemo(
     () =>
       computeEuer(
-        documents as unknown as Record<string, unknown>[],
+        receivedInvoices as unknown as Record<string, unknown>[],
         expenses as unknown as Record<string, unknown>[],
         from,
         to,
       ),
-    [documents, expenses, from, to],
+    [receivedInvoices, expenses, from, to],
   );
 
   const euerPdf = useMutation({
@@ -414,8 +435,16 @@ function Steuerberater() {
   const timeList = timeEntries as unknown as Record<string, unknown>[];
 
   const timeRows: Row[] = timeList.map((t) => {
-    const emp = (t["employees"] ?? null) as { name?: string; personnel_number?: string } | null;
+    const emp = (t["employees"] ?? null) as { name?: string; personnel_number?: string; hourly_rate?: number } | null;
     const code = lohnart(t);
+    const rate = workHourlyRate({ hourly_rate: num(t["hourly_rate"]) }, num(emp?.hourly_rate));
+    const payableHours = code === "A"
+      ? approvedWorkHours({
+          entry_type: "work",
+          approval_status: String(t["approval_status"] ?? "approved"),
+          hours: num(t["hours"]),
+        })
+      : 0;
     return {
       Datum: formatDate(String(t["work_date"] ?? "")),
       Mitarbeiter: String(t["employee_name"] || emp?.name || ""),
@@ -424,10 +453,11 @@ function Steuerberater() {
       Von: String(t["start_time"] ?? "").slice(0, 5),
       Bis: String(t["end_time"] ?? "").slice(0, 5),
       "Pause (Min.)": String(t["break_minutes"] ?? 0),
-      Stunden: de(code === "A" ? num(t["hours"]) : 0),
-      Stundensatz: de(num(t["hourly_rate"])),
-      Lohn: de(code === "A" ? num(t["hours"]) * num(t["hourly_rate"]) : 0),
-      Status: t["completed_at"] ? "erledigt" : String(t["approval_status"] ?? "offen"),
+      "Erfasst (Std.)": de(code === "A" ? num(t["hours"]) : 0),
+      Stunden: de(payableHours),
+      Stundensatz: de(rate),
+      Lohn: de(payableHours * rate),
+      Status: String(t["approval_status"] ?? "approved"),
       Einsatzort: String(t["location"] ?? ""),
     };
   });

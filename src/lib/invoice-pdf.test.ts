@@ -80,6 +80,15 @@ describe("Rechnungs-PDF (pdf-lib)", () => {
     expect(pages).toBeGreaterThan(1);
   });
 
+  it("umbricht lange Wörter ohne Leerzeichen in Positionsbeschreibungen", async () => {
+    const doc = makeDoc(3);
+    doc.items[0]!.description = "Fensterreinigung".repeat(35);
+    doc.items[1]!.description = "https://example.de/" + "objekt-".repeat(65);
+    const pages = await pageCount(doc);
+    expect(pages).toBeGreaterThanOrEqual(1);
+    expect(pages).toBeLessThan(8);
+  });
+
   it("erzeugt auch mit Storno-Stempel ein gültiges PDF", async () => {
     const doc = makeDoc(30);
     const pages = await pageCount({

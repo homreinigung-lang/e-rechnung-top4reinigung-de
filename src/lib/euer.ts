@@ -65,6 +65,11 @@ export function isEuerIncome(doc: EuerDoc): boolean {
   );
 }
 
+/** Only payments actually received count as cash-basis income. */
+export function isReceivedIncome(doc: EuerDoc): boolean {
+  return isEuerIncome(doc) && doc["status"] === "paid" && Boolean(doc["paid_at"]);
+}
+
 /** Zeitraum-Filter auf Basis eines ISO-Datums (YYYY-MM-DD), inklusive Grenzen. */
 export function inPeriod(dateValue: unknown, from: string, to: string): boolean {
   const d = String(dateValue ?? "").slice(0, 10);
@@ -78,7 +83,7 @@ export function computeEuer(
   to: string,
 ): EuerResult {
   // Defensiv erneut auf den Zeitraum filtern, falls Aufrufer ungefilterte Daten übergeben.
-  const income = documents.filter(isEuerIncome).filter((d) => inPeriod(d["issue_date"], from, to));
+  const income = documents.filter(isReceivedIncome).filter((d) => inPeriod(d["paid_at"], from, to));
   const costs = expenses.filter((e) => inPeriod(e["expense_date"], from, to));
 
   const incomeNet = income.reduce((s, d) => s + num(d["net_total"] ?? d["total"]), 0);

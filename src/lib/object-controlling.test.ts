@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isApprovedWorkEntry, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { invoiceBelongsToProject, isApprovedWorkEntry, isProjectRevenueInvoice, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 
 describe("object controlling accuracy", () => {
   it("uses service period month before invoice issue month", () => {
@@ -20,6 +20,33 @@ describe("object controlling accuracy", () => {
     };
     expect(revenueForMonth(document, "2026-09")).toBe(350);
     expect(revenueForMonth(document, "2026-08")).toBe(0);
+  });
+
+  it("uses recorded VAT to recover net revenue when net_total is absent", () => {
+    expect(revenueForMonth({
+      issue_date: "2026-09-03",
+      net_total: null,
+      total: 1190,
+      vat_amount: 190,
+    }, "2026-09")).toBe(1000);
+  });
+
+  it("preserves zero-VAT and existing net_total invoices", () => {
+    expect(revenueForMonth({
+      issue_date: "2026-09-03", total: 500, vat_amount: 0,
+    }, "2026-09")).toBe(500);
+    expect(revenueForMonth({
+      issue_date: "2026-09-03", net_total: 1000, total: 1190, vat_amount: 190,
+    }, "2026-09")).toBe(1000);
+  });
+
+  it("applies recovered net revenue to cross-month service periods", () => {
+    expect(revenueForMonth({
+      issue_date: "2026-09-30",
+      service_period: "16.09.2026 – 15.10.2026",
+      total: 1190,
+      vat_amount: 190,
+    }, "2026-09")).toBeCloseTo(500, 2);
   });
 
   it("allocates a cross-month service period by calendar days", () => {
@@ -231,5 +258,39 @@ describe("object controlling plan vs actual", () => {
 
   it("does not invent a deviation without a plan basis", () => {
     expect(planIstDeviationPercent(10, 0)).toBeNull();
+  });
+});
+
+describe("invoice project attribution", () => {
+  const project = { id: "p1", customer_id: "c1" };
+  it("counts invoices explicitly linked to the project even without customer ID", () => {
+    expect(invoiceBelongsToProject({ project_id: "p1", customer_id: null }, project, new Map([["c1", 2]]))).toBe(true);
+  });
+  it("does not assign a directly linked invoice to a different project", () => {
+    expect(invoiceBelongsToProject({ project_id: "p2", customer_id: "c1" }, project, new Map([["c1", 1]]))).toBe(false);
+  });
+  it("does not duplicate unlinked customer invoices across multiple projects", () => {
+    expect(invoiceBelongsToProject({ project_id: null, customer_id: "c1" }, project, new Map([["c1", 2]]))).toBe(false);
+  });
+  it("keeps historical attribution when customer has only one project", () => {
+    expect(invoiceBelongsToProject({ project_id: null, customer_id: "c1" }, project, new Map([["c1", 1]]))).toBe(true);
+  });
+});
+
+
+describe("project revenue invoice eligibility", () => {
+  it("excludes drafts from project revenue until issued", () => {
+    expect(isProjectRevenueInvoice({ status: "draft", is_storno: false })).toBe(false);
+  });
+
+  it("excludes cancelled invoices and storno documents", () => {
+    expect(isProjectRevenueInvoice({ status: "cancelled", is_storno: false })).toBe(false);
+    expect(isProjectRevenueInvoice({ status: "sent", is_storno: true })).toBe(false);
+  });
+
+  it("includes issued, overdue, and paid invoices", () => {
+    for (const status of ["sent", "overdue", "paid"]) {
+      expect(isProjectRevenueInvoice({ status, is_storno: false })).toBe(true);
+    }
   });
 });

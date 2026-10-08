@@ -89,6 +89,7 @@ const orderInput = {
 const response = (value: unknown) => new Response(JSON.stringify(value));
 let sentParams: URLSearchParams;
 let remoteStatus: string;
+let remoteInvoiceStatus: string;
 let checkoutRequests: Map<string, string>;
 beforeEach(() => {
   vi.stubEnv("STRIPE_BILLING_MODE", "");
@@ -111,6 +112,7 @@ beforeEach(() => {
   fixture.orders = [];
   fixture.employees = 0;
   remoteStatus = "active";
+  remoteInvoiceStatus = "paid";
   vi.stubEnv("STRIPE_SANDBOX_ENABLED", "true");
   vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_synthetic");
   vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_synthetic");
@@ -169,7 +171,7 @@ beforeEach(() => {
         return response({
           id: "sub_synthetic",
           status: remoteStatus,
-          latest_invoice: { status: "paid" },
+          latest_invoice: { status: remoteInvoiceStatus },
           customer: "cus_synthetic",
           metadata: Object.fromEntries(
             ["user_id", "subscription_id", "plan_code", "billing_interval"].map((key) => [
@@ -255,6 +257,14 @@ it.each([
       plan: code,
       billing_interval: interval,
     });
+    remoteStatus = "past_due";
+    remoteInvoiceStatus = "open";
+    await deliver("invoice.payment_failed", { subscription: "sub_synthetic" });
+    expect(fixture.subscription["status"]).toBe("inactive");
+    remoteStatus = "active";
+    remoteInvoiceStatus = "paid";
+    await deliver("invoice.paid", { subscription: "sub_synthetic" });
+    expect(fixture.subscription["status"]).toBe("active");
     await deliver("invoice.paid", { subscription: "sub_synthetic" });
     expect(fixture.orders).toHaveLength(1);
     remoteStatus = "canceled";

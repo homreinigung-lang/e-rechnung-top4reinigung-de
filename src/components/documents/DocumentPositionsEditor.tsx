@@ -100,7 +100,7 @@ export function DocumentPositionsEditor({
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-xs sm:col-span-12">
             <Checkbox checked={Boolean(item.is_optional)} onCheckedChange={(value) => onUpdateItem(index, { is_optional: value === true })} />
-            <span>Optionale Zusatzleistung (nur bei Durchführung berechnet)</span>
+            <span>Saisonale / zusätzliche Leistung (nur bei Durchführung berechnet)</span>
           </label>
           <p className="text-xs text-muted-foreground sm:col-span-12">
             Netto {formatMoney(roundCents(item.quantity * item.unit_price))}

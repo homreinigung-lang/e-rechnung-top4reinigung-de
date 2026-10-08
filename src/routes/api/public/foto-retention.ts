@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { removeRetainedPhotos } from "@/lib/photo-retention";
 
 /**
  * Automatische Aufbewahrungsfrist für Arbeitsnachweis-Fotos.
@@ -93,33 +94,61 @@ export const Route = createFileRoute("/api/public/foto-retention")({
 
         let entriesTouched = 0;
         let filesRemoved = 0;
+        let failures = 0;
 
         for (const s of settings ?? []) {
           const days = Number((s as { photo_retention_days?: number }).photo_retention_days ?? 0);
           if (!days || days <= 0) continue;
 
+          const userId = (s as { user_id: string }).user_id;
           const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
           const { data: entries, error } = await supabaseAdmin
             .from("time_entries")
             .select("id, photo_paths")
-            .eq("user_id", (s as { user_id: string }).user_id)
+            .eq("user_id", userId)
             .lt("work_date", cutoff);
-          if (error) continue;
+          if (error) {
+            failures += 1;
+            console.error("Photo retention: failed to fetch expired entries", error);
+            continue;
+          }
 
           for (const e of entries ?? []) {
-            const paths = ((e as { photo_paths?: string[] }).photo_paths ?? []) as string[];
+            const paths = (e.photo_paths ?? []) as string[];
             if (paths.length === 0) continue;
-            await supabaseAdmin.storage.from("firmen-dateien").remove(paths);
-            await supabaseAdmin
-              .from("time_entries")
-              .update({ photo_paths: [] } as never)
-              .eq("id", (e as { id: string }).id);
-            entriesTouched += 1;
-            filesRemoved += paths.length;
+            try {
+              const removed = await removeRetainedPhotos(
+                paths,
+                async (toRemove) => {
+                  const { error: storageError } = await supabaseAdmin.storage
+                    .from("firmen-dateien")
+                    .remove(toRemove);
+                  return { error: storageError };
+                },
+                async () => {
+                  const { data: updated, error: updateError } = await supabaseAdmin
+                    .from("time_entries")
+                    .update({ photo_paths: [] } as never)
+                    .eq("id", e.id)
+                    .eq("user_id", userId)
+                    .select("id");
+                  return { error: updateError, updatedRows: updated?.length ?? 0 };
+                },
+              );
+              entriesTouched += 1;
+              filesRemoved += removed;
+            } catch (cleanupError) {
+              // Keep references and return a non-2xx status so the cron can retry.
+              failures += 1;
+              console.error("Photo retention: cleanup failed", cleanupError);
+            }
           }
         }
 
-        return Response.json({ ok: true, entriesTouched, filesRemoved });
+        return Response.json(
+          { ok: failures === 0, entriesTouched, filesRemoved, failures },
+          { status: failures === 0 ? 200 : 500 },
+        );
       },
     },
   },

@@ -28,7 +28,7 @@ import {
   taxNoteForTaxMode,
   vatRateForTaxMode,
 } from "@/lib/format";
-import { STAIR_RATE_PER_FLOOR, WEEKS_PER_MONTH, WEEKS_PER_MONTH_LABEL } from "@/lib/constants";
+import { STAIR_RATE_PER_FLOOR, recurrenceUnitLabel, visitsPerMonth as calculateVisitsPerMonth, visitsPerYear, type RecurrenceUnit } from "@/lib/constants";
 import { fileUrl, openStoredFile } from "@/lib/storage";
 import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
@@ -206,7 +206,7 @@ function KalkulationPage() {
   const [hours, setHours] = useState("4");
   const [hourlyRate, setHourlyRate] = useState(String(CLEANING_TYPES[0]!.hourly));
   const [frequency, setFrequency] = useState("1");
-  const [frequencyUnit, setFrequencyUnit] = useState<"week" | "month">("month");
+  const [frequencyUnit, setFrequencyUnit] = useState<RecurrenceUnit>("month");
   const [travel, setTravel] = useState("0");
   const [extras, setExtras] = useState<string[]>([]);
   const [stairs, setStairs] = useState(false);
@@ -527,10 +527,15 @@ function KalkulationPage() {
     [attachments],
   );
 
-  /** Einsätze umgerechnet auf den Monat (pro Woche × 52/12). */
+  /** Einsätze immer aus der exakten Jahresmenge auf den Monatsdurchschnitt umgerechnet. */
   const visitsPerMonth = useMemo(() => {
     const times = Math.max(1, num(frequency) || 1);
-    return frequencyUnit === "week" ? times * WEEKS_PER_MONTH : times;
+    return calculateVisitsPerMonth(times, frequencyUnit);
+  }, [frequency, frequencyUnit]);
+
+  const annualVisits = useMemo(() => {
+    const times = Math.max(1, num(frequency) || 1);
+    return visitsPerYear(times, frequencyUnit);
   }, [frequency, frequencyUnit]);
 
   const extrasTotal = useMemo(
@@ -548,8 +553,8 @@ function KalkulationPage() {
     () =>
       round2(
         stairs
-          ? round2(num(floors) * stairVisitsPerMonth) * round2(num(stairRate)) +
-              (hasLift ? round2(stairVisitsPerMonth) * round2(num(liftRate)) : 0)
+          ? num(floors) * stairVisitsPerMonth * round2(num(stairRate)) +
+              (hasLift ? stairVisitsPerMonth * round2(num(liftRate)) : 0)
           : 0,
       ),
     [stairs, floors, stairRate, hasLift, liftRate, stairVisitsPerMonth],
@@ -1310,11 +1315,7 @@ function KalkulationPage() {
         parts.push(line);
       }
       parts.push(
-        `Turnus: ${formatNumber(num(frequency))} Einsätze ${
-          frequencyUnit === "week"
-            ? `pro Woche (× ${WEEKS_PER_MONTH_LABEL} = ${formatNumber(visitsPerMonth)} pro Monat)`
-            : "pro Monat"
-        }`,
+        `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(visitsPerMonth)} pro Monat`,
       );
       if (discountReason.trim() && pct > 0) {
         parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
@@ -1716,10 +1717,9 @@ function KalkulationPage() {
                       )}
                       {kiBillingPeriod === "month" && (
                         <p>
-                          {formatNumber(num(frequency))} Einsätze{" "}
-                          {frequencyUnit === "week" ? "pro Woche" : "pro Monat"} ={" "}
-                          {formatNumber(visitsPerMonth)} Einsätze im Monatsdurchschnitt. Der Betrag
-                          wird aus dem ungerundeten Monatsfaktor berechnet.
+                          {formatNumber(num(frequency))} {recurrenceUnitLabel(frequencyUnit)} ={" "}
+                          {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 ={" "}
+                          {formatNumber(visitsPerMonth)} Einsätze im Monatsdurchschnitt.
                         </p>
                       )}
                       {mode === "area" &&
@@ -1931,14 +1931,17 @@ function KalkulationPage() {
                   <Label>Zeitraum</Label>
                   <Select
                     value={frequencyUnit}
-                    onValueChange={(v) => setFrequencyUnit(v as "week" | "month")}
+                    onValueChange={(v) => setFrequencyUnit(v as RecurrenceUnit)}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="week">Pro Woche</SelectItem>
+                      <SelectItem value="fortnight">Alle 2 Wochen (14-tägig)</SelectItem>
                       <SelectItem value="month">Pro Monat</SelectItem>
+                      <SelectItem value="quarter">Pro Quartal</SelectItem>
+                      <SelectItem value="year">Pro Jahr</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1952,13 +1955,11 @@ function KalkulationPage() {
                 </div>
               </div>
 
-              {frequencyUnit === "week" && (
-                <p className="text-xs text-muted-foreground">
-                  Umrechnung auf den Monat mit 52 Wochen/Jahr (≈ {WEEKS_PER_MONTH_LABEL} Wochen je
-                  Monat): {formatNumber(num(frequency))} × {WEEKS_PER_MONTH_LABEL} ={" "}
-                  {formatNumber(visitsPerMonth)} Einsätze pro Monat.
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Jahresbasis: {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 ={" "}
+                {formatNumber(visitsPerMonth)} Einsätze pro Monat. Wochenbasierte Turnusse rechnen
+                verbindlich mit 52 Wochen/Jahr.
+              </p>
 
               {search.area ? (
                 <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">

@@ -2,8 +2,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import { useMyEmployee } from "@/lib/employee";
 import { filterRowsByDateRange, summaryLines } from "@/lib/table-summary";
+import { approvedWorkAmount, approvedWorkHours, approvedWorkTotals, workHourlyRate } from "@/lib/approved-work-totals";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -151,6 +153,7 @@ export function Zeiterfassung() {
   const [form, setForm] = useState<EntryForm>(emptyEntry());
   const [emp, setEmp] = useState(emptyEmployee);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [reviewFilter, setReviewFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   // Mitarbeiterkonten haben keinen Zugriff auf die Verwaltungsansicht.
   useEffect(() => {
@@ -160,42 +163,42 @@ export function Zeiterfassung() {
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("*").order("name");
-      if (error) throw error;
-      return data as Employee[];
+      return (await fetchAllRows(() =>
+        supabase.from("employees").select("*").order("name"),
+      )) as Employee[];
     },
   });
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id,name,company")
-        .order("name");
-      if (error) throw error;
-      return data as { id: string; name: string; company: string }[];
+      return fetchAllRows(() =>
+        supabase.from("customers").select("id,name,company").order("name"),
+      );
     },
   });
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("id,name,address_line,postal_code,city,customer_name").order("name");
-      if (error) throw error;
-      return data as { id: string; name: string; address_line: string; postal_code: string; city: string; customer_name?: string }[];
+      return fetchAllRows(() =>
+        supabase
+          .from("projects")
+          .select("id,name,address_line,postal_code,city,customer_name")
+          .order("name"),
+      );
     },
   });
 
   const { data: entries = [] } = useQuery({
     queryKey: ["time_entries"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        .select("*")
-        .order("work_date", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRows(() =>
+        supabase
+          .from("time_entries")
+          .select("*")
+          .order("work_date", { ascending: false }),
+      );
     },
   });
 
@@ -207,23 +210,43 @@ export function Zeiterfassung() {
     [entries, month],
   );
 
-  const totals = useMemo(() => {
-    const hours = monthEntries.reduce((s, e) => s + Number(e.hours || 0), 0);
-    const amount = monthEntries.reduce(
-      (s, e) => s + Number(e.hours || 0) * Number(e.hourly_rate || 0),
-      0,
-    );
-    const perEmployee = new Map<string, { hours: number; amount: number }>();
-    for (const e of monthEntries) {
-      const key = (e.employee_name as string) || "Ohne Zuordnung";
-      const prev = perEmployee.get(key) ?? { hours: 0, amount: 0 };
-      perEmployee.set(key, {
-        hours: prev.hours + Number(e.hours || 0),
-        amount: prev.amount + Number(e.hours || 0) * Number(e.hourly_rate || 0),
-      });
-    }
-    return { hours, amount, perEmployee: [...perEmployee.entries()] };
-  }, [monthEntries]);
+  // Abwesenheiten werden weiterhin ausschließlich im bestehenden Urlaubsworkflow geprüft.
+  const workEntries = useMemo(
+    () => monthEntries.filter((entry) => entry.entry_type !== "absence"),
+    [monthEntries],
+  );
+  const reviewCounts = useMemo(
+    () => ({
+      pending: workEntries.filter((entry) => entry.approval_status === "pending").length,
+      approved: workEntries.filter((entry) => (entry.approval_status ?? "approved") === "approved").length,
+      rejected: workEntries.filter((entry) => entry.approval_status === "rejected").length,
+      proofOpen: workEntries.filter(
+        (entry) =>
+          entry.approval_status !== "rejected" &&
+          entry.performance_status !== "completed" &&
+          !entry.performance_completed_at,
+      ).length,
+    }),
+    [workEntries],
+  );
+  const visibleEntries = useMemo(
+    () =>
+      reviewFilter === "all"
+        ? monthEntries
+        : workEntries.filter(
+            (entry) => (entry.approval_status ?? "approved") === reviewFilter,
+          ),
+    [monthEntries, workEntries, reviewFilter],
+  );
+
+  const employeeRates = useMemo(
+    () => new Map(employees.map((employee) => [employee.id, Number(employee.hourly_rate || 0)] as const)),
+    [employees],
+  );
+  const totals = useMemo(
+    () => approvedWorkTotals(monthEntries, employeeRates),
+    [monthEntries, employeeRates],
+  );
 
   const saveEmployee = useMutation({
     mutationFn: async (values: typeof emptyEmployee) => {
@@ -331,6 +354,31 @@ export function Zeiterfassung() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const approveWorkEntry = useMutation({
+    mutationFn: async (id: string) => {
+      const userId = await requireUserId();
+      const { data, error } = await supabase
+        .from("time_entries")
+        .update({
+          approval_status: "approved",
+          decided_at: new Date().toISOString(),
+          decided_by: userId,
+        })
+        .eq("id", id)
+        .eq("entry_type", "work")
+        .eq("approval_status", "pending")
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("Eintrag ist nicht mehr zur Prüfung offen. Bitte aktualisieren.");
+    },
+    onSuccess: () => {
+      toast.success("Arbeitszeit freigegeben");
+      queryClient.invalidateQueries({ queryKey: ["time_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["lohnvorbereitung-time"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const previewHours = form.hours
     ? num(form.hours)
     : computeHours(form.start_time, form.end_time, form.break_minutes);
@@ -346,11 +394,13 @@ export function Zeiterfassung() {
       "Von",
       "Bis",
       "Pause (Min.)",
+      "Erfasst (Std.)",
       "Stunden",
       "Stundensatz",
       "Betrag",
       "Einsatzort",
       "Notiz",
+      "Prüfstatus",
       "Abgerechnet",
     ];
     const rows = monthEntries.map((e) => [
@@ -360,10 +410,12 @@ export function Zeiterfassung() {
       e.end_time ? String(e.end_time).slice(0, 5) : "",
       String(e.break_minutes ?? 0),
       de(Number(e.hours || 0)),
-      de(Number(e.hourly_rate || 0)),
-      de(Number(e.hours || 0) * Number(e.hourly_rate || 0)),
+      de(approvedWorkHours(e)),
+      de(workHourlyRate(e, employeeRates.get(e.employee_id ?? "") ?? 0)),
+      de(approvedWorkAmount(e, employeeRates.get(e.employee_id ?? "") ?? 0)),
       (e.location as string) || "",
       (e.note as string) || "",
+      e.approval_status === "pending" ? "Zu prüfen" : e.approval_status === "rejected" ? "Abgelehnt" : "Freigegeben",
       e.billed ? "Ja" : "Nein",
     ]);
     const perEmployee = totals.perEmployee.map(([name, v]) => [
@@ -372,9 +424,11 @@ export function Zeiterfassung() {
       "",
       "",
       "",
+      "",
       de(v.hours),
       "",
       de(v.amount),
+      "",
       "",
       "",
       "",
@@ -421,21 +475,7 @@ export function Zeiterfassung() {
       return;
     }
     // Kopf-Summen strikt aus denselben gefilterten Einträgen wie der Einzelnachweis.
-    const pdfTotals = (() => {
-      const perEmployee = new Map<string, { hours: number; amount: number }>();
-      let hours = 0;
-      let amount = 0;
-      for (const e of pdfEntries) {
-        const h = Number(e.hours || 0);
-        const a = h * Number(e.hourly_rate || 0);
-        hours += h;
-        amount += a;
-        const key = (e.employee_name as string) || "Ohne Zuordnung";
-        const cur = perEmployee.get(key) ?? { hours: 0, amount: 0 };
-        perEmployee.set(key, { hours: cur.hours + h, amount: cur.amount + a });
-      }
-      return { hours, amount, perEmployee: [...perEmployee.entries()] };
-    })();
+    const pdfTotals = approvedWorkTotals(pdfEntries, employeeRates);
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "mm", format: "a4" });
 
@@ -451,7 +491,7 @@ export function Zeiterfassung() {
       .select("company_name")
       .maybeSingle();
     const companyName = String(companySettings?.company_name ?? "").trim();
-    doc.text([companyName, "Stundenübersicht je Mitarbeiter"].filter(Boolean).join(" · "), 15, y);
+    doc.text([companyName, "Freigegebene Arbeitsstunden je Mitarbeiter"].filter(Boolean).join(" · "), 15, y);
     y += 10;
 
     doc.setFontSize(10);
@@ -499,10 +539,14 @@ export function Zeiterfassung() {
         15,
         y,
       );
-      doc.text(`${de(Number(e.hours || 0))} Std.`, 150, y, { align: "right" });
-      doc.text(formatMoney(Number(e.hours || 0) * Number(e.hourly_rate || 0)), 195, y, {
-        align: "right",
-      });
+      doc.text(`${de(approvedWorkHours(e))} Std.`, 150, y, { align: "right" });
+      doc.text(formatMoney(approvedWorkAmount(e, employeeRates.get(e.employee_id ?? "") ?? 0)), 195, y, { align: "right" });
+      y += 4;
+      doc.text(
+        `Erfasst: ${de(Number(e.hours || 0))} Std. · ${e.approval_status === "pending" ? "Zu prüfen" : e.approval_status === "rejected" ? "Abgelehnt" : "Freigegeben"}`,
+        15,
+        y,
+      );
       y += 5;
     }
     // Die PDF bleibt vollständig im Browser: kein Plattform- oder externer Link.
@@ -534,8 +578,8 @@ export function Zeiterfassung() {
         <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
           <li>Hier unter „Mitarbeiter“ den Mitarbeiter mit seiner E-Mail-Adresse anlegen.</li>
           <li>
-            Mitarbeiter öffnet die Anmeldeseite, wählt „Registrieren“ und legt mit genau dieser
-            E-Mail ein Passwort an (Bestätigungs-Link in der E-Mail anklicken).
+            Mitarbeiter öffnet den Einladungslink, wählt „Registrieren“ und erstellt mit genau
+            dieser E-Mail und Ihrem Unternehmens-Code seinen Mitarbeiterzugang.
           </li>
           <li>
             Nach dem Login erscheint der Bereich „Meine Zeiten“ – dort erfasst er nur seine eigenen
@@ -544,7 +588,7 @@ export function Zeiterfassung() {
         </ol>
         <div className="flex flex-wrap gap-2 pt-1">
           <Button variant="outline" size="sm" asChild>
-            <a href="/auth" target="_blank" rel="noopener">
+            <a href="/mitarbeiter-anmeldung" target="_blank" rel="noopener">
               Anmeldeseite öffnen
             </a>
           </Button>
@@ -669,8 +713,9 @@ export function Zeiterfassung() {
                     onChange={(e) => setEmp({ ...emp, email: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Mit dieser E-Mail kann sich der Mitarbeiter selbst registrieren und danach unter
-                    „Meine Zeiten“ nur die eigenen Arbeitszeiten erfassen.
+                    Mit dieser E-Mail und Ihrem Unternehmens-Code kann sich der Mitarbeiter im
+                    Mitarbeiterzugang registrieren und danach unter „Meine Zeiten“ nur die eigenen
+                    Arbeitszeiten erfassen.
                   </p>
                 </div>
 
@@ -952,18 +997,49 @@ export function Zeiterfassung() {
           />
         </div>
         <div className="surface p-5">
-          <div className="text-sm text-muted-foreground">Stunden gesamt</div>
+          <div className="text-sm text-muted-foreground">Freigegebene Arbeitsstunden</div>
           <div className="mt-2 text-2xl font-bold">{totals.hours.toFixed(2)} Std.</div>
         </div>
         <div className="surface p-5">
-          <div className="text-sm text-muted-foreground">Lohnwert (Stunden × Satz)</div>
+          <div className="text-sm text-muted-foreground">Freigegebener Lohnwert (Stunden × Satz)</div>
           <div className="mt-2 text-2xl font-bold">{formatMoney(totals.amount)}</div>
         </div>
       </div>
 
+      <section className="surface space-y-3 p-5" aria-label="Arbeitszeiten prüfen">
+        <h2 className="text-lg font-semibold">Prüfung der Arbeitszeiten</h2>
+        <p className="text-sm text-muted-foreground">
+          Freigaben für Arbeitszeiten; Urlaubs- und Abwesenheitsanträge bleiben im bestehenden Antragsbereich.
+          Ein offener Leistungsnachweis ist ein Hinweis und nicht automatisch eine Pflicht.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Zu prüfen</div><div className="text-xl font-bold">{reviewCounts.pending}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Freigegeben</div><div className="text-xl font-bold">{reviewCounts.approved}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Abgelehnt</div><div className="text-xl font-bold">{reviewCounts.rejected}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Leistungsnachweis offen</div><div className="text-xl font-bold">{reviewCounts.proofOpen}</div></div>
+        </div>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Arbeitszeiten filtern">
+          {([
+            ["all", "Alle"],
+            ["pending", "Zu prüfen"],
+            ["approved", "Freigegeben"],
+            ["rejected", "Abgelehnt"],
+          ] as const).map(([value, label]) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={reviewFilter === value ? "default" : "outline"}
+              onClick={() => setReviewFilter(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      </section>
+
       {totals.perEmployee.length > 0 && (
         <div className="surface p-5">
-          <h2 className="text-lg font-semibold">Summen je Mitarbeiter</h2>
+          <h2 className="text-lg font-semibold">Freigegebene Summen je Mitarbeiter</h2>
           <ul className="mt-3 divide-y">
             {totals.perEmployee.map(([name, v]) => (
               <li key={name} className="flex items-center justify-between py-2 text-sm">
@@ -978,13 +1054,13 @@ export function Zeiterfassung() {
       )}
 
       <div className="surface overflow-hidden">
-        {monthEntries.length === 0 ? (
+        {visibleEntries.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-            Für diesen Monat sind noch keine Arbeitszeiten erfasst.
+            Keine Einträge für diesen Filter im gewählten Monat.
           </p>
         ) : (
           <ul className="divide-y">
-            {monthEntries.map((e) => (
+            {visibleEntries.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">
@@ -1005,18 +1081,38 @@ export function Zeiterfassung() {
                       .join(" · ")}
                   </div>
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
+                  {e.entry_type !== "absence" && (
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded border px-2 py-1">
+                        {e.approval_status === "pending"
+                          ? "Arbeitszeit: Zu prüfen"
+                          : e.approval_status === "rejected"
+                            ? "Arbeitszeit: Abgelehnt"
+                            : "Arbeitszeit: Freigegeben"}
+                      </span>
+                      <span className="rounded border px-2 py-1">
+                        {e.performance_status === "completed" || e.performance_completed_at
+                          ? "Leistungsnachweis abgeschlossen"
+                          : "Leistungsnachweis offen"}
+                      </span>
+                      <span className="rounded border px-2 py-1">
+                        {Array.isArray(e.photo_paths) && e.photo_paths.length > 0
+                          ? "Fotos vorhanden"
+                          : "Keine Fotos"}
+                      </span>
+                    </div>
+                  )}
                   <ArbeitsnachweisFotos
                     canDelete
                     entryId={e.id as string}
                     paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
                     invalidateKey="time_entries"
                   />
-                  {(
-                    (((e as { performance_services?: string[] }).performance_services ?? []).length > 0) ||
+                  {(((e as { performance_services?: string[] }).performance_services ?? []).length >
+                    0 ||
                     Boolean((e as { performance_note?: string }).performance_note) ||
                     Boolean((e as { employee_signature?: string }).employee_signature) ||
-                    Boolean((e as { customer_signature?: string }).customer_signature)
-                  ) && (
+                    Boolean((e as { customer_signature?: string }).customer_signature)) && (
                     <div className="mt-2">
                       <LeistungsnachweisDialog
                         readOnly
@@ -1027,8 +1123,17 @@ export function Zeiterfassung() {
                   )}
                 </div>
                 <div className="text-right text-sm">
-                  {formatMoney(Number(e.hours) * Number(e.hourly_rate || 0))}
+                  {formatMoney(approvedWorkAmount(e, employeeRates.get(e.employee_id ?? "") ?? 0))}
                 </div>
+                {e.entry_type !== "absence" && e.approval_status === "pending" && (
+                  <Button
+                    size="sm"
+                    disabled={approveWorkEntry.isPending}
+                    onClick={() => approveWorkEntry.mutate(e.id as string)}
+                  >
+                    <Check className="size-4" /> Arbeitszeit freigeben
+                  </Button>
+                )}
                 <Button
                   variant={e.billed ? "secondary" : "ghost"}
                   size="sm"

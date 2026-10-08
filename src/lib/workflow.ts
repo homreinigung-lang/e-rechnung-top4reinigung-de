@@ -2,6 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
 import { draftPlaceholderNumber, ensureOfficialNumber } from "@/lib/doc-number";
+import { assertInvoiceActionAllowed, assertInvoicePaymentReversible } from "@/lib/invoice-action-eligibility";
+import { assertQuoteDecisionAllowed, assertQuoteCompletionAllowed } from "@/lib/quote-decision-eligibility";
+import { assertDocumentConversionAllowed } from "@/lib/document-conversion-eligibility";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -53,26 +56,35 @@ export function mahnungAllowed(dueDate?: string | null): boolean {
 export async function sendReminder(id: string, kind: ReminderKind): Promise<number> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number, status, reminder_level, due_date")
+    .select("id, number, type, status, is_storno, reminder_level, due_date")
     .eq("id", id)
     .single();
   if (error) throw error;
-  await ensureOfficialNumber(id);
-  if (doc.status === "paid" || doc.status === "cancelled") {
-    throw new Error("Für bezahlte oder stornierte Rechnungen ist keine Mahnung möglich.");
-  }
+  assertInvoiceActionAllowed(doc, "reminder");
   if (kind === "mahnung" && !mahnungAllowed(doc.due_date)) {
     throw new Error(
       "Eine Mahnung ist erst zulässig, wenn die Zahlungsfrist (14 Tage) vollständig abgelaufen ist. Bitte zunächst eine Zahlungserinnerung senden.",
     );
   }
+  await ensureOfficialNumber(id);
   const current = Number(doc.reminder_level ?? 0);
   const level = kind === "erinnerung" ? Math.max(1, current) : Math.max(2, current + 1);
-  const { error: updateError } = await supabase
+  let reminderUpdate = supabase
     .from("documents")
     .update({ reminder_level: level, last_reminder_at: new Date().toISOString() } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "invoice")
+    .eq("status", doc.status)
+    .or("is_storno.is.false,is_storno.is.null");
+  reminderUpdate =
+    doc.reminder_level == null
+      ? reminderUpdate.is("reminder_level", null)
+      : reminderUpdate.eq("reminder_level", doc.reminder_level);
+  const { data: updated, error: updateError } = await reminderUpdate.select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) {
+    throw new Error("Der Rechnungsstatus oder Mahnstand hat sich geändert. Bitte erneut laden.");
+  }
   await logAudit(
     kind === "erinnerung" ? "zahlungserinnerung" : "mahnung",
     { id, number: doc.number },
@@ -98,20 +110,25 @@ export async function markInvoicePaid(id: string, paidDate?: string): Promise<st
   const paid = paidDate && paidDate.length === 10 ? paidDate : today();
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number, status, type")
+    .select("id, number, status, type, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
-  if (doc.type !== "invoice") throw new Error("Nur Rechnungen können als bezahlt markiert werden.");
-  if (doc.status === "cancelled")
-    throw new Error("Stornierte Rechnungen können nicht bezahlt werden.");
+  assertInvoiceActionAllowed(doc, "payment");
   await ensureOfficialNumber(id);
 
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: "paid", paid_at: paid } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "invoice")
+    .eq("status", doc.status)
+    .or("is_storno.is.false,is_storno.is.null")
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) {
+    throw new Error("Der Rechnungsstatus hat sich geändert. Bitte erneut laden.");
+  }
 
   await logAudit("payment_received", { id, number: doc.number }, { paid_at: paid });
   return paid;
@@ -121,15 +138,21 @@ export async function markInvoicePaid(id: string, paidDate?: string): Promise<st
 export async function unmarkInvoicePaid(id: string): Promise<void> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number")
+    .select("id, number, type, status, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
-  const { error: updateError } = await supabase
+  assertInvoicePaymentReversible(doc);
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: "sent", paid_at: null } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "invoice")
+    .eq("status", "paid")
+    .eq("is_storno", false)
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("Der Rechnungsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("payment_reverted", { id, number: doc.number }, {});
 }
 
@@ -137,15 +160,21 @@ export async function unmarkInvoicePaid(id: string): Promise<void> {
 export async function setQuoteDecision(id: string, decision: "accepted" | "declined") {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number")
+    .select("id, number, type, status, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
-  const { error: updateError } = await supabase
+  assertQuoteDecisionAllowed(doc);
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: decision } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "quote")
+    .eq("status", doc.status)
+    .or("is_storno.is.false,is_storno.is.null")
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   if (decision === "accepted") await ensureOfficialNumber(id);
   await logAudit(decision === "accepted" ? "quote_accepted" : "quote_declined", doc, {});
 }
@@ -154,19 +183,25 @@ export async function setQuoteDecision(id: string, decision: "accepted" | "decli
 export async function declineQuote(id: string, reason: string): Promise<void> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number, notes")
+    .select("id, number, notes, type, status, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
+  assertQuoteDecisionAllowed(doc);
   const trimmed = reason.trim();
   const note = trimmed
     ? `${doc.notes ? `${doc.notes}\n\n` : ""}Ablehnungsgrund (${formatToday()}): ${trimmed}`
     : doc.notes;
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: "declined", notes: note } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "quote")
+    .eq("status", doc.status)
+    .or("is_storno.is.false,is_storno.is.null")
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("quote_declined", { id, number: doc.number }, { reason: trimmed });
 }
 
@@ -174,15 +209,21 @@ export async function declineQuote(id: string, reason: string): Promise<void> {
 export async function completeQuote(id: string): Promise<void> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number")
+    .select("id, number, type, status, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
-  const { error: updateError } = await supabase
+  assertQuoteCompletionAllowed(doc);
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: "paid", paid_at: today() } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "quote")
+    .eq("status", "accepted")
+    .or("is_storno.is.false,is_storno.is.null")
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("quote_completed", { id, number: doc.number }, {});
 }
 
@@ -203,34 +244,17 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .single();
   if (error) throw error;
 
-  // Angebot → Auftragsbestätigung, Auftragsbestätigung → Rechnung und
-  // (für einmalige Dienstleistungen) Angebot → Rechnung direkt.
-  const allowed = target === "order" ? ["quote"] : ["order", "quote"];
-  if (!allowed.includes(String(src.type))) {
-    throw new Error(
-      target === "order"
-        ? "Nur Angebote können in eine Auftragsbestätigung umgewandelt werden."
-        : "Nur Angebote und Auftragsbestätigungen können in eine Rechnung umgewandelt werden.",
-    );
-  }
-  // Nur angenommene Angebote dürfen umgewandelt werden – ein abgelehntes oder
-  // abgeschlossenes Angebot darf niemals stillschweigend fakturiert werden.
-  if (src.type === "quote" && src.status !== "accepted") {
-    throw new Error(
-      "Nur angenommene Angebote können umgewandelt werden. Bitte das Angebot zuerst annehmen.",
-    );
-  }
-  const converted = (src as unknown as Record<string, unknown>)["converted_document_id"];
-  if (converted) throw new Error("Dieser Beleg wurde bereits umgewandelt.");
+  assertDocumentConversionAllowed(src, target);
 
   // Der Quellbeleg wird mit der Umwandlung verbindlich – offizielle Nummer vergeben.
   const sourceNumber = await ensureOfficialNumber(sourceId);
 
-  const { data: items } = await supabase
+  const { data: items, error: itemsReadError } = await supabase
     .from("document_items")
     .select("*")
     .eq("document_id", sourceId)
     .order("position");
+  if (itemsReadError) throw itemsReadError;
 
   const { data: settings } = await supabase
     .from("company_settings")
@@ -276,11 +300,19 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .select("id")
     .single();
   if (insertError) throw insertError;
+  if (!created) throw new Error("Der neue Beleg konnte nicht angelegt werden.");
+  const createdId = created.id;
+
+  // Remove the unclaimed draft if copying items or claiming the source fails.
+  async function discardDraft() {
+    await supabase.from("document_items").delete().eq("document_id", createdId);
+    await supabase.from("documents").delete().eq("id", createdId);
+  }
 
   if (items && items.length > 0) {
-    await supabase.from("document_items").insert(
+    const { error: itemsError } = await supabase.from("document_items").insert(
       items.map((i, index) => ({
-        document_id: created.id,
+        document_id: createdId,
         user_id: userId,
         position: index + 1,
         description: i.description,
@@ -290,27 +322,31 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
         is_optional: i.is_optional,
       })),
     );
+    if (itemsError) {
+      await discardDraft();
+      throw itemsError;
+    }
   }
 
-  // Atomar: nur setzen, solange noch keine Umwandlung existiert. Dadurch kann ein
-  // Doppelklick (zwei parallele Aufrufe) niemals zwei Folgebelege erzeugen.
-  const { data: claimed } = await supabase
+  // Claim only the original eligible source in its observed state.
+  const { data: claimed, error: claimError } = await supabase
     .from("documents")
     .update({
-      converted_document_id: created.id,
-      // Angebote gelten mit der Umwandlung als angenommen.
+      converted_document_id: createdId,
       ...(src.type === "quote" ? { status: "accepted" } : {}),
     } as never)
     .eq("id", sourceId)
+    .eq("type", src.type)
+    .eq("status", src.status)
     .is("converted_document_id", null)
+    .is("deleted_at", null)
+    .or("is_storno.is.false,is_storno.is.null")
     .select("id");
-  if (!claimed || claimed.length === 0) {
-    // Ein paralleler Vorgang war schneller – eigenen Entwurf wieder entfernen.
-    await supabase.from("document_items").delete().eq("document_id", created.id);
-    await supabase.from("documents").delete().eq("id", created.id);
-    throw new Error("Dieser Beleg wurde bereits umgewandelt.");
+  if (claimError || !claimed?.length) {
+    await discardDraft();
+    if (claimError) throw claimError;
+    throw new Error("Der Beleg wurde bereits umgewandelt oder sein Status hat sich geändert.");
   }
-
 
   await logAudit(
     target === "order"

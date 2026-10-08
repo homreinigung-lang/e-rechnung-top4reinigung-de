@@ -3,6 +3,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all-rows";
+import { approvedProjectWorkTotals } from "@/lib/approved-work-totals";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeProject, type ScannedProject } from "@/lib/project-scan.functions";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
@@ -29,7 +31,7 @@ import { toast } from "sonner";
 import { FileText, FolderKanban, Loader2, Plus, Upload, X } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
-import { plannedHoursForMonth, revenueForMonth } from "@/lib/object-controlling";
+import { invoiceBelongsToProject, isProjectRevenueInvoice, plannedHoursForMonth, revenueForMonth } from "@/lib/object-controlling";
 
 export const Route = createFileRoute("/_authenticated/projekte/")({
   head: () => ({
@@ -84,21 +86,21 @@ function ProjekteIndex() {
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRows(() =>
+        supabase
+          .from("projects")
+          .select("*")
+          .order("created_at", { ascending: false }),
+      );
     },
   });
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("*").order("name");
-      if (error) throw error;
-      return data;
+      return fetchAllRows(() =>
+        supabase.from("customers").select("*").order("name"),
+      );
     },
   });
 
@@ -113,51 +115,60 @@ function ProjekteIndex() {
   const { data: controllingDocuments = [] } = useQuery({
     queryKey: ["projects_controlling_documents", controllingMonth],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("documents")
-        .select("id,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id")
-        .eq("type", "invoice")
-        .is("deleted_at", null);
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        db
+          .from("documents")
+          .select("id,status,issue_date,service_period,net_total,total,vat_amount,is_storno,project_id,customer_id")
+          .eq("type", "invoice")
+          .is("deleted_at", null),
+      );
     },
   });
 
   const { data: controllingExpenses = [] } = useQuery({
     queryKey: ["projects_controlling_expenses", controllingMonth],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("expenses")
-        .select("id,expense_date,net_amount,project_id")
-        .is("deleted_at", null)
-        .gte("expense_date", monthStart)
-        .lte("expense_date", monthEnd);
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        db
+          .from("expenses")
+          .select("id,expense_date,net_amount,project_id")
+          .is("deleted_at", null)
+          .gte("expense_date", monthStart)
+          .lte("expense_date", monthEnd),
+      );
+    },
+  });
+
+  const { data: controllingEmployees = [] } = useQuery({
+    queryKey: ["projects_controlling_employees"],
+    queryFn: async () => {
+      return fetchAllRows(() =>
+        supabase.from("employees").select("id,hourly_rate"),
+      );
     },
   });
 
   const { data: controllingTimeEntries = [] } = useQuery({
     queryKey: ["projects_controlling_time_entries", controllingMonth],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        .select("id,project_id,work_date,hours,hourly_rate,entry_type,approval_status")
-        .gte("work_date", monthStart)
-        .lte("work_date", monthEnd);
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("time_entries")
+          .select("id,project_id,employee_id,work_date,hours,hourly_rate,entry_type,approval_status")
+          .gte("work_date", monthStart)
+          .lte("work_date", monthEnd),
+      );
     },
   });
 
   const { data: controllingAssignments = [] } = useQuery({
     queryKey: ["projects_controlling_assignments", controllingMonth],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("project_assignments")
-        .select("id,project_id,hours_per_week,start_date,end_date,day_hours,day_times");
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllRows(() =>
+        supabase
+          .from("project_assignments")
+          .select("id,project_id,hours_per_week,start_date,end_date,day_hours,day_times"),
+      );
     },
   });
 
@@ -328,35 +339,24 @@ function ProjekteIndex() {
     );
   }
 
+  const employeeRates = new Map(
+    controllingEmployees.map((employee) => [employee.id, Number(employee.hourly_rate ?? 0)] as const),
+  );
+  const projectWorkTotals = approvedProjectWorkTotals(controllingTimeEntries, employeeRates);
+
   const controllingRows = projects
     .map((p) => {
-      const entries = controllingTimeEntries.filter(
-        (t) =>
-          t.project_id === p.id &&
-          (t.entry_type ?? "work") === "work" &&
-          (t.approval_status ?? "approved") !== "rejected",
-      );
-      const actualHours = entries.reduce((sum, t) => sum + Number(t.hours || 0), 0);
-      const wageCosts = entries.reduce(
-        (sum, t) => sum + Number(t.hours || 0) * Number(t.hourly_rate || 0),
-        0,
-      );
+      const { hours: actualHours, amount: wageCosts } = projectWorkTotals.get(p.id) ?? {
+        hours: 0,
+        amount: 0,
+      };
       const directCosts = controllingExpenses
         .filter((e) => e.project_id === p.id)
         .reduce((sum, e) => sum + Number(e.net_amount || 0), 0);
 
       const revenue = controllingDocuments
-        .filter((d) => {
-          const sameCustomer =
-            Boolean(p.customer_id) && d.customer_id === p.customer_id;
-          const direct = d.project_id === p.id && sameCustomer;
-          const historical =
-            !d.project_id &&
-            sameCustomer &&
-            projectCountByCustomer.get(p.customer_id!) === 1;
-          return direct || historical;
-        })
-        .filter((d) => String(d.status ?? "") !== "cancelled" && !d.is_storno)
+        .filter((d) => invoiceBelongsToProject(d, p, projectCountByCustomer))
+        .filter(isProjectRevenueInvoice)
         .reduce((sum, d) => sum + revenueForMonth(d, controllingMonth), 0);
 
       const assignments = controllingAssignments.filter((a) => a.project_id === p.id);

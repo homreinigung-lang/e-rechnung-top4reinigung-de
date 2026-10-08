@@ -1,8 +1,13 @@
+import { AssistantPanel } from "@/components/AssistantPanel";
+import { Link } from "@tanstack/react-router";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { EinsatzMeldungen } from "@/components/EinsatzMeldungen";
+import { LoadError, firstError } from "@/components/LoadError";
+import { matchesTask, localDay } from "@/lib/employee-task";
 import { useMyEmployee } from "@/lib/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,13 +38,14 @@ import {
 } from "@/lib/planung";
 import {
   absenceClasses,
+  absenceRangesFor,
+  isEffective,
   absenceLabel,
   absenceReason,
   approvalClasses,
   approvalLabel,
   approvalStatus,
   isAbsence,
-  type AbsenceReason,
 } from "@/lib/absence";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { ZeitkontoCard } from "@/components/ZeitkontoCard";
@@ -49,6 +55,22 @@ import { MeinEinsatzkalender, type DayTask } from "@/components/MeinEinsatzkalen
 import { FahrtenbuchMitarbeiterErfassung } from "@/components/FahrtenbuchMitarbeiterErfassung";
 
 export const Route = createFileRoute("/_authenticated/meine-zeiten")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    projekt?: string | undefined;
+    einsatz?: string | undefined;
+    datum?: string | undefined;
+    aktion?: "urlaub" | undefined;
+  } => ({
+    projekt: typeof search["projekt"] === "string" ? search["projekt"] : undefined,
+    einsatz: typeof search["einsatz"] === "string" ? search["einsatz"] : undefined,
+    datum:
+      typeof search["datum"] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(search["datum"])
+        ? search["datum"]
+        : undefined,
+    aktion: search["aktion"] === "urlaub" ? ("urlaub" as const) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Meine Arbeitszeiten – GebCalc" },
@@ -70,14 +92,19 @@ export const Route = createFileRoute("/_authenticated/meine-zeiten")({
 });
 
 function MeineZeiten() {
+  const search = Route.useSearch();
   const db = supabase as SupabaseClient;
   const queryClient = useQueryClient();
   const { data: me, isLoading } = useMyEmployee();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    search["projekt"] ?? null,
+  );
+  const [selectedTask, setSelectedTask] = useState<DayTask | null>(null);
 
-  const { data: entries = [] } = useQuery({
+  const { data: entries = [], error: entriesError } = useQuery({
     queryKey: ["my_time_entries", me?.id],
+    refetchInterval: 15_000,
     enabled: !!me?.id,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -90,14 +117,14 @@ function MeineZeiten() {
     },
   });
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], error: projectsError } = useQuery({
     queryKey: ["my_projects", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projects")
         .select("id,name,city,address_line,postal_code,customer_name");
-      if (error) return [];
+      if (error) throw error;
       return (data ?? []) as {
         id: string;
         name: string;
@@ -109,16 +136,17 @@ function MeineZeiten() {
     },
   });
 
-  const { data: releasedWeeks = [] } = useQuery({
+  const { data: releasedWeeks = [], error: releasedWeeksError } = useQuery({
     queryKey: ["plan_releases", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("plan_releases").select("week_start");
+      const { data, error } = await supabase.from("plan_releases").select("week_start");
+      if (error) throw error;
       return (data ?? []).map((r) => String(r.week_start));
     },
   });
 
-  const { data: assignments = [] } = useQuery({
+  const { data: assignments = [], error: assignmentsError } = useQuery({
     queryKey: ["my_assignments", me?.id, releasedWeeks.join(",")],
     enabled: !!me?.id,
     queryFn: async () => {
@@ -128,7 +156,7 @@ function MeineZeiten() {
           "id,project_id,assignment_role,hours_per_week,day_hours,day_times,start_date,end_date",
         )
         .eq("employee_id", me!.id);
-      if (error) return [];
+      if (error) throw error;
       // Alle Planungen sind sichtbar; noch nicht freigegebene Wochen werden markiert.
       const released = new Set(releasedWeeks);
       return (data ?? []).map((a) => ({
@@ -138,7 +166,7 @@ function MeineZeiten() {
     },
   });
 
-  const { data: projectMaterials = [] } = useQuery({
+  const { data: projectMaterials = [], error: projectMaterialsError } = useQuery({
     queryKey: ["my_project_materials", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
@@ -156,7 +184,7 @@ function MeineZeiten() {
     },
   });
 
-  const { data: materials = [] } = useQuery({
+  const { data: materials = [], error: materialsError } = useQuery({
     queryKey: ["my_materials", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
@@ -169,6 +197,40 @@ function MeineZeiten() {
       return (data ?? []) as { id: string; name: string; unit: string }[];
     },
   });
+
+  useEffect(() => {
+    if (!search["projekt"] || !search["einsatz"] || !search["datum"]) return;
+    const assignment = assignments.find(
+      (a) => a.id === search["einsatz"] && a.project_id === search["projekt"],
+    );
+    if (!assignment) return;
+    const date = search["datum"];
+    const index = (new Date(`${date}T12:00:00`).getDay() + 6) % 7;
+    const time = normalizeDayTimes(assignment.day_times)[index];
+    const project = projects.find((p) => p.id === search["projekt"]);
+    if (!project) return;
+    setSelectedProjectId(search["projekt"]);
+    setSelectedTask({
+      key: `${assignment.id}-${index}`,
+      assignmentId: assignment.id,
+      date,
+      projectId: search["projekt"],
+      name: project?.name ?? "Objekt",
+      address: "",
+      hours:
+        effectiveDayHours(assignment.day_hours, assignment.hours_per_week, assignment.day_times)[
+          index
+        ] ?? 0,
+      range: formatDayTime(time),
+      start: time?.start ?? "",
+      end: time?.end ?? "",
+      breakMin: time?.breakMin ?? 0,
+      role: assignment.assignment_role,
+      released: assignment.released,
+      done: false,
+      actual: "",
+    });
+  }, [search["projekt"], search["einsatz"], search["datum"], assignments, projects]);
 
   const projectName = useMemo(() => {
     const map = new Map(projects.map((p) => [p.id, p.name || "Projekt"]));
@@ -200,26 +262,7 @@ function MeineZeiten() {
   /** Abwesenheiten des Jahres zu zusammenhängenden Zeiträumen zusammengefasst. */
   const absenceRanges = useMemo(() => {
     const year = month.slice(0, 4);
-    const list = entries
-      .filter((e) => isAbsence(e) && String(e.work_date).slice(0, 4) === year)
-      .map((e) => ({ date: String(e.work_date), reason: absenceReason(e) }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const out: { from: string; to: string; reason: AbsenceReason | null; days: number }[] = [];
-    for (const item of list) {
-      const last = out[out.length - 1];
-      const prevDay = last
-        ? new Date(new Date(`${last.to}T12:00:00`).getTime() + 86400000).toISOString().slice(0, 10)
-        : null;
-      if (last && last.reason === item.reason && (prevDay === item.date || last.to === item.date)) {
-        if (last.to !== item.date) {
-          last.to = item.date;
-          last.days += 1;
-        }
-      } else {
-        out.push({ from: item.date, to: item.date, reason: item.reason, days: 1 });
-      }
-    }
-    return out.reverse();
+    return absenceRangesFor(entries.filter((e) => String(e.work_date).slice(0, 4) === year));
   }, [entries, month]);
 
   const absenceTotals = useMemo(() => {
@@ -228,7 +271,7 @@ function MeineZeiten() {
     let sick = 0;
     let other = 0;
     for (const e of entries) {
-      if (!isAbsence(e) || String(e.work_date).slice(0, 4) !== year) continue;
+      if (!isAbsence(e) || !isEffective(e) || String(e.work_date).slice(0, 4) !== year) continue;
       const r = absenceReason(e);
       if (r === "vacation") vacation += 1;
       else if (r === "sick") sick += 1;
@@ -259,17 +302,20 @@ function MeineZeiten() {
       if (!me) throw new Error("Kein Mitarbeiter");
       if (!(task.hours > 0)) throw new Error("Für diesen Tag sind keine Stunden geplant.");
       const project = projects.find((p) => p.id === task.projectId);
-      // Doppelbuchung vermeiden: pro Tag nur eine bestätigte Arbeitszeit
+      if (!task.start || !task.end || task.end <= task.start)
+        throw new Error(
+          "Bitte die tatsächliche Start- und Endzeit über „Arbeitszeit erfassen“ eintragen.",
+        );
+      // Nur denselben Einsatz abgleichen; weitere Objekte und Zeitfenster sind erlaubt.
       const { data: existing, error: dupError } = await supabase
         .from("time_entries")
-        .select("id")
+        .select("id,work_date,project_id,start_time,end_time,entry_type,approval_status")
         .eq("employee_id", me.id)
         .eq("work_date", task.date)
-        .eq("entry_type", "work")
-        .limit(1);
+        .eq("entry_type", "work");
       if (dupError) throw dupError;
-      if (existing && existing.length > 0) {
-        throw new Error("Für diesen Tag ist bereits eine Arbeitszeit erfasst.");
+      if (existing?.some((entry) => matchesTask(entry, task))) {
+        throw new Error("Für diesen Einsatz ist bereits eine Arbeitszeit erfasst.");
       }
       const { error } = await supabase.from("time_entries").insert({
         user_id: me.user_id,
@@ -286,6 +332,7 @@ function MeineZeiten() {
         location: project?.name ?? "",
         note: "Einsatz aus der Planung bestätigt",
         billed: false,
+        approval_status: "pending",
         // Aufgabe gilt damit als erledigt – fließt in die Objekt-Historie ein
         completed_at: new Date().toISOString(),
       });
@@ -320,6 +367,17 @@ function MeineZeiten() {
 
   return (
     <div className="space-y-6">
+      <LoadError
+        error={firstError(
+          entriesError,
+          projectsError,
+          releasedWeeksError,
+          assignmentsError,
+          projectMaterialsError,
+          materialsError,
+        )}
+        title="Mitarbeiterdaten konnten nicht vollständig geladen werden"
+      />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Meine Arbeitszeiten</h1>
@@ -340,6 +398,7 @@ function MeineZeiten() {
             triggerLabel="Urlaub / Abwesenheit beantragen"
             variant="outline"
             asRequest
+            initialOpen={search["aktion"] === "urlaub"}
           />
         </div>
       </div>
@@ -360,178 +419,28 @@ function MeineZeiten() {
         </div>
       </div>
 
-      <section className="surface p-5">
-        <h2 className="text-lg font-semibold">Meine Vertragsdaten</h2>
-        <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-muted-foreground">Vertragsart</dt>
-            <dd className="font-medium">{me.contract_type || "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Vertragsbeginn</dt>
-            <dd className="font-medium">
-              {me.contract_start ? formatDate(me.contract_start) : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Soll-Stunden / Woche</dt>
-            <dd className="font-medium">
-              {me.weekly_hours ? `${Number(me.weekly_hours).toFixed(2)} Std.` : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Funktion</dt>
-            <dd className="font-medium">{me.role || "—"}</dd>
-          </div>
-        </dl>
-      </section>
-
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">Arbeitszeiten</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Einsatzplan, erfasste Zeiten und Arbeitsnachweise für den gewählten Monat.
+          </p>
+        </div>
       <MeinEinsatzkalender
         assignments={assignments as never}
         projects={projects}
         entries={entries as never}
-        onSelectProject={(id) => setSelectedProjectId(id)}
+        onSelectProject={(id) => {
+          setSelectedTask(null);
+          setSelectedProjectId(id);
+        }}
+        onSelectTask={(task) => {
+          setSelectedTask(task);
+          setSelectedProjectId(task.projectId);
+        }}
         onConfirm={(task) => confirmShift.mutate(task)}
         confirmingKey={confirmingKey}
       />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="surface p-5">
-          <h2 className="text-lg font-semibold">Meine Objekte / Einsatzorte</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Tippen Sie auf ein Objekt, um Details und die Navigation dorthin zu öffnen.
-          </p>
-          {assignments.length === 0 && !me.work_location ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Aktuell sind Ihnen keine festen Objekte zugewiesen.
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y text-sm">
-              {me.work_location && (
-                <li className="py-2">
-                  <span className="font-medium">{me.work_location}</span>
-                  <span className="text-muted-foreground"> · Einsatzort (Freitext)</span>
-                </li>
-              )}
-              {assignments.map((a) => {
-                const p = projects.find((x) => x.id === a.project_id);
-                const address = p ? projectAddress(p) : "";
-                const name = projectName(a.project_id as string) ?? "Projekt";
-                return (
-                  <li key={a.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProjectId(a.project_id as string)}
-                      className="flex w-full items-center justify-between gap-3 rounded px-1 py-2 text-left transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate">
-                          <span className="font-medium">{name}</span>
-                          {a.assignment_role ? ` · ${a.assignment_role}` : ""}
-                        </span>
-                        {address && (
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {address}
-                          </span>
-                        )}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        <span className="text-muted-foreground">
-                          {Number(a.hours_per_week ?? 0) > 0
-                            ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
-                            : ""}
-                        </span>
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section className="surface p-5">
-          <h2 className="text-lg font-semibold">Stunden nach Objekt</h2>
-          {byProject.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Für diesen Monat sind noch keine Arbeitsstunden erfasst.
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y text-sm">
-              {byProject.map(([name, hours]) => (
-                <li key={name} className="flex items-center justify-between gap-3 py-2">
-                  <span className="min-w-0 truncate">{name}</span>
-                  <span className="shrink-0 font-medium">{hours.toFixed(2)} Std.</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      <section className="surface p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">
-            Meine Urlaubs- und Abwesenheitsplanung {month.slice(0, 4)}
-          </h2>
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className={`rounded border px-2 py-1 ${absenceClasses("vacation")}`}>
-              Urlaub: {absenceTotals.vacation} Tage
-            </span>
-            <span className={`rounded border px-2 py-1 ${absenceClasses("sick")}`}>
-              Krankheit: {absenceTotals.sick} Tage
-            </span>
-            <span className={`rounded border px-2 py-1 ${absenceClasses("other")}`}>
-              Sonstiges: {absenceTotals.other} Tage
-            </span>
-          </div>
-        </div>
-        {absenceRanges.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Für {month.slice(0, 4)} sind keine Abwesenheiten geplant.
-          </p>
-        ) : (
-          <ul className="mt-3 divide-y text-sm">
-            {absenceRanges.map((r) => (
-              <li key={`${r.from}-${r.reason}`} className="flex items-center gap-3 py-2">
-                <span
-                  className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${absenceClasses(r.reason)}`}
-                >
-                  {absenceLabel(r.reason)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  {formatDate(r.from)}
-                  {r.to !== r.from ? ` – ${formatDate(r.to)}` : ""}
-                </span>
-                <span className="shrink-0 text-muted-foreground">{r.days} Tag(e)</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <FahrtenbuchMitarbeiterErfassung employeeId={me.id} ownerUserId={me.user_id} />
-      <ZeitkontoCard
-        employees={[
-          {
-            id: me.id,
-            name: me.name,
-            weekly_hours: me.weekly_hours ?? 0,
-            contract_start: me.contract_start ?? null,
-            vacation_days_per_year: me.vacation_days_per_year ?? 0,
-            vacation_carryover_days: me.vacation_carryover_days ?? 0,
-          },
-        ]}
-        entries={entries as never}
-        month={month}
-        readOnly
-      />
-
-      <p className="text-sm text-muted-foreground">
-        Arbeitszeiten und Zeitkonto werden ausschließlich von der Verwaltung gepflegt (Nur-Lesen).
-        Urlaub und Abwesenheiten können Sie beantragen – sie gelten erst nach Genehmigung.
-      </p>
 
       <div className="surface overflow-hidden">
         {monthEntries.length === 0 ? (
@@ -589,7 +498,13 @@ function MeineZeiten() {
                 <span
                   className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${approvalClasses(approvalStatus(e))}`}
                 >
-                  {isAbsence(e) ? approvalLabel(approvalStatus(e)) : "Von der Verwaltung erfasst"}
+                  {isAbsence(e)
+                    ? approvalLabel(approvalStatus(e))
+                    : approvalStatus(e) === "pending"
+                      ? "Arbeitszeit: Zu prüfen"
+                      : approvalStatus(e) === "rejected"
+                        ? "Arbeitszeit: Abgelehnt"
+                        : "Arbeitszeit: Freigegeben"}
                 </span>
                 {isAbsence(e) && approvalStatus(e) === "pending" && (
                   <ConfirmDeleteButton
@@ -605,7 +520,231 @@ function MeineZeiten() {
         )}
       </div>
 
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">Zeitkonto & Abwesenheit</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Soll-/Ist-Stunden sowie Urlaub, Krankheit und sonstige Abwesenheiten im Überblick.
+          </p>
+        </div>
+      <ZeitkontoCard
+        employees={[
+          {
+            id: me.id,
+            name: me.name,
+            weekly_hours: me.weekly_hours ?? 0,
+            contract_start: me.contract_start ?? null,
+            vacation_days_per_year: me.vacation_days_per_year ?? 0,
+            vacation_carryover_days: me.vacation_carryover_days ?? 0,
+          },
+        ]}
+        entries={entries as never}
+        month={month}
+        readOnly
+      />
+
+      <section className="surface p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">
+            Meine Urlaubs- und Abwesenheitsanträge {month.slice(0, 4)}
+          </h2>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className={`rounded border px-2 py-1 ${absenceClasses("vacation")}`}>
+              Genehmigter Urlaub: {absenceTotals.vacation} Tage
+            </span>
+            <span className={`rounded border px-2 py-1 ${absenceClasses("sick")}`}>
+              Genehmigte Krankheit: {absenceTotals.sick} Tage
+            </span>
+            <span className={`rounded border px-2 py-1 ${absenceClasses("other")}`}>
+              Genehmigte sonstige Abwesenheit: {absenceTotals.other} Tage
+            </span>
+          </div>
+        </div>
+        {absenceRanges.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Für {month.slice(0, 4)} sind keine Abwesenheiten geplant.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y text-sm">
+            {absenceRanges.map((r) => (
+              <li
+                key={`${r.from}-${r.reason}-${r.status}`}
+                className="flex flex-wrap items-center gap-3 py-2"
+              >
+                <span
+                  className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${absenceClasses(r.reason)}`}
+                >
+                  {absenceLabel(r.reason)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  {formatDate(r.from)}
+                  {r.to !== r.from ? ` – ${formatDate(r.to)}` : ""}
+                </span>
+                <span
+                  className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${approvalClasses(r.status)}`}
+                >
+                  {approvalLabel(r.status)}
+                </span>
+                <span className="shrink-0 text-muted-foreground">{r.days} Tag(e)</span>
+                {r.decisionNote && (
+                  <p className="w-full text-muted-foreground">Verwaltung: {r.decisionNote}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <p className="text-sm text-muted-foreground">
+        Arbeitszeiten können Sie für Ihre Einsätze selbst erfassen. Korrekturen am Zeitkonto werden
+        ausschließlich durch die Verwaltung vorgenommen. Urlaub und Abwesenheiten können Sie
+        beantragen – sie gelten erst nach Genehmigung.
+      </p>
+
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-xl font-semibold">Weitere Funktionen</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Zusätzliche Informationen und Funktionen nur bei Bedarf öffnen.
+          </p>
+        </div>
+      <details className="surface p-5">
+        <summary className="cursor-pointer font-semibold">Meine Vertragsdaten</summary>
+        <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-muted-foreground">Vertragsart</dt>
+            <dd className="font-medium">{me.contract_type || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Vertragsbeginn</dt>
+            <dd className="font-medium">
+              {me.contract_start ? formatDate(me.contract_start) : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Soll-Stunden / Woche</dt>
+            <dd className="font-medium">
+              {me.weekly_hours ? `${Number(me.weekly_hours).toFixed(2)} Std.` : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Funktion</dt>
+            <dd className="font-medium">{me.role || "—"}</dd>
+          </div>
+        </dl>
+      </details>
+
+
+        <details className="surface p-5">
+          <summary className="cursor-pointer font-semibold">Meine Objekte & Stunden nach Objekt</summary>
+          <div className="mt-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="surface p-5">
+          <h2 className="text-lg font-semibold">Meine Objekte / Einsatzorte</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Tippen Sie auf ein Objekt, um Details und die Navigation dorthin zu öffnen.
+          </p>
+          {assignments.length === 0 && !me.work_location ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Aktuell sind Ihnen keine festen Objekte zugewiesen.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y text-sm">
+              {me.work_location && (
+                <li className="py-2">
+                  <span className="font-medium">{me.work_location}</span>
+                  <span className="text-muted-foreground"> · Einsatzort (Freitext)</span>
+                </li>
+              )}
+              {assignments.map((a) => {
+                const p = projects.find((x) => x.id === a.project_id);
+                const address = p ? projectAddress(p) : "";
+                const name = projectName(a.project_id as string) ?? "Projekt";
+                return (
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTask(null);
+                        setSelectedProjectId(a.project_id as string);
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded px-1 py-2 text-left transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate">
+                          <span className="font-medium">{name}</span>
+                          {a.assignment_role ? ` · ${a.assignment_role}` : ""}
+                        </span>
+                        {address && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {address}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="text-muted-foreground">
+                          {Number(a.hours_per_week ?? 0) > 0
+                            ? `${Number(a.hours_per_week).toFixed(2)} Std./Woche`
+                            : ""}
+                        </span>
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        <section className="surface p-5">
+          <h2 className="text-lg font-semibold">Stunden nach Objekt</h2>
+          {byProject.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Für diesen Monat sind noch keine Arbeitsstunden erfasst.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y text-sm">
+              {byProject.map(([name, hours]) => (
+                <li key={name} className="flex items-center justify-between gap-3 py-2">
+                  <span className="min-w-0 truncate">{name}</span>
+                  <span className="shrink-0 font-medium">{hours.toFixed(2)} Std.</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+          </div>
+        </details>
+
+        <details className="surface p-5">
+          <summary className="cursor-pointer font-semibold">Fahrtenbuch</summary>
+          <div className="mt-4">
+      <FahrtenbuchMitarbeiterErfassung employeeId={me.id} ownerUserId={me.user_id} />
+          </div>
+        </details>
+
+        <details className="surface p-5">
+          <summary className="cursor-pointer font-semibold">Meldungen</summary>
+          <div className="mt-4">
+      <div className="surface p-5">
+        <EinsatzMeldungen employee={me} />
+      </div>
+          </div>
+        </details>
+      </section>
+
       <ProjectDetailDialog
+        task={selectedTask}
+        employee={me}
+        onConfirm={(task) => confirmShift.mutate(task)}
+        confirming={confirmShift.isPending}
         projectId={selectedProjectId}
         projects={projects}
         assignments={assignments}
@@ -619,6 +758,10 @@ function MeineZeiten() {
 }
 
 function ProjectDetailDialog({
+  task,
+  employee,
+  onConfirm,
+  confirming,
   projectId,
   projects,
   assignments,
@@ -627,8 +770,19 @@ function ProjectDetailDialog({
   materials,
   onClose,
 }: {
+  task: DayTask | null;
+  employee: { id: string; user_id: string; name: string };
+  onConfirm: (task: DayTask) => void;
+  confirming: boolean;
   projectId: string | null;
-  projects: { id: string; name: string; city: string; address_line: string; postal_code: string; customer_name?: string }[];
+  projects: {
+    id: string;
+    name: string;
+    city: string;
+    address_line: string;
+    postal_code: string;
+    customer_name?: string;
+  }[];
   assignments: {
     id: string;
     project_id: string | null;
@@ -675,9 +829,18 @@ function ProjectDetailDialog({
   const projectAssignments = assignments.filter((a) => a.project_id === projectId);
   const assignedMaterials = projectMaterials.filter((row) => row.project_id === projectId);
   const projectEntries = entries
-    .filter((entry) => entry.project_id === projectId && !isAbsence(entry))
+    .filter(
+      (entry) =>
+        entry.project_id === projectId && !isAbsence(entry) && (!task || matchesTask(entry, task)),
+    )
     .sort((a, b) => String(b.work_date ?? "").localeCompare(String(a.work_date ?? "")))
     .slice(0, 5);
+  const activeEntry = task ? (projectEntries[0] ?? null) : null;
+  const workTimeDone = Boolean(activeEntry);
+  const performanceDone = Boolean(
+    activeEntry?.performance_status === "completed" || activeEntry?.performance_completed_at,
+  );
+  const photosDone = Boolean(activeEntry?.photo_paths?.length);
 
   // Tageswerte aus der Arbeitsplanung; ältere Einträge ohne Tageswerte auf Mo–Fr verteilen.
   const dayTotals = projectAssignments.reduce<number[]>((acc, a) => {
@@ -703,6 +866,111 @@ function ProjectDetailDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
+          {task ? (
+            <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+              <div>
+                <p className="font-semibold">Einsatz am {formatDate(task.date)}</p>
+                <p className="text-sm">
+                  {task.range || "Keine Uhrzeit hinterlegt"} · {task.hours.toFixed(2)} Std. geplant
+                </p>
+              </div>
+
+              <div className="rounded-lg border bg-background p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Einsatz-Status
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                  <span className={workTimeDone ? "font-medium text-foreground" : "text-muted-foreground"}>
+                    {workTimeDone ? "✓" : "○"} Arbeitszeit
+                  </span>
+                  <span className={performanceDone ? "font-medium text-foreground" : "text-muted-foreground"}>
+                    {performanceDone ? "✓" : "○"} Leistungsnachweis
+                  </span>
+                  <span className={photosDone ? "font-medium text-foreground" : "text-muted-foreground"}>
+                    {photosDone ? "✓" : "○"} Fotos
+                  </span>
+                </div>
+              </div>
+
+              {activeEntry ? (
+                <div className="rounded-lg border bg-background px-3 py-2 text-sm">
+                  <span className="font-medium">✓ Arbeitszeit erfasst</span>
+                  {activeEntry.start_time && activeEntry.end_time ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {activeEntry.start_time.slice(0, 5)}–{activeEntry.end_time.slice(0, 5)}
+                    </span>
+                  ) : null}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {Number(activeEntry.hours ?? 0).toFixed(2)} Std.
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2">
+                {projectEntries.length === 0 && task.date <= localDay() ? (
+                  <Button
+                    disabled={confirming || !task.start || !task.end}
+                    onClick={() => onConfirm(task)}
+                  >
+                    Planzeit als Arbeitszeit übernehmen
+                  </Button>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    {projectEntries.length ? "Arbeitszeit erfasst" : "Einsatz geplant"}
+                  </span>
+                )}
+                <Button asChild variant="outline">
+                  <Link
+                    to="/nachrichten"
+                    search={{
+                      mitarbeiter: employee.id,
+                      einsatz: task.assignmentId,
+                      datum: task.date,
+                    }}
+                  >
+                    Einsatz im Chat besprechen
+                  </Link>
+                </Button>
+                <ZeitErfassenDialog
+                  employee={employee}
+                  projects={projects}
+                  assignments={assignments}
+                  task={task}
+                />
+              </div>
+              {!workTimeDone ? (
+                <p className="text-xs text-muted-foreground">
+                  Stimmt die Planzeit nicht, erfassen Sie stattdessen die tatsächliche Arbeitszeit.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {task && task.projectId ? (
+            <EinsatzMeldungen
+              employee={employee}
+              task={{
+                assignmentId: task.assignmentId,
+                projectId: task.projectId,
+                date: task.date,
+                name: project?.name ?? task.name,
+              }}
+            />
+          ) : null}
+          {task ? (
+            <details key={`${task.assignmentId}-${task.date}`} className="rounded-xl border p-3">
+              <summary className="cursor-pointer font-medium">KI-Frage zu diesem Einsatz</summary>
+              <div className="mt-3">
+                <AssistantPanel
+                  mode="work"
+                  assignmentId={task.assignmentId}
+                  date={task.date}
+                  employeeId={employee.id}
+                />
+              </div>
+            </details>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Kunde</div>
@@ -710,7 +978,9 @@ function ProjectDetailDialog({
             </div>
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Adresse</div>
-              <div className="mt-1 text-sm font-medium">{address || "Keine Adresse hinterlegt"}</div>
+              <div className="mt-1 text-sm font-medium">
+                {address || "Keine Adresse hinterlegt"}
+              </div>
             </div>
           </div>
 
@@ -726,7 +996,9 @@ function ProjectDetailDialog({
           </div>
 
           <div>
-            <div className="text-xs font-medium text-muted-foreground">Arbeitszeiten je Wochentag</div>
+            <div className="text-xs font-medium text-muted-foreground">
+              Arbeitszeiten je Wochentag
+            </div>
             <ul className="mt-1 divide-y text-sm">
               {DAY_NAMES.map((name, i) => (
                 <li key={name} className="flex items-center justify-between py-1.5">
@@ -767,7 +1039,9 @@ function ProjectDetailDialog({
                       <span>
                         <span className="font-medium">{material?.name ?? "Material"}</span>
                         {low && (
-                          <span className="ml-2 text-xs font-medium text-amber-700">Nachfüllen</span>
+                          <span className="ml-2 text-xs font-medium text-amber-700">
+                            Nachfüllen
+                          </span>
                         )}
                       </span>
                       <span className="text-muted-foreground">
@@ -784,7 +1058,11 @@ function ProjectDetailDialog({
           </div>
 
           <div className="rounded-md border p-3">
-            <div className="font-medium">Letzte Arbeitsnachweise / Fotos</div>
+            <div className="font-medium">
+              {task
+                ? "Arbeitsnachweise / Fotos dieses Einsatzes"
+                : "Letzte Arbeitsnachweise / Fotos"}
+            </div>
             {projectEntries.length === 0 ? (
               <p className="mt-2 text-sm text-muted-foreground">
                 Für dieses Objekt gibt es noch keinen eigenen Arbeitszeiteintrag.
@@ -844,9 +1122,18 @@ function ZeitErfassenDialog({
   employee,
   projects,
   assignments,
+  task,
 }: {
+  task?: DayTask | undefined;
   employee: { id: string; name: string; user_id: string; hourly_rate?: number | null };
-  projects: { id: string; name: string; city: string; address_line: string; postal_code: string; customer_name?: string }[];
+  projects: {
+    id: string;
+    name: string;
+    city: string;
+    address_line: string;
+    postal_code: string;
+    customer_name?: string;
+  }[];
   assignments: { project_id: string | null }[];
 }) {
   const queryClient = useQueryClient();
@@ -887,6 +1174,15 @@ function ZeitErfassenDialog({
     setNote("");
   };
 
+  useEffect(() => {
+    if (!open || !task) return;
+    setWorkDate(task.date);
+    setProjectId(task.projectId ?? "");
+    setStart(task.start);
+    setEnd(task.end);
+    setBreakMinutes(String(task.breakMin));
+  }, [open, task]);
+
   const save = useMutation({
     mutationFn: async () => {
       if (hours <= 0) throw new Error("Bitte eine gültige Arbeitszeit angeben.");
@@ -906,6 +1202,7 @@ function ZeitErfassenDialog({
         location: location.trim() || project?.name || "",
         note: note.trim(),
         billed: false,
+        approval_status: "pending",
       });
       if (error) throw error;
     },
@@ -923,7 +1220,7 @@ function ZeitErfassenDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Clock className="size-4" /> Zeit erfassen
+          <Clock className="size-4" /> {task ? "Tatsächliche Zeit erfassen" : "Zeit erfassen"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">

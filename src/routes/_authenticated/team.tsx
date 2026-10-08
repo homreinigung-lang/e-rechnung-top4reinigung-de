@@ -1,8 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BadgeEuro, Boxes, CalendarDays, CalendarRange, Clock, HardHat, WalletCards } from "lucide-react";
+import {
+  BadgeEuro,
+  Boxes,
+  CalendarDays,
+  CalendarRange,
+  Clock,
+  HardHat,
+  WalletCards,
+} from "lucide-react";
+import { EinsatzMeldungen } from "@/components/EinsatzMeldungen";
 import { PersonalStammdatenPanel } from "@/components/PersonalStammdatenPanel";
+import { Urlaubsantraege } from "@/components/Urlaubsantraege";
+import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
 import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
 import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
 import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
@@ -10,7 +21,15 @@ import { LohnartenPanel } from "@/components/LohnartenPanel";
 import { LohnvorbereitungPanel } from "@/components/LohnvorbereitungPanel";
 import { Materialverwaltung } from "@/components/Materialverwaltung";
 
-type TeamTab = "dienstplan" | "kalender" | "personal" | "zeiten" | "lohnarten" | "lohnvorbereitung" | "materialien";
+type TeamTab =
+  | "dienstplan"
+  | "kalender"
+  | "personal"
+  | "zeiten"
+  | "lohnarten"
+  | "lohnvorbereitung"
+  | "materialien"
+  | "meldungen";
 
 type TeamSearch = {
   tab?: TeamTab;
@@ -21,7 +40,16 @@ type TeamSearch = {
 
 export const Route = createFileRoute("/_authenticated/team")({
   validateSearch: (search: Record<string, unknown>): TeamSearch => {
-    const tab = ["dienstplan", "kalender", "personal", "zeiten", "lohnarten", "lohnvorbereitung", "materialien"].includes(String(search["tab"]))
+    const tab = [
+      "dienstplan",
+      "kalender",
+      "personal",
+      "zeiten",
+      "lohnarten",
+      "lohnvorbereitung",
+      "materialien",
+      "meldungen",
+    ].includes(String(search["tab"]))
       ? (String(search["tab"]) as TeamSearch["tab"])
       : undefined;
     const stunden = Number(search["stunden"]);
@@ -67,7 +95,19 @@ function ControlCenter() {
     }
     try {
       const saved = localStorage.getItem(TAB_KEY);
-      if (saved && ["dienstplan", "kalender", "personal", "zeiten", "lohnarten", "lohnvorbereitung", "materialien"].includes(saved)) {
+      if (
+        saved &&
+        [
+          "dienstplan",
+          "kalender",
+          "personal",
+          "zeiten",
+          "lohnarten",
+          "lohnvorbereitung",
+          "materialien",
+          "meldungen",
+        ].includes(saved)
+      ) {
         setTab(saved as TeamTab);
       }
     } catch {
@@ -95,26 +135,29 @@ function ControlCenter() {
       </div>
 
       <Tabs value={tab} onValueChange={change} className="space-y-4">
-        <TabsList className="flex w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="dienstplan" className="gap-2">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="dienstplan" className="min-h-11 gap-2">
             <CalendarRange className="size-4" /> Dienstplan
           </TabsTrigger>
-          <TabsTrigger value="kalender" className="gap-2">
+          <TabsTrigger value="kalender" className="min-h-11 gap-2">
             <CalendarDays className="size-4" /> Kalender
           </TabsTrigger>
-          <TabsTrigger value="personal" className="gap-2">
+          <TabsTrigger value="personal" className="min-h-11 gap-2">
             <HardHat className="size-4" /> Personal
           </TabsTrigger>
-          <TabsTrigger value="zeiten" className="gap-2">
+          <TabsTrigger value="zeiten" className="min-h-11 gap-2">
             <Clock className="size-4" /> Zeiterfassung
           </TabsTrigger>
-          <TabsTrigger value="lohnarten" className="gap-2">
+          <TabsTrigger value="lohnarten" className="min-h-11 gap-2">
             <BadgeEuro className="size-4" /> Lohnarten
           </TabsTrigger>
-          <TabsTrigger value="lohnvorbereitung" className="gap-2">
+          <TabsTrigger value="lohnvorbereitung" className="min-h-11 gap-2">
             <WalletCards className="size-4" /> Lohnvorbereitung
           </TabsTrigger>
-          <TabsTrigger value="materialien" className="gap-2">
+          <TabsTrigger value="meldungen" className="min-h-11 gap-2">
+            <Boxes className="size-4" /> Meldungen
+          </TabsTrigger>
+          <TabsTrigger value="materialien" className="min-h-11 gap-2">
             <Boxes className="size-4" /> Materialien
           </TabsTrigger>
         </TabsList>
@@ -136,7 +179,11 @@ function ControlCenter() {
           <TeamKalenderPanel />
         </TabsContent>
         <TabsContent value="personal" className="mt-0">
-          <PersonalStammdatenPanel />
+          <div className="space-y-4">
+            <Urlaubsantraege />
+            <PersonalStammdatenPanel />
+            <MitarbeiterEinladung />
+          </div>
         </TabsContent>
         <TabsContent value="zeiten" className="mt-0">
           <Zeiterfassung />
@@ -146,6 +193,11 @@ function ControlCenter() {
         </TabsContent>
         <TabsContent value="lohnvorbereitung" className="mt-0">
           <LohnvorbereitungPanel />
+        </TabsContent>
+        <TabsContent value="meldungen" className="mt-0">
+          <div className="surface p-5">
+            <EinsatzMeldungen />
+          </div>
         </TabsContent>
         <TabsContent value="materialien" className="mt-0">
           <Materialverwaltung />

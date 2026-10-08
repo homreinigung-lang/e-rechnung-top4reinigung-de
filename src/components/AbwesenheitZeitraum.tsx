@@ -60,6 +60,7 @@ export function AbwesenheitZeitraum({
   triggerLabel = "Abwesenheit (Zeitraum)",
   variant = "outline",
   asRequest = false,
+  initialOpen = false,
 }: {
   employees: AbsenceEmployee[];
   fixedEmployeeId?: string;
@@ -67,10 +68,11 @@ export function AbwesenheitZeitraum({
   variant?: "default" | "outline";
   /** Mitarbeiter-Modus: Buchung wird nur beantragt und muss freigegeben werden. */
   asRequest?: boolean;
+  initialOpen?: boolean;
 }) {
   const queryClient = useQueryClient();
   const today = isoDay(new Date());
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [employeeId, setEmployeeId] = useState(fixedEmployeeId ?? "");
   const [reason, setReason] = useState<AbsenceReason>("vacation");
   const [from, setFrom] = useState(today);
@@ -108,7 +110,8 @@ export function AbwesenheitZeitraum({
         approval_status: asRequest ? "pending" : "approved",
       }));
       const { error } = await supabase.from("time_entries").insert(rows);
-      if (error) throw new Error(friendlyDbError(error, "Abwesenheit konnte nicht gebucht werden."));
+      if (error)
+        throw new Error(friendlyDbError(error, "Abwesenheit konnte nicht gebucht werden."));
       return rows.length;
     },
     onSuccess: (count) => {
@@ -121,6 +124,8 @@ export function AbwesenheitZeitraum({
       setNote("");
       queryClient.invalidateQueries({ queryKey: ["time_entries"] });
       queryClient.invalidateQueries({ queryKey: ["my_time_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["absence_requests"] });
+      queryClient.invalidateQueries({ queryKey: ["absence_year"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -134,7 +139,11 @@ export function AbwesenheitZeitraum({
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Abwesenheit für einen Zeitraum eintragen</DialogTitle>
+          <DialogTitle>
+            {asRequest
+              ? "Urlaub / Abwesenheit beantragen"
+              : "Abwesenheit für einen Zeitraum eintragen"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -203,7 +212,10 @@ export function AbwesenheitZeitraum({
             <>
               <span className="font-medium text-foreground">{days.length} Tag(e)</span> von{" "}
               {formatDate(from)} bis {formatDate(to)} werden als{" "}
-              <span className="font-medium text-foreground">{absenceLabel(reason)}</span> gebucht.
+              <span className="font-medium text-foreground">{absenceLabel(reason)}</span>{" "}
+              {asRequest
+                ? "beantragt. Erst nach Genehmigung durch die Verwaltung gültig."
+                : "gebucht."}
             </>
           ) : (
             "Bitte einen gültigen Zeitraum wählen."
@@ -215,7 +227,7 @@ export function AbwesenheitZeitraum({
             onClick={() => book.mutate()}
             disabled={!activeEmployeeId || days.length === 0 || book.isPending}
           >
-            Zeitraum buchen
+            {asRequest ? "Antrag senden" : "Zeitraum buchen"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,13 +1,29 @@
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { LoadError } from "@/components/LoadError";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
-import { isApprovedWorkEntry, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
-import { allocateSupplementsByProject, type LohnEmployee, type LohnEntry, type LohnartRule } from "@/lib/lohnvorbereitung";
+import {
+  isApprovedWorkEntry,
+  pendingWorkHours,
+  percentChange,
+  plannedHoursForMonth,
+  planIstDeviationPercent,
+  previousMonthKey,
+  revenueForMonth,
+  summarizeObjectFinancials,
+} from "@/lib/object-controlling";
+import {
+  allocateSupplementsByProject,
+  type LohnEmployee,
+  type LohnEntry,
+  type LohnartRule,
+} from "@/lib/lohnvorbereitung";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -46,70 +62,109 @@ export function ManagementDashboard() {
     { month: "long", year: "numeric" },
   );
 
-  const { data } = useQuery({
+  const { data, error, isPending, refetch } = useQuery({
     queryKey: ["management_dashboard", month],
     queryFn: async () => {
-      const [projects, documents, expenses, timeEntries, employees, qmCases, wageTypes, holidays, assignments] = await Promise.all([
-        supabase
-          .from("projects")
-          .select("id,name,customer_id,customer_name,city,status"),
-        db
-          .from("documents")
-          .select("id,type,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id")
-          .eq("type", "invoice")
-          .is("deleted_at", null),
-        db
-          .from("expenses")
-          .select("id,project_id,expense_date,net_amount")
-          .is("deleted_at", null)
-          .gte("expense_date", previousBounds.start)
-          .lte("expense_date", end),
-        supabase
-          .from("time_entries")
-          .select(
-            "id,employee_id,project_id,work_date,start_time,end_time,break_minutes,hours,hourly_rate,entry_type,absence_reason,approval_status",
-          )
-          .gte("work_date", previousBounds.start)
-          .lte("work_date", end),
-        supabase
-          .from("employees")
-          .select("id,name,active,weekly_hours,hourly_rate,personnel_number,contract_type,contract_start"),
-        db
-          .from("qm_cases")
-          .select("id,title,status,priority,due_date,project_id,customer_id,occurred_at")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("wage_types")
-          .select("kind,surcharge_percent,active,time_from,time_to"),
-        supabase
-          .from("company_holidays")
-          .select("holiday_date,surcharge_percent")
-          .eq("active", true)
-          .gte("holiday_date", previousBounds.start)
-          .lte("holiday_date", end),
-        supabase
-          .from("project_assignments")
-          .select("project_id,start_date,end_date,hours_per_week,day_hours,day_times")
-          .or(`start_date.is.null,end_date.gte.${previousBounds.start},end_date.is.null`),
+      const [
+        projects,
+        documents,
+        expenses,
+        timeEntries,
+        employees,
+        qmCases,
+        wageTypes,
+        holidays,
+        assignments,
+      ] = await Promise.all([
+        fetchAllRows(() =>
+          supabase.from("projects").select("id,name,customer_id,customer_name,city,status"),
+        ),
+        fetchAllRows(() =>
+          db
+            .from("documents")
+            .select(
+              "id,type,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id",
+            )
+            .eq("type", "invoice")
+            .is("deleted_at", null),
+        ),
+        fetchAllRows(() =>
+          db
+            .from("expenses")
+            .select("id,project_id,expense_date,net_amount")
+            .is("deleted_at", null)
+            .gte("expense_date", previousBounds.start)
+            .lte("expense_date", end),
+        ),
+        fetchAllRows(() =>
+          supabase
+            .from("time_entries")
+            .select(
+              "id,employee_id,project_id,work_date,start_time,end_time,break_minutes,hours,hourly_rate,entry_type,absence_reason,approval_status",
+            )
+            .gte("work_date", previousBounds.start)
+            .lte("work_date", end),
+        ),
+        fetchAllRows(() =>
+          supabase
+            .from("employees")
+            .select(
+              "id,name,active,weekly_hours,hourly_rate,personnel_number,contract_type,contract_start",
+            ),
+        ),
+        fetchAllRows(() =>
+          db
+            .from("qm_cases")
+            .select("id,title,status,priority,due_date,project_id,customer_id,occurred_at")
+            .order("created_at", { ascending: false }),
+        ),
+        fetchAllRows(() =>
+          supabase.from("wage_types").select("id,kind,surcharge_percent,active,time_from,time_to"),
+        ),
+        fetchAllRows(() =>
+          supabase
+            .from("company_holidays")
+            .select("id,holiday_date,surcharge_percent")
+            .eq("active", true)
+            .gte("holiday_date", previousBounds.start)
+            .lte("holiday_date", end),
+        ),
+        fetchAllRows(() =>
+          supabase
+            .from("project_assignments")
+            .select("id,project_id,start_date,end_date,hours_per_week,day_hours,day_times")
+            .or(`start_date.is.null,end_date.gte.${previousBounds.start},end_date.is.null`),
+        ),
       ]);
 
-      for (const result of [projects, documents, expenses, timeEntries, employees, qmCases, wageTypes, holidays, assignments]) {
-        if (result.error) throw result.error;
-      }
-
       return {
-        projects: projects.data ?? [],
-        documents: documents.data ?? [],
-        expenses: expenses.data ?? [],
-        timeEntries: timeEntries.data ?? [],
-        employees: employees.data ?? [],
-        qmCases: qmCases.data ?? [],
-        wageTypes: wageTypes.data ?? [],
-        holidays: holidays.data ?? [],
-        assignments: assignments.data ?? [],
+        projects,
+        documents,
+        expenses,
+        timeEntries,
+        employees,
+        qmCases,
+        wageTypes,
+        holidays,
+        assignments,
       };
     },
   });
+
+  if (error)
+    return (
+      <LoadError
+        error={error}
+        title="Management Cockpit konnte nicht geladen werden"
+        onRetry={() => void refetch()}
+      />
+    );
+  if (isPending)
+    return (
+      <p role="status" className="p-5 text-muted-foreground">
+        Management Cockpit wird geladen …
+      </p>
+    );
 
   const projects = data?.projects ?? [];
   const documents = data?.documents ?? [];
@@ -157,7 +212,9 @@ export function ManagementDashboard() {
   );
   const previousSupplementMap = new Map(
     allocateSupplementsByProject(
-      timeEntries.filter((entry) => String(entry.work_date ?? "").startsWith(previousMonth)) as LohnEntry[],
+      timeEntries.filter((entry) =>
+        String(entry.work_date ?? "").startsWith(previousMonth),
+      ) as LohnEntry[],
       employees as LohnEmployee[],
       wageTypes,
       holidays.filter((holiday) => String(holiday.holiday_date ?? "").startsWith(previousMonth)),
@@ -183,9 +240,7 @@ export function ManagementDashboard() {
             Boolean(project.customer_id) && doc.customer_id === project.customer_id;
           const direct = doc.project_id === project.id && sameCustomer;
           const historical =
-            !doc.project_id &&
-            sameCustomer &&
-            customerProjectCount.get(project.customer_id!) === 1;
+            !doc.project_id && sameCustomer && customerProjectCount.get(project.customer_id!) === 1;
           return direct || historical;
         })
         .reduce((sum, doc) => sum + revenueForMonth(doc, targetMonth), 0);
@@ -198,8 +253,7 @@ export function ManagementDashboard() {
       );
       const planIstDeviation = planIstDeviationPercent(hours, plannedHours);
       const baseWageCosts = entries.reduce(
-        (sum, entry) =>
-          sum + Number(entry.hours ?? 0) * Number(entry.hourly_rate ?? 0),
+        (sum, entry) => sum + Number(entry.hours ?? 0) * Number(entry.hourly_rate ?? 0),
         0,
       );
       const supplements = supplementMap.get(project.id) ?? 0;
@@ -278,9 +332,7 @@ export function ManagementDashboard() {
 
   const weakObjects = projectRows
     .filter(
-      (row) =>
-        (row.revenue > 0 && (row.margin ?? 0) < 10) ||
-        (row.revenue === 0 && row.costs > 0),
+      (row) => (row.revenue > 0 && (row.margin ?? 0) < 10) || (row.revenue === 0 && row.costs > 0),
     )
     .sort((a, b) => a.contribution - b.contribution)
     .slice(0, 6);
@@ -520,10 +572,7 @@ export function ManagementDashboard() {
           >
             QM / Reklamationen öffnen
           </Link>
-          <Link
-            to="/team"
-            className="inline-flex text-sm font-medium text-primary hover:underline"
-          >
+          <Link to="/team" className="inline-flex text-sm font-medium text-primary hover:underline">
             Personalplanung öffnen
           </Link>
         </div>

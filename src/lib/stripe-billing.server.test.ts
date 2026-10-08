@@ -335,8 +335,30 @@ describe("signed Sandbox webhooks", () => {
       vi.fn().mockResolvedValue(reply({ ...subscription, latest_invoice: { status: "open" } })),
     );
     await handleStripeWebhook(eventRequest("customer.subscription.updated", { id: "sub_test" }));
-    expect(db.update.mock.calls[0]![0]).not.toHaveProperty("status");
+    expect(db.update.mock.calls[0]![0]).toMatchObject({ status: "inactive" });
+    expect(db.update.mock.calls[0]![0]).not.toHaveProperty("renews_on");
   });
+  it.each(["past_due", "incomplete", "paused", "unpaid", "canceled", "incomplete_expired"])(
+    "revokes existing access without extending renewal for %s",
+    async (status) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            reply({ ...subscription, status, latest_invoice: { status: "open" } }),
+          ),
+      );
+      await handleStripeWebhook(
+        eventRequest("invoice.payment_failed", { subscription: "sub_test" }),
+      );
+      expect(db.update.mock.calls[0]![0]).toMatchObject({
+        status: "inactive",
+        stripe_status: status,
+      });
+      expect(db.update.mock.calls[0]![0]).not.toHaveProperty("renews_on");
+    },
+  );
   it("keeps trialing subscriptions in the local trial state", async () => {
     vi.stubGlobal(
       "fetch",

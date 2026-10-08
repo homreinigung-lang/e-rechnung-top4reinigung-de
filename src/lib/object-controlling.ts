@@ -6,6 +6,7 @@ export type RevenueDocument = {
   service_period?: string | null;
   net_total?: number | string | null;
   total?: number | string | null;
+  vat_amount?: number | string | null;
 };
 
 export type PlannedAssignment = {
@@ -56,7 +57,14 @@ function mondayIndex(value: string) {
  * Nur wenn kein verwertbarer Leistungszeitraum vorhanden ist, gilt das Rechnungsdatum.
  */
 export function revenueForMonth(document: RevenueDocument, month: string): number {
-  const amount = Number(document.net_total ?? document.total ?? 0) || 0;
+  // Legacy invoices can lack net_total while retaining gross total and VAT.
+  // Subtract recorded VAT rather than treating gross revenue as net revenue.
+  const amount = Number(
+    document.net_total ??
+      (document.total != null
+        ? Number(document.total) - Number(document.vat_amount ?? 0)
+        : 0),
+  ) || 0;
   if (!amount) return 0;
 
   const bounds = monthBounds(month);
@@ -232,4 +240,28 @@ export function planIstDeviationPercent(actualHours: number, plannedHours: numbe
   const planned = Number(plannedHours);
   if (!Number.isFinite(actual) || !Number.isFinite(planned) || planned <= 0) return null;
   return ((actual - planned) / planned) * 100;
+}
+
+/**
+ * A direct project link is authoritative, even when a historical invoice has
+ * no customer_id. Unlinked invoices can only be assigned when the customer
+ * has exactly one project; never duplicate revenue across multiple projects.
+ */
+export function invoiceBelongsToProject(
+  invoice: { project_id?: string | null; customer_id?: string | null },
+  project: { id: string; customer_id?: string | null },
+  projectCountByCustomer: ReadonlyMap<string, number>,
+): boolean {
+  if (invoice.project_id) return invoice.project_id === project.id;
+  return Boolean(project.customer_id) &&
+    invoice.customer_id === project.customer_id &&
+    projectCountByCustomer.get(project.customer_id!) === 1;
+}
+
+/** Only issued, non-cancelled invoices belong in project revenue. */
+export function isProjectRevenueInvoice(invoice: {
+  status?: string | null;
+  is_storno?: boolean | null;
+}): boolean {
+  return !invoice.is_storno && !["draft", "cancelled"].includes(String(invoice.status ?? ""));
 }

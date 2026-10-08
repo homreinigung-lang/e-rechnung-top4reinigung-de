@@ -6,10 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const APPROVAL_STATUS = ["pending", "approved", "blocked"] as const;
 
 export const approvalStatusLabel: Record<string, string> = {
-  pending: "Wartet auf Freigabe",
-  approved: "Freigegeben",
+  pending: "Aktiv",
+  approved: "Aktiv",
   blocked: "Gesperrt",
-  rejected: "Abgelehnt",
+  rejected: "Gesperrt",
 };
 
 export type AccountApproval = {
@@ -21,6 +21,7 @@ export type AccountApproval = {
   status: string;
   created_at: string;
   decided_at: string | null;
+  deletion_started_at: string | null;
 };
 
 /** Alle registrierten Firmenkonten – nur für Administratoren (RLS). */
@@ -28,13 +29,16 @@ export function useAccountApprovals(enabled: boolean) {
   return useQuery({
     queryKey: ["admin_approvals"],
     enabled,
+    refetchInterval: 15_000,
     queryFn: async (): Promise<AccountApproval[]> => {
       const { data, error } = await supabase
         .from("account_approvals")
-        .select("id,auth_user_id,email,full_name,company_name,status,created_at,decided_at")
+        .select(
+          "id,auth_user_id,email,full_name,company_name,status,created_at,decided_at,deletion_started_at",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as AccountApproval[];
+      return (data ?? []) as unknown as AccountApproval[];
     },
   });
 }
@@ -43,12 +47,9 @@ export function useAccountApprovals(enabled: boolean) {
 export function useSetApprovalStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
-        .from("account_approvals")
-        .update({ status, decided_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
+    mutationFn: async ({ id, status }: { id: string; status: "approved" | "blocked" }) => {
+      const { setCompanyAccountStatus } = await import("@/lib/approval.functions");
+      await setCompanyAccountStatus({ data: { id, status } });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["admin_approvals"] });

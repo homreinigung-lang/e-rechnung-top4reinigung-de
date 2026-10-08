@@ -1,15 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /** Länge der kostenlosen Testphase für neue Firmen. */
 export const TRIAL_DAYS = 60;
-
-function isoPlusDays(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 /**
  * Registrierung abschließen: Firmendaten speichern, Konto sofort freigeben und
@@ -31,99 +26,8 @@ export const requestAccountApproval = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // Immer das angemeldete Konto – eine fremde Kennung wird ignoriert.
-    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-    const user = userData?.user ?? null;
-    if (!user) {
-      // Kommt vor, wenn die Registrierung eine E-Mail-Bestätigung erfordert oder
-      // die Adresse bereits existiert – dann gibt es (noch) kein echtes Konto.
-      return { status: "pending" as const };
-    }
-    const email = (user.email ?? data.email ?? "").toLowerCase();
-    const fullName =
-      (data.fullName ?? "").trim() ||
-      ((user.user_metadata?.["full_name"] as string | undefined) ?? "");
-    const companyName = (data.companyName ?? "").trim();
-
-    const now = new Date().toISOString();
-
-    const existing = await supabaseAdmin
-      .from("account_approvals")
-      .select("id,status")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-
-    if (existing.data) {
-      // Bestehende Konten bleiben unberührt, sofern sie nicht gesperrt sind.
-      if (existing.data.status === "pending") {
-        await supabaseAdmin
-          .from("account_approvals")
-          .update({ status: "approved", decided_at: now })
-          .eq("id", existing.data.id);
-        return { status: "approved" };
-      }
-      return { status: existing.data.status as string };
-    }
-
-    const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-    const { error } = await supabaseAdmin.from("account_approvals").insert({
-      auth_user_id: user.id,
-      email,
-      full_name: fullName,
-      company_name: companyName,
-      token,
-      status: "approved",
-      decided_at: now,
-    });
-    if (error) throw new Error(error.message);
-
-    // Mitarbeitende bekommen weder Firmenprofil noch Abonnement.
-    const employee = await supabaseAdmin
-      .from("employees")
-      .select("id")
-      .ilike("email", email)
-      .limit(1);
-    if ((employee.data ?? []).length > 0) return { status: "approved" };
-
-    const settings = await supabaseAdmin
-      .from("company_settings")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!settings.data) {
-      await supabaseAdmin.from("company_settings").insert({
-        user_id: user.id,
-        company_name: companyName,
-        owner_name: fullName,
-        email,
-        employee_count: data.employeeCount ?? 0,
-        legal_form: (data.legalForm ?? "").trim(),
-      });
-    }
-
-    const sub = await supabaseAdmin
-      .from("subscriptions")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!sub.data) {
-      await supabaseAdmin.from("subscriptions").insert({
-        user_id: user.id,
-        company_name: companyName,
-        city: "",
-        contact_email: email,
-        plan: "basis",
-        status: "trial",
-        visible_on_landing: false,
-        note: `Automatische Testphase über ${TRIAL_DAYS} Tage`,
-        started_on: now.slice(0, 10),
-        renews_on: isoPlusDays(TRIAL_DAYS),
-      });
-    }
-
-    return { status: "approved" };
+    const { completeCompanyRegistration } = await import("./company-registration.server");
+    return completeCompanyRegistration(context.userId, data);
   });
 
 /**
@@ -174,43 +78,62 @@ export const sendAccountRecoveryLink = createServerFn({ method: "POST" })
 export const getApprovalStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("account_approvals")
-      .select("status")
-      .eq("auth_user_id", context.userId)
-      .maybeSingle();
-    return { status: (row?.status as string | undefined) ?? "none" };
+    const { data, error } = await (context.supabase as SupabaseClient).rpc(
+      "get_account_access_status",
+    );
+    if (error || typeof data !== "string")
+      throw new Error("Kontostatus konnte nicht geprüft werden.");
+    return { status: data };
   });
 
-/**
- * Firmenkonto vollständig löschen – ausschließlich für Administratoren.
- * Entfernt den Anmelde-Zugang samt Freigabe-Eintrag und Abonnement.
- */
+/** Firmen sperren oder eine bestehende Sperre aufheben – nur für Administratoren. */
+export const setCompanyAccountStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum(["approved", "blocked"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const role = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (role.error || role.data?.role !== "admin")
+      throw new Error("Nur Administratoren dürfen Firmenkonten verwalten.");
+    const result = await context.supabase
+      .from("account_approvals")
+      .update({ status: data.status, decided_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .neq("auth_user_id", context.userId)
+      .select("id")
+      .maybeSingle();
+    if (result.error) throw result.error;
+    if (!result.data)
+      throw new Error("Firmenkonto nicht gefunden oder eigenes Administrationskonto.");
+    return { updated: true };
+  });
+
+/** Firmenkonto endgültig löschen – ausschließlich für Administratoren. */
 export const deleteCompanyAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ approvalId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const isAdmin = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (isAdmin.data !== true) throw new Error("Nur Administratoren dürfen Konten löschen.");
+    const isAdmin = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (isAdmin.error || isAdmin.data?.role !== "admin")
+      throw new Error("Nur Administratoren dürfen Konten löschen.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("account_approvals")
-      .select("id,auth_user_id")
-      .eq("id", data.approvalId)
-      .maybeSingle();
-    if (!row) throw new Error("Konto nicht gefunden.");
-    if (row.auth_user_id === context.userId)
-      throw new Error("Das eigene Administrationskonto kann nicht gelöscht werden.");
-
-    await supabaseAdmin.from("subscriptions").delete().eq("user_id", row.auth_user_id);
-    await supabaseAdmin.from("account_approvals").delete().eq("id", row.id);
-    const del = await supabaseAdmin.auth.admin.deleteUser(row.auth_user_id);
-    if (del.error) throw new Error(del.error.message);
-
-    return { deleted: true };
+    const { deleteCompanySafely } = await import("./company-deletion.server");
+    return deleteCompanySafely(context.supabase, supabaseAdmin, data.approvalId);
   });

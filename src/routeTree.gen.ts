@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as FreigabeAusstehendRouteImport } from './routes/freigabe-ausstehend'
+import { Route as MitarbeiterAnmeldungRouteImport } from './routes/mitarbeiter-anmeldung'
 import { Route as RechtlichesRouteImport } from './routes/rechtliches'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -80,6 +81,11 @@ const AuthRoute = AuthRouteImport.update({
 const FreigabeAusstehendRoute = FreigabeAusstehendRouteImport.update({
   id: '/freigabe-ausstehend',
   path: '/freigabe-ausstehend',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MitarbeiterAnmeldungRoute = MitarbeiterAnmeldungRouteImport.update({
+  id: '/mitarbeiter-anmeldung',
+  path: '/mitarbeiter-anmeldung',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RechtlichesRoute = RechtlichesRouteImport.update({
@@ -354,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
+  '/mitarbeiter-anmeldung': typeof MitarbeiterAnmeldungRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -408,6 +415,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
+  '/mitarbeiter-anmeldung': typeof MitarbeiterAnmeldungRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/abonnements': typeof AuthenticatedAbonnementsRoute
@@ -462,6 +470,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/freigabe-ausstehend': typeof FreigabeAusstehendRoute
+  '/mitarbeiter-anmeldung': typeof MitarbeiterAnmeldungRoute
   '/rechtliches': typeof RechtlichesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -518,6 +527,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/freigabe-ausstehend'
+    | '/mitarbeiter-anmeldung'
     | '/rechtliches'
     | '/reset-password'
     | '/sitemap.xml'
@@ -572,6 +582,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/freigabe-ausstehend'
+    | '/mitarbeiter-anmeldung'
     | '/reset-password'
     | '/sitemap.xml'
     | '/abonnements'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/freigabe-ausstehend'
+    | '/mitarbeiter-anmeldung'
     | '/rechtliches'
     | '/reset-password'
     | '/sitemap.xml'
@@ -681,6 +693,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   FreigabeAusstehendRoute: typeof FreigabeAusstehendRoute
+  MitarbeiterAnmeldungRoute: typeof MitarbeiterAnmeldungRoute
   RechtlichesRoute: typeof RechtlichesRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -718,6 +731,13 @@ declare module '@tanstack/react-router' {
       path: '/freigabe-ausstehend'
       fullPath: '/freigabe-ausstehend'
       preLoaderRoute: typeof FreigabeAusstehendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mitarbeiter-anmeldung': {
+      id: '/mitarbeiter-anmeldung'
+      path: '/mitarbeiter-anmeldung'
+      fullPath: '/mitarbeiter-anmeldung'
+      preLoaderRoute: typeof MitarbeiterAnmeldungRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rechtliches': {
@@ -1196,6 +1216,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   FreigabeAusstehendRoute: FreigabeAusstehendRoute,
+  MitarbeiterAnmeldungRoute: MitarbeiterAnmeldungRoute,
   RechtlichesRoute: RechtlichesRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

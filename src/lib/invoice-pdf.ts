@@ -96,26 +96,41 @@ function widthOf(font: PDFFont, size: number, text: string): number {
   return font.widthOfTextAtSize(clean(text), size);
 }
 
-/** Text auf eine Breite umbrechen – Wörter werden nie zerschnitten. */
-function wrap(font: PDFFont, size: number, text: string, maxWidth: number): string[] {
+/** Wrap text to a column width, splitting unusually long unbroken tokens as needed. */
+function wrap(font: PDFFont, size: number, value: string, maxWidth: number): string[] {
   const out: string[] = [];
-  for (const paragraph of clean(text).split("\n")) {
+  for (const paragraph of clean(value).split("\n")) {
     const words = paragraph.split(/\s+/).filter(Boolean);
-    if (words.length === 0) {
+    if (!words.length) {
       out.push("");
       continue;
     }
     let line = "";
     for (const word of words) {
       const candidate = line ? `${line} ${word}` : word;
-      if (font.widthOfTextAtSize(candidate, size) <= maxWidth || !line) {
+      if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
         line = candidate;
-      } else {
-        out.push(line);
-        line = word;
+        continue;
       }
+      if (line) {
+        out.push(line);
+        line = "";
+      }
+      // Very long URLs, identifiers and uninterrupted descriptions must not
+      // run outside the invoice table or the page margins.
+      let chunk = "";
+      for (const char of word) {
+        const next = chunk + char;
+        if (chunk && font.widthOfTextAtSize(next, size) > maxWidth) {
+          out.push(chunk);
+          chunk = char;
+        } else {
+          chunk = next;
+        }
+      }
+      line = chunk;
     }
-    out.push(line);
+    if (line) out.push(line);
   }
   return out;
 }
@@ -465,7 +480,7 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
         }
         // Abschnittstitel bleibt mit der ersten Position zusammen (keep-with-next).
         drawBandRow(
-          wanted === "regular" ? "Regelmäßige Leistungen" : "Optionale Zusatzleistungen",
+          wanted === "regular" ? "Regelmäßige Leistungen" : "Saisonale & zusätzliche Leistungen",
           undefined,
           true,
           rowH,
