@@ -260,6 +260,12 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
       "Nur angenommene Angebote können umgewandelt werden. Bitte das Angebot zuerst annehmen.",
     );
   }
+  if (src.is_storno || src.status === "cancelled" || src.deleted_at) {
+    throw new Error("Stornierte oder gelöschte Belege können nicht umgewandelt werden.");
+  }
+  if (src.type === "order" && !["draft", "sent"].includes(src.status)) {
+    throw new Error("Nur offene Auftragsbestätigungen können in Rechnungen umgewandelt werden.");
+  }
   const converted = (src as unknown as Record<string, unknown>)["converted_document_id"];
   if (converted) throw new Error("Dieser Beleg wurde bereits umgewandelt.");
 
@@ -317,8 +323,14 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .single();
   if (insertError) throw insertError;
 
+  // Remove the unclaimed draft if copying items or claiming the source fails.
+  async function discardDraft() {
+    await supabase.from("document_items").delete().eq("document_id", created.id);
+    await supabase.from("documents").delete().eq("id", created.id);
+  }
+
   if (items && items.length > 0) {
-    await supabase.from("document_items").insert(
+    const { error: itemsError } = await supabase.from("document_items").insert(
       items.map((i, index) => ({
         document_id: created.id,
         user_id: userId,
@@ -330,27 +342,31 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
         is_optional: i.is_optional,
       })),
     );
+    if (itemsError) {
+      await discardDraft();
+      throw itemsError;
+    }
   }
 
-  // Atomar: nur setzen, solange noch keine Umwandlung existiert. Dadurch kann ein
-  // Doppelklick (zwei parallele Aufrufe) niemals zwei Folgebelege erzeugen.
-  const { data: claimed } = await supabase
+  // Claim only the original eligible source in its observed state.
+  const { data: claimed, error: claimError } = await supabase
     .from("documents")
     .update({
       converted_document_id: created.id,
-      // Angebote gelten mit der Umwandlung als angenommen.
       ...(src.type === "quote" ? { status: "accepted" } : {}),
     } as never)
     .eq("id", sourceId)
+    .eq("type", src.type)
+    .eq("status", src.status)
     .is("converted_document_id", null)
+    .is("deleted_at", null)
+    .or("is_storno.is.false,is_storno.is.null")
     .select("id");
-  if (!claimed || claimed.length === 0) {
-    // Ein paralleler Vorgang war schneller – eigenen Entwurf wieder entfernen.
-    await supabase.from("document_items").delete().eq("document_id", created.id);
-    await supabase.from("documents").delete().eq("id", created.id);
-    throw new Error("Dieser Beleg wurde bereits umgewandelt.");
+  if (claimError || !claimed?.length) {
+    await discardDraft();
+    if (claimError) throw claimError;
+    throw new Error("Der Beleg wurde bereits umgewandelt oder sein Status hat sich geändert.");
   }
-
 
   await logAudit(
     target === "order"
