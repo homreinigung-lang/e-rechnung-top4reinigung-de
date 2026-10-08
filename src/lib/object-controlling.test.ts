@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isApprovedWorkEntry, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
+import { invoiceBelongsToProject, isApprovedWorkEntry, pendingWorkHours, percentChange, plannedHoursForMonth, planIstDeviationPercent, previousMonthKey, revenueForMonth, summarizeObjectFinancials } from "@/lib/object-controlling";
 
 describe("object controlling accuracy", () => {
   it("uses service period month before invoice issue month", () => {
@@ -231,5 +231,21 @@ describe("object controlling plan vs actual", () => {
 
   it("does not invent a deviation without a plan basis", () => {
     expect(planIstDeviationPercent(10, 0)).toBeNull();
+  });
+});
+
+describe("invoice project attribution", () => {
+  const project = { id: "p1", customer_id: "c1" };
+  it("counts invoices explicitly linked to the project even without customer ID", () => {
+    expect(invoiceBelongsToProject({ project_id: "p1", customer_id: null }, project, new Map([["c1", 2]]))).toBe(true);
+  });
+  it("does not assign a directly linked invoice to a different project", () => {
+    expect(invoiceBelongsToProject({ project_id: "p2", customer_id: "c1" }, project, new Map([["c1", 1]]))).toBe(false);
+  });
+  it("does not duplicate unlinked customer invoices across multiple projects", () => {
+    expect(invoiceBelongsToProject({ project_id: null, customer_id: "c1" }, project, new Map([["c1", 2]]))).toBe(false);
+  });
+  it("keeps historical attribution when customer has only one project", () => {
+    expect(invoiceBelongsToProject({ project_id: null, customer_id: "c1" }, project, new Map([["c1", 1]]))).toBe(true);
   });
 });
