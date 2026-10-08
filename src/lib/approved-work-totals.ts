@@ -48,3 +48,25 @@ export function approvedWorkTotals(
   }
   return { hours, amount, perEmployee: [...perEmployee.entries()] };
 }
+
+export type ProjectWorkTotalsEntry = WorkTotalsEntry & { project_id?: string | null };
+
+/** Calculate payable work per project in one pass, using the same rules as payroll. */
+export function approvedProjectWorkTotals(
+  entries: ProjectWorkTotalsEntry[],
+  employeeRates: ReadonlyMap<string, number> = new Map(),
+): Map<string, { hours: number; amount: number }> {
+  const totals = new Map<string, { hours: number; amount: number }>();
+  for (const entry of entries) {
+    if (!entry.project_id) continue;
+    const hours = approvedWorkHours(entry);
+    if (hours <= 0) continue;
+    const amount = approvedWorkAmount(entry, employeeRates.get(entry.employee_id ?? "") ?? 0);
+    const previous = totals.get(entry.project_id) ?? { hours: 0, amount: 0 };
+    totals.set(entry.project_id, {
+      hours: previous.hours + hours,
+      amount: previous.amount + amount,
+    });
+  }
+  return totals;
+}
