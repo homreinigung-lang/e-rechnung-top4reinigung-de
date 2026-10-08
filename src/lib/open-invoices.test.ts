@@ -23,4 +23,13 @@ describe("open invoice summary", () => {
       total: 0,
     });
   });
+  it("excludes storno invoices even when their status is sent or overdue", () => {
+    const sent = { status: "sent", total: 120, is_storno: false };
+    const storno = { status: "sent", total: -120, is_storno: true };
+    const overdueStorno = { status: "overdue", total: 75, is_storno: true };
+    expect(summarizeOpenInvoices([sent, storno, overdueStorno])).toEqual({
+      items: [sent],
+      total: 120,
+    });
+  });
 });
