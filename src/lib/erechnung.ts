@@ -39,6 +39,11 @@ const esc = (v: unknown) =>
 const dec = (v: number) => (Number.isFinite(v) ? v : 0).toFixed(2);
 const qty = (v: number) => (Number.isFinite(v) ? v : 0).toFixed(3);
 const ymd = (v: unknown) => String(v ?? "").slice(0, 10);
+const validIssueDate = (value: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
 const cii = (v: unknown) => ymd(v).replace(/-/g, "");
 
 /** UN/ECE-Rec.20-Einheitencode aus der deutschen Einheit ableiten. */
@@ -113,7 +118,7 @@ function buildModel(input: ERechnungInput) {
     number,
     // 380 = Rechnung, 381 = Gutschrift/Storno
     typeCode: isStorno ? "381" : "380",
-    issueDate: ymd(doc["issue_date"]) || new Date().toISOString().slice(0, 10),
+    issueDate: ymd(doc["issue_date"]),
     dueDate: ymd(doc["due_date"]),
     servicePeriod: String(doc["service_period"] ?? ""),
     buyerReference: String(doc["order_number"] ?? "").trim() || "N/A",
@@ -494,7 +499,9 @@ export function validateERechnung(input: ERechnungInput): string[] {
   const m = buildModel(input);
   const problems: string[] = [];
   if (!m.number) problems.push("Rechnungsnummer fehlt.");
-  if (!m.issueDate) problems.push("Rechnungsdatum fehlt.");
+  if (!validIssueDate(m.issueDate)) problems.push("Gültiges Rechnungsdatum fehlt.");
+  if (!m.seller.name.trim())
+    problems.push("Firmenname des Rechnungsstellers fehlt (Einstellungen).");
   if (!m.seller.street || !m.seller.zip || !m.seller.city)
     problems.push("Anschrift des Rechnungsstellers unvollständig (Einstellungen).");
   if (!m.seller.vatId && !m.seller.taxNumber)
