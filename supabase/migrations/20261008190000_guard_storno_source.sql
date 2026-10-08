@@ -1,11 +1,6 @@
--- SECURITY/FUNCTIONALITY: normalize the storno RPC across production and replay.
--- Production missed the historical migration that added the mandatory reason,
--- while local replay already has the two-argument form. Make both converge here.
+-- Harden storno eligibility without dropping the existing RPC or its grants.
+-- This change does not modify any existing invoice rows.
 begin;
-
-drop function if exists public.create_storno(uuid);
-drop function if exists public.create_storno(uuid, text);
-drop function if exists public.create_storno_unchecked(uuid);
 
 create or replace function public.create_storno_unchecked(_id uuid, _reason text default '')
 returns uuid
@@ -108,26 +103,5 @@ begin
   return new_id;
 end;
 $$;
-
-revoke all on function public.create_storno_unchecked(uuid, text)
-  from public, anon, authenticated;
-grant execute on function public.create_storno_unchecked(uuid, text) to service_role;
-
-create or replace function public.create_storno(_id uuid, _reason text default '')
-returns uuid
-language plpgsql
-security definer
-set search_path = public, app_private
-as $$
-begin
-  if not app_private.is_account_active() then
-    raise exception 'Konto gesperrt' using errcode = '42501';
-  end if;
-  return public.create_storno_unchecked(_id, _reason);
-end;
-$$;
-
-revoke all on function public.create_storno(uuid, text) from public, anon;
-grant execute on function public.create_storno(uuid, text) to authenticated, service_role;
 
 commit;
