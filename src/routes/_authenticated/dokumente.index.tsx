@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetch-all-rows";
+import { summarizeOpenInvoices } from "@/lib/open-invoices";
 import { draftPlaceholderNumber } from "@/lib/doc-number";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -399,12 +400,9 @@ function DokumenteListe() {
 
   // Offene-Posten-Übersicht für Rechnungen.
   const invoiceRows = list.filter((d) => d.type === "invoice");
-  const openInvoices = invoiceRows.filter(
-    (d) => d.status !== "paid" && d.status !== "cancelled" && d.status !== "draft",
-  );
+  const { items: openInvoices, total: openAmount } = summarizeOpenInvoices(invoiceRows);
   const overdueInvoices = openInvoices.filter((d) => Boolean(dueInfo(d.due_date, d.status)?.overdue));
   const paidInvoices = invoiceRows.filter((d) => d.status === "paid");
-  const openAmount = openInvoices.reduce((sum, d) => sum + Number(d.total ?? 0), 0);
   const overdueAmount = overdueInvoices.reduce((sum, d) => sum + Number(d.total ?? 0), 0);
   const paidAmount = paidInvoices.reduce((sum, d) => sum + Number(d.total ?? 0), 0);
   const filteredInvoices =
