@@ -24,8 +24,9 @@ describe("complete Steuerberater exports", () => {
     const invoices = Array.from({ length: 1207 }, (_, i) => ({
       id: `invoice-${i}`,
       type: "invoice",
-      status: "sent",
+      status: "paid",
       issue_date: "2026-10-08",
+      paid_at: "2026-10-08",
       net_total: 10,
       total: 10,
       vat_amount: 0,
