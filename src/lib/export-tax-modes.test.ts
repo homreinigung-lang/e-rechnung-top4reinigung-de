@@ -30,8 +30,8 @@ describe("tax mode consistency in document exports", () => {
 
   it("uses the same domestic default in the editor and XML", () => {
     const form = buildInitialDocumentForm({ doc: input.doc, settings: input.settings });
-    expect(form.tax_mode).toBe("domestic");
-    const vatRate = vatRateForTaxMode(String(form.tax_mode));
+    expect(form["tax_mode"]).toBe("domestic");
+    const vatRate = vatRateForTaxMode(String(form["tax_mode"]));
     const totals = computeDocumentTotals(input.items, 0, vatRate);
     expect(totals).toMatchObject({ netTotal: 100, vatAmount: 19, grossTotal: 119 });
     expect(buildXRechnungXml({ ...input, ...totals, vatRate, doc: form })).toContain(
