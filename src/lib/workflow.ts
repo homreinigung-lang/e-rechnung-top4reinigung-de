@@ -301,17 +301,18 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .single();
   if (insertError) throw insertError;
   if (!created) throw new Error("Der neue Beleg konnte nicht angelegt werden.");
+  const createdId = created.id;
 
   // Remove the unclaimed draft if copying items or claiming the source fails.
   async function discardDraft() {
-    await supabase.from("document_items").delete().eq("document_id", created.id);
-    await supabase.from("documents").delete().eq("id", created.id);
+    await supabase.from("document_items").delete().eq("document_id", createdId);
+    await supabase.from("documents").delete().eq("id", createdId);
   }
 
   if (items && items.length > 0) {
     const { error: itemsError } = await supabase.from("document_items").insert(
       items.map((i, index) => ({
-        document_id: created.id,
+        document_id: createdId,
         user_id: userId,
         position: index + 1,
         description: i.description,
@@ -331,7 +332,7 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
   const { data: claimed, error: claimError } = await supabase
     .from("documents")
     .update({
-      converted_document_id: created.id,
+      converted_document_id: createdId,
       ...(src.type === "quote" ? { status: "accepted" } : {}),
     } as never)
     .eq("id", sourceId)
