@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-type StripeCheckoutInput = {
+export type StripeCheckoutInput = {
   orderNumber: string;
   userId: string;
   subscriptionId: string;
@@ -271,11 +271,10 @@ export async function createStripeSubscriptionCheckout(
     }
   }
 
-  // One pending Checkout per local subscription, even across separate order submissions.
-  // Stripe rejects conflicting parameters for this key while the first session is open.
+  // Retries of the same persisted attempt must use identical parameters.
   const checkoutDigest = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(input.subscriptionId),
+    new TextEncoder().encode(`${input.subscriptionId}:${input.orderNumber}`),
   );
   const checkoutKey = Array.from(new Uint8Array(checkoutDigest), (byte) =>
     byte.toString(16).padStart(2, "0"),
@@ -291,6 +290,16 @@ export async function createStripeSubscriptionCheckout(
   if (!session.url || !session.url.startsWith("https://checkout.stripe.com/"))
     throw new Error("Stripe hat keine gültige Checkout-URL geliefert.");
   return { id: session.id, url: session.url };
+}
+
+export async function retrieveStripeCheckout(id: string) {
+  if (stripeBillingMode() === "off") throw new Error("Online-Zahlung ist noch nicht verfügbar.");
+  await verifyLiveAccount(true);
+  return stripeRequest<{
+    id: string;
+    status: "open" | "complete" | "expired";
+    url?: string | null;
+  }>(`/checkout/sessions/${encodeURIComponent(id)}`);
 }
 
 function isoDateFromUnix(seconds?: number): string | null {

@@ -135,45 +135,9 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
       data.vatId,
       safeEmployeeCount,
     );
-    const orderNumber = `BEST-${new Date().getFullYear()}-${String(
-      Math.floor(Math.random() * 100000),
-    ).padStart(5, "0")}`;
+    const orderNumber = `BEST-${new Date().getFullYear()}-${crypto.randomUUID()}`;
 
-    // Prepare Checkout before inserting: configuration failures must not leave an order behind.
-    let checkout: { id: string; url: string } | null = null;
-    if (data.paymentMethod === "stripe") {
-      const { data: billing, error: billingError } = await supabaseAdmin
-        .from("subscriptions")
-        .select("*")
-        .eq("id", subscription.id)
-        .eq("user_id", context.userId)
-        .single();
-      if (billingError) throw new Error(billingError.message);
-      if ((billing as unknown as { stripe_subscription_id?: string }).stripe_subscription_id) {
-        throw new Error(
-          "Ein Online-Abonnement besteht bereits. Bitte den Support für einen Paketwechsel kontaktieren.",
-        );
-      }
-      const { createStripeSubscriptionCheckout } = await import("@/lib/stripe-billing.server");
-      checkout = await createStripeSubscriptionCheckout({
-        orderNumber,
-        userId: context.userId,
-        subscriptionId: subscription.id,
-        planCode: plan.code,
-        planName: plan.name,
-        billingInterval: data.billingInterval,
-        ...totals,
-        baseNetCents:
-          data.billingInterval === "yearly" ? plan.price_yearly_cents : plan.price_monthly_cents,
-        email: data.email,
-        companyName: data.companyName,
-        trialEndsOn: subscription.status === "trial" ? subscription.renews_on : null,
-      });
-      if (!checkout)
-        throw new Error("Online-Zahlung ist noch nicht verfügbar. Bitte Rechnung wählen.");
-    }
-
-    const { error } = await supabaseAdmin.from("plan_orders").insert({
+    let order: Record<string, unknown> = {
       order_number: orderNumber,
       customer_user_id: context.userId,
       subscription_id: subscription.id,
@@ -196,9 +160,93 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
       vat_cents: totals.vatCents,
       gross_cents: totals.grossCents,
       reverse_charge: totals.reverseCharge,
-      ...(checkout ? { stripe_checkout_session_id: checkout.id, payment_status: "pending" } : {}),
-    } as never);
-    if (error) throw new Error(error.message);
+    };
 
-    return { orderNumber, totals, ...(checkout ? { checkoutUrl: checkout.url } : {}) };
+    // Reserve an immutable payment attempt; create the order only after Checkout succeeds.
+    let checkout: { id: string; url: string } | null = null;
+    if (data.paymentMethod === "stripe") {
+      const { data: billing, error: billingError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("*")
+        .eq("id", subscription.id)
+        .eq("user_id", context.userId)
+        .single();
+      if (billingError) throw new Error(billingError.message);
+      if ((billing as unknown as { stripe_subscription_id?: string }).stripe_subscription_id) {
+        throw new Error(
+          "Ein Online-Abonnement besteht bereits. Bitte den Support für einen Paketwechsel kontaktieren.",
+        );
+      }
+      const { managedStripeCheckout } = await import("@/lib/stripe-checkout-attempt.server");
+      const managed = await managedStripeCheckout(
+        {
+          orderNumber,
+          userId: context.userId,
+          subscriptionId: subscription.id,
+          planCode: plan.code,
+          planName: plan.name,
+          billingInterval: data.billingInterval,
+          ...totals,
+          baseNetCents:
+            data.billingInterval === "yearly" ? plan.price_yearly_cents : plan.price_monthly_cents,
+          email: data.email,
+          companyName: data.companyName,
+          trialEndsOn: subscription.status === "trial" ? subscription.renews_on : null,
+        },
+        order,
+      );
+      checkout = managed.checkout;
+      order = managed.order;
+      if (!checkout)
+        throw new Error("Online-Zahlung ist noch nicht verfügbar. Bitte Rechnung wählen.");
+    }
+
+    // A repeated request must not create another order or reset a webhook's status.
+    if (checkout) {
+      const { data: existing, error: lookupError } = await supabaseAdmin
+        .from("plan_orders")
+        .select("id")
+        .eq("stripe_checkout_session_id", checkout.id)
+        .eq("customer_user_id", context.userId)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      if (existing)
+        return {
+          orderNumber: String(order["order_number"]),
+          totals: {
+            netCents: Number(order["net_cents"]),
+            vatCents: Number(order["vat_cents"]),
+            grossCents: Number(order["gross_cents"]),
+            reverseCharge: Boolean(order["reverse_charge"]),
+          },
+          checkoutUrl: checkout.url,
+        };
+    }
+    const { error } = await supabaseAdmin
+      .from("plan_orders")
+      .insert({
+        ...order,
+        ...(checkout ? { stripe_checkout_session_id: checkout.id, payment_status: "pending" } : {}),
+      } as never);
+    if (error) {
+      if (!checkout || error.code !== "23505") throw new Error(error.message);
+      const { data: concurrent, error: lookupError } = await supabaseAdmin
+        .from("plan_orders")
+        .select("id")
+        .eq("stripe_checkout_session_id", checkout.id)
+        .eq("customer_user_id", context.userId)
+        .maybeSingle();
+      if (lookupError || !concurrent) throw new Error(error.message);
+    }
+
+    return {
+      orderNumber: String(order["order_number"]),
+      totals: {
+        netCents: Number(order["net_cents"]),
+        vatCents: Number(order["vat_cents"]),
+        grossCents: Number(order["gross_cents"]),
+        reverseCharge: Boolean(order["reverse_charge"]),
+      },
+      ...(checkout ? { checkoutUrl: checkout.url } : {}),
+    };
   });

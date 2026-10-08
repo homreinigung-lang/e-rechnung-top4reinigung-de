@@ -26,7 +26,7 @@ import {
   ShieldCheck,
   ShieldOff,
 } from "lucide-react";
-import { buildDatevExtf, type DatevAccount, type DatevChart } from "@/lib/datev-extf";
+import { buildIssuedDatevExtf, type DatevAccount, type DatevChart } from "@/lib/datev-extf";
 import { buildPayrollSummary } from "@/lib/payroll-export";
 import { approvedWorkHours, workHourlyRate } from "@/lib/approved-work-totals";
 import { fetchAllRows } from "@/lib/fetch-all-rows";
@@ -385,7 +385,7 @@ function Steuerberater() {
           expenseCategories.some(category => savedMappings.find(m => m.mapping_key === "expense:" + category && m.chart === chart && m.fiscal_year === year)?.account_number !== expenseMappings[category])) {
         throw new Error("DATEV-Einstellungen zuerst speichern.");
       }
-      const bytes = buildDatevExtf(documents, expenses, {
+      const bytes = buildIssuedDatevExtf(documents, expenses, {
         chart, fiscalYear: year, beraternummer, mandantennummer,
         expenseAccounts: expenseMappings, from, to, accounts: chartAccounts
       });

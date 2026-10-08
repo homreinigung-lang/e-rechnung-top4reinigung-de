@@ -264,3 +264,8 @@ export function buildDatevExtf(documents: DatevDocument[], expenses: DatevExpens
   if (lines.length - 2 > 99_999) throw new Error("DATEV: Maximal 99.999 Buchungen pro Buchungsstapel erlaubt.");
   return cp1252(lines.join("\r\n") + "\r\n");
 }
+
+/** The owner report also contains drafts; only issued invoices enter accounting. */
+export function buildIssuedDatevExtf(documents: DatevDocument[], expenses: DatevExpense[], opts: DatevOptions): Uint8Array {
+  return buildDatevExtf(documents.filter((doc) => ["sent", "paid", "cancelled"].includes(String(doc.status))), expenses, opts);
+}
