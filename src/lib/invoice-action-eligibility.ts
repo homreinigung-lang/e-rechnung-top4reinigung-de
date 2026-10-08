@@ -32,3 +32,10 @@ export function assertInvoiceActionAllowed(
     );
   }
 }
+
+/** Reverting payment must not revive cancelled invoices or modify other documents. */
+export function assertInvoicePaymentReversible(document: InvoiceActionDocument): void {
+  if (document.type !== "invoice" || document.is_storno || document.status !== "paid") {
+    throw new Error("Nur bezahlte, nicht stornierte Rechnungen können wieder geöffnet werden.");
+  }
+}

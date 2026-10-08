@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
 import { draftPlaceholderNumber, ensureOfficialNumber } from "@/lib/doc-number";
-import { assertInvoiceActionAllowed } from "@/lib/invoice-action-eligibility";
+import { assertInvoiceActionAllowed, assertInvoicePaymentReversible } from "@/lib/invoice-action-eligibility";
 
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -118,15 +118,21 @@ export async function markInvoicePaid(id: string, paidDate?: string): Promise<st
 export async function unmarkInvoicePaid(id: string): Promise<void> {
   const { data: doc, error } = await supabase
     .from("documents")
-    .select("id, number")
+    .select("id, number, type, status, is_storno")
     .eq("id", id)
     .single();
   if (error) throw error;
-  const { error: updateError } = await supabase
+  assertInvoicePaymentReversible(doc);
+  const { data: updated, error: updateError } = await supabase
     .from("documents")
     .update({ status: "sent", paid_at: null } as never)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("type", "invoice")
+    .eq("status", "paid")
+    .eq("is_storno", false)
+    .select("id");
   if (updateError) throw updateError;
+  if (!updated?.length) throw new Error("Der Rechnungsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("payment_reverted", { id, number: doc.number }, {});
 }
 
