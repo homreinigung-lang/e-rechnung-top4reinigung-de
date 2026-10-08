@@ -6,6 +6,7 @@ export type RevenueDocument = {
   service_period?: string | null;
   net_total?: number | string | null;
   total?: number | string | null;
+  vat_amount?: number | string | null;
 };
 
 export type PlannedAssignment = {
@@ -56,7 +57,14 @@ function mondayIndex(value: string) {
  * Nur wenn kein verwertbarer Leistungszeitraum vorhanden ist, gilt das Rechnungsdatum.
  */
 export function revenueForMonth(document: RevenueDocument, month: string): number {
-  const amount = Number(document.net_total ?? document.total ?? 0) || 0;
+  // Legacy invoices can lack net_total while retaining gross total and VAT.
+  // Subtract recorded VAT rather than treating gross revenue as net revenue.
+  const amount = Number(
+    document.net_total ??
+      (document.total != null
+        ? Number(document.total) - Number(document.vat_amount ?? 0)
+        : 0),
+  ) || 0;
   if (!amount) return 0;
 
   const bounds = monthBounds(month);
