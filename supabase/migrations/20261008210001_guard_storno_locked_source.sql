@@ -1,12 +1,13 @@
--- Harden storno eligibility without dropping the existing RPC or its grants.
--- This change does not modify any existing invoice rows.
+-- Apply after the existing source-eligibility migration so the lock guard survives replay.
+-- Keep the established public SECURITY INVOKER wrapper and guarded private RPC.
+-- Only replace the inaccessible privileged core implementation.
 begin;
 
-create or replace function public.create_storno_unchecked(_id uuid, _reason text default '')
+create or replace function app_private.create_storno_core(_id uuid, _reason text default '')
 returns uuid
 language plpgsql
 security definer
-set search_path = public, app_private
+set search_path = pg_catalog, public, app_private
 as $$
 declare
   src public.documents;
@@ -35,16 +36,14 @@ begin
   if src.type <> 'invoice' then
     raise exception 'Nur Rechnungen können storniert werden.';
   end if;
-  -- A Stornorechnung is itself an invoice; never permit cancelling the cancellation.
-  if coalesce(src.is_storno, false) or src.cancels_document_id is not null then
-    raise exception 'Eine Stornorechnung kann nicht erneut storniert werden.';
+  if src.is_storno is true or src.cancels_document_id is not null then
+    raise exception 'Eine Stornorechnung darf nicht erneut storniert werden.';
   end if;
-  -- Drafts have not been issued and should not produce numbered cancellation invoices.
-  if src.status = 'draft' or src.locked_at is null then
+  if src.status in ('draft', 'cancelled') or src.deleted_at is not null then
+    raise exception 'Entwürfe, stornierte oder gelöschte Rechnungen können nicht storniert werden.';
+  end if;
+  if src.locked_at is null then
     raise exception 'Nur festgeschriebene Rechnungen können storniert werden.';
-  end if;
-  if src.status = 'cancelled' then
-    raise exception 'Diese Rechnung wurde bereits storniert.';
   end if;
   if src.cancelled_by_document_id is not null then
     raise exception 'Diese Rechnung wurde bereits storniert.';
@@ -104,9 +103,7 @@ begin
 end;
 $$;
 
--- Reassert the restricted grant boundary after CREATE OR REPLACE.
-revoke all on function public.create_storno_unchecked(uuid, text)
-  from public, anon, authenticated;
-grant execute on function public.create_storno_unchecked(uuid, text) to service_role;
+revoke all on function app_private.create_storno_core(uuid, text) from public, anon, authenticated;
+grant execute on function app_private.create_storno_core(uuid, text) to service_role;
 
 commit;
