@@ -118,7 +118,7 @@ function ProjekteIndex() {
       return fetchAllRows(() =>
         db
           .from("documents")
-          .select("id,status,issue_date,service_period,net_total,total,is_storno,project_id,customer_id")
+          .select("id,status,issue_date,service_period,net_total,total,vat_amount,is_storno,project_id,customer_id")
           .eq("type", "invoice")
           .is("deleted_at", null),
       );
