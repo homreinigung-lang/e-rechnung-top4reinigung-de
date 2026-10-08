@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertInvoiceActionAllowed } from "./invoice-action-eligibility";
+import { assertInvoiceActionAllowed, assertInvoicePaymentReversible } from "./invoice-action-eligibility";
 
 describe("invoice payment and reminder eligibility", () => {
   for (const action of ["payment", "reminder"] as const) {
@@ -41,4 +41,33 @@ describe("invoice payment and reminder eligibility", () => {
       }
     });
   }
+});
+
+describe("invoice payment reversal eligibility", () => {
+  it("allows reverting a paid, non-storno invoice", () => {
+    expect(() =>
+      assertInvoicePaymentReversible({ type: "invoice", status: "paid", is_storno: false }),
+    ).not.toThrow();
+  });
+
+  it.each(["draft", "sent", "overdue", "cancelled"])(
+    "rejects reversal when status is %s",
+    (status) => {
+      expect(() =>
+        assertInvoicePaymentReversible({ type: "invoice", status }),
+      ).toThrow("Nur bezahlte");
+    },
+  );
+
+  it("rejects storno documents even if marked paid", () => {
+    expect(() =>
+      assertInvoicePaymentReversible({ type: "invoice", status: "paid", is_storno: true }),
+    ).toThrow("Nur bezahlte");
+  });
+
+  it("rejects non-invoice documents even if marked paid", () => {
+    expect(() =>
+      assertInvoicePaymentReversible({ type: "quote", status: "paid" }),
+    ).toThrow("Nur bezahlte");
+  });
 });
