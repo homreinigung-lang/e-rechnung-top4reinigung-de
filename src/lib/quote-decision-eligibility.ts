@@ -13,3 +13,10 @@ export function assertQuoteDecisionAllowed(doc: QuoteDecisionDocument): void {
     throw new Error("Nur offene Angebote können angenommen oder abgelehnt werden.");
   }
 }
+
+/** Completing a quote is separate from receiving payment for an invoice. */
+export function assertQuoteCompletionAllowed(doc: QuoteDecisionDocument): void {
+  if (doc.type !== "quote" || doc.status !== "accepted" || doc.is_storno) {
+    throw new Error("Nur angenommene, nicht stornierte Angebote können abgeschlossen werden.");
+  }
+}
