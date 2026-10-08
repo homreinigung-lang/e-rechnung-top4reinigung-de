@@ -249,11 +249,12 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
   // Der Quellbeleg wird mit der Umwandlung verbindlich – offizielle Nummer vergeben.
   const sourceNumber = await ensureOfficialNumber(sourceId);
 
-  const { data: items } = await supabase
+  const { data: items, error: itemsReadError } = await supabase
     .from("document_items")
     .select("*")
     .eq("document_id", sourceId)
     .order("position");
+  if (itemsReadError) throw itemsReadError;
 
   const { data: settings } = await supabase
     .from("company_settings")
