@@ -300,6 +300,7 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .select("id")
     .single();
   if (insertError) throw insertError;
+  if (!created) throw new Error("Der neue Beleg konnte nicht angelegt werden.");
 
   // Remove the unclaimed draft if copying items or claiming the source fails.
   async function discardDraft() {
