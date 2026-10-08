@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeProject, type ScannedProject } from "@/lib/project-scan.functions";
 import { ProjectScanReview, type ReviewResult } from "@/components/ProjectScanReview";
@@ -84,21 +85,21 @@ function ProjekteIndex() {
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRows(() =>
+        supabase
+          .from("projects")
+          .select("*")
+          .order("created_at", { ascending: false }),
+      );
     },
   });
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("customers").select("*").order("name");
-      if (error) throw error;
-      return data;
+      return fetchAllRows(() =>
+        supabase.from("customers").select("*").order("name"),
+      );
     },
   });
 
