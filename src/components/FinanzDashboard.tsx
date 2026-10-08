@@ -20,7 +20,7 @@ import {
 import { BankDashboard } from "@/components/BankDashboard";
 import { supabase } from "@/integrations/supabase/client";
 import { addDays, formatDate, formatMoney, today } from "@/lib/format";
-import { aggregateExpensesByCategory, isEuerIncome } from "@/lib/euer";
+import { aggregateExpensesByCategory, isReceivedIncome } from "@/lib/euer";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -36,6 +36,7 @@ type DocLite = {
   status: string;
   number: string;
   issue_date: string;
+  paid_at?: string | null;
   due_date?: string | null;
   total: number | string;
   net_total?: number | string | null;
@@ -78,7 +79,7 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
     const years = new Set<number>();
     for (let year = currentYear - 3; year <= currentYear + 1; year += 1) years.add(year);
     docs.forEach((doc) => {
-      const year = Number(String(doc.issue_date).slice(0, 4));
+      const year = Number(String(doc.paid_at ?? doc.issue_date).slice(0, 4));
       if (Number.isFinite(year)) years.add(year);
     });
     expenses.forEach((expense) => {
@@ -94,12 +95,12 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
   const yearPrefix = String(year);
 
   const invoices = useMemo(
-    () => docs.filter((d) => isEuerIncome(d as unknown as Record<string, unknown>)),
+    () => docs.filter((d) => isReceivedIncome(d as unknown as Record<string, unknown>)),
     [docs],
   );
 
   const yearInvoices = useMemo(
-    () => invoices.filter((d) => String(d.issue_date).startsWith(yearPrefix)),
+    () => invoices.filter((d) => String(d.paid_at).startsWith(yearPrefix)),
     [invoices, yearPrefix],
   );
   const yearExpenses = useMemo(
@@ -112,7 +113,7 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
       MONTHS.map((label, index) => {
         const prefix = `${year}-${String(index + 1).padStart(2, "0")}`;
         const einnahmen = yearInvoices
-          .filter((d) => String(d.issue_date).startsWith(prefix))
+          .filter((d) => String(d.paid_at).startsWith(prefix))
           .reduce((sum, d) => sum + num(d.net_total ?? d.total), 0);
         const ausgaben = yearExpenses
           .filter((e) => String(e.expense_date).startsWith(prefix))
@@ -124,12 +125,12 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
 
   const periodInvoices = useMemo(() => {
     if (selectedMonth !== "all") {
-      return yearInvoices.filter((d) => monthIndex(d.issue_date) === selectedMonth);
+      return yearInvoices.filter((d) => monthIndex(d.paid_at ?? "") === selectedMonth);
     }
     if (selectedQuarter !== "all") {
       const start = (selectedQuarter - 1) * 3;
       return yearInvoices.filter((d) => {
-        const index = monthIndex(d.issue_date);
+        const index = monthIndex(d.paid_at ?? "");
         return index >= start && index < start + 3;
       });
     }
@@ -316,7 +317,7 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
             <div className="mt-3 font-display text-3xl font-semibold text-blue-600">
               {formatMoney(incomeTotal)}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{periodInvoices.length} Rechnungen · netto</p>
+            <p className="mt-1 text-xs text-muted-foreground">{periodInvoices.length} bezahlte Rechnungen · netto</p>
             <div className="mt-4 grid min-w-0 grid-cols-[96px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[110px_minmax(0,1fr)]">
               <div className="h-28 min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
