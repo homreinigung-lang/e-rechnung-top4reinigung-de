@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import { useMyEmployee } from "@/lib/employee";
 import { filterRowsByDateRange, summaryLines } from "@/lib/table-summary";
 import { approvedWorkAmount, approvedWorkHours, approvedWorkTotals, workHourlyRate } from "@/lib/approved-work-totals";
@@ -162,52 +163,42 @@ export function Zeiterfassung() {
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("employees").select("*").order("name");
-      if (error) throw error;
-      return data as Employee[];
+      return (await fetchAllRows(() =>
+        supabase.from("employees").select("*").order("name"),
+      )) as Employee[];
     },
   });
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("id,name,company")
-        .order("name");
-      if (error) throw error;
-      return data as { id: string; name: string; company: string }[];
+      return fetchAllRows(() =>
+        supabase.from("customers").select("id,name,company").order("name"),
+      );
     },
   });
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id,name,address_line,postal_code,city,customer_name")
-        .order("name");
-      if (error) throw error;
-      return data as {
-        id: string;
-        name: string;
-        address_line: string;
-        postal_code: string;
-        city: string;
-        customer_name?: string;
-      }[];
+      return fetchAllRows(() =>
+        supabase
+          .from("projects")
+          .select("id,name,address_line,postal_code,city,customer_name")
+          .order("name"),
+      );
     },
   });
 
   const { data: entries = [] } = useQuery({
     queryKey: ["time_entries"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        .select("*")
-        .order("work_date", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRows(() =>
+        supabase
+          .from("time_entries")
+          .select("*")
+          .order("work_date", { ascending: false }),
+      );
     },
   });
 
