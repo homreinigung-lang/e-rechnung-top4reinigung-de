@@ -17,6 +17,14 @@ describe("open invoice summary", () => {
       ]),
     ).toEqual({ items: [overdue], total: 250.5 });
   });
+  it("excludes storno documents and keeps issued invoices open", () => {
+    const storno = { status: "sent", total: 300, is_storno: true };
+    const issued = { status: "sent", total: 120, is_storno: false };
+    expect(summarizeOpenInvoices([storno, issued])).toEqual({
+      items: [issued],
+      total: 120,
+    });
+  });
   it("returns a real zero only for an empty set of issued unpaid invoices", () => {
     expect(summarizeOpenInvoices([{ status: "draft", total: 1000 }])).toEqual({
       items: [],
