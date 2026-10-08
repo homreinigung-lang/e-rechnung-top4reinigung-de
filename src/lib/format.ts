@@ -1,3 +1,5 @@
+import { normalizeTaxMode } from "@/lib/tax-mode";
+
 // Deutsches Zahlen-/Datumsformat, ausschließlich gregorianisch und
 // mit lateinischen Ziffern (nu-latn, ca-gregory) – keine Hidschri-Daten,
 // keine östlich-arabischen Ziffern, unabhängig von den Systemeinstellungen.
@@ -149,11 +151,12 @@ export const KLEINUNTERNEHMER_NOTE = "Gemäß § 19 UStG wird keine Umsatzsteuer
 
 /** Umsatzsteuersatz je Steuerart. */
 export function vatRateForTaxMode(taxMode: string): number {
-  return taxMode === "domestic" ? 19 : 0;
+  return normalizeTaxMode(taxMode) === "domestic" ? 19 : 0;
 }
 
 /** Pflichthinweis auf dem Beleg je Steuerart (leer bei Inlandsumsatz). */
 export function taxNoteForTaxMode(taxMode: string): string {
+  taxMode = normalizeTaxMode(taxMode);
   if (taxMode === "kleinunternehmer") return KLEINUNTERNEHMER_NOTE;
   if (taxMode === "domestic") return "";
   return REVERSE_CHARGE_NOTE;

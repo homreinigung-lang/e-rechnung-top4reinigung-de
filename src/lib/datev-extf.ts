@@ -1,3 +1,5 @@
+import { normalizeTaxMode } from "@/lib/tax-mode";
+
 /** DATEV EXTF v13 Buchungsstapel. Source headings retain DATEV's 125-field order. */
 export const DATEV_COLUMNS = [
   "Umsatz (ohne Soll/Haben-Kz)",
@@ -215,11 +217,14 @@ export function buildDatevExtf(documents: DatevDocument[], expenses: DatevExpens
     if (reversal && !doc.cancels_document_id) throw new Error("DATEV: Negativer Betrag ohne zugehörigen Stornobeleg: " + doc.number);
     if (signedGross === 0 || Math.abs(signedNet+signedVat-signedGross) > 1 || (reversal && (signedNet > 0 || signedVat > 0))) throw new Error("DATEV: Rechnungsbeträge prüfen: " + doc.number);
     const gross = Math.abs(signedGross), vat = Math.abs(signedVat), net = Math.abs(signedNet);
-    const reverse = doc.tax_mode === "reverse_charge" || doc.tax_mode === "eu_reverse_charge";
+    const taxMode = normalizeTaxMode(doc.tax_mode);
+    const smallBusiness = taxMode === "kleinunternehmer";
+    const reverse = taxMode === "reverse_charge" || taxMode === "eu_reverse_charge";
     const rate = reverse ? 0 : taxRate(net,vat);
     if (reverse && vat !== 0) throw new Error("DATEV: Reverse-Charge-Rechnung mit Umsatzsteuer: " + doc.number);
-    if (!reverse && rate === 0 && doc.tax_mode !== "small_business") throw new Error("DATEV: Steuerfreien Umsatz bitte steuerlich zuordnen: " + doc.number);
-    const revenue = doc.tax_mode === "eu_reverse_charge" ? matchAccount(opts.accounts,"revenue_eu_reverse_charge",opts) : reverse ? matchAccount(opts.accounts,"revenue_reverse_charge",opts) : rate === 0 ? matchAccount(opts.accounts,"small_business_revenue",opts) : matchAccount(opts.accounts,"revenue",opts,rate);
+    if (smallBusiness && vat !== 0) throw new Error("DATEV: Kleinunternehmer-Rechnung mit Umsatzsteuer: " + doc.number);
+    if (!reverse && rate === 0 && !smallBusiness) throw new Error("DATEV: Steuerfreien Umsatz bitte steuerlich zuordnen: " + doc.number);
+    const revenue = taxMode === "eu_reverse_charge" ? matchAccount(opts.accounts,"revenue_eu_reverse_charge",opts) : reverse ? matchAccount(opts.accounts,"revenue_reverse_charge",opts) : rate === 0 ? matchAccount(opts.accounts,"small_business_revenue",opts) : matchAccount(opts.accounts,"revenue",opts,rate);
     lines.push(pad({
       "Umsatz (ohne Soll/Haben-Kz)": fmt(gross/100),
       "Soll/Haben-Kennzeichen": reversal ? "H" : "S",

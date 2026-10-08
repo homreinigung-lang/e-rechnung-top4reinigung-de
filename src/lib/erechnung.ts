@@ -7,6 +7,7 @@
  * erzeugt – ohne externe Dienste.
  */
 import { PDFDocument, PDFName, PDFHexString, AFRelationship } from "pdf-lib";
+import { normalizeTaxMode } from "@/lib/tax-mode";
 
 export type ERechnungItem = {
   position: number;
@@ -108,7 +109,7 @@ type Model = ReturnType<typeof buildModel>;
 function buildModel(input: ERechnungInput) {
   const { doc, items, settings, netTotal, vatAmount, grossTotal, vatRate, number } = input;
   const s = settings ?? {};
-  const taxMode = String(doc["tax_mode"] ?? "eu_reverse_charge");
+  const taxMode = normalizeTaxMode(doc["tax_mode"]);
   const smallBusiness = taxMode === "kleinunternehmer";
   const reverseCharge = taxMode === "eu_reverse_charge";
   const zeroVat = reverseCharge || smallBusiness;
