@@ -189,7 +189,7 @@ export async function declineQuote(id: string, reason: string): Promise<void> {
   assertQuoteDecisionAllowed(doc);
   const trimmed = reason.trim();
   const note = trimmed
-    ? `${doc.notes ? `${doc.notes}\\n\\n` : ""}Ablehnungsgrund (${formatToday()}): ${trimmed}`
+    ? `${doc.notes ? `${doc.notes}\n\n` : ""}Ablehnungsgrund (${formatToday()}): ${trimmed}`
     : doc.notes;
   const { data: updated, error: updateError } = await supabase
     .from("documents")
