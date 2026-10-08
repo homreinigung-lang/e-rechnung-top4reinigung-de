@@ -3,6 +3,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const VAT_RATE = 0.19;
+export const getStripeBillingAvailability = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { stripeCheckoutAvailable } = await import("@/lib/stripe-billing.server");
+    return stripeCheckoutAvailable();
+  });
 const EU_COUNTRIES = new Set([
   "AT",
   "BE",
@@ -34,6 +40,7 @@ const EU_COUNTRIES = new Set([
 
 export type SecureOrderResult = {
   orderNumber: string;
+  checkoutUrl?: string;
   totals: {
     netCents: number;
     vatCents: number;
@@ -82,9 +89,15 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
         addressLine: z.string().trim().min(1).max(250),
         postalCode: z.string().trim().max(40),
         city: z.string().trim().max(120),
-        country: z.string().trim().min(2).max(2).transform((v) => v.toUpperCase()),
+        country: z
+          .string()
+          .trim()
+          .min(2)
+          .max(2)
+          .transform((v) => v.toUpperCase()),
         vatId: z.string().trim().max(50),
         note: z.string().trim().max(2000),
+        paymentMethod: z.enum(["invoice", "stripe"]).default("invoice"),
       })
       .parse(input),
   )
@@ -101,7 +114,7 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
 
     const { data: subscription, error: subscriptionError } = await supabaseAdmin
       .from("subscriptions")
-      .select("id,user_id")
+      .select("id,user_id,status,renews_on")
       .eq("user_id", context.userId)
       .maybeSingle();
     if (subscriptionError) throw new Error(subscriptionError.message);
@@ -126,6 +139,40 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
       Math.floor(Math.random() * 100000),
     ).padStart(5, "0")}`;
 
+    // Prepare Checkout before inserting: configuration failures must not leave an order behind.
+    let checkout: { id: string; url: string } | null = null;
+    if (data.paymentMethod === "stripe") {
+      const { data: billing, error: billingError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("*")
+        .eq("id", subscription.id)
+        .eq("user_id", context.userId)
+        .single();
+      if (billingError) throw new Error(billingError.message);
+      if ((billing as unknown as { stripe_subscription_id?: string }).stripe_subscription_id) {
+        throw new Error(
+          "Ein Online-Abonnement besteht bereits. Bitte den Support für einen Paketwechsel kontaktieren.",
+        );
+      }
+      const { createStripeSubscriptionCheckout } = await import("@/lib/stripe-billing.server");
+      checkout = await createStripeSubscriptionCheckout({
+        orderNumber,
+        userId: context.userId,
+        subscriptionId: subscription.id,
+        planCode: plan.code,
+        planName: plan.name,
+        billingInterval: data.billingInterval,
+        ...totals,
+        baseNetCents:
+          data.billingInterval === "yearly" ? plan.price_yearly_cents : plan.price_monthly_cents,
+        email: data.email,
+        companyName: data.companyName,
+        trialEndsOn: subscription.status === "trial" ? subscription.renews_on : null,
+      });
+      if (!checkout)
+        throw new Error("Online-Zahlung ist noch nicht verfügbar. Bitte Rechnung wählen.");
+    }
+
     const { error } = await supabaseAdmin.from("plan_orders").insert({
       order_number: orderNumber,
       customer_user_id: context.userId,
@@ -149,8 +196,9 @@ export const createAuthenticatedPlanOrder = createServerFn({ method: "POST" })
       vat_cents: totals.vatCents,
       gross_cents: totals.grossCents,
       reverse_charge: totals.reverseCharge,
+      ...(checkout ? { stripe_checkout_session_id: checkout.id, payment_status: "pending" } : {}),
     } as never);
     if (error) throw new Error(error.message);
 
-    return { orderNumber, totals };
+    return { orderNumber, totals, ...(checkout ? { checkoutUrl: checkout.url } : {}) };
   });

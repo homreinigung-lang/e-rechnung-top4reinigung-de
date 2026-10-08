@@ -34,6 +34,8 @@ dist-ssr
 gebcalc-migration/
 migration-backups/
 backups/
+.stripe-backup/
+.stripe-test-pg/
 *.dump
 *.backup
 *.sql.gz

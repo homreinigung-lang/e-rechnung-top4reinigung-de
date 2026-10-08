@@ -58,6 +58,7 @@ export type OrderInput = {
   country: string;
   vatId: string;
   note: string;
+  paymentMethod?: "invoice" | "stripe";
 };
 
 export type OrderTotals = {
@@ -90,6 +91,7 @@ export function calcTotals(
 
 export type OrderResult = {
   orderNumber: string;
+  checkoutUrl?: string;
   totals: OrderTotals;
 };
 
@@ -118,6 +120,7 @@ export function useCreatePlanOrder() {
           country: input.country,
           vatId: input.vatId,
           note: input.note,
+          paymentMethod: input.paymentMethod ?? "invoice",
         },
       }) as Promise<OrderResult>;
     },
