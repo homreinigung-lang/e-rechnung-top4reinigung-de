@@ -22,6 +22,33 @@ describe("object controlling accuracy", () => {
     expect(revenueForMonth(document, "2026-08")).toBe(0);
   });
 
+  it("uses recorded VAT to recover net revenue when net_total is absent", () => {
+    expect(revenueForMonth({
+      issue_date: "2026-09-03",
+      net_total: null,
+      total: 1190,
+      vat_amount: 190,
+    }, "2026-09")).toBe(1000);
+  });
+
+  it("preserves zero-VAT and existing net_total invoices", () => {
+    expect(revenueForMonth({
+      issue_date: "2026-09-03", total: 500, vat_amount: 0,
+    }, "2026-09")).toBe(500);
+    expect(revenueForMonth({
+      issue_date: "2026-09-03", net_total: 1000, total: 1190, vat_amount: 190,
+    }, "2026-09")).toBe(1000);
+  });
+
+  it("applies recovered net revenue to cross-month service periods", () => {
+    expect(revenueForMonth({
+      issue_date: "2026-09-30",
+      service_period: "16.09.2026 – 15.10.2026",
+      total: 1190,
+      vat_amount: 190,
+    }, "2026-09")).toBeCloseTo(500, 2);
+  });
+
   it("allocates a cross-month service period by calendar days", () => {
     const document = {
       issue_date: "2026-09-30",
