@@ -249,3 +249,11 @@ export function invoiceBelongsToProject(
     invoice.customer_id === project.customer_id &&
     projectCountByCustomer.get(project.customer_id!) === 1;
 }
+
+/** Only issued, non-cancelled invoices belong in project revenue. */
+export function isProjectRevenueInvoice(invoice: {
+  status?: string | null;
+  is_storno?: boolean | null;
+}): boolean {
+  return !invoice.is_storno && !["draft", "cancelled"].includes(String(invoice.status ?? ""));
+}
