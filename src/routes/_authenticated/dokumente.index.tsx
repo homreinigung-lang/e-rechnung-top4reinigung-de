@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import { draftPlaceholderNumber } from "@/lib/doc-number";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,12 +113,12 @@ function DokumenteListe() {
   const { data: documents = [] } = useQuery({
     queryKey: ["documents"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .order("issue_date", { ascending: false });
-      if (error) throw error;
-      return data;
+      return fetchAllRows(() =>
+        supabase
+          .from("documents")
+          .select("*")
+          .order("issue_date", { ascending: false }),
+      );
     },
   });
 
