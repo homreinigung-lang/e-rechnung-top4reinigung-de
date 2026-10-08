@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { FileText, FolderKanban, Loader2, Plus, Upload, X } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
-import { plannedHoursForMonth, revenueForMonth } from "@/lib/object-controlling";
+import { invoiceBelongsToProject, plannedHoursForMonth, revenueForMonth } from "@/lib/object-controlling";
 
 export const Route = createFileRoute("/_authenticated/projekte/")({
   head: () => ({
@@ -355,16 +355,7 @@ function ProjekteIndex() {
         .reduce((sum, e) => sum + Number(e.net_amount || 0), 0);
 
       const revenue = controllingDocuments
-        .filter((d) => {
-          const sameCustomer =
-            Boolean(p.customer_id) && d.customer_id === p.customer_id;
-          const direct = d.project_id === p.id && sameCustomer;
-          const historical =
-            !d.project_id &&
-            sameCustomer &&
-            projectCountByCustomer.get(p.customer_id!) === 1;
-          return direct || historical;
-        })
+        .filter((d) => invoiceBelongsToProject(d, p, projectCountByCustomer))
         .filter((d) => String(d.status ?? "") !== "cancelled" && !d.is_storno)
         .reduce((sum, d) => sum + revenueForMonth(d, controllingMonth), 0);
 
