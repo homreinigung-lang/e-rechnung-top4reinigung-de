@@ -217,6 +217,7 @@ describe("Sandbox Checkout", () => {
     expect(await createStripeSubscriptionCheckout(input)).toMatchObject({ id: "cs_test" });
     const request = fetchMock.mock.calls[2]![1];
     const params = request.body as URLSearchParams;
+    expect([...params.keys()].some((key) => key.startsWith("payment_method_types"))).toBe(false);
     expect(params.get("line_items[0][price]")).toBe("price_test");
     expect(params.get("line_items[0][tax_rates][0]")).toBe("txr_test");
     expect(params.has("line_items[0][price_data][unit_amount]")).toBe(false);

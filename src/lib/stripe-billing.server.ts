@@ -230,8 +230,6 @@ export async function createStripeSubscriptionCheckout(
   params.set("cancel_url", `${siteUrl()}/mein-paket?payment=cancelled`);
   params.set("customer_email", input.email);
   params.set("client_reference_id", input.orderNumber);
-  params.set("payment_method_types[0]", "card");
-  params.set("payment_method_types[1]", "sepa_debit");
   params.set("line_items[0][quantity]", "1");
   params.set("line_items[0][price]", priceId);
   if (taxRateId) params.set("line_items[0][tax_rates][0]", taxRateId);
