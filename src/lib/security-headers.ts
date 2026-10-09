@@ -25,7 +25,7 @@ export function withSecurityHeaders(response: Response, request: Request): Respo
       "script-src 'self' 'unsafe-inline'",
       "script-src-attr 'none'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://squkjqvofugkanzuqtqn.supabase.co",
+      "img-src 'self' data: blob: https://squkjqvofugkanzuqtqn.supabase.co https://*.tile.openstreetmap.org",
       "font-src 'self' data:",
       "connect-src 'self' https://squkjqvofugkanzuqtqn.supabase.co wss://squkjqvofugkanzuqtqn.supabase.co",
       "manifest-src 'self'",
