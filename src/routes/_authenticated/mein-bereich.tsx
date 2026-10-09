@@ -1,3 +1,4 @@
+import { FahrtenbuchMitarbeiterErfassung } from "@/components/FahrtenbuchMitarbeiterErfassung";
 import { QmEmployeeTasks } from "@/components/QmEmployeeTasks";
 import { AssistantPanel } from "@/components/AssistantPanel";
 import { useMemo } from "react";
@@ -237,7 +238,8 @@ function MeinBereich() {
                           datum: today,
                         }}
                       >
-                        <Clock className="size-4" /> {workTimeDone ? "Details öffnen" : "Einsatz öffnen"}
+                        <Clock className="size-4" />{" "}
+                        {workTimeDone ? "Details öffnen" : "Einsatz öffnen"}
                       </Link>
                     </Button>
                   </div>
@@ -247,6 +249,8 @@ function MeinBereich() {
           </div>
         )}
       </section>
+
+      <FahrtenbuchMitarbeiterErfassung employeeId={me.id} ownerUserId={me.user_id} />
 
       <QmEmployeeTasks employeeId={me.id} />
 
@@ -280,8 +284,8 @@ function MeinBereich() {
       </section>
 
       <p className="px-1 text-xs text-muted-foreground">
-        Alle Detailfunktionen wie Leistungsnachweis, Fotos, Material, Zeitkonto und Fahrtenbuch
-        bleiben unverändert unter „Meine Zeiten“ verfügbar.
+        Alle Detailfunktionen wie Leistungsnachweis, Fotos, Material und Zeitkonto bleiben
+        unverändert unter „Meine Zeiten“ verfügbar.
       </p>
     </div>
   );

@@ -44,7 +44,17 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
   const db = supabase as any;
   const [date, setDate] = useState(localDate());
   const [destination, setDestination] = useState("");
-  const [km, setKm] = useState("");
+  const [startKm, setStartKm] = useState("");
+  const [endKm, setEndKm] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [returnTime, setReturnTime] = useState("");
+  const [tripType, setTripType] = useState<"one_way" | "round_trip">("one_way");
+  const [origin, setOrigin] = useState("");
+  const [customer, setCustomer] = useState("");
+  const distance =
+    startKm.trim() && endKm.trim()
+      ? Number(endKm.replace(",", ".")) - Number(startKm.replace(",", "."))
+      : null;
   const [notes, setNotes] = useState("");
   const [vehicleId, setVehicleId] = useState("");
 
@@ -82,29 +92,35 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
 
   const saveTrip = useMutation({
     mutationFn: async () => {
-      const distance = Number(km.replace(",", "."));
+      const start = Number(startKm.replace(",", "."));
+      const end = Number(endKm.replace(",", "."));
       if (!vehicles.some((vehicle) => vehicle.id === vehicleId)) {
         throw new Error("Bitte ein Fahrzeug auswählen.");
       }
       if (!date) throw new Error("Bitte Datum angeben.");
-      if (!destination.trim()) throw new Error("Bitte Ziel / Kunde angeben.");
-      if (
-        !Number.isFinite(distance) ||
-        distance <= 0 ||
-        Math.round(distance * 10) !== distance * 10
-      ) {
-        throw new Error("Bitte gültige Kilometer mit höchstens einer Nachkommastelle angeben.");
+      if (!startTime) throw new Error("Bitte Startzeit eingeben.");
+      if (tripType === "round_trip" && !returnTime) throw new Error("Bitte Rückkehrzeit eingeben.");
+      if (!origin.trim()) throw new Error("Bitte Startpunkt eingeben.");
+      if (!customer.trim()) throw new Error("Bitte Kunde, Ziel oder Zweck eingeben.");
+      if (!destination.trim()) throw new Error("Bitte Zieladresse eingeben.");
+      if (!startKm.trim() || !endKm.trim() || !Number.isFinite(start) || !Number.isFinite(end)) {
+        throw new Error("Bitte gültige Kilometerstände eingeben.");
       }
+      if (start < 0 || end < 0) throw new Error("Kilometerstände dürfen nicht negativ sein.");
+      if (end < start) throw new Error("End-km muss größer oder gleich Start-km sein.");
       const { error } = await db.from("fahrtenbuch_entries").insert({
         user_id: ownerUserId,
         employee_id: employeeId,
         vehicle_id: vehicleId,
         trip_date: date,
-        from_location: "",
+        trip_time: startTime,
+        return_time: tripType === "round_trip" ? returnTime : null,
+        trip_type: tripType,
+        from_location: origin.trim(),
         to_location: destination.trim(),
-        customer_name: destination.trim(),
-        start_km: 0,
-        end_km: distance,
+        customer_name: customer.trim(),
+        start_km: start,
+        end_km: end,
         notes: notes.trim(),
       });
       if (error) throw error;
@@ -112,7 +128,13 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
     onSuccess: () => {
       toast.success("Fahrt gespeichert.");
       setDestination("");
-      setKm("");
+      setStartKm("");
+      setEndKm("");
+      setStartTime("");
+      setReturnTime("");
+      setTripType("one_way");
+      setOrigin("");
+      setCustomer("");
       setNotes("");
       setDate(localDate());
       queryClient.invalidateQueries({ queryKey: ["my_fahrtenbuch_trips", employeeId] });
@@ -128,10 +150,10 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
     <section className="surface space-y-4 p-5">
       <div>
         <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Car className="size-5" /> Kilometer erfassen
+          <Car className="size-5" /> Fahrtenbuch
         </h2>
         <p className="text-sm text-muted-foreground">
-          Trag hier die Kilometer ein, wenn du zu einem Kunden oder Einsatz fährst. Änderungen oder
+          Erfasse deine Fahrt mit Uhrzeit, Startpunkt, Ziel und Kilometerständen. Änderungen oder
           Löschungen macht nur die Verwaltung.
         </p>
       </div>
@@ -169,21 +191,85 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Gefahrene Kilometer</Label>
+          <Label>Startzeit</Label>
+          <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Fahrtart</Label>
+          <Select
+            value={tripType}
+            onValueChange={(value) => {
+              setTripType(value as "one_way" | "round_trip");
+              if (value === "one_way") setReturnTime("");
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="one_way">Nur Hinfahrt</SelectItem>
+              <SelectItem value="round_trip">Hin- und Rückfahrt</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {tripType === "round_trip" ? (
+          <div className="space-y-2">
+            <Label>Rückkehrzeit</Label>
+            <Input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} />
+          </div>
+        ) : null}
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Von (Startpunkt)</Label>
           <Input
-            inputMode="decimal"
-            placeholder="z. B. 12,5"
-            value={km}
-            onChange={(e) => setKm(e.target.value)}
+            placeholder="Straße, Hausnummer, PLZ, Ort"
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value)}
           />
         </div>
         <div className="space-y-2 sm:col-span-2">
-          <Label>Ziel / Kunde</Label>
+          <Label>Kunde / Ziel / Zweck</Label>
           <Input
-            placeholder="z. B. Kunde Müller, Saarlouis"
+            placeholder="z. B. Kunde Müller, Besichtigung, Materialeinkauf"
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Nach (Ziel / Adresse)</Label>
+          <Input
+            placeholder="Straße, Hausnummer, PLZ, Ort"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
           />
+        </div>
+        <div className="space-y-2">
+          <Label>Start-km</Label>
+          <Input
+            inputMode="decimal"
+            placeholder="z. B. 12500,0"
+            value={startKm}
+            onChange={(e) => setStartKm(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>End-km</Label>
+          <Input
+            inputMode="decimal"
+            placeholder="z. B. 12512,5"
+            value={endKm}
+            onChange={(e) => setEndKm(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label>Strecke (automatisch)</Label>
+          <div
+            className="flex h-9 items-center rounded-md border bg-muted px-3 font-semibold"
+            aria-live="polite"
+          >
+            {distance !== null && Number.isFinite(distance) && distance >= 0
+              ? `${distance.toLocaleString("de-DE", { maximumFractionDigits: 1 })} km`
+              : "–"}
+          </div>
         </div>
         <div className="space-y-2 sm:col-span-2">
           <Label>Bemerkung (optional)</Label>
