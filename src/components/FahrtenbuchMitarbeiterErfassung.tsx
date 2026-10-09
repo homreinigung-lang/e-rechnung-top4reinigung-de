@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Car, Plus } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { getEmployeeFahrtenbuchOptions } from "@/lib/employee-fahrtenbuch.functions";
 
 type Props = {
   employeeId: string;
@@ -51,6 +52,68 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
   const [tripType, setTripType] = useState<"one_way" | "round_trip">("one_way");
   const [origin, setOrigin] = useState("");
   const [customer, setCustomer] = useState("");
+  const [customerId, setCustomerId] = useState("none");
+  const [taskId, setTaskId] = useState("none");
+  const [startPointMode, setStartPointMode] = useState<"company" | "manual">("manual");
+  const {
+    data: options,
+    isLoading: optionsLoading,
+    isError: optionsError,
+  } = useQuery({
+    queryKey: ["employee_fahrtenbuch_options", employeeId, ownerUserId],
+    queryFn: async () => {
+      const result = await getEmployeeFahrtenbuchOptions();
+      if (result.employeeId !== employeeId || result.ownerId !== ownerUserId)
+        throw new Error("Mitarbeiterzugang hat sich geändert. Bitte Seite neu laden.");
+      return result;
+    },
+  });
+  const companyAddress = options?.companyAddress ?? "";
+  const customers = options?.customers ?? [];
+  const tasks = (options?.tasks ?? []).filter(
+    (task) =>
+      (!task.startDate || task.startDate <= date) && (!task.endDate || task.endDate >= date),
+  );
+  const effectiveOrigin = startPointMode === "company" ? companyAddress : origin;
+
+  function selectCustomer(value: string) {
+    setCustomerId(value);
+    setTaskId("none");
+    const selected = customers.find((item) => item.id === value);
+    if (!selected) {
+      setCustomer("");
+      setDestination("");
+      return;
+    }
+    setCustomer(selected.company?.trim() || selected.name?.trim() || "Kunde");
+    setDestination(
+      [
+        selected.service_address_line?.trim() || selected.address_line?.trim(),
+        [
+          selected.service_postal_code?.trim() || selected.postal_code?.trim(),
+          selected.service_city?.trim() || selected.city?.trim(),
+        ]
+          .filter(Boolean)
+          .join(" "),
+      ]
+        .filter(Boolean)
+        .join(", "),
+    );
+  }
+
+  function selectTask(value: string) {
+    setTaskId(value);
+    const selected = tasks.find((item) => item.id === value);
+    if (!selected) {
+      setCustomerId("none");
+      setCustomer("");
+      setDestination("");
+      return;
+    }
+    setCustomerId(selected.customerId ?? "none");
+    setCustomer([selected.customerName, selected.name, selected.role].filter(Boolean).join(" · "));
+    setDestination(selected.address);
+  }
   const distance =
     startKm.trim() && endKm.trim()
       ? Number(endKm.replace(",", ".")) - Number(startKm.replace(",", "."))
@@ -100,7 +163,7 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
       if (!date) throw new Error("Bitte Datum angeben.");
       if (!startTime) throw new Error("Bitte Startzeit eingeben.");
       if (tripType === "round_trip" && !returnTime) throw new Error("Bitte Rückkehrzeit eingeben.");
-      if (!origin.trim()) throw new Error("Bitte Startpunkt eingeben.");
+      if (!effectiveOrigin.trim()) throw new Error("Bitte Startpunkt eingeben.");
       if (!customer.trim()) throw new Error("Bitte Kunde, Ziel oder Zweck eingeben.");
       if (!destination.trim()) throw new Error("Bitte Zieladresse eingeben.");
       if (!startKm.trim() || !endKm.trim() || !Number.isFinite(start) || !Number.isFinite(end)) {
@@ -116,7 +179,8 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
         trip_time: startTime,
         return_time: tripType === "round_trip" ? returnTime : null,
         trip_type: tripType,
-        from_location: origin.trim(),
+        from_location: effectiveOrigin.trim(),
+        customer_id: customerId === "none" ? null : customerId,
         to_location: destination.trim(),
         customer_name: customer.trim(),
         start_km: start,
@@ -135,6 +199,8 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
       setTripType("one_way");
       setOrigin("");
       setCustomer("");
+      setCustomerId("none");
+      setTaskId("none");
       setNotes("");
       setDate(localDate());
       queryClient.invalidateQueries({ queryKey: ["my_fahrtenbuch_trips", employeeId] });
@@ -188,7 +254,19 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
         </div>
         <div className="space-y-2">
           <Label>Datum</Label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              if (taskId !== "none") {
+                setTaskId("none");
+                setCustomerId("none");
+                setCustomer("");
+                setDestination("");
+              }
+            }}
+          />
         </div>
         <div className="space-y-2">
           <Label>Startzeit</Label>
@@ -220,18 +298,99 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
         ) : null}
         <div className="space-y-2 sm:col-span-2">
           <Label>Von (Startpunkt)</Label>
+          <Select
+            value={startPointMode}
+            onValueChange={(value) => setStartPointMode(value as "company" | "manual")}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Startpunkt wählen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="company" disabled={!companyAddress}>
+                Firmenadresse
+              </SelectItem>
+              <SelectItem value="manual">Manuell eingeben</SelectItem>
+            </SelectContent>
+          </Select>
           <Input
-            placeholder="Straße, Hausnummer, PLZ, Ort"
-            value={origin}
+            placeholder={
+              startPointMode === "company"
+                ? "Firmenadresse"
+                : "Startpunkt eingeben, z. B. Lager oder letzter Termin"
+            }
+            value={effectiveOrigin}
+            readOnly={startPointMode === "company"}
             onChange={(e) => setOrigin(e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">
+            {optionsLoading
+              ? "Firmenadresse wird geladen…"
+              : companyAddress
+                ? `Firmenadresse: ${companyAddress}`
+                : "Keine Firmenadresse verfügbar. Bitte Startpunkt manuell eingeben."}
+          </p>
         </div>
+        <div className="space-y-2">
+          <Label>Kunde auswählen (optional)</Label>
+          <Select
+            value={customerId}
+            onValueChange={selectCustomer}
+            disabled={optionsLoading || optionsError}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Kunde auswählen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keine Auswahl / manuell</SelectItem>
+              {customers.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.company?.trim() || item.name?.trim() || "Kunde"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Einsatz / Aufgabe auswählen (optional)</Label>
+          <Select
+            value={taskId}
+            onValueChange={selectTask}
+            disabled={optionsLoading || optionsError}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Einsatz auswählen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Keine Auswahl / manuell</SelectItem>
+              {tasks.map((task) => (
+                <SelectItem key={task.id} value={task.id}>
+                  {[task.customerName, task.name, task.role].filter(Boolean).join(" · ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!optionsLoading && !optionsError && tasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Keine zugewiesenen Einsätze für dieses Datum. Fahrtzweck manuell eingeben.
+            </p>
+          ) : null}
+        </div>
+        {optionsError ? (
+          <p className="text-sm text-destructive sm:col-span-2">
+            Firmenadresse, Kunden und Einsätze konnten nicht geladen werden. Bitte Seite neu laden
+            oder manuell eingeben.
+          </p>
+        ) : null}
         <div className="space-y-2 sm:col-span-2">
           <Label>Kunde / Ziel / Zweck</Label>
           <Input
             placeholder="z. B. Kunde Müller, Besichtigung, Materialeinkauf"
             value={customer}
-            onChange={(e) => setCustomer(e.target.value)}
+            onChange={(e) => {
+              setCustomer(e.target.value);
+              setCustomerId("none");
+              setTaskId("none");
+            }}
           />
         </div>
         <div className="space-y-2 sm:col-span-2">
