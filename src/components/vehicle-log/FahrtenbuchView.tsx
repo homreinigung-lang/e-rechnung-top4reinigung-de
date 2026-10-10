@@ -13,7 +13,7 @@ import {
 import { Car, Download, FileText, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { formatKm, formatDate, formatTime, tripTypeLabel } from "./shared";
 
-import { FahrtenbuchSection1 } from "./FahrtenbuchSection1";
+import { FahrtenbuchFahrtFormular } from "./FahrtenbuchFahrtFormular";
 import type { FahrtenbuchState } from "./useFahrtenbuchState";
 export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
   const {
@@ -202,7 +202,7 @@ export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
         ) : null}
       </section>
 
-      <FahrtenbuchSection1 state={state} />
+      <FahrtenbuchFahrtFormular state={state} />
 
       <section className="surface overflow-hidden print-area">
         <div className="border-b px-5 py-4">

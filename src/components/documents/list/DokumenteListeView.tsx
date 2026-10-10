@@ -17,7 +17,7 @@ import { parseGermanDate } from "@/lib/format";
 
 import { ClipboardCheck, FileText, Plus, Receipt } from "lucide-react";
 
-import { DokumenteListeSection1 } from "./DokumenteListeSection1";
+import { DokumenteListeTabs } from "./DokumenteListeTabs";
 import type { DokumenteListeState } from "./useDokumenteListeState";
 export function DokumenteListeView({ state }: { state: DokumenteListeState }) {
   const {
@@ -76,7 +76,7 @@ export function DokumenteListeView({ state }: { state: DokumenteListeState }) {
         </TabsList>
       </Tabs>
 
-      <DokumenteListeSection1 state={state} />
+      <DokumenteListeTabs state={state} />
 
       <Dialog open={payTarget !== null} onOpenChange={(o) => !o && setPayTarget(null)}>
         <DialogContent className="sm:max-w-md">

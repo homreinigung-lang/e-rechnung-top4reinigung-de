@@ -17,7 +17,7 @@ import { Plus } from "lucide-react";
 import { emptyForm } from "./shared";
 
 import { QmReklamationenMitarbeiterRückmeldungen } from "./QmReklamationenMitarbeiterRückmeldungen";
-import { QmReklamationenSection1 } from "./QmReklamationenSection1";
+import { QmReklamationenTabelle } from "./QmReklamationenTabelle";
 import type { QmReklamationenState } from "./useQmReklamationenState";
 export function QmReklamationenView({ state }: { state: QmReklamationenState }) {
   const {
@@ -111,7 +111,7 @@ export function QmReklamationenView({ state }: { state: QmReklamationenState }) 
         error={casesError || feedbackError}
         title="QM-Daten konnten nicht geladen werden"
       />
-      <QmReklamationenSection1 state={state} />
+      <QmReklamationenTabelle state={state} />
 
       <QmReklamationenMitarbeiterRückmeldungen state={state} />
     </div>

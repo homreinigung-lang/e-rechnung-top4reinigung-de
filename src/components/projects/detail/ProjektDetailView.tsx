@@ -30,7 +30,7 @@ import { formatDate, formatNumber } from "@/lib/format";
 
 import { ProjektDetailRaumBearbeiten } from "./ProjektDetailRaumBearbeiten";
 import { ProjektDetailNachkalkulationObjektControlling } from "./ProjektDetailNachkalkulationObjektControlling";
-import { ProjektDetailSection1 } from "./ProjektDetailSection1";
+import { ProjektStammdatenForm } from "./ProjektStammdatenForm";
 import type { ProjektDetailState } from "./useProjektDetailState";
 export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
   const {
@@ -84,7 +84,7 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
         <ArrowLeft className="size-4" /> Alle Objekte
       </Link>
 
-      <ProjektDetailSection1 state={state} />
+      <ProjektStammdatenForm state={state} />
 
       <Objektmappe projectId={id} />
 

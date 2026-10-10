@@ -21,7 +21,7 @@ import { num, de, parseDe, downloadCsv, downloadExcel, exportHoursPdf } from "./
 import { Kpi } from "./Kpi";
 import { DataTable } from "./DataTable";
 import type { AccountantPortalState } from "./useAccountantPortalState";
-export function AccountantPortalSection1({ state }: { state: AccountantPortalState }) {
+export function AccountantPortalExports({ state }: { state: AccountantPortalState }) {
   const {
     code,
     data,

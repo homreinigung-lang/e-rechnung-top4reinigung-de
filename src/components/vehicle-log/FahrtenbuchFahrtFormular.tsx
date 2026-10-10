@@ -14,7 +14,7 @@ import { Plus, RotateCcw, Save } from "lucide-react";
 import { type TripType, emptyForm, customerLabel, formatKm } from "./shared";
 
 import type { FahrtenbuchState } from "./useFahrtenbuchState";
-export function FahrtenbuchSection1({ state }: { state: FahrtenbuchState }) {
+export function FahrtenbuchFahrtFormular({ state }: { state: FahrtenbuchState }) {
   const {
     companyAddress,
     customers,

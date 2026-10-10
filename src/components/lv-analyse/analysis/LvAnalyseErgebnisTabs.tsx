@@ -29,7 +29,7 @@ import { CategoryTable } from "./CategoryTable";
 
 import { LabeledNumber } from "./LabeledNumber";
 import type { LvAnalyseState } from "./useLvAnalyseState";
-export function LvAnalyseAAnforderungenAusDerAusschreibung({ state }: { state: LvAnalyseState }) {
+export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
   const {
     addItem,
     approveAll,
