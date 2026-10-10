@@ -1,3 +1,4 @@
+import { fetchAllRows } from "@/lib/fetch-all-rows";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -191,17 +192,11 @@ export function useEinstellungenState() {
   /** Holt alle eigenen Kunden, Belege und Positionen (RLS-geschützt) für das Backup. */
   async function loadBackupData() {
     const [customers, documents, items] = await Promise.all([
-      supabase.from("customers").select("*").order("created_at"),
-      supabase.from("documents").select("*").order("issue_date"),
-      supabase.from("document_items").select("*").order("position"),
+      fetchAllRows(() => supabase.from("customers").select("*").order("created_at")),
+      fetchAllRows(() => supabase.from("documents").select("*").order("issue_date")),
+      fetchAllRows(() => supabase.from("document_items").select("*").order("position")),
     ]);
-    const err = customers.error ?? documents.error ?? items.error;
-    if (err) throw new Error(err.message);
-    return {
-      customers: customers.data ?? [],
-      documents: documents.data ?? [],
-      document_items: items.data ?? [],
-    };
+    return { customers, documents, document_items: items };
   }
 
   async function exportBackupJson() {
@@ -210,6 +205,9 @@ export function useEinstellungenState() {
       const data = await loadBackupData();
       const payload = {
         app: "GebCalc",
+        format: "gebcalc-document-export-v1",
+        scope: "customers-documents-document_items",
+        complete_system_backup: false,
         exported_at: new Date().toISOString(),
         counts: {
           customers: data.customers.length,

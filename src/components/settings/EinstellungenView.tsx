@@ -82,18 +82,18 @@ export function EinstellungenView({ state }: { state: EinstellungenState }) {
       </div>
 
       <div className="surface space-y-4 p-6">
-        <h2 className="font-display text-lg font-semibold">Manuelles Backup (alle Daten)</h2>
+        <h2 className="font-display text-lg font-semibold">Kunden- und Belegexport</h2>
         <p className="text-sm text-muted-foreground">
-          Lädt alle Kunden, Rechnungen/Angebote und deren Positionen herunter – als Excel-Datei zum
-          Ansehen oder als JSON-Datei zur vollständigen Sicherung. Die Datei wird lokal auf Ihrem
-          Computer gespeichert.
+          Exportiert Kunden, Rechnungen/Angebote und Positionen als Excel oder JSON. Mitarbeiter,
+          Projekte, Arbeitszeiten und hochgeladene Dateien sind nicht enthalten. Für eine
+          vollständige Wiederherstellung ist zusätzlich eine Datenbank- und Dateisicherung nötig.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={exportBackupXlsx} disabled={backupBusy}>
-            <Download className="size-4" /> Backup als Excel (.xlsx)
+            <Download className="size-4" /> Export als Excel (.xlsx)
           </Button>
           <Button variant="outline" onClick={exportBackupJson} disabled={backupBusy}>
-            <Download className="size-4" /> Backup als JSON
+            <Download className="size-4" /> Export als JSON
           </Button>
         </div>
       </div>

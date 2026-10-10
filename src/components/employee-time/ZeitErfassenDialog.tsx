@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useOfflineTime } from "@/hooks/useOfflineTime";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ export function ZeitErfassenDialog({
   assignments: { project_id: string | null }[];
 }) {
   const queryClient = useQueryClient();
+  const offline = useOfflineTime(employee.id);
   const [open, setOpen] = useState(false);
   const [workDate, setWorkDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [projectId, setProjectId] = useState("");
@@ -89,7 +90,7 @@ export function ZeitErfassenDialog({
     mutationFn: async () => {
       if (hours <= 0) throw new Error("Bitte eine gültige Arbeitszeit angeben.");
       const project = projects.find((p) => p.id === projectId);
-      const { error } = await supabase.from("time_entries").insert({
+      return offline.save({
         user_id: employee.user_id,
         employee_id: employee.id,
         employee_name: employee.name,
@@ -106,10 +107,13 @@ export function ZeitErfassenDialog({
         billed: false,
         approval_status: "pending",
       });
-      if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success(`Arbeitszeit erfasst – ${hours.toFixed(2)} Std.`);
+    onSuccess: (queued) => {
+      toast.success(
+        queued
+          ? "Auf diesem Gerät gespeichert – wartet auf Synchronisierung"
+          : `Arbeitszeit erfasst – ${hours.toFixed(2)} Std.`,
+      );
       queryClient.invalidateQueries({ queryKey: ["my_time_entries"] });
       queryClient.invalidateQueries({ queryKey: ["time_entries"] });
       reset();
@@ -119,113 +123,145 @@ export function ZeitErfassenDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Clock className="size-4" /> {task ? "Tatsächliche Zeit erfassen" : "Zeit erfassen"}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Arbeitszeit erfassen</DialogTitle>
-          <DialogDescription>
-            Erfassen Sie Ihre Arbeitszeit als Zeitraum (Von–Bis). Die Stunden werden automatisch
-            abzüglich der Pause berechnet.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="ze-datum">Datum</Label>
-              <Input
-                id="ze-datum"
-                type="date"
-                value={workDate}
-                onChange={(e) => setWorkDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="ze-objekt">Objekt / Einsatzort</Label>
-              <select
-                id="ze-objekt"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="mt-0 h-9 w-full rounded-md border bg-background px-3 text-sm"
-              >
-                <option value="">— ohne Objekt —</option>
-                {options.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {p.city ? ` · ${p.city}` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div>
-              <Label htmlFor="ze-von">Von</Label>
-              <Input
-                id="ze-von"
-                type="time"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="ze-bis">Bis</Label>
-              <Input id="ze-bis" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="ze-pause">Pause (Min.)</Label>
-              <Input
-                id="ze-pause"
-                type="number"
-                min={0}
-                step={5}
-                value={breakMinutes}
-                onChange={(e) => setBreakMinutes(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="ze-ort">Freitext-Einsatzort (optional)</Label>
-            <Input
-              id="ze-ort"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="z. B. Baustelle Saarbrücken, Hauptstraße 5"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="ze-notiz">Tätigkeit / Notiz</Label>
-            <Textarea
-              id="ze-notiz"
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="z. B. Unterhaltsreinigung Erdgeschoss"
-            />
-          </div>
-
-          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-            Berechnete Arbeitszeit: <span className="font-semibold">{hours.toFixed(2)} Std.</span>
-          </div>
+    <>
+      {(!offline.online || offline.pending > 0) && (
+        <div role="status" className="rounded-md border p-3 text-sm">
+          {offline.pending} Arbeitszeiten auf diesem Gerät warten auf Synchronisierung.
+          {!offline.online &&
+            " Keine Internetverbindung. Zum Erfassen die bereits geöffnete Seite verwenden."}
+          {offline.error && <p className="text-destructive">{offline.error}</p>}
+          <ul className="my-2">
+            {offline.entries.map((entry) => (
+              <li key={entry.id}>
+                {entry.row.work_date} · {entry.row.start_time}–{entry.row.end_time} ·{" "}
+                {Number(entry.row.hours).toFixed(2)} Std. · {entry.row.location}
+              </li>
+            ))}
+          </ul>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!offline.online || offline.syncing}
+            onClick={() => void offline.sync()}
+          >
+            {offline.syncing ? "Synchronisiert …" : "Jetzt synchronisieren"}
+          </Button>
+          <p>Bis zur Synchronisierung keine Browserdaten löschen.</p>
         </div>
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button>
+            <Clock className="size-4" /> {task ? "Tatsächliche Zeit erfassen" : "Zeit erfassen"}
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Arbeitszeit erfassen</DialogTitle>
+            <DialogDescription>
+              Erfassen Sie Ihre Arbeitszeit als Zeitraum (Von–Bis). Die Stunden werden automatisch
+              abzüglich der Pause berechnet.
+            </DialogDescription>
+          </DialogHeader>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
-            Abbrechen
-          </Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending || hours <= 0}>
-            {save.isPending ? "Wird gespeichert …" : "Zeit speichern"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <div className="grid gap-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="ze-datum">Datum</Label>
+                <Input
+                  id="ze-datum"
+                  type="date"
+                  value={workDate}
+                  onChange={(e) => setWorkDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ze-objekt">Objekt / Einsatzort</Label>
+                <select
+                  id="ze-objekt"
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className="mt-0 h-9 w-full rounded-md border bg-background px-3 text-sm"
+                >
+                  <option value="">— ohne Objekt —</option>
+                  {options.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.city ? ` · ${p.city}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="ze-von">Von</Label>
+                <Input
+                  id="ze-von"
+                  type="time"
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ze-bis">Bis</Label>
+                <Input
+                  id="ze-bis"
+                  type="time"
+                  value={end}
+                  onChange={(e) => setEnd(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ze-pause">Pause (Min.)</Label>
+                <Input
+                  id="ze-pause"
+                  type="number"
+                  min={0}
+                  step={5}
+                  value={breakMinutes}
+                  onChange={(e) => setBreakMinutes(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="ze-ort">Freitext-Einsatzort (optional)</Label>
+              <Input
+                id="ze-ort"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="z. B. Baustelle Saarbrücken, Hauptstraße 5"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ze-notiz">Tätigkeit / Notiz</Label>
+              <Textarea
+                id="ze-notiz"
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="z. B. Unterhaltsreinigung Erdgeschoss"
+              />
+            </div>
+
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              Berechnete Arbeitszeit: <span className="font-semibold">{hours.toFixed(2)} Std.</span>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={() => save.mutate()} disabled={save.isPending || hours <= 0}>
+              {save.isPending ? "Wird gespeichert …" : "Zeit speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

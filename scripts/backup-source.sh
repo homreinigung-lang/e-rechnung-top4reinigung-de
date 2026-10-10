@@ -3,7 +3,7 @@ set -euo pipefail
 
 # One-command, read-only backup for one Supabase source.
 # It captures a full PostgreSQL dump (including auth schema when accessible)
-# and every object from the private Storage bucket with SHA-256 metadata.
+# and every object from every Storage bucket with SHA-256 metadata.
 # No source write, upload, SQL mutation, DNS change, or deployment is performed.
 
 SOURCE_NAME="${1:-}"
@@ -18,7 +18,12 @@ fi
 SOURCE_DIR="$ROOT/$SOURCE_NAME"
 DB_DIR="$SOURCE_DIR/db"
 STORAGE_DIR="$SOURCE_DIR/storage"
-mkdir -p "$DB_DIR" "$STORAGE_DIR"
+if [[ -e "$SOURCE_DIR" ]]; then
+  echo "Use a new backup directory for each run." >&2
+  exit 2
+fi
+umask 077
+mkdir -p "$DB_DIR"
 
 bash "$(dirname "$0")/backup-db-auth.sh" "$SOURCE_NAME" "$DB_DIR"
 
@@ -42,6 +47,8 @@ SUPABASE_SECRET_KEY="$SUPABASE_SECRET_INPUT" \
 node "$(dirname "$0")/download-storage.mjs" "$SOURCE_NAME" "$STORAGE_DIR"
 
 unset SUPABASE_URL_INPUT SUPABASE_SECRET_INPUT
+
+node "$(dirname "$0")/verify-backup.mjs" "$SOURCE_DIR"
 
 echo "SOURCE_BACKUP_OK: $SOURCE_NAME"
 echo "OUTPUT: $SOURCE_DIR"

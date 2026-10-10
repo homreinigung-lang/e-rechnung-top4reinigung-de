@@ -20,7 +20,8 @@ if (-not $node) { throw "node is not installed or not on PATH." }
 $sourceDir = Join-Path $MigrationRoot $SourceName
 $dbDir = Join-Path $sourceDir "db"
 $storageDir = Join-Path $sourceDir "storage"
-New-Item -ItemType Directory -Force -Path $dbDir, $storageDir | Out-Null
+if (Test-Path $sourceDir) { throw "Use a new backup directory for each run." }
+New-Item -ItemType Directory -Force -Path $dbDir | Out-Null
 
 $dbUrl = Read-PlainSecret "PostgreSQL connection URI for $SourceName"
 if ([string]::IsNullOrWhiteSpace($dbUrl)) { throw "No database URI entered." }
@@ -58,7 +59,7 @@ $oldSecret = $env:SUPABASE_SECRET_KEY
 try {
   $env:SUPABASE_URL = $supabaseUrl
   $env:SUPABASE_SECRET_KEY = $supabaseSecret
-  & $node.Source "scripts/download-storage.mjs" $SourceName $storageDir
+  & $node.Source (Join-Path $PSScriptRoot "download-storage.mjs") $SourceName $storageDir
   if ($LASTEXITCODE -ne 0) { throw "Storage download failed with exit code $LASTEXITCODE" }
 }
 finally {
@@ -66,6 +67,9 @@ finally {
   $env:SUPABASE_SECRET_KEY = $oldSecret
   $supabaseSecret = $null
 }
+
+& $node.Source (Join-Path $PSScriptRoot "verify-backup.mjs") $sourceDir
+if ($LASTEXITCODE -ne 0) { throw "Backup verification failed." }
 
 Write-Host "SOURCE_BACKUP_OK: $SourceName"
 Write-Host "OUTPUT: $sourceDir"

@@ -36,6 +36,9 @@ jobs:
       - name: Unit tests
         run: bun run test
 
+      - name: Backup integrity tests
+        run: node --test scripts/backup-manifest.test.mjs
+
       - name: Build
         run: |
           bun run build

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 # Read-only database/Auth backup helper for one Supabase source.
 # Usage: bash scripts/backup-db-auth.sh <source-name> <output-dir>

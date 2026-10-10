@@ -152,10 +152,10 @@ function SicherheitPage() {
 
             <h3 className="mt-4 text-sm font-semibold">1. Automatische Sicherung</h3>
             <p className="text-sm text-muted-foreground">
-              Die Datenbank wird durch den Cloud-Betreiber täglich automatisch gesichert
-              (Point-in-Time-fähige Tagessicherungen, Aufbewahrung gemäß Tarif). Diese Sicherung
-              läuft ohne Ihr Zutun und umfasst alle Tabellen inklusive Rechnungen, Angeboten,
-              Zeiterfassung und Prüfprotokoll.
+              Verfügbarkeit, Aufbewahrung und Zeitpunkt automatischer Datenbanksicherungen müssen im
+              Cloud-Projekt geprüft werden. Point-in-Time Recovery hängt vom gebuchten Tarif ab.
+              Hochgeladene Dateien sind nicht Teil einer Datenbanksicherung und müssen separat
+              gesichert werden.
             </p>
 
             <h3 className="mt-4 text-sm font-semibold">
@@ -172,7 +172,11 @@ function SicherheitPage() {
                 Beide Dateien auf zwei getrennten Medien ablegen (z. B. verschlüsselte externe
                 Festplatte und Firmen-Cloud), Dateiname mit Datum versehen.
               </li>
-              <li>Sicherungen 10 Jahre aufbewahren – die gesetzliche Frist für Rechnungen.</li>
+              <li>
+                Zusätzlich eine vollständige Datenbanksicherung inklusive Auth und aller
+                Storage-Buckets durch den Betreiber erstellen lassen. Kunden- und Belegexporte
+                ersetzen diese Sicherung nicht.
+              </li>
             </ol>
 
             <h3 className="mt-4 text-sm font-semibold">3. Wiederherstellung</h3>
@@ -193,8 +197,10 @@ function SicherheitPage() {
 
             <h3 className="mt-4 text-sm font-semibold">4. Prüfintervall</h3>
             <p className="text-sm text-muted-foreground">
-              Einmal pro Quartal einen Testdownload eines gesicherten Exports öffnen und
-              kontrollieren, ob PDF und CSV lesbar sind. Ergebnis kurz dokumentieren.
+              Einmal pro Quartal Datenbank und Dateien in einer getrennten Testumgebung
+              wiederherstellen. Kunden, Mitarbeiter, Projekte, Stunden, Belege und Dateizugriff
+              prüfen. Zeitpunkt, Sicherungsstand und Ergebnis dokumentieren. Ein lesbarer Export
+              allein bestätigt noch keine erfolgreiche Wiederherstellung.
             </p>
           </div>
         </div>
