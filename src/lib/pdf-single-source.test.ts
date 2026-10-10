@@ -70,10 +70,7 @@ describe("Eine einzige PDF-Quelle für Vorschau, Download und E-Mail", () => {
   });
 
   it("Beleg-Seite reicht dieselbe Funktion an Download und E-Mail-Dialog", () => {
-    const state = readFileSync(
-      "src/components/documents/detail/useDocumentDetailState.tsx",
-      "utf8",
-    );
+    const state = readFileSync("src/components/documents/detail/useDocumentOutput.tsx", "utf8");
     const email = readFileSync("src/components/documents/detail/DocumentEmail.tsx", "utf8");
     const header = readFileSync("src/components/documents/detail/DocumentHeader.tsx", "utf8");
     expect(state).toContain("async function makePdfBytes()");
