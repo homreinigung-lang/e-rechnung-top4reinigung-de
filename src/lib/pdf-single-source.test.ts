@@ -70,11 +70,17 @@ describe("Eine einzige PDF-Quelle für Vorschau, Download und E-Mail", () => {
   });
 
   it("Beleg-Seite reicht dieselbe Funktion an Download und E-Mail-Dialog", () => {
-    const src = readFileSync("src/routes/_authenticated/dokumente.$id.tsx", "utf8");
-    expect(src).toContain("async function makePdfBytes()");
-    expect(src).toContain("buildPdfBytes={makePdfBytes}");
+    const state = readFileSync(
+      "src/components/documents/detail/useDocumentDetailState.tsx",
+      "utf8",
+    );
+    const email = readFileSync("src/components/documents/detail/DocumentEmail.tsx", "utf8");
+    const header = readFileSync("src/components/documents/detail/DocumentHeader.tsx", "utf8");
+    expect(state).toContain("async function makePdfBytes()");
+    expect(email).toContain("buildPdfBytes={makePdfBytes}");
+    expect(header).toContain("onDownloadPdf={() => void downloadPdf()}");
     // Download-Pfad nutzt exakt dieselbe Funktion
-    expect(src).toContain("const bytes = await makePdfBytes();");
+    expect(state).toContain("const bytes = await makePdfBytes();");
   });
 
   it.each([1, 5, 15, 30, 45])(
