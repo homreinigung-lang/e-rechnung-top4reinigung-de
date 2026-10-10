@@ -12,7 +12,7 @@ import { Calculator, FileText, Loader2, UserRound, Users } from "lucide-react";
 import { modeLabel } from "@/routes/_authenticated/projekte.index";
 
 import type { ProjektDetailState } from "./useProjektDetailState";
-export function ProjektDetailSection1({ state }: { state: ProjektDetailState }) {
+export function ProjektStammdatenForm({ state }: { state: ProjektDetailState }) {
   const {
     analyzing,
     effectiveProjectAddress,

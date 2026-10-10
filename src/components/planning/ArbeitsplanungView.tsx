@@ -30,7 +30,7 @@ import { LoadError } from "@/components/LoadError";
 import { mondayOf, addDays } from "./shared";
 
 import { WeekQuickFill } from "./WeekQuickFill";
-import { ArbeitsplanungSection1 } from "./ArbeitsplanungSection1";
+import { ArbeitsplanungObjektSummen } from "./ArbeitsplanungObjektSummen";
 import type { ArbeitsplanungState } from "./useArbeitsplanungState";
 export function ArbeitsplanungView({ state }: { state: ArbeitsplanungState }) {
   const {
@@ -498,7 +498,7 @@ export function ArbeitsplanungView({ state }: { state: ArbeitsplanungState }) {
         </div>
       </section>
 
-      <ArbeitsplanungSection1 state={state} />
+      <ArbeitsplanungObjektSummen state={state} />
 
       <Dialog open={quickAssign !== null} onOpenChange={(open) => !open && setQuickAssign(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">

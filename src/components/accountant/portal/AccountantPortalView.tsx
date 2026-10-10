@@ -7,7 +7,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 
 import { openPicker } from "./shared";
 
-import { AccountantPortalSection1 } from "./AccountantPortalSection1";
+import { AccountantPortalExports } from "./AccountantPortalExports";
 import type { AccountantPortalState } from "./useAccountantPortalState";
 export function AccountantPortalView({ state }: { state: AccountantPortalState }) {
   const { code, data, from, report, setCode, setFrom, setTo, to, year } = state;
@@ -98,7 +98,7 @@ export function AccountantPortalView({ state }: { state: AccountantPortalState }
         </div>
       </section>
 
-      <AccountantPortalSection1 state={state} />
+      <AccountantPortalExports state={state} />
     </main>
   );
 }

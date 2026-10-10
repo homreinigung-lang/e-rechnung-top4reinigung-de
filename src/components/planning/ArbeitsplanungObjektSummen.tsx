@@ -10,7 +10,7 @@ import { DAY_LABELS, formatDayTime } from "@/lib/planung";
 
 import { WeekQuickFill } from "./WeekQuickFill";
 import type { ArbeitsplanungState } from "./useArbeitsplanungState";
-export function ArbeitsplanungSection1({ state }: { state: ArbeitsplanungState }) {
+export function ArbeitsplanungObjektSummen({ state }: { state: ArbeitsplanungState }) {
   const {
     applyWeekTimes,
     cellDayHours,

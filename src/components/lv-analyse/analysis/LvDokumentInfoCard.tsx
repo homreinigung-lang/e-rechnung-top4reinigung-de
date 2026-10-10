@@ -12,7 +12,7 @@ import { STATUS_STYLE } from "./shared";
 import { StepIcon } from "./StepIcon";
 
 import type { LvAnalyseState } from "./useLvAnalyseState";
-export function LvAnalyseSection1({ state }: { state: LvAnalyseState }) {
+export function LvDokumentInfoCard({ state }: { state: LvAnalyseState }) {
   const {
     busy,
     exportDisabled,

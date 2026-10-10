@@ -9,7 +9,7 @@ import { formatDate } from "@/lib/format";
 import { statusLabel, priorityLabel, categoryLabel } from "./shared";
 
 import type { QmReklamationenState } from "./useQmReklamationenState";
-export function QmReklamationenSection1({ state }: { state: QmReklamationenState }) {
+export function QmReklamationenTabelle({ state }: { state: QmReklamationenState }) {
   const {
     casesError,
     casesLoading,

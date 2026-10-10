@@ -11,7 +11,7 @@ import { FileArchive, Loader2 } from "lucide-react";
 import { CATEGORIES } from "./shared";
 
 import { ExpenseRow } from "./ExpenseRow";
-import { AusgabenSection1 } from "./AusgabenSection1";
+import { AusgabenFormular } from "./AusgabenFormular";
 import type { AusgabenState } from "./useAusgabenState";
 export function AusgabenView({ state }: { state: AusgabenState }) {
   const {
@@ -47,7 +47,7 @@ export function AusgabenView({ state }: { state: AusgabenState }) {
         </p>
       </div>
 
-      <AusgabenSection1 state={state} />
+      <AusgabenFormular state={state} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         {[

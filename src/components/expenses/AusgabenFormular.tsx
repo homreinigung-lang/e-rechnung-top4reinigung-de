@@ -21,7 +21,7 @@ import { Eye, FileCode2, Loader2, Paperclip, Plus, Sparkles } from "lucide-react
 import { CATEGORIES } from "./shared";
 
 import type { AusgabenState } from "./useAusgabenState";
-export function AusgabenSection1({ state }: { state: AusgabenState }) {
+export function AusgabenFormular({ state }: { state: AusgabenState }) {
   const {
     add,
     analyze,

@@ -19,7 +19,7 @@ import { BadgeEuro, BellRing, Copy, Gavel, MoreVertical, Trash2 } from "lucide-r
 
 import { AngebotsTabelle } from "./AngebotsTabelle";
 import type { DokumenteListeState } from "./useDokumenteListeState";
-export function DokumenteListeSection1({ state }: { state: DokumenteListeState }) {
+export function DokumenteListeTabs({ state }: { state: DokumenteListeState }) {
   const {
     complete,
     convert,
