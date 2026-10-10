@@ -211,7 +211,7 @@ export const getAccountantReport = createServerFn({ method: "POST" })
       fetchAllRows(() =>
         (supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient)
           .from("fahrtenbuch_entries")
-          .select("*")
+          .select("id,user_id,vehicle_id,trip_date,trip_time,return_time,trip_type,from_location,customer_id,customer_name,to_location,start_km,end_km,distance_km,notes,created_at,updated_at")
           .eq("user_id", access.user_id)
           .gte("trip_date", data.from)
           .lte("trip_date", data.to)

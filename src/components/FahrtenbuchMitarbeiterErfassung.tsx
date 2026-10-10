@@ -224,6 +224,12 @@ export function FahrtenbuchMitarbeiterErfassung({ employeeId, ownerUserId }: Pro
         </p>
       </div>
 
+      <div className="space-y-2">
+        <Label>Fahrer</Label>
+        <Input value={options?.employeeName || (optionsLoading ? "Wird geladen…" : "Name nicht verfügbar")} readOnly />
+        <p className="text-xs text-muted-foreground">Du wirst bei deiner Fahrt automatisch als Fahrer zugeordnet.</p>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <Label>Fahrzeug</Label>

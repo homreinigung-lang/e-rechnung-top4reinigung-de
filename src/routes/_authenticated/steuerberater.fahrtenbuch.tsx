@@ -174,7 +174,7 @@ function SteuerberaterFahrtenbuch() {
     queryFn: async () => {
       const { data, error } = await db
         .from("fahrtenbuch_entries")
-        .select("*")
+        .select("id,user_id,vehicle_id,trip_date,trip_time,return_time,trip_type,from_location,customer_id,customer_name,to_location,start_km,end_km,distance_km,notes,created_at,updated_at")
         .gte("trip_date", from)
         .lte("trip_date", to)
         .order("trip_date")

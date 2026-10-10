@@ -15,7 +15,7 @@ export async function employeeFahrtenbuchOptions(
 
   const employee = await db
     .from("employees")
-    .select("id,user_id")
+    .select("id,user_id,name")
     .eq("auth_user_id", userId)
     .neq("user_id", userId)
     .maybeSingle();
@@ -63,6 +63,7 @@ export async function employeeFahrtenbuchOptions(
 
   return {
     employeeId,
+    employeeName: String(employee.data.name ?? "").trim(),
     ownerId,
     companyAddress: projectAddress(company.data ?? {}),
     customers: customers.data ?? [],

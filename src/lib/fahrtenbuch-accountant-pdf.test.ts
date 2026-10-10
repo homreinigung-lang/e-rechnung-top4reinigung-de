@@ -46,3 +46,17 @@ describe("Fahrtenbuch company identity", () => {
     })).toThrow(/Fahrzeugdaten fehlen/);
   });
 });
+
+
+describe("Fahrtenbuch internal driver privacy", () => {
+  it("does not include driver details in the accountant PDF even if provided", async () => {
+    const pdf = buildAccountantFahrtenbuchPdf([{
+      Fahrzeug: "Transporter", Kennzeichen: "SB-H 123", Datum: "10.10.2026",
+      Fahrer: "PRIVATE_DRIVER_SENTINEL", employee_id: "PRIVATE_EMPLOYEE_SENTINEL",
+    }], "2026-10-01", "2026-10-31");
+    const content = await pdf.text();
+    expect(content).not.toContain("PRIVATE_DRIVER_SENTINEL");
+    expect(content).not.toContain("PRIVATE_EMPLOYEE_SENTINEL");
+    expect(content).toContain("Transporter");
+  });
+});

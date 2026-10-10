@@ -47,6 +47,7 @@ type FahrtenbuchEntry = {
   id: string;
   user_id: string;
   vehicle_id: string | null;
+  employee_id: string | null;
   trip_date: string;
   trip_time: string | null;
   return_time: string | null;
@@ -100,6 +101,7 @@ type CompanyAddress = {
 
 type FormState = {
   id?: string;
+  employee_id: string;
   vehicle_id: string;
   trip_date: string;
   trip_time: string;
@@ -125,6 +127,7 @@ const emptyForm = (): FormState => {
   const now = localDateTime();
   return {
     vehicle_id: "none",
+    employee_id: "none",
     trip_date: now.date,
     trip_time: now.time,
     return_time: "",
@@ -189,6 +192,7 @@ function Fahrtenbuch() {
   const db = supabase as SupabaseClient;
   const now = localDateTime();
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [searchDate, setSearchDate] = useState("");
   const [startPointMode, setStartPointMode] = useState<"company" | "manual">("manual");
   const [vehicleName, setVehicleName] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
@@ -208,6 +212,21 @@ function Fahrtenbuch() {
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as FahrtenbuchEntry[];
+    },
+  });
+
+  const { data: drivers = [], isError: driversError, isLoading: driversLoading } = useQuery({
+    queryKey: ["fahrtenbuch_drivers"],
+    queryFn: async () => {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || !auth.user) throw new Error("Nicht angemeldet.");
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id,name,active")
+        .eq("user_id", auth.user.id)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -276,6 +295,11 @@ function Fahrtenbuch() {
     if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
     return Math.round((end - start) * 10) / 10;
   }, [form.start_km, form.end_km]);
+
+  const visibleEntries = useMemo(
+    () => searchDate ? entries.filter((entry) => entry.trip_date === searchDate) : entries,
+    [entries, searchDate],
+  );
 
   const totalKm = useMemo(
     () => entries.reduce((sum, entry) => sum + Number(entry.distance_km || 0), 0),
@@ -390,7 +414,19 @@ function Fahrtenbuch() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
 
+      // Validate company membership again when saving, including edited trips.
+      if (values.employee_id !== "none") {
+        const { data: driver, error: driverError } = await supabase
+          .from("employees")
+          .select("id")
+          .eq("id", values.employee_id)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (driverError || !driver) throw new Error("Fahrer konnte nicht geprüft werden.");
+      }
+
       const payload = {
+        employee_id: values.employee_id === "none" ? null : values.employee_id,
         vehicle_id: values.vehicle_id,
         trip_date: values.trip_date,
         trip_time: values.trip_time,
@@ -460,6 +496,7 @@ function Fahrtenbuch() {
     );
     setForm({
       id: entry.id,
+      employee_id: entry.employee_id ?? "none",
       vehicle_id: entry.vehicle_id ?? "none",
       trip_date: entry.trip_date,
       trip_time: entry.trip_time?.slice(0, 5) ?? "",
@@ -717,6 +754,20 @@ function Fahrtenbuch() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label>Fahrer / Mitarbeiter</Label>
+            <Select value={form.employee_id} onValueChange={(value) => setForm({ ...form, employee_id: value })} disabled={driversLoading || driversError}>
+              <SelectTrigger><SelectValue placeholder="Fahrer auswählen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nicht zugeordnet</SelectItem>
+                {drivers.map((driver) => (
+                  <SelectItem key={driver.id} value={driver.id}>{driver.name}{driver.active ? "" : " (inaktiv)"}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Interne Zuordnung für die Verwaltung. Wird nicht exportiert.</p>
+            {driversError ? <p className="text-sm text-destructive">Fahrer konnten nicht geladen werden.</p> : null}
+          </div>
           <div className="space-y-2"><Label>Datum</Label><Input type="date" value={form.trip_date} onChange={(e) => setForm({ ...form, trip_date: e.target.value })} /></div>
           <div className="space-y-2"><Label>Startzeit</Label><Input type="time" value={form.trip_time} onChange={(e) => setForm({ ...form, trip_time: e.target.value })} /></div>
           <div className="space-y-2">
@@ -799,11 +850,19 @@ function Fahrtenbuch() {
           <h2 className="text-lg font-semibold">Fahrtenbuch</h2>
           <p className="text-sm text-muted-foreground">Älteste Fahrten zuerst · Geschäftlich erfasst: {formatKm(totalKm)} km</p>
         </div>
-        {isLoading ? <div className="p-5 text-sm text-muted-foreground">Fahrten werden geladen…</div> : entries.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Noch keine Fahrten erfasst.</div> : (
+        <div className="flex flex-wrap items-end gap-3 border-b px-5 py-4 no-print">
+          <div className="space-y-2">
+            <Label htmlFor="fahrtenbuch-search-date">Fahrten nach Datum suchen</Label>
+            <Input id="fahrtenbuch-search-date" type="date" value={searchDate} onChange={(event) => setSearchDate(event.target.value)} />
+          </div>
+          {searchDate ? <Button variant="outline" onClick={() => setSearchDate("")}>Alle Fahrten anzeigen</Button> : null}
+          <p className="text-sm text-muted-foreground">{visibleEntries.length} Fahrten{searchDate ? ` am ${formatDate(searchDate)}` : " insgesamt"}</p>
+        </div>
+        {isLoading ? <div className="p-5 text-sm text-muted-foreground">Fahrten werden geladen…</div> : visibleEntries.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">{searchDate ? "Keine Fahrten an diesem Datum gefunden." : "Noch keine Fahrten erfasst."}</div> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1450px] text-sm">
-              <thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr><th className="px-3 py-3">Datum</th><th className="px-3 py-3">Zeit</th><th className="px-3 py-3">Rückkehr</th><th className="px-3 py-3">Fahrzeug</th><th className="px-3 py-3">Kennzeichen</th><th className="px-3 py-3">Fahrtart</th><th className="px-3 py-3">Von</th><th className="px-3 py-3">Kunde / Ziel / Zweck</th><th className="px-3 py-3">Nach</th><th className="px-3 py-3 text-right">Start-km</th><th className="px-3 py-3 text-right">End-km</th><th className="px-3 py-3 text-right">Strecke</th><th className="px-3 py-3">Bemerkung</th><th className="px-3 py-3 text-right no-print">Aktionen</th></tr></thead>
-              <tbody className="divide-y">{entries.map((entry) => { const vehicle = vehicles.find((item) => item.id === entry.vehicle_id); return <tr key={entry.id} className="align-top"><td className="whitespace-nowrap px-3 py-3 font-medium">{formatDate(entry.trip_date)}</td><td className="px-3 py-3">{formatTime(entry.trip_time)}</td><td className="px-3 py-3">{formatTime(entry.return_time)}</td><td className="px-3 py-3">{vehicle?.vehicle_name ?? "–"}</td><td className="px-3 py-3">{vehicle?.license_plate ?? "–"}</td><td className="px-3 py-3">{tripTypeLabel(entry.trip_type ?? "one_way")}</td><td className="px-3 py-3">{entry.from_location}</td><td className="px-3 py-3">{entry.customer_name || "–"}</td><td className="px-3 py-3">{entry.to_location}</td><td className="px-3 py-3 text-right">{formatKm(entry.start_km)}</td><td className="px-3 py-3 text-right">{formatKm(entry.end_km)}</td><td className="px-3 py-3 text-right font-semibold">{formatKm(entry.distance_km)} km</td><td className="px-3 py-3 text-muted-foreground">{entry.notes || "–"}</td><td className="px-3 py-3 no-print"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => editEntry(entry)} aria-label="Fahrt bearbeiten"><Pencil className="size-4" /></Button><Button variant="ghost" size="icon" onClick={() => { if (window.confirm("Fahrt wirklich löschen?")) removeTrip.mutate(entry.id); }} aria-label="Fahrt löschen"><Trash2 className="size-4 text-destructive" /></Button></div></td></tr>; })}</tbody>
+              <thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr><th className="px-3 py-3">Datum</th><th className="px-3 py-3">Zeit</th><th className="px-3 py-3">Rückkehr</th><th className="px-3 py-3">Fahrzeug</th><th className="px-3 py-3">Kennzeichen</th><th className="px-3 py-3 no-print">Fahrer / Mitarbeiter</th><th className="px-3 py-3">Fahrtart</th><th className="px-3 py-3">Von</th><th className="px-3 py-3">Kunde / Ziel / Zweck</th><th className="px-3 py-3">Nach</th><th className="px-3 py-3 text-right">Start-km</th><th className="px-3 py-3 text-right">End-km</th><th className="px-3 py-3 text-right">Strecke</th><th className="px-3 py-3">Bemerkung</th><th className="px-3 py-3 text-right no-print">Aktionen</th></tr></thead>
+              <tbody className="divide-y">{visibleEntries.map((entry) => { const vehicle = vehicles.find((item) => item.id === entry.vehicle_id); return <tr key={entry.id} className="align-top"><td className="whitespace-nowrap px-3 py-3 font-medium">{formatDate(entry.trip_date)}</td><td className="px-3 py-3">{formatTime(entry.trip_time)}</td><td className="px-3 py-3">{formatTime(entry.return_time)}</td><td className="px-3 py-3">{vehicle?.vehicle_name ?? "–"}</td><td className="px-3 py-3">{vehicle?.license_plate ?? "–"}</td><td className="px-3 py-3 no-print">{drivers.find((driver) => driver.id === entry.employee_id)?.name ?? (entry.employee_id ? "Mitarbeiter nicht verfügbar" : "Nicht zugeordnet")}</td><td className="px-3 py-3">{tripTypeLabel(entry.trip_type ?? "one_way")}</td><td className="px-3 py-3">{entry.from_location}</td><td className="px-3 py-3">{entry.customer_name || "–"}</td><td className="px-3 py-3">{entry.to_location}</td><td className="px-3 py-3 text-right">{formatKm(entry.start_km)}</td><td className="px-3 py-3 text-right">{formatKm(entry.end_km)}</td><td className="px-3 py-3 text-right font-semibold">{formatKm(entry.distance_km)} km</td><td className="px-3 py-3 text-muted-foreground">{entry.notes || "–"}</td><td className="px-3 py-3 no-print"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" onClick={() => editEntry(entry)} aria-label="Fahrt bearbeiten"><Pencil className="size-4" /></Button><Button variant="ghost" size="icon" onClick={() => { if (window.confirm("Fahrt wirklich löschen?")) removeTrip.mutate(entry.id); }} aria-label="Fahrt löschen"><Trash2 className="size-4 text-destructive" /></Button></div></td></tr>; })}</tbody>
             </table>
           </div>
         )}

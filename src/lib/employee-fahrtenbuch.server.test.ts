@@ -40,7 +40,7 @@ const ok = (data: unknown): Reply => ({ data, error: null });
 function fixture(overrides: Record<string, Reply> = {}) {
   const user = database({
     status: ok("approved"),
-    employees: ok({ id: "employee", user_id: "owner" }),
+    employees: ok({ id: "employee", user_id: "owner", name: "Test Fahrer" }),
     project_assignments: ok([
       {
         id: "assignment",
@@ -111,6 +111,8 @@ describe("employee Fahrtenbuch destination access", () => {
     expect(user.calls).toContainEqual(["project_assignments", "eq", "employee_id", "employee"]);
     expect(user.calls).toContainEqual(["projects", "eq", "user_id", "owner"]);
     expect(user.calls).toContainEqual(["projects", "in", "id", ["project"]]);
+    expect(result.employeeName).toBe("Test Fahrer");
+    expect(user.calls).toContainEqual(["employees", "select", "id,user_id,name"]);
     expect(result.companyAddress).toBe("Firma 1, 12345 Ort");
     expect(result.tasks[0]).toMatchObject({
       id: "assignment",
