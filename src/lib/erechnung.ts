@@ -6,7 +6,6 @@
  * Beide Formate werden vollständig im Browser aus den vorhandenen Belegdaten
  * erzeugt – ohne externe Dienste.
  */
-import { PDFDocument, PDFName, PDFHexString, AFRelationship } from "pdf-lib";
 import { roundCents } from "./money";
 import { parseServicePeriod } from "./invoice-period";
 import { normalizeTaxMode } from "@/lib/tax-mode";
@@ -503,6 +502,7 @@ export async function embedZugferdXml(
   xml: string,
   meta: { number: string; title: string },
 ): Promise<Uint8Array> {
+  const { PDFDocument, PDFName, PDFHexString, AFRelationship } = await import("pdf-lib");
   const pdfDoc = await PDFDocument.load(pdfBytes.slice().buffer as ArrayBuffer);
   const xmlBytes = new TextEncoder().encode(xml);
 

@@ -57,7 +57,6 @@ import {
   statusClasses,
   statusLabel,
 } from "@/lib/einsatz-status";
-import { buildXlsx } from "@/lib/xlsx";
 import { saveFile } from "@/lib/download";
 import { AbwesenheitZeitraum } from "@/components/AbwesenheitZeitraum";
 import { GermanTimeInput } from "@/components/GermanDateTimeInput";
@@ -431,8 +430,13 @@ export function EinsatzKalender({
       toast.info("Für diesen Zeitraum gibt es keine Einträge zum Exportieren.");
       return;
     }
-    const blob = await buildXlsx([{ name: "Einsatzplan", rows }]);
-    await saveFile(blob, `Einsatzplan_${periodLabel.replace(/[^\w]+/g, "_")}.xlsx`);
+    try {
+      const { buildXlsx } = await import("@/lib/xlsx");
+      const blob = await buildXlsx([{ name: "Einsatzplan", rows }]);
+      await saveFile(blob, `Einsatzplan_${periodLabel.replace(/[^\w]+/g, "_")}.xlsx`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Excel-Export konnte nicht erstellt werden.");
+    }
   };
 
   /** Druck-/PDF-Ausgabe des Kalenders (Querformat, ohne Bedienelemente). */

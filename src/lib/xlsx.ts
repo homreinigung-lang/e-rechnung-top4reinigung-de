@@ -1,4 +1,3 @@
-import JSZip from "jszip";
 
 export type XlsxSheet = { name: string; rows: Record<string, unknown>[] };
 
@@ -53,6 +52,7 @@ function safeName(name: string, index: number) {
 
 /** Erzeugt eine echte .xlsx-Datei (eine Tabelle je Datenbereich) ohne externe Abhängigkeiten. */
 export async function buildXlsx(sheets: XlsxSheet[]): Promise<Blob> {
+  const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
   const names = sheets.map((s, i) => safeName(s.name, i));
 

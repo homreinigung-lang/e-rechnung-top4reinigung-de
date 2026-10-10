@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Download, Eye, Send, Undo2, WalletCards } from "lucide-react";
-import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -245,43 +244,48 @@ export function LohnvorbereitungPanel() {
     void saveFile(blob, `Lohnvorbereitung_Steuerberater_${month}.csv`);
   }
 
-  function exportEmployeePdf(row: LohnvorbereitungRow) {
-    const employee = employees.find((item) => item.id === row.employeeId);
-    const handoff = handoffByEmployee.get(row.employeeId);
-    const soll = sollHoursForMonth(Number(employee?.weekly_hours ?? 0), month, employee?.contract_start);
-    const ist = row.normalstunden + row.sonntagstunden;
+  async function exportEmployeePdf(row: LohnvorbereitungRow) {
+    try {
+      const { jsPDF } = await import("jspdf");
+      const employee = employees.find((item) => item.id === row.employeeId);
+      const handoff = handoffByEmployee.get(row.employeeId);
+      const soll = sollHoursForMonth(Number(employee?.weekly_hours ?? 0), month, employee?.contract_start);
+      const ist = row.normalstunden + row.sonntagstunden;
 
-    const pdf = new jsPDF();
-    pdf.setFontSize(16);
-    pdf.text("Lohnvorbereitung", 15, 18);
-    pdf.setFontSize(11);
-    const lines = [
-      `Abrechnungszeitraum: ${month}`,
-      `Mitarbeiter: ${row.mitarbeiter}`,
-      `Personal-Nr.: ${row.personalNr || "-"}`,
-      `Status: ${STATUS_LABEL[handoff?.status ?? "draft"]}`,
-      "",
-      `Sollstunden: ${de(soll)} Std.`,
-      `Arbeitsstunden: ${de(ist)} Std.`,
-      `Normalstunden: ${de(row.normalstunden)} Std.`,
-      `Sonntagsstunden: ${de(row.sonntagstunden)} Std.`,
-      `Nachtstunden: ${de(row.nachtstunden)} Std.`,
-      `Feiertagsstunden: ${de(row.feiertagstunden)} Std.`,
-      `Belastungsstunden: ${de(row.ueberstunden)} Std.`,
-      `Urlaub: ${row.urlaubstage} Tage`,
-      `Krankheit: ${row.kranktage} Tage`,
-      "",
-      `Grundlohn: ${formatMoney(row.grundlohn)}`,
-      `Zuschläge: ${formatMoney(row.zuschlaege)}`,
-      `Brutto vorbereitet: ${formatMoney(row.bruttoVorbereitet)}`,
-      "",
-      `Hinweis: Lohnsteuer, Sozialversicherung und Netto werden nicht in GebCalc berechnet.`,
-      ...(handoff?.reviewed_at ? [`Geprüft am: ${formatDate(handoff.reviewed_at.slice(0, 10))}`] : []),
-      ...(handoff?.transferred_at ? [`Übergeben am: ${formatDate(handoff.transferred_at.slice(0, 10))}`] : []),
-      ...(handoff?.note ? ["", `Notiz: ${handoff.note}`] : []),
-    ];
-    pdf.text(lines, 15, 30);
-    void saveFile(pdf.output("blob"), `Lohnvorbereitung_${row.personalNr || row.mitarbeiter}_${month}.pdf`);
+      const pdf = new jsPDF();
+      pdf.setFontSize(16);
+      pdf.text("Lohnvorbereitung", 15, 18);
+      pdf.setFontSize(11);
+      const lines = [
+        `Abrechnungszeitraum: ${month}`,
+        `Mitarbeiter: ${row.mitarbeiter}`,
+        `Personal-Nr.: ${row.personalNr || "-"}`,
+        `Status: ${STATUS_LABEL[handoff?.status ?? "draft"]}`,
+        "",
+        `Sollstunden: ${de(soll)} Std.`,
+        `Arbeitsstunden: ${de(ist)} Std.`,
+        `Normalstunden: ${de(row.normalstunden)} Std.`,
+        `Sonntagsstunden: ${de(row.sonntagstunden)} Std.`,
+        `Nachtstunden: ${de(row.nachtstunden)} Std.`,
+        `Feiertagsstunden: ${de(row.feiertagstunden)} Std.`,
+        `Belastungsstunden: ${de(row.ueberstunden)} Std.`,
+        `Urlaub: ${row.urlaubstage} Tage`,
+        `Krankheit: ${row.kranktage} Tage`,
+        "",
+        `Grundlohn: ${formatMoney(row.grundlohn)}`,
+        `Zuschläge: ${formatMoney(row.zuschlaege)}`,
+        `Brutto vorbereitet: ${formatMoney(row.bruttoVorbereitet)}`,
+        "",
+        `Hinweis: Lohnsteuer, Sozialversicherung und Netto werden nicht in GebCalc berechnet.`,
+        ...(handoff?.reviewed_at ? [`Geprüft am: ${formatDate(handoff.reviewed_at.slice(0, 10))}`] : []),
+        ...(handoff?.transferred_at ? [`Übergeben am: ${formatDate(handoff.transferred_at.slice(0, 10))}`] : []),
+        ...(handoff?.note ? ["", `Notiz: ${handoff.note}`] : []),
+      ];
+      pdf.text(lines, 15, 30);
+      await saveFile(pdf.output("blob"), `Lohnvorbereitung_${row.personalNr || row.mitarbeiter}_${month}.pdf`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Lohnvorbereitung-PDF konnte nicht erstellt werden.");
+    }
   }
 
   return (

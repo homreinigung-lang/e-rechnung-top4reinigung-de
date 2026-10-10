@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -30,7 +30,6 @@ import {
 } from "@/lib/format";
 import { STAIR_RATE_PER_FLOOR, recurrenceUnitLabel, visitsPerMonth as calculateVisitsPerMonth, visitsPerYear, type RecurrenceUnit } from "@/lib/constants";
 import { fileUrl, openStoredFile } from "@/lib/storage";
-import { buildLvPdf } from "@/lib/lv-pdf";
 import { saveFile } from "@/lib/download";
 import { useRaumbuch } from "@/lib/raumbuch";
 import { DEFAULT_PERFORMANCE_RATES, type PerformanceRate } from "@/lib/leistungswerte";
@@ -48,7 +47,7 @@ import {
 import { FileUploadButton } from "@/components/FileUploadButton";
 import { ProjektAnalyse, type KalkulationSnapshot } from "@/components/ProjektAnalyse";
 import { ProjektKennzahlen } from "@/components/ProjektKennzahlen";
-import { KalkulationAnalytics } from "@/components/KalkulationAnalytics";
+const KalkulationAnalytics = lazy(() => import("@/components/KalkulationAnalytics").then((module) => ({ default: module.KalkulationAnalytics })));
 import { SpeechToTextButton } from "@/components/SpeechToTextButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -1237,6 +1236,7 @@ function KalkulationPage() {
         )
         .maybeSingle();
 
+      const { buildLvPdf } = await import("@/lib/lv-pdf");
       const bytes = await buildLvPdf({
         title: proposalTitle.trim() || `Leistungsverzeichnis ${selected.label}`,
         reference: proposalTitle.trim(),
@@ -1484,7 +1484,9 @@ function KalkulationPage() {
             snapshot={analyseSnapshot}
           />
           <ProjektKennzahlen projectId={projectId} />
-          <KalkulationAnalytics activeProjectId={projectId} />
+          <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">Auswertung wird geladen…</p>}>
+            <KalkulationAnalytics activeProjectId={projectId} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="grundriss" className="space-y-6">

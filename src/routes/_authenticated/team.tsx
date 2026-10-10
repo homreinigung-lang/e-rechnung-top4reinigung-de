@@ -10,16 +10,16 @@ import {
   HardHat,
   WalletCards,
 } from "lucide-react";
-import { EinsatzMeldungen } from "@/components/EinsatzMeldungen";
-import { PersonalStammdatenPanel } from "@/components/PersonalStammdatenPanel";
-import { Urlaubsantraege } from "@/components/Urlaubsantraege";
-import { MitarbeiterEinladung } from "@/components/MitarbeiterEinladung";
-import { Arbeitsplanung } from "@/components/ArbeitsplanungPanel";
-import { Zeiterfassung } from "@/components/ZeiterfassungPanel";
-import { TeamKalenderPanel } from "@/components/TeamKalenderPanel";
-import { LohnartenPanel } from "@/components/LohnartenPanel";
-import { LohnvorbereitungPanel } from "@/components/LohnvorbereitungPanel";
-import { Materialverwaltung } from "@/components/Materialverwaltung";
+const EinsatzMeldungen = React.lazy(() => import("@/components/EinsatzMeldungen").then((module) => ({ default: module.EinsatzMeldungen })));
+const PersonalStammdatenPanel = React.lazy(() => import("@/components/PersonalStammdatenPanel").then((module) => ({ default: module.PersonalStammdatenPanel })));
+const Urlaubsantraege = React.lazy(() => import("@/components/Urlaubsantraege").then((module) => ({ default: module.Urlaubsantraege })));
+const MitarbeiterEinladung = React.lazy(() => import("@/components/MitarbeiterEinladung").then((module) => ({ default: module.MitarbeiterEinladung })));
+const Arbeitsplanung = React.lazy(() => import("@/components/ArbeitsplanungPanel").then((module) => ({ default: module.Arbeitsplanung })));
+const Zeiterfassung = React.lazy(() => import("@/components/ZeiterfassungPanel").then((module) => ({ default: module.Zeiterfassung })));
+const TeamKalenderPanel = React.lazy(() => import("@/components/TeamKalenderPanel").then((module) => ({ default: module.TeamKalenderPanel })));
+const LohnartenPanel = React.lazy(() => import("@/components/LohnartenPanel").then((module) => ({ default: module.LohnartenPanel })));
+const LohnvorbereitungPanel = React.lazy(() => import("@/components/LohnvorbereitungPanel").then((module) => ({ default: module.LohnvorbereitungPanel })));
+const Materialverwaltung = React.lazy(() => import("@/components/Materialverwaltung").then((module) => ({ default: module.Materialverwaltung })));
 
 type TeamTab =
   | "dienstplan"
@@ -163,6 +163,7 @@ function ControlCenter() {
         </TabsList>
 
         <TabsContent value="dienstplan" className="mt-0">
+          <React.Suspense fallback={<p role="status" className="p-5 text-sm text-muted-foreground">Bereich wird geladen…</p>}>
           {search.projekt && search.stunden && search.einsaetze ? (
             <Arbeitsplanung
               initialPlan={{
@@ -174,33 +175,48 @@ function ControlCenter() {
           ) : (
             <Arbeitsplanung />
           )}
+          </React.Suspense>
         </TabsContent>
         <TabsContent value="kalender" className="mt-0">
+          <React.Suspense fallback={<p role="status" className="p-5 text-sm text-muted-foreground">Bereich wird geladen…</p>}>
           <TeamKalenderPanel />
+          </React.Suspense>
         </TabsContent>
         <TabsContent value="personal" className="mt-0">
+          <React.Suspense fallback={<p role="status" className="p-5 text-sm text-muted-foreground">Bereich wird geladen…</p>}>
           <div className="space-y-4">
             <Urlaubsantraege />
             <PersonalStammdatenPanel />
             <MitarbeiterEinladung />
           </div>
+          </React.Suspense>
         </TabsContent>
         <TabsContent value="zeiten" className="mt-0">
+          <React.Suspense fallback={<p role="status" className="p-5 text-sm text-muted-foreground">Bereich wird geladen…</p>}>
           <Zeiterfassung />
+          </React.Suspense>
         </TabsContent>
         <TabsContent value="lohnarten" className="mt-0">
+          <React.Suspense fallback={<p role="status" className="p-5 text-sm text-muted-foreground">Bereich wird geladen…</p>}>
           <LohnartenPanel />
+          </React.Suspense>
         </TabsContent>
         <TabsContent value="lohnvorbereitung" className="mt-0">
+          <React.Suspense fallback={<p role="status" className="p-5 text-sm text-muted-foreground">Bereich wird geladen…</p>}>
           <LohnvorbereitungPanel />
+          </React.Suspense>
         </TabsContent>
         <TabsContent value="meldungen" className="mt-0">
+          <React.Suspense fallback={<p role="status" className="p-5 text-sm text-muted-foreground">Bereich wird geladen…</p>}>
           <div className="surface p-5">
             <EinsatzMeldungen />
           </div>
+          </React.Suspense>
         </TabsContent>
         <TabsContent value="materialien" className="mt-0">
+          <React.Suspense fallback={<p role="status" className="p-5 text-sm text-muted-foreground">Bereich wird geladen…</p>}>
           <Materialverwaltung />
+          </React.Suspense>
         </TabsContent>
       </Tabs>
     </div>

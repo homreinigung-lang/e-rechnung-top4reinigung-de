@@ -1,4 +1,3 @@
-import { PDFDocument } from "pdf-lib";
 
 /** Erzeugt aus dem Druckbereich der Rechnung ein A4-PDF (als Bytes). */
 export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Array> {
@@ -169,6 +168,7 @@ export async function elementToPdfBytes(element: HTMLElement): Promise<Uint8Arra
 
 /** Fügt zwei PDF-Dateien zu einer einzigen zusammen (z. B. Rechnung + Stundennachweis). */
 export async function mergePdfs(parts: Uint8Array[]): Promise<Uint8Array> {
+  const { PDFDocument } = await import("pdf-lib");
   const merged = await PDFDocument.create();
   for (const part of parts) {
     const src = await PDFDocument.load(part);
