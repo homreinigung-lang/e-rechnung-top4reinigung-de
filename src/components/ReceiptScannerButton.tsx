@@ -32,6 +32,18 @@ export function ReceiptScannerButton({
   const [draft, setDraft] = useState<ReceiptScanDraft | null>(null);
   const [corners, setCorners] = useState<Quad | null>(null);
   const [adjusted, setAdjusted] = useState(false);
+  const [automaticScan, setAutomaticScan] = useState<File | null>(null);
+  const [scanPreview, setScanPreview] = useState("");
+
+  useEffect(() => {
+    if (!automaticScan) {
+      setScanPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(automaticScan);
+    setScanPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [automaticScan]);
 
   useEffect(() => {
     setCameraReady(false);
@@ -97,6 +109,7 @@ export function ReceiptScannerButton({
     setDraft(null);
     setCorners(null);
     setAdjusted(false);
+    setAutomaticScan(null);
   }
   async function prepare(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -105,9 +118,11 @@ export function ReceiptScannerButton({
       return;
     }
     const result = await prepareReceiptScan(file);
+    const cropped = result.detected ? await finishReceiptScan(result, result.corners) : null;
     setDraft(result);
     setCorners(result.corners);
     setAdjusted(false);
+    setAutomaticScan(cropped);
   }
   async function captureScan() {
     await run(async () => {
@@ -153,14 +168,20 @@ export function ReceiptScannerButton({
           <div className="flex shrink-0 items-start gap-3 border-b px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
             <div className="min-w-0 flex-1">
               <h2 id={inputId + "-title"} className="text-lg font-semibold">
-                {draft ? "Papierkanten prüfen" : "Beleg scannen"}
+                {automaticScan
+                  ? "Beleg automatisch zugeschnitten"
+                  : draft
+                    ? "Papierkanten prüfen"
+                    : "Beleg scannen"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {draft
-                  ? draft.detected
-                    ? "Papier erkannt. Ecken prüfen und bei Bedarf auf die Papierkanten ziehen."
-                    : "Papierkanten nicht sicher erkannt. Bitte die vier markierten Ecken auf die Papierkanten ziehen."
-                  : "Die ganze Rechnung mit etwas Hintergrund fotografieren. Danach Papierkanten prüfen und zuschneiden."}
+                  ? automaticScan
+                    ? "Papierkanten automatisch erkannt und Hintergrund entfernt. Scan übernehmen oder bei Bedarf korrigieren."
+                    : draft.detected
+                      ? "Ecken bei Bedarf auf die Papierkanten ziehen."
+                      : "Papierkanten nicht sicher erkannt. Bitte die vier markierten Ecken auf die Papierkanten ziehen."
+                  : "Die ganze Rechnung mit etwas Hintergrund fotografieren. Die Papierkanten werden automatisch erkannt und zugeschnitten."}
               </p>
             </div>
             <Button
@@ -174,7 +195,17 @@ export function ReceiptScannerButton({
               <X className="size-5" />
             </Button>
           </div>
-          {draft && corners ? (
+          {automaticScan ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-slate-950 p-4">
+              {scanPreview && (
+                <img
+                  src={scanPreview}
+                  alt="Automatisch zugeschnittener Beleg"
+                  className="max-h-full max-w-full object-contain"
+                />
+              )}
+            </div>
+          ) : draft && corners ? (
             <ReceiptCropPreview
               draft={draft}
               corners={corners}
@@ -212,7 +243,7 @@ export function ReceiptScannerButton({
                   disabled={busy || !validReceiptQuad(corners) || (!draft.detected && !adjusted)}
                   onClick={() =>
                     void run(async () => {
-                      const file = await finishReceiptScan(draft, corners);
+                      const file = automaticScan ?? (await finishReceiptScan(draft, corners));
                       await onProcessed(file);
                       close();
                     })
@@ -223,8 +254,18 @@ export function ReceiptScannerButton({
                   ) : (
                     <ScanLine className="size-4" />
                   )}
-                  Zuschneiden &amp; übernehmen
+                  {automaticScan ? "Scan übernehmen" : "Zuschneiden & übernehmen"}
                 </Button>
+                {automaticScan && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => setAutomaticScan(null)}
+                  >
+                    Ecken korrigieren
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -233,6 +274,7 @@ export function ReceiptScannerButton({
                     setDraft(null);
                     setCorners(null);
                     setAdjusted(false);
+                    setAutomaticScan(null);
                   }}
                 >
                   Neu aufnehmen
