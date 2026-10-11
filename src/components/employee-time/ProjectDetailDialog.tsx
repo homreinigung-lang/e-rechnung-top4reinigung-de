@@ -137,7 +137,9 @@ export function ProjectDetailDialog({
     <Dialog open={!!projectId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{project?.name ?? "Objekt"}</DialogTitle>
+          <DialogTitle className="whitespace-pre-wrap break-words">
+            {project?.name ?? task?.name ?? "Objekt"}
+          </DialogTitle>
           <DialogDescription>
             Einsatzdetails, Material, Arbeitsnachweise und Routenführung
           </DialogDescription>
@@ -151,6 +153,25 @@ export function ProjectDetailDialog({
                   {task.range || "Keine Uhrzeit hinterlegt"} · {task.hours.toFixed(2)} Std. geplant
                 </p>
               </div>
+
+              <dl className="space-y-3 text-sm">
+                {task.role && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Aufgabe / Tätigkeit</dt>
+                    <dd className="mt-1 whitespace-pre-wrap break-words">{task.role}</dd>
+                  </div>
+                )}
+                {task.note && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Arbeitsanweisungen / Hinweise</dt>
+                    <dd className="mt-1 whitespace-pre-wrap break-words">{task.note}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-xs text-muted-foreground">Pause</dt>
+                  <dd className="mt-1">{task.breakMin} Min.</dd>
+                </div>
+              </dl>
 
               <div className="rounded-lg border bg-background p-3">
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -265,8 +286,8 @@ export function ProjectDetailDialog({
             </div>
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Adresse</div>
-              <div className="mt-1 text-sm font-medium">
-                {address || "Keine Adresse hinterlegt"}
+              <div className="mt-1 whitespace-pre-wrap break-words text-sm font-medium">
+                {address || task?.address || "Keine Adresse hinterlegt"}
               </div>
             </div>
           </div>
