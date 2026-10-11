@@ -601,6 +601,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          additional_service_locations: Json
           address_line: string
           city: string
           company: string
@@ -625,6 +626,7 @@ export type Database = {
           vat_id: string
         }
         Insert: {
+          additional_service_locations?: Json
           address_line?: string
           city?: string
           company?: string
@@ -649,6 +651,7 @@ export type Database = {
           vat_id?: string
         }
         Update: {
+          additional_service_locations?: Json
           address_line?: string
           city?: string
           company?: string

@@ -3,7 +3,8 @@ import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-import { serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
+import { serviceAddress, serviceAddressOrBilling, projectAddress } from "@/lib/maps";
+import { customerServiceLocations } from "@/lib/customer-service-locations";
 
 import { ALL, type TimeEntry } from "./shared";
 
@@ -82,7 +83,7 @@ export function useCalendarDirectory(input: {
       const { data, error } = await supabase
         .from("customers")
         .select(
-          "id,name,company,address_line,postal_code,city,service_address_line,service_postal_code,service_city,service_note",
+          "id,name,company,address_line,postal_code,city,service_address_line,service_postal_code,service_city,service_note,additional_service_locations",
         );
       if (error) throw error;
       return data;
@@ -96,10 +97,12 @@ export function useCalendarDirectory(input: {
   };
 
   /** Einsatzort des Kunden (falls gepflegt), sonst Rechnungsadresse. */
-  const customerSite = (id: string | null) => {
+  const customerSite = (id: string | null, location?: string | null) => {
     if (!id) return { address: "", note: "", own: false };
     const c = customers.find((x) => x.id === id);
     if (!c) return { address: "", note: "", own: false };
+    const selected = customerServiceLocations(c).find((site) => projectAddress(site) === location);
+    if (selected) return { address: projectAddress(selected), note: selected.note, own: true };
     const own = Boolean(serviceAddress(c));
     return {
       address: serviceAddressOrBilling(c),

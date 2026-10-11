@@ -28,7 +28,8 @@ import {
   type EntryType,
 } from "@/lib/absence";
 import { GermanTimeInput } from "@/components/GermanDateTimeInput";
-import { mapsUrl } from "@/lib/maps";
+import { mapsUrl, projectAddress } from "@/lib/maps";
+import { customerServiceLocations, serviceLocationLabel } from "@/lib/customer-service-locations";
 import { NO_PROJECT, SERVICE_CATEGORIES, ServiceCategory } from "./shared";
 import type { EinsatzKalenderStateContext } from "./useEinsatzKalenderState";
 
@@ -72,9 +73,9 @@ export function CalendarDayDialog({ state }: { state: EinsatzKalenderStateContex
                   <span className="min-w-0 flex-1 truncate">
                     <span className="font-medium">{e.employee_name}</span>
                     {e.location ? ` · ${e.location}` : ""}
-                    {customerSite(e.customer_id).address ? (
+                    {customerSite(e.customer_id, e.location).address ? (
                       <span className="block truncate text-xs text-muted-foreground">
-                        Einsatzort: {customerSite(e.customer_id).address}
+                        Einsatzort: {customerSite(e.customer_id, e.location).address}
                       </span>
                     ) : null}
                   </span>
@@ -245,13 +246,22 @@ export function CalendarDayDialog({ state }: { state: EinsatzKalenderStateContex
                 <Select
                   value={form.customerId}
                   onValueChange={(v) => {
-                    // Einsatzort des Kunden als Ortsangabe vorbelegen, wenn noch leer.
                     const site = customerSite(v === NO_PROJECT ? null : v).address;
-                    setForm((f) => ({
-                      ...f,
-                      customerId: v,
-                      location: f.location.trim() ? f.location : site,
-                    }));
+                    setForm((f) => {
+                      const oldCustomer = customers.find(
+                        (customer) => customer.id === f.customerId,
+                      );
+                      const wasCustomerSite =
+                        customerServiceLocations(oldCustomer).some(
+                          (location) => projectAddress(location) === f.location,
+                        ) ||
+                        (Boolean(f.location) && f.location === customerSite(f.customerId).address);
+                      return {
+                        ...f,
+                        customerId: v,
+                        location: !f.location.trim() || wasCustomerSite ? site : f.location,
+                      };
+                    });
                   }}
                 >
                   <SelectTrigger>
@@ -266,24 +276,63 @@ export function CalendarDayDialog({ state }: { state: EinsatzKalenderStateContex
                     ))}
                   </SelectContent>
                 </Select>
-                {customerSite(form.customerId === NO_PROJECT ? null : form.customerId).address && (
+                {(() => {
+                  const sites = customerServiceLocations(
+                    customers.find((customer) => customer.id === form.customerId),
+                  );
+                  if (sites.length === 0) return null;
+                  return (
+                    <div className="space-y-2">
+                      <Label>Einsatzort wählen</Label>
+                      <Select
+                        value={
+                          sites.find((site) => projectAddress(site) === form.location)?.id ?? ""
+                        }
+                        onValueChange={(id) => {
+                          const site = sites.find((item) => item.id === id);
+                          if (site)
+                            setForm((current) => ({
+                              ...current,
+                              location: projectAddress(site),
+                              projectId: NO_PROJECT,
+                            }));
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Gespeicherten Einsatzort wählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sites.map((site) => (
+                            <SelectItem key={site.id} value={site.id}>
+                              {serviceLocationLabel(site)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })()}
+                {customerSite(
+                  form.customerId === NO_PROJECT ? null : form.customerId,
+                  form.location,
+                ).address && (
                   <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
                     <span className="font-medium">
-                      {customerSite(form.customerId).own
+                      {customerSite(form.customerId, form.location).own
                         ? "Einsatzort: "
                         : "Adresse (Rechnungsadresse): "}
                     </span>
                     <a
-                      href={mapsUrl(customerSite(form.customerId).address)}
+                      href={mapsUrl(customerSite(form.customerId, form.location).address)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline"
                     >
-                      {customerSite(form.customerId).address}
+                      {customerSite(form.customerId, form.location).address}
                     </a>
-                    {customerSite(form.customerId).note && (
+                    {customerSite(form.customerId, form.location).note && (
                       <span className="block text-muted-foreground">
-                        {customerSite(form.customerId).note}
+                        {customerSite(form.customerId, form.location).note}
                       </span>
                     )}
                   </div>

@@ -20,6 +20,7 @@ import {
 import { FileText, Loader2, Plus, Upload, X } from "lucide-react";
 
 import { MODES } from "./shared";
+import { customerServiceLocations, serviceLocationLabel } from "@/lib/customer-service-locations";
 
 import type { ProjekteIndexState } from "./useProjekteIndexState";
 export function ProjekteIndexProjekte({ state }: { state: ProjekteIndexState }) {
@@ -118,6 +119,45 @@ export function ProjekteIndexProjekte({ state }: { state: ProjekteIndexState }) 
 
             <div className="rounded-md border p-3">
               <p className="mb-3 text-sm font-semibold">Einsatzort dieses Projekts / Objekts</p>
+              {(() => {
+                const sites = customerServiceLocations(
+                  customers.find((customer) => customer.id === customerId),
+                );
+                if (sites.length === 0) return null;
+                return (
+                  <div className="mb-3 space-y-2">
+                    <Label>Gespeicherten Einsatzort wählen</Label>
+                    <Select
+                      value={
+                        sites.find(
+                          (site) =>
+                            site.address_line === projectAddressLine &&
+                            site.postal_code === projectPostalCode &&
+                            site.city === projectCity,
+                        )?.id ?? ""
+                      }
+                      onValueChange={(id) => {
+                        const site = sites.find((item) => item.id === id);
+                        if (!site) return;
+                        setProjectAddressLine(site.address_line);
+                        setProjectPostalCode(site.postal_code);
+                        setProjectCity(site.city);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Einsatzort wählen oder Adresse eingeben" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sites.map((site) => (
+                          <SelectItem key={site.id} value={site.id}>
+                            {serviceLocationLabel(site)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })()}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="p-address">Straße und Hausnummer</Label>
