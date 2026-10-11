@@ -19,7 +19,20 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { DOC_TYPE_LABEL, STATUS_LABEL, formatDate, formatMoney, today } from "@/lib/format";
-import { mapsUrl, projectAddress, serviceAddress, serviceAddressOrBilling } from "@/lib/maps";
+import { mapsUrl, projectAddress, serviceAddressOrBilling } from "@/lib/maps";
+import { CustomerServiceLocationsEditor } from "@/components/customers/CustomerServiceLocationsEditor";
+import {
+  customerServiceLocations,
+  serviceLocationPayload,
+  type CustomerServiceLocation,
+} from "@/lib/customer-service-locations";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/kunden/$id")({
   head: () => ({
@@ -81,6 +94,25 @@ function Kundenakte() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [sitesOpen, setSitesOpen] = useState(false);
+  const [sitesDraft, setSitesDraft] = useState<CustomerServiceLocation[]>([]);
+  const saveSites = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("customers")
+        .update(serviceLocationPayload(sitesDraft))
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setSitesOpen(false);
+      toast.success("Einsatzorte gespeichert");
+      queryClient.invalidateQueries({ queryKey: ["customer", id] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["karte-daten"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", id],
@@ -316,27 +348,81 @@ function Kundenakte() {
 
           <div className="surface px-5 py-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-semibold">Einsatzort</h2>
-              {serviceAddressOrBilling(customer) && (
-                <a
-                  href={mapsUrl(serviceAddressOrBilling(customer))}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline"
-                >
-                  Route öffnen
-                </a>
-              )}
+              <h2 className="font-semibold">Einsatzorte</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSitesDraft(customerServiceLocations(customer));
+                  setSitesOpen(true);
+                }}
+              >
+                Einsatzorte bearbeiten
+              </Button>
             </div>
-            {serviceAddress(customer) ? (
-              <Row label="Adresse" value={serviceAddress(customer)} />
+            {customerServiceLocations(customer).length > 0 ? (
+              <ul className="divide-y">
+                {customerServiceLocations(customer).map((site, index) => (
+                  <li key={site.id} className="py-3">
+                    <div className="flex flex-wrap justify-between gap-2 text-sm">
+                      <span className="font-medium">
+                        Einsatzort {index + 1}
+                        {index === 0 ? " (Standard)" : ""}
+                      </span>
+                      {projectAddress(site) && (
+                        <a
+                          href={mapsUrl(projectAddress(site))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          Route öffnen
+                        </a>
+                      )}
+                    </div>
+                    <Row label="Adresse" value={projectAddress(site)} />
+                    {site.note && <Row label="Hinweis" value={site.note} />}
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 Kein abweichender Einsatzort hinterlegt – es gilt die Rechnungsadresse
                 {projectAddress(customer) ? ` (${projectAddress(customer)})` : ""}.
-              </p>
+                {serviceAddressOrBilling(customer) && (
+                  <a
+                    href={mapsUrl(serviceAddressOrBilling(customer))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 text-primary hover:underline"
+                  >
+                    Route öffnen
+                  </a>
+                )}
+              </div>
             )}
-            {customer.service_note && <Row label="Hinweis" value={customer.service_note} />}
+            <Dialog
+              open={sitesOpen}
+              onOpenChange={(open) => {
+                if (!saveSites.isPending) setSitesOpen(open);
+              }}
+            >
+              <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Einsatzorte bearbeiten</DialogTitle>
+                </DialogHeader>
+                <CustomerServiceLocationsEditor
+                  value={sitesDraft}
+                  onChange={setSitesDraft}
+                  disabled={saveSites.isPending}
+                />
+                <DialogFooter>
+                  <Button onClick={() => saveSites.mutate()} disabled={saveSites.isPending}>
+                    Speichern
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {projects.length > 0 && (

@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
 import { effectiveProjectAddress, normalizeAddressKey, serviceAddress } from "@/lib/maps";
 import { toast } from "sonner";
+import { customerServiceLocations } from "@/lib/customer-service-locations";
+import { projectAddress } from "@/lib/maps";
 import { MapPin, Users, FolderKanban, HardHat, Navigation, Plus, Trash2 } from "lucide-react";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 
@@ -88,7 +90,7 @@ function KartePage() {
         supabase
           .from("customers")
           .select(
-            "id, name, company, address_line, postal_code, city, country, service_address_line, service_postal_code, service_city, service_note",
+            "id, name, company, address_line, postal_code, city, country, service_address_line, service_postal_code, service_city, service_note, additional_service_locations",
           )
           .order("name"),
         supabase
@@ -161,22 +163,31 @@ function KartePage() {
     const list: Omit<MapPoint, "lat" | "lon">[] = [];
 
     for (const c of data.customers) {
-      const site = serviceAddress(c);
-      const isSite = Boolean(site);
-      const address = isSite
-        ? site
-        : buildAddress([c.address_line, c.postal_code, c.city, c.country]);
-      if (!address) continue;
+      const sites = customerServiceLocations(c);
       const customerName = c.company || c.name || "Kunde";
-      list.push({
-        id: `c-${c.id}`,
-        kind: "customer",
-        title: isSite ? c.service_note?.trim() || `Einsatzort ${customerName}` : customerName,
-        subtitle: isSite
-          ? `Einsatzort · ${customerName}`
-          : `Verwaltungssitz${c.company && c.name ? ` · ${c.name}` : ""}`,
-        address,
-      });
+      if (sites.length > 0) {
+        for (const site of sites) {
+          const address = projectAddress(site);
+          if (!address) continue;
+          list.push({
+            id: `c-${c.id}-${site.id}`,
+            kind: "customer",
+            title: site.note.trim() || `Einsatzort ${customerName}`,
+            subtitle: `Einsatzort · ${customerName}`,
+            address,
+          });
+        }
+      } else {
+        const address = buildAddress([c.address_line, c.postal_code, c.city, c.country]);
+        if (address)
+          list.push({
+            id: `c-${c.id}`,
+            kind: "customer",
+            title: customerName,
+            subtitle: `Verwaltungssitz${c.company && c.name ? ` · ${c.name}` : ""}`,
+            address,
+          });
+      }
     }
 
     for (const l of data.locations) {
@@ -215,10 +226,18 @@ function KartePage() {
       // So bleiben mehrere Häuser eines Kunden sauber getrennt.
       const projectSite = project ? effectiveProjectAddress(project, customer) : "";
       const customerSite = customer ? serviceAddress(customer) : "";
-      const address = projectSite || customerSite || buildAddress([e.location]);
+      const selectedSite = customer
+        ? customerServiceLocations(customer).find((site) => projectAddress(site) === e.location)
+        : undefined;
+      const address =
+        projectSite ||
+        (selectedSite ? projectAddress(selectedSite) : "") ||
+        customerSite ||
+        buildAddress([e.location]);
       if (!address) continue;
       const siteLabel =
         project?.name ||
+        selectedSite?.note.trim() ||
         (customerSite && customer?.service_note?.trim()) ||
         e.location ||
         customer?.company ||

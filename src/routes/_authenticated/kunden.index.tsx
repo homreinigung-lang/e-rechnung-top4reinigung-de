@@ -35,6 +35,12 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { CustomerServiceLocationsEditor } from "@/components/customers/CustomerServiceLocationsEditor";
+import {
+  customerServiceLocations,
+  serviceLocationPayload,
+  type CustomerServiceLocation,
+} from "@/lib/customer-service-locations";
 
 export const Route = createFileRoute("/_authenticated/kunden/")({
   head: () => ({
@@ -58,10 +64,7 @@ type CustomerForm = {
   postal_code: string;
   city: string;
   country: string;
-  service_address_line: string;
-  service_postal_code: string;
-  service_city: string;
-  service_note: string;
+  service_locations: CustomerServiceLocation[];
   vat_id: string;
   is_eu_customer: boolean;
   notes: string;
@@ -88,10 +91,7 @@ const empty: CustomerForm = {
   postal_code: "",
   city: "",
   country: "Deutschland",
-  service_address_line: "",
-  service_postal_code: "",
-  service_city: "",
-  service_note: "",
+  service_locations: [],
   vat_id: "",
 
   is_eu_customer: false,
@@ -108,10 +108,7 @@ function Kunden() {
     queryKey: ["customers"],
     queryFn: async () => {
       return fetchAllRows(() =>
-        supabase
-          .from("customers")
-          .select("*")
-          .order("created_at", { ascending: false }),
+        supabase.from("customers").select("*").order("created_at", { ascending: false }),
       );
     },
   });
@@ -121,12 +118,12 @@ function Kunden() {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
-      if (values.id) {
-        const { id, ...rest } = values;
+      const { id, service_locations, ...fields } = values;
+      const rest = { ...fields, ...serviceLocationPayload(service_locations) };
+      if (id) {
         const { error } = await supabase.from("customers").update(rest).eq("id", id);
         if (error) throw error;
       } else {
-        const { id: _ignored, ...rest } = values;
         // Kundennummer wird automatisch fortlaufend vergeben (z. B. KU-2026-0001).
         const { data: number, error: numberError } = await supabase.rpc("next_customer_number");
         if (numberError) throw numberError;
@@ -137,11 +134,13 @@ function Kunden() {
       }
     },
 
-    onSuccess: () => {
+    onSuccess: (_data, values) => {
       toast.success("Kunde gespeichert");
       setOpen(false);
       setForm(empty);
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customer", values.id] });
+      queryClient.invalidateQueries({ queryKey: ["karte-daten"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -223,18 +222,12 @@ function Kunden() {
               {field("city", "Ort")}
               {field("country", "Land")}
               <div className="sm:col-span-2">
-                <p className="mt-2 text-sm font-semibold">
-                  Einsatzort (abweichend von Rechnungsadresse)
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Wird nur für Einsatzplanung und Kalender genutzt – die Rechnungsstellung bleibt
-                  unverändert bei der Adresse oben.
-                </p>
+                <CustomerServiceLocationsEditor
+                  value={form.service_locations}
+                  onChange={(service_locations) => setForm({ ...form, service_locations })}
+                  disabled={save.isPending}
+                />
               </div>
-              {field("service_address_line", "Einsatzort – Straße und Hausnummer")}
-              {field("service_note", "Einsatzort – Hinweis (z. B. Objekt, Etage, Schlüssel)")}
-              {field("service_postal_code", "Einsatzort – PLZ")}
-              {field("service_city", "Einsatzort – Ort")}
 
               <div className="space-y-2">
                 <Label htmlFor="is_eu_customer">Kunde im EU-Ausland</Label>
@@ -339,12 +332,7 @@ function Kunden() {
                       postal_code: c.postal_code,
                       city: c.city,
                       country: c.country,
-                      service_address_line:
-                        (c as { service_address_line?: string }).service_address_line ?? "",
-                      service_postal_code:
-                        (c as { service_postal_code?: string }).service_postal_code ?? "",
-                      service_city: (c as { service_city?: string }).service_city ?? "",
-                      service_note: (c as { service_note?: string }).service_note ?? "",
+                      service_locations: customerServiceLocations(c),
 
                       vat_id: c.vat_id,
                       is_eu_customer: Boolean((c as { is_eu_customer?: boolean }).is_eu_customer),

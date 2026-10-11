@@ -48,25 +48,25 @@ export function CalendarEntryDialog({ state }: { state: EinsatzKalenderStateCont
               <dd>{detail.location || projectName(detail.project_id) || "—"}</dd>
               <dt className="text-muted-foreground">Kunde</dt>
               <dd>{customerName(detail.customer_id) || "—"}</dd>
-              {customerSite(detail.customer_id).address ? (
+              {customerSite(detail.customer_id, detail.location).address ? (
                 <>
                   <dt className="text-muted-foreground">
-                    {customerSite(detail.customer_id).own
+                    {customerSite(detail.customer_id, detail.location).own
                       ? "Einsatzort (Kunde)"
                       : "Adresse (Rechnungsadresse)"}
                   </dt>
                   <dd>
                     <a
-                      href={mapsUrl(customerSite(detail.customer_id).address)}
+                      href={mapsUrl(customerSite(detail.customer_id, detail.location).address)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-medium text-primary hover:underline"
                     >
-                      {customerSite(detail.customer_id).address}
+                      {customerSite(detail.customer_id, detail.location).address}
                     </a>
-                    {customerSite(detail.customer_id).note && (
+                    {customerSite(detail.customer_id, detail.location).note && (
                       <span className="block text-xs text-muted-foreground">
-                        {customerSite(detail.customer_id).note}
+                        {customerSite(detail.customer_id, detail.location).note}
                       </span>
                     )}
                   </dd>
