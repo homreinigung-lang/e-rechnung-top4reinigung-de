@@ -223,7 +223,7 @@ export function ReceiptScannerButton({
                   ) : (
                     <ScanLine className="size-4" />
                   )}
-                  Zuschneiden & übernehmen
+                  Zuschneiden &amp; übernehmen
                 </Button>
                 <Button
                   type="button"
