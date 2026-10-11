@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { getEmployeeProjects } from "@/lib/employee-projects.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 import { matchesTask } from "@/lib/employee-task";
@@ -21,6 +23,7 @@ export function useMeineZeitenState() {
   const search = routeApi.useSearch();
   const db = supabase as SupabaseClient;
   const queryClient = useQueryClient();
+  const loadEmployeeProjects = useServerFn(getEmployeeProjects);
   const { data: me, isLoading } = useMyEmployee();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
@@ -46,20 +49,7 @@ export function useMeineZeitenState() {
   const { data: projects = [], error: projectsError } = useQuery({
     queryKey: ["my_projects", me?.id],
     enabled: !!me?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id,name,city,address_line,postal_code,customer_name");
-      if (error) throw error;
-      return (data ?? []) as {
-        id: string;
-        name: string;
-        city: string;
-        address_line: string;
-        postal_code: string;
-        customer_name: string;
-      }[];
-    },
+    queryFn: () => loadEmployeeProjects(),
   });
 
   const { data: releasedWeeks = [], error: releasedWeeksError } = useQuery({

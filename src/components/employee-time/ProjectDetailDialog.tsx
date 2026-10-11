@@ -285,9 +285,11 @@ export function ProjectDetailDialog({
               <div className="mt-1 text-sm font-medium">{project?.customer_name || "—"}</div>
             </div>
             <div className="rounded-md border p-3">
-              <div className="text-xs text-muted-foreground">Adresse</div>
+              <div className="text-xs text-muted-foreground">Einsatzort / Arbeitsadresse</div>
               <div className="mt-1 whitespace-pre-wrap break-words text-sm font-medium">
-                {address || task?.address || "Keine Adresse hinterlegt"}
+                {address ||
+                  task?.address ||
+                  "Keine Einsatzadresse hinterlegt – bitte Verwaltung kontaktieren"}
               </div>
             </div>
           </div>

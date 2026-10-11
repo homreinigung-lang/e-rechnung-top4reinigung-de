@@ -49,7 +49,6 @@ export function serviceAddressOrBilling(c: ServiceLocationSource | null | undefi
   );
 }
 
-
 export type ProjectLocationSource = {
   address_line?: string | null;
   postal_code?: string | null;
@@ -106,7 +105,6 @@ export function effectiveProjectAddress(
   return projectAddress(effectiveProjectAddressParts(project, customer));
 }
 
-
 /** Normalisiert eine Adresse für Vergleiche/Deduplizierung auf der Einsatzkarte. */
 export function normalizeAddressKey(address: string): string {
   return address
@@ -121,4 +119,30 @@ export function normalizeAddressKey(address: string): string {
     .replace(/,+$/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Mitarbeiter sehen ausschließlich Einsatzorte, nie einen Rechnungsadress-Fallback. */
+export function employeeProjectAddressParts(
+  project: ProjectLocationSource | null | undefined,
+  customer: ServiceLocationSource | null | undefined,
+): ProjectLocationSource {
+  const projectLocation = projectAddress(project ?? {});
+  const billingLocation = projectAddress(customer ?? {});
+  const matchesBilling = Boolean(
+    projectLocation &&
+    billingLocation &&
+    normalizeAddressKey(projectLocation) === normalizeAddressKey(billingLocation),
+  );
+  if (!projectLocation || matchesBilling) {
+    return {
+      address_line: customer?.service_address_line ?? "",
+      postal_code: customer?.service_postal_code ?? "",
+      city: customer?.service_city ?? "",
+    };
+  }
+  return {
+    address_line: project?.address_line ?? "",
+    postal_code: project?.postal_code ?? "",
+    city: project?.city ?? "",
+  };
 }

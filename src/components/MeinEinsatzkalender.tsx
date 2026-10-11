@@ -306,9 +306,10 @@ export function MeinEinsatzkalender({
                   </div>
                   <dl className="space-y-3 text-sm">
                     <div>
-                      <dt className="text-xs text-muted-foreground">Vollständige Adresse</dt>
+                      <dt className="text-xs text-muted-foreground">Einsatzort / Arbeitsadresse</dt>
                       <dd className="mt-1 whitespace-pre-wrap break-words">
-                        {task.address || "Keine Adresse hinterlegt"}
+                        {task.address ||
+                          "Keine Einsatzadresse hinterlegt – bitte Verwaltung kontaktieren"}
                       </dd>
                     </div>
                     <div>
