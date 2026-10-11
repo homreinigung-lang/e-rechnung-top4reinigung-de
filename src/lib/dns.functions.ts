@@ -1,139 +1,56 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { APP_DOMAIN, validHostingAddresses, isCurrentHttpsConnection } from "./dns-hosting";
 
-const schema = z.object({
-  domain: z.string().trim().min(3).max(253),
-  expected: z.string().trim().max(512).optional(),
-});
-
-type DohAnswer = { name: string; type: number; TTL?: number; data: string };
-
-function clean(value: string) {
-  return value.replace(/^"|"$/g, "").replace(/"\s*"/g, "").trim();
-}
-
-async function resolve(name: string, type: "TXT" | "A", resolver: "google" | "cloudflare") {
+type DohAnswer = { type: number; data: string };
+async function resolveAddresses(provider: "google" | "cloudflare") {
   const url =
-    resolver === "google"
-      ? `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`
-      : `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`;
-  const res = await fetch(url, { headers: { accept: "application/dns-json" } });
-  if (!res.ok) throw new Error(`DNS-Abfrage fehlgeschlagen (${resolver}, ${res.status})`);
-  const json = (await res.json()) as { Answer?: DohAnswer[] };
-  return (json.Answer ?? [])
-    .filter((a) => (type === "TXT" ? a.type === 16 : a.type === 1))
-    .map((a) => clean(a.data));
+    provider === "google"
+      ? `https://dns.google/resolve?name=${APP_DOMAIN}&type=A`
+      : `https://cloudflare-dns.com/dns-query?name=${APP_DOMAIN}&type=A`;
+  const response = await fetch(url, {
+    headers: { accept: "application/dns-json" },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) throw new Error(`DNS-Abfrage fehlgeschlagen (${response.status}).`);
+  const data = (await response.json()) as { Status?: number; Answer?: DohAnswer[] };
+  if (data.Status !== 0) throw new Error("DNS-Auflösung derzeit nicht möglich.");
+  return (data.Answer ?? []).filter((answer) => answer.type === 1).map((answer) => answer.data);
 }
 
-/** Nur für angemeldete Konten (verhindert Missbrauch der DNS-Auflöser). */
+/** Check only this deployment; never fetch a user-controlled hostname. */
 export const checkDomainDns = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => schema.parse(data))
-  .handler(async ({ data }) => {
-    const domain = data.domain
-      .replace(/^https?:\/\//, "")
-      .replace(/\/.*$/, "")
-      .toLowerCase();
-
-    // Prevent SSRF through localhost/IP literals/private/internal hostnames.
-    // This endpoint is only for public DNS names that can point at the expected Lovable edge.
-    const hostnamePattern =
-      /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
-    if (!hostnamePattern.test(domain)) throw new Error("Ungültige öffentliche Domain.");
-
-    const parts = domain.split(".");
-    const apex = parts.slice(-2).join(".");
-    const txtNames = Array.from(new Set([`_lovable.${domain}`, `_lovable.${apex}`]));
-
-    const txtRecords: { name: string; values: string[]; error?: string }[] = [];
-    for (const name of txtNames) {
-      try {
-        const [g, c] = await Promise.all([
-          resolve(name, "TXT", "google"),
-          resolve(name, "TXT", "cloudflare").catch(() => [] as string[]),
-        ]);
-        txtRecords.push({ name, values: Array.from(new Set([...g, ...c])) });
-      } catch (e) {
-        txtRecords.push({ name, values: [], error: e instanceof Error ? e.message : String(e) });
-      }
-    }
-
+  .handler(async () => {
     let aRecords: string[] = [];
     let aError: string | undefined;
     try {
-      aRecords = await resolve(domain, "A", "google");
-    } catch (e) {
-      aError = e instanceof Error ? e.message : String(e);
+      aRecords = await resolveAddresses("google").catch(() => resolveAddresses("cloudflare"));
+    } catch {
+      aError = "DNS-Abfrage derzeit nicht möglich. Bitte erneut prüfen.";
     }
-
-    const expected = data.expected ? clean(data.expected) : "";
-    const allTxt = txtRecords.flatMap((r) => r.values);
+    const aOk = validHostingAddresses(APP_DOMAIN, aRecords);
+    // A successful authenticated HTTPS request on the exact public domain proves
+    // this connection works. Do not self-fetch the Worker or claim a TLS audit.
+    const httpsOk = isCurrentHttpsConnection(APP_DOMAIN, getRequest().url);
     const issues: string[] = [];
-
-    const aOk = aRecords.includes("185.158.133.1");
-    if (!aRecords.length) issues.push(`Kein A-Record für ${domain} gefunden.`);
+    if (aError) issues.push(aError);
+    else if (!aRecords.length) issues.push(`Kein A-Record für ${APP_DOMAIN} gefunden.`);
     else if (!aOk)
-      issues.push(`A-Record zeigt auf ${aRecords.join(", ")} statt auf 185.158.133.1.`);
-
-    let txtOk = false;
-    if (!allTxt.length) {
-      issues.push(`Kein TXT-Record _lovable gefunden (geprüft: ${txtNames.join(", ")}).`);
-    } else if (expected) {
-      txtOk = allTxt.some((v) => v === expected);
-      if (!txtOk) {
-        const near = allTxt.some((v) => v.toLowerCase() === expected.toLowerCase());
-        issues.push(
-          near
-            ? `TXT-Wert stimmt nur bis auf Groß-/Kleinschreibung überein: „${allTxt.join(" | ")}“.`
-            : `TXT-Wert weicht ab. Gefunden: „${allTxt.join(" | ")}“ – erwartet: „${expected}“.`,
-        );
-      }
-    } else {
-      txtOk = allTxt.some((v) => /^lovable_verify=\S{8,}$/.test(v));
-      if (!txtOk)
-        issues.push(
-          `TXT-Wert sieht nicht wie ein gültiges Verify-Token aus: „${allTxt.join(" | ")}“. Erwartet wird „lovable_verify=<Code>“.`,
-        );
-    }
-
-    let httpStatus: number | null = null;
-    // Never let this server-side probe become an arbitrary URL fetch. Only probe
-    // after DNS resolves exclusively to the expected public edge address.
-    const safeToProbeHttps =
-      aRecords.length > 0 && aRecords.every((address) => address === "185.158.133.1");
-    if (safeToProbeHttps) {
-      try {
-        const res = await fetch(`https://${domain}/`, {
-          method: "GET",
-          redirect: "manual",
-          signal: AbortSignal.timeout(8_000),
-        });
-        httpStatus = res.status;
-      } catch {
-        httpStatus = null;
-      }
-    }
-    const httpsOk = httpStatus !== null && httpStatus < 400;
+      issues.push("Die A-Records liegen nicht vollständig in den Cloudflare-Netzbereichen.");
     if (!httpsOk)
       issues.push(
-        httpStatus === 409
-          ? "HTTPS antwortet mit 409 – die Domain ist bei Lovable noch nicht verifiziert."
-          : "HTTPS liefert noch kein gültiges Zertifikat/Antwort.",
+        `HTTPS-Verbindung nicht bestätigt. Öffnen Sie diese Prüfung unter https://${APP_DOMAIN}.`,
       );
-
     return {
-      domain,
+      domain: APP_DOMAIN,
       checkedAt: new Date().toISOString(),
       aRecords,
       aError,
       aOk,
-      txtRecords,
-      txtOk,
-      expected,
-      httpStatus,
       httpsOk,
       issues,
-      verified: aOk && txtOk && httpsOk,
+      verified: aOk && httpsOk,
     };
   });
