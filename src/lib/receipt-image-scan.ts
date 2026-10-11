@@ -1,5 +1,4 @@
-type Point = { x: number; y: number };
-type Quad = readonly [Point, Point, Point, Point];
+import { detectReceiptCorners, validReceiptQuad, type Quad } from "./receipt-corners";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -18,101 +17,8 @@ async function decodeImage(file: File): Promise<ImageBitmap> {
   }
 }
 
-function distance(a: Point, b: Point) {
+function distance(a: Quad[number], b: Quad[number]) {
   return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function polygonArea(points: readonly Point[]) {
-  let sum = 0;
-  for (let i = 0; i < points.length; i++) {
-    const a = points[i]!;
-    const b = points[(i + 1) % points.length]!;
-    sum += a.x * b.y - b.x * a.y;
-  }
-  return Math.abs(sum) / 2;
-}
-
-function detectDocumentQuad(
-  pixels: Uint8ClampedArray,
-  width: number,
-  height: number,
-): Quad | null {
-  const cornerSize = Math.max(4, Math.round(Math.min(width, height) * 0.06));
-  const sampleCorners = [
-    [0, 0],
-    [width - cornerSize, 0],
-    [0, height - cornerSize],
-    [width - cornerSize, height - cornerSize],
-  ] as const;
-
-  let br = 0;
-  let bg = 0;
-  let bb = 0;
-  let count = 0;
-
-  for (const [sx, sy] of sampleCorners) {
-    for (let y = sy; y < sy + cornerSize; y += 3) {
-      for (let x = sx; x < sx + cornerSize; x += 3) {
-        const i = (y * width + x) * 4;
-        br += pixels[i] ?? 0;
-        bg += pixels[i + 1] ?? 0;
-        bb += pixels[i + 2] ?? 0;
-        count++;
-      }
-    }
-  }
-
-  if (!count) return null;
-  br /= count;
-  bg /= count;
-  bb /= count;
-  const bgLum = 0.2126 * br + 0.7152 * bg + 0.0722 * bb;
-
-  const step = Math.max(2, Math.round(Math.max(width, height) / 450));
-  const candidates: Point[] = [];
-
-  for (let y = 0; y < height; y += step) {
-    for (let x = 0; x < width; x += step) {
-      const i = (y * width + x) * 4;
-      const r = pixels[i] ?? 0;
-      const g = pixels[i + 1] ?? 0;
-      const b = pixels[i + 2] ?? 0;
-      const colorDistance = Math.sqrt((r - br) ** 2 + (g - bg) ** 2 + (b - bb) ** 2);
-      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-      if (colorDistance > 34 || Math.abs(lum - bgLum) > 42) {
-        candidates.push({ x, y });
-      }
-    }
-  }
-
-  if (candidates.length < 40) return null;
-
-  let tl = candidates[0]!;
-  let tr = candidates[0]!;
-  let brp = candidates[0]!;
-  let bl = candidates[0]!;
-
-  for (const p of candidates) {
-    if (p.x + p.y < tl.x + tl.y) tl = p;
-    if (p.x - p.y > tr.x - tr.y) tr = p;
-    if (p.x + p.y > brp.x + brp.y) brp = p;
-    if (p.y - p.x > bl.y - bl.x) bl = p;
-  }
-
-  const quad: Quad = [tl, tr, brp, bl];
-  const area = polygonArea(quad);
-  if (area < width * height * 0.22) return null;
-
-  const minSide = Math.min(
-    distance(tl, tr),
-    distance(tr, brp),
-    distance(brp, bl),
-    distance(bl, tl),
-  );
-  if (minSide < Math.min(width, height) * 0.22) return null;
-
-  return quad;
 }
 
 function squareToQuadHomography([tl, tr, br, bl]: Quad) {
@@ -211,91 +117,82 @@ function perspectiveWarp(
   return output;
 }
 
-/**
- * Bereitet ein Kamera-Foto wie einen Dokumentenscan auf:
- * - erkennt die vier Belegecken,
- * - entzerrt schräg fotografierte Belege per Perspektivtransformation,
- * - verbessert Kontrast und Lesbarkeit,
- * - fällt bei unsicherer Erkennung auf eine sichere Ganzbild-Aufbereitung zurück.
- *
- * Die Verarbeitung läuft lokal im Browser. Die Originaldatei wird nicht verändert.
- */
-export async function scanReceiptImage(file: File): Promise<File> {
-  if (!file.type.startsWith("image/")) return file;
+export type ReceiptScanDraft = {
+  name: string;
+  source: ImageData;
+  preview: string;
+  corners: Quad;
+  detected: boolean;
+};
 
+/** Local preparation only. The caller must show corners before uploading. */
+export async function prepareReceiptScan(file: File): Promise<ReceiptScanDraft> {
   const bitmap = await decodeImage(file);
-
-  const sourceCanvas = document.createElement("canvas");
-  sourceCanvas.width = bitmap.width;
-  sourceCanvas.height = bitmap.height;
-  const sourceCtx = sourceCanvas.getContext("2d", { willReadFrequently: true });
-  if (!sourceCtx) {
+  try {
+    // Bound memory before getImageData (phone photos can exceed 40 megapixels).
+    const scale = Math.min(1, 2600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) throw new Error("Bild konnte nicht verarbeitet werden.");
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const analysis = document.createElement("canvas");
+    const ratio = Math.min(1, 600 / Math.max(canvas.width, canvas.height));
+    analysis.width = Math.max(1, Math.round(canvas.width * ratio));
+    analysis.height = Math.max(1, Math.round(canvas.height * ratio));
+    const actx = analysis.getContext("2d", { willReadFrequently: true });
+    if (!actx) throw new Error("Belegkanten konnten nicht geprüft werden.");
+    actx.drawImage(canvas, 0, 0, analysis.width, analysis.height);
+    const image = actx.getImageData(0, 0, analysis.width, analysis.height);
+    const corners = detectReceiptCorners(image.data, image.width, image.height);
+    return {
+      name: file.name,
+      source: ctx.getImageData(0, 0, canvas.width, canvas.height),
+      preview: canvas.toDataURL("image/jpeg", 0.9),
+      detected: corners !== null,
+      corners: corners ?? [
+        { x: 0.05, y: 0.05 },
+        { x: 0.95, y: 0.05 },
+        { x: 0.95, y: 0.95 },
+        { x: 0.05, y: 0.95 },
+      ],
+    };
+  } finally {
     bitmap.close();
-    return file;
   }
-  sourceCtx.drawImage(bitmap, 0, 0);
-  const sourceImage = sourceCtx.getImageData(0, 0, bitmap.width, bitmap.height);
+}
 
-  const maxAnalyze = 900;
-  const analyzeScale = Math.min(1, maxAnalyze / Math.max(bitmap.width, bitmap.height));
-  const aw = Math.max(1, Math.round(bitmap.width * analyzeScale));
-  const ah = Math.max(1, Math.round(bitmap.height * analyzeScale));
-
-  const analysis = document.createElement("canvas");
-  analysis.width = aw;
-  analysis.height = ah;
-  const actx = analysis.getContext("2d", { willReadFrequently: true });
-  if (!actx) {
-    bitmap.close();
-    return file;
-  }
-  actx.drawImage(bitmap, 0, 0, aw, ah);
-  const analysisImage = actx.getImageData(0, 0, aw, ah);
-  const detectedQuad = detectDocumentQuad(analysisImage.data, aw, ah);
-
-  const scalePoint = (p: Point): Point => ({ x: p.x / analyzeScale, y: p.y / analyzeScale });
-  const fullQuad: Quad = detectedQuad
-    ? [
-        scalePoint(detectedQuad[0]),
-        scalePoint(detectedQuad[1]),
-        scalePoint(detectedQuad[2]),
-        scalePoint(detectedQuad[3]),
-      ]
-    : [
-        { x: 0, y: 0 },
-        { x: bitmap.width - 1, y: 0 },
-        { x: bitmap.width - 1, y: bitmap.height - 1 },
-        { x: 0, y: bitmap.height - 1 },
-      ];
-
+export async function finishReceiptScan(draft: ReceiptScanDraft, corners: Quad): Promise<File> {
+  if (!validReceiptQuad(corners))
+    throw new Error("Bitte die vier Ecken entlang der Papierkanten setzen.");
+  const sourceImage = draft.source;
+  const fullQuad = corners.map((p) => ({
+    x: p.x * (sourceImage.width - 1),
+    y: p.y * (sourceImage.height - 1),
+  })) as unknown as Quad;
   const [tl, tr, br, bl] = fullQuad;
   const targetWidth = Math.max(distance(tl, tr), distance(bl, br));
   const targetHeight = Math.max(distance(tl, bl), distance(tr, br));
-  const maxOutput = 2200;
-  const outputScale = Math.min(1, maxOutput / Math.max(targetWidth, targetHeight));
-  const ow = Math.max(1, Math.round(targetWidth * outputScale));
-  const oh = Math.max(1, Math.round(targetHeight * outputScale));
-
+  const scale = Math.min(1, 2200 / Math.max(targetWidth, targetHeight));
+  const ow = Math.max(1, Math.round(targetWidth * scale));
+  const oh = Math.max(1, Math.round(targetHeight * scale));
   const warped = perspectiveWarp(sourceImage, fullQuad, ow, oh);
-  bitmap.close();
-
   const canvas = document.createElement("canvas");
   canvas.width = ow;
   canvas.height = oh;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return file;
+  if (!ctx) throw new Error("Scan konnte nicht erstellt werden.");
   ctx.putImageData(warped, 0, 0);
-
-  const blob = await new Promise<Blob>((resolve, reject) => {
+  const blob = await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (result) =>
         result ? resolve(result) : reject(new Error("Scan konnte nicht erstellt werden.")),
       "image/jpeg",
       0.92,
-    );
-  });
-
-  return new File([blob], scannerFileName(file.name), {
+    ),
+  );
+  return new File([blob], scannerFileName(draft.name), {
     type: "image/jpeg",
     lastModified: Date.now(),
   });
