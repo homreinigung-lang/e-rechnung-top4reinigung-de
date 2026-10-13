@@ -158,16 +158,15 @@ export function ZeitErfassenDialog({
             <Clock className="size-4" /> {task ? "Tatsächliche Zeit erfassen" : "Zeit erfassen"}
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="flex flex-col overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="shrink-0 px-5 pt-5 pr-10 text-left">
             <DialogTitle>Arbeitszeit erfassen</DialogTitle>
             <DialogDescription>
-              Erfassen Sie Ihre Arbeitszeit als Zeitraum (Von–Bis). Die Stunden werden automatisch
-              abzüglich der Pause berechnet.
+              Datum, Einsatzort und Uhrzeiten wählen. Pause antippen und speichern.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4">
+          <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
                 <Label htmlFor="ze-datum">Datum</Label>
@@ -197,7 +196,7 @@ export function ZeitErfassenDialog({
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="ze-von">Von</Label>
                 <Input
@@ -216,32 +215,24 @@ export function ZeitErfassenDialog({
                   onChange={(e) => setEnd(e.target.value)}
                 />
               </div>
-              <div>
-                <Label htmlFor="ze-pause">Pause (Min.)</Label>
-                <Input
-                  id="ze-pause"
-                  type="number"
-                  min={0}
-                  step={5}
-                  value={breakMinutes}
-                  onChange={(e) => setBreakMinutes(e.target.value)}
-                />
-              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2" aria-label="Pause schnell wählen">
-              {BREAK_CHOICES.map((min) => (
-                <Button
-                  key={min}
-                  type="button"
-                  size="sm"
-                  aria-pressed={Number(breakMinutes) === min}
-                  variant={Number(breakMinutes) === min ? "default" : "outline"}
-                  onClick={() => setBreakMinutes(String(min))}
-                >
-                  {min ? `${min} Min.` : "Keine Pause"}
-                </Button>
-              ))}
+            <div>
+              <p className="mb-2 text-sm font-medium">Pause · {Number(breakMinutes) || 0} Min.</p>
+              <div className="flex flex-wrap gap-2" aria-label="Pause schnell wählen">
+                {BREAK_CHOICES.map((min) => (
+                  <Button
+                    key={min}
+                    type="button"
+                    size="sm"
+                    aria-pressed={Number(breakMinutes) === min}
+                    variant={Number(breakMinutes) === min ? "default" : "outline"}
+                    onClick={() => setBreakMinutes(String(min))}
+                  >
+                    {min ? `${min} Min.` : "Keine Pause"}
+                  </Button>
+                ))}
+              </div>
             </div>
             {endBeforeStart && (
               <p role="alert" className="text-destructive text-sm">
@@ -249,40 +240,69 @@ export function ZeitErfassenDialog({
                 einzeln erfassen.
               </p>
             )}
-            <div>
-              <Label htmlFor="ze-ort">Freitext-Einsatzort (optional)</Label>
-              <Input
-                id="ze-ort"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="z. B. Baustelle Saarbrücken, Hauptstraße 5"
-              />
-            </div>
+            <details className="rounded-md border p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                Weitere Angaben (optional)
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <Label htmlFor="ze-pause">Pause (Min.)</Label>
+                  <Input
+                    id="ze-pause"
+                    type="number"
+                    min={0}
+                    step={5}
+                    value={breakMinutes}
+                    onChange={(e) => setBreakMinutes(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="ze-ort">Freitext-Einsatzort (optional)</Label>
+                  <Input
+                    id="ze-ort"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="z. B. Baustelle Saarbrücken, Hauptstraße 5"
+                  />
+                </div>
 
-            <div>
-              <Label htmlFor="ze-notiz">Tätigkeit / Notiz</Label>
-              <Textarea
-                id="ze-notiz"
-                rows={2}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="z. B. Unterhaltsreinigung Erdgeschoss"
-              />
-            </div>
-
-            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-              Berechnete Arbeitszeit: <span className="font-semibold">{hours.toFixed(2)} Std.</span>
-            </div>
+                <div>
+                  <Label htmlFor="ze-notiz">Tätigkeit / Notiz</Label>
+                  <Textarea
+                    id="ze-notiz"
+                    rows={2}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="z. B. Unterhaltsreinigung Erdgeschoss"
+                  />
+                </div>
+              </div>
+            </details>
           </div>
 
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              Abbrechen
-            </Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending || hours <= 0}>
-              {save.isPending ? "Wird gespeichert …" : "Zeit speichern"}
-            </Button>
-          </DialogFooter>
+          <div className="shrink-0 border-t bg-background px-5 py-4">
+            <p className="mb-3 text-sm" role="status">
+              Arbeitszeit:{" "}
+              <span className="font-semibold">{hours.toFixed(2).replace(".", ",")} Std.</span>
+            </p>
+            <DialogFooter className="flex-row gap-2 sm:space-x-0">
+              <Button
+                variant="ghost"
+                className="h-11"
+                disabled={save.isPending}
+                onClick={() => setOpen(false)}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                className="h-11 flex-1"
+                onClick={() => save.mutate()}
+                disabled={save.isPending || hours <= 0}
+              >
+                {save.isPending ? "Wird gespeichert …" : "Zeit speichern"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </>
