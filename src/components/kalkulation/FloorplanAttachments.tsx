@@ -1,3 +1,4 @@
+import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { toast } from "sonner";
 import { FileText, Sparkles, Trash2 } from "lucide-react";
 import { formatNumber } from "@/lib/format";
@@ -141,6 +142,7 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
                   />
                 </div>
 
+                {scanningPath === a.path && <AnalysisProgress />}
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"

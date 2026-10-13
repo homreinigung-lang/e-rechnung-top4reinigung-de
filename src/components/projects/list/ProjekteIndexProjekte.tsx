@@ -1,3 +1,4 @@
+import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -251,6 +252,7 @@ export function ProjekteIndexProjekte({ state }: { state: ProjekteIndexState }) 
               />
             </div>
           </div>
+          {create.isPending && file && <AnalysisProgress label={step || "Datei wird gelesen …"} />}
           <DialogFooter className="items-center gap-3 sm:justify-between">
             {step ? (
               <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">

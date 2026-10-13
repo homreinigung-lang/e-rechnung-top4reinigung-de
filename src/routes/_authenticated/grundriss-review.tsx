@@ -1,3 +1,4 @@
+import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
@@ -216,6 +217,7 @@ function GrundrissReviewPage() {
                   <Sparkles className="size-4" />
                   {busy ? "Grundriss wird gelesen …" : "Grundriss automatisch lesen"}
                 </Button>
+                {busy && <AnalysisProgress label="Grundriss wird gelesen …" />}
                 <p className="text-xs text-muted-foreground">
                   Falls der KI-Dienst noch nicht eingerichtet ist, können Räume und Flächen rechts
                   trotzdem manuell erfasst und geprüft werden.

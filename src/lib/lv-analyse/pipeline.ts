@@ -172,8 +172,19 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
 
   // 2) KI-Analyse der Textebene.
   if (hasTextLayer && text.trim().length >= 40) {
+    // Start the unchanged AI request before computing the independent rule extraction.
+    // Collect both outcomes immediately so neither failure becomes an unhandled rejection.
+    const [aiOutcome, ruleOutcome] = await Promise.allSettled([
+      Promise.resolve().then(() => analyseText({ data: { text } })),
+      Promise.resolve().then(() =>
+        cleanItems(itemsFromText(text)).map((i) =>
+          normalizeItem({ ...i, source_page: pageIndexForText(text, i.description) }, "regel"),
+        ),
+      ),
+    ]);
     try {
-      const ai = await analyseText({ data: { text } });
+      if (aiOutcome.status === "rejected") throw aiOutcome.reason;
+      const ai = aiOutcome.value;
       aiKind = ai.document_kind;
       const aiItems = ai.items.map((i) =>
         normalizeItem(
@@ -207,9 +218,9 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
     }
 
     // 3) Regelbasierte Zweitmeinung.
-    const ruleItems = cleanItems(itemsFromText(text)).map((i) =>
-      normalizeItem({ ...i, source_page: pageIndexForText(text, i.description) }, "regel"),
-    );
+    // Preserve table → AI → rule merge and reporting order, including duplicate precedence.
+    if (ruleOutcome.status === "rejected") throw ruleOutcome.reason;
+    const ruleItems = ruleOutcome.value;
     candidates.push(...ruleItems);
     push({
       state: ruleItems.length ? "ok" : "warn",
