@@ -1,3 +1,4 @@
+import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { FileSearch, Loader2, FileSpreadsheet, FileText, Download, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,8 @@ export function LvDokumentInfoCard({ state }: { state: LvAnalyseState }) {
           </div>
           <p className="text-xs text-muted-foreground">{exportHint}</p>
         </div>
+
+        {busy && <AnalysisProgress label={steps.at(-1)?.label || "Datei wird gelesen …"} />}
 
         {/* Verarbeitungsstatus – immer sichtbar, nie leer */}
         <div className="rounded-md border bg-muted/30 p-3">

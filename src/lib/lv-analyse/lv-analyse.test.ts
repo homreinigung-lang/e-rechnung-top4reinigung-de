@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { analyseLvFile, type AnalyseDeps } from "./pipeline";
+import * as lvImport from "@/lib/lv-form/import";
 import { classifyDocument } from "./classify";
 import { normalizeItem } from "./normalize";
 import {
@@ -461,5 +462,43 @@ describe("12) Fehlende Menge blockiert den Angebotspreis", () => {
     expect(calcStatus(item)).toBe("not_calculated");
     expect(summarizeOwnCalculation([item]).net).toBe(0);
     expect([...reviewFields(item)]).toContain("total_price");
+  });
+});
+
+
+describe("LV-Regelerkennung während der KI-Anfrage", () => {
+  it("berechnet Regeln vor der KI-Antwort und meldet Ergebnisse in bisheriger Reihenfolge", async () => {
+    let finish!: (value: typeof emptyAi) => void;
+    const ai = new Promise<typeof emptyAi>((resolve) => { finish = resolve; });
+    const rules = vi.spyOn(lvImport, "itemsFromText");
+    const analyseText = vi.fn(() => ai);
+    const labels: string[] = [];
+    try {
+      const pending = analyseLvFile(file("lv.pdf"), deps({
+        readDocument: async () => ({ text: PDF_TEXT, rows: [], hasTextLayer: true, pageCount: 2 }),
+        analyseText,
+        onStep: (step) => labels.push(step.label),
+      }));
+      await vi.waitFor(() => expect(rules).toHaveBeenCalledWith(PDF_TEXT));
+      expect(analyseText).toHaveBeenCalledWith({ data: { text: PDF_TEXT } });
+      expect(labels.some((label) => label.startsWith("Regelbasierte"))).toBe(false);
+      finish(emptyAi);
+      const result = await pending;
+      expect(result.items.length).toBeGreaterThanOrEqual(3);
+      expect(labels.findIndex((label) => label.startsWith("KI-Analyse:")))
+        .toBeLessThan(labels.findIndex((label) => label.startsWith("Regelbasierte")));
+    } finally {
+      finish(emptyAi);
+      rules.mockRestore();
+    }
+  });
+
+  it("behält die regelbasierten Positionen nach einem KI-Fehler", async () => {
+    const result = await analyseLvFile(file("lv.pdf"), deps({
+      readDocument: async () => ({ text: PDF_TEXT, rows: [], hasTextLayer: true, pageCount: 2 }),
+      analyseText: async () => { throw new Error("timeout"); },
+    }));
+    expect(result.items.length).toBeGreaterThanOrEqual(3);
+    expect(result.failures).toContain("KI-Analyse fehlgeschlagen: timeout");
   });
 });

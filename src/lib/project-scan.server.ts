@@ -344,7 +344,7 @@ export async function analyzeProjectFile(
       ? "Erstelle das vollständige Raumbuch zu diesem Grundriss bzw. dieser Aufnahme, inklusive Bodenbelag je Raum, Stichpunkten (highlights) und erkannten Kundenanforderungen (requirements)."
       : "Analysiere diese Ausschreibung und erstelle das strukturierte Leistungsverzeichnis.";
 
-  const parsed = await generateGeminiJson({
+  const parsedPromise = generateGeminiJson({
     model: process.env["GEMINI_MODEL_PROJECT"] || "gemini-3.1-pro-preview",
     system: mode === "floorplan" ? FLOORPLAN_SYSTEM : TENDER_SYSTEM,
     prompt,
@@ -352,6 +352,13 @@ export async function analyzeProjectFile(
     dataUrl,
     mimeType,
   });
+
+  // Both calls read the same document independently. Keep model, prompts and retries unchanged.
+  // The optional check catches its own errors. Empty/failed room scans need not wait for it.
+  const statedTotalPromise = mode === "floorplan"
+    ? readStatedTotalArea(dataUrl, mimeType)
+    : Promise.resolve(0);
+  const parsed = await parsedPromise;
 
   if (!Object.keys(parsed).length) return EMPTY;
 
@@ -387,7 +394,7 @@ export async function analyzeProjectFile(
   if (mode === "floorplan" && finalRooms.length > 0) {
     const roomSum = finalRooms.reduce((sum, r) => sum + r.area_sqm, 0);
     if (roomSum > 0) {
-      const statedTotal = await readStatedTotalArea(dataUrl, mimeType);
+      const statedTotal = await statedTotalPromise;
       const warning = buildAreaWarning(roomSum, statedTotal);
       if (warning) highlights.push(warning);
     }
