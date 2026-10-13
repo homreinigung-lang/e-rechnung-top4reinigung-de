@@ -18,6 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Clock } from "lucide-react";
 
+import { localDay } from "@/lib/employee-task";
+import { BREAK_CHOICES, workedHours, toMinutes } from "@/lib/time-entry";
 import { type DayTask } from "@/components/MeinEinsatzkalender";
 
 export function ZeitErfassenDialog({
@@ -41,7 +43,7 @@ export function ZeitErfassenDialog({
   const queryClient = useQueryClient();
   const offline = useOfflineTime(employee.id);
   const [open, setOpen] = useState(false);
-  const [workDate, setWorkDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [workDate, setWorkDate] = useState(() => localDay());
   const [projectId, setProjectId] = useState("");
   const [location, setLocation] = useState("");
   const [start, setStart] = useState("08:00");
@@ -58,15 +60,12 @@ export function ZeitErfassenDialog({
     });
   }, [projects, assignments]);
 
-  const hours = useMemo(() => {
-    const [sh, sm] = start.split(":").map(Number);
-    const [eh, em] = end.split(":").map(Number);
-    if ([sh, sm, eh, em].some((v) => Number.isNaN(v))) return 0;
-    let minutes = eh! * 60 + em! - (sh! * 60 + sm!);
-    if (minutes < 0) minutes += 24 * 60; // Nachtschicht über Mitternacht
-    minutes -= Math.max(0, Number(breakMinutes) || 0);
-    return Math.max(0, Math.round((minutes / 60) * 100) / 100);
-  }, [start, end, breakMinutes]);
+  const hours = useMemo(
+    () => workedHours(start, end, Number(breakMinutes)),
+    [start, end, breakMinutes],
+  );
+  const endBeforeStart =
+    toMinutes(start) !== null && toMinutes(end) !== null && toMinutes(end)! <= toMinutes(start)!;
 
   const reset = () => {
     setProjectId("");
@@ -78,7 +77,11 @@ export function ZeitErfassenDialog({
   };
 
   useEffect(() => {
-    if (!open || !task) return;
+    if (!open) return;
+    if (!task) {
+      setWorkDate(localDay());
+      return;
+    }
     setWorkDate(task.date);
     setProjectId(task.projectId ?? "");
     setStart(task.start);
@@ -226,6 +229,26 @@ export function ZeitErfassenDialog({
               </div>
             </div>
 
+            <div className="flex flex-wrap gap-2" aria-label="Pause schnell wählen">
+              {BREAK_CHOICES.map((min) => (
+                <Button
+                  key={min}
+                  type="button"
+                  size="sm"
+                  aria-pressed={Number(breakMinutes) === min}
+                  variant={Number(breakMinutes) === min ? "default" : "outline"}
+                  onClick={() => setBreakMinutes(String(min))}
+                >
+                  {min ? `${min} Min.` : "Keine Pause"}
+                </Button>
+              ))}
+            </div>
+            {endBeforeStart && (
+              <p role="alert" className="text-destructive text-sm">
+                Die Endzeit muss nach dem Beginn liegen. Zeiten über Mitternacht bitte für jeden Tag
+                einzeln erfassen.
+              </p>
+            )}
             <div>
               <Label htmlFor="ze-ort">Freitext-Einsatzort (optional)</Label>
               <Input

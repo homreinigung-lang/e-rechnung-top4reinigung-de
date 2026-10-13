@@ -6,7 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getEmployeeProjects } from "@/lib/employee-projects.functions";
 import { supabase } from "@/integrations/supabase/client";
 
-import { matchesTask } from "@/lib/employee-task";
+import { localDay, matchesTask } from "@/lib/employee-task";
 import { useMyEmployee } from "@/lib/employee";
 
 import { toast } from "sonner";
@@ -25,7 +25,7 @@ export function useMeineZeitenState() {
   const queryClient = useQueryClient();
   const loadEmployeeProjects = useServerFn(getEmployeeProjects);
   const { data: me, isLoading } = useMyEmployee();
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(localDay().slice(0, 7));
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     search["projekt"] ?? null,
   );
