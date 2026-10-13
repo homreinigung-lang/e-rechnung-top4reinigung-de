@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 
 import { Plus, RotateCcw, Save } from "lucide-react";
-import { type TripType, emptyForm, customerLabel, formatKm } from "./shared";
+import { type TripType, customerLabel, formatKm } from "./shared";
 
 import type { FahrtenbuchState } from "./useFahrtenbuchState";
 export function FahrtenbuchFahrtFormular({ state }: { state: FahrtenbuchState }) {
@@ -26,6 +26,8 @@ export function FahrtenbuchFahrtFormular({ state }: { state: FahrtenbuchState })
     latestEntry,
     saveTrip,
     selectCustomer,
+    selectVehicle,
+    resetForm,
     setForm,
     setStartPointMode,
     startPointMode,
@@ -48,7 +50,7 @@ export function FahrtenbuchFahrtFormular({ state }: { state: FahrtenbuchState })
             </Button>
           ) : null}
           {form.id ? (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setForm(emptyForm())}>
+            <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
               Abbrechen
             </Button>
           ) : null}
@@ -60,7 +62,7 @@ export function FahrtenbuchFahrtFormular({ state }: { state: FahrtenbuchState })
           <Label>Fahrzeug / Kennzeichen</Label>
           <Select
             value={form.vehicle_id}
-            onValueChange={(value) => setForm({ ...form, vehicle_id: value })}
+            onValueChange={selectVehicle}
           >
             <SelectTrigger>
               <SelectValue placeholder="Fahrzeug auswählen" />
@@ -236,6 +238,11 @@ export function FahrtenbuchFahrtFormular({ state }: { state: FahrtenbuchState })
             value={form.start_km}
             onChange={(e) => setForm({ ...form, start_km: e.target.value })}
           />
+          {!form.id && (
+            <p className="text-xs text-muted-foreground">
+              Der letzte End-km-Stand des Fahrzeugs wird vorgeschlagen und kann geändert werden.
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label>End-km</Label>

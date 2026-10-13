@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 import { toast } from "sonner";
@@ -16,6 +16,8 @@ import {
   type FormState,
   localDateTime,
   emptyForm,
+  newTripForm,
+  selectTripVehicle,
   customerLabel,
   customerAddress,
   formatDate,
@@ -39,7 +41,7 @@ export function useFahrtenbuchState() {
   const [monthStartKm, setMonthStartKm] = useState("");
   const [monthEndKm, setMonthEndKm] = useState("");
 
-  const { data: entries = [], isLoading } = useQuery<FahrtenbuchEntry[]>({
+  const { data: entries = [], isLoading, isSuccess: entriesLoaded } = useQuery<FahrtenbuchEntry[]>({
     queryKey: ["fahrtenbuch"],
     queryFn: async () => {
       const { data, error } = await db
@@ -52,6 +54,27 @@ export function useFahrtenbuchState() {
       return (data ?? []) as FahrtenbuchEntry[];
     },
   });
+
+  const initializedTrip = useRef(false);
+  useEffect(() => {
+    if (!entriesLoaded || initializedTrip.current) return;
+    initializedTrip.current = true;
+    setForm((current) => {
+      if (current.id || current.start_km !== "") return current;
+      const defaults = current.vehicle_id === "none"
+        ? newTripForm(entries)
+        : selectTripVehicle(current, current.vehicle_id, entries);
+      return { ...current, vehicle_id: defaults.vehicle_id, start_km: defaults.start_km };
+    });
+  }, [entries, entriesLoaded]);
+
+  function selectVehicle(vehicleId: string) {
+    setForm((current) => selectTripVehicle(current, vehicleId, entries));
+  }
+
+  function resetForm() {
+    setForm(newTripForm(entries));
+  }
 
   const {
     data: drivers = [],
@@ -298,9 +321,19 @@ export function useFahrtenbuchState() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      toast.success(form.id ? "Fahrt aktualisiert" : "Fahrt gespeichert");
-      setForm(emptyForm());
+    onSuccess: (_result, values) => {
+      toast.success(values.id ? "Fahrt aktualisiert" : "Fahrt gespeichert");
+      const saved = {
+        vehicle_id: values.vehicle_id === "none" ? null : values.vehicle_id,
+        trip_date: values.trip_date,
+        trip_time: values.trip_time || null,
+        created_at: new Date().toISOString(),
+        end_km: Number(values.end_km),
+      };
+      const updatedEntries = values.id
+        ? entries.map((entry) => entry.id === values.id ? { ...entry, ...saved, created_at: entry.created_at } : entry)
+        : [...entries, saved];
+      setForm(newTripForm(updatedEntries));
       queryClient.invalidateQueries({ queryKey: ["fahrtenbuch"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -505,6 +538,8 @@ export function useFahrtenbuchState() {
     saveVehicle,
     searchDate,
     selectCustomer,
+    selectVehicle,
+    resetForm,
     selectedMonthly,
     setForm,
     setLicensePlate,

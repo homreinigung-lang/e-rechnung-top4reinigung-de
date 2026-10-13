@@ -99,6 +99,38 @@ export const emptyForm = (): FormState => {
   };
 };
 
+
+type OdometerTrip = Pick<FahrtenbuchEntry, "vehicle_id" | "trip_date" | "trip_time" | "created_at" | "end_km">;
+
+/** Latest by journey date/time, independent of list filters and input order. */
+export function latestOdometerTrip(entries: OdometerTrip[], vehicleId?: string) {
+  return entries
+    .filter((entry) => vehicleId === undefined || (entry.vehicle_id ?? "none") === vehicleId)
+    .reduce<OdometerTrip | undefined>((latest, entry) => {
+      const key = (trip: OdometerTrip) => `${trip.trip_date}|${trip.trip_time ?? ""}|${trip.created_at}`;
+      return !latest || key(entry) > key(latest) ? entry : latest;
+    }, undefined);
+}
+
+export function newTripForm(entries: OdometerTrip[]): FormState {
+  const latest = latestOdometerTrip(entries);
+  return {
+    ...emptyForm(),
+    vehicle_id: latest?.vehicle_id ?? "none",
+    start_km: latest ? String(latest.end_km) : "",
+  };
+}
+
+export function selectTripVehicle(form: FormState, vehicleId: string, entries: OdometerTrip[]): FormState {
+  const latest = latestOdometerTrip(entries, vehicleId);
+  return {
+    ...form,
+    vehicle_id: vehicleId,
+    // Editing a recorded trip must retain its stored odometer readings.
+    start_km: form.id ? form.start_km : latest ? String(latest.end_km) : "",
+  };
+}
+
 export function customerLabel(c: Customer) {
   return c.company?.trim() || c.name?.trim() || "Kunde";
 }
