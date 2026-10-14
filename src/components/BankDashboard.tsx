@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -157,6 +158,9 @@ export function BankDashboard({ docs: _docs }: { docs: unknown[] }) {
       {visibleMessage && (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
           {visibleMessage}
+          <Link to="/bankverbindung" className="mt-2 block font-medium underline">
+            Bankverbindung prüfen / Freigabe erneuern
+          </Link>
         </div>
       )}
 

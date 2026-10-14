@@ -1,3 +1,4 @@
+import { bankRequestError } from "./bank-request-error";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +25,7 @@ export async function enableBanking<T = Record<string, unknown>>(
   const { data, error } = await supabase.functions.invoke("enable-banking", {
     body: { ...body, protocol: 2 },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw await bankRequestError(error);
   if (data?.error) throw new Error(String(data.error));
   return data as T;
 }
