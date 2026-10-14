@@ -18,6 +18,7 @@ import {
   emptyForm,
   newTripForm,
   selectTripVehicle,
+  tripOdometerWarning,
   customerLabel,
   customerAddress,
   formatDate,
@@ -154,6 +155,8 @@ export function useFahrtenbuchState() {
     return [street, [postal, city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   }, [companyAddressData]);
 
+  const odometerWarning = tripOdometerWarning(form, entries);
+
   const distance = useMemo(() => {
     const start = Number(form.start_km);
     const end = Number(form.end_km);
@@ -274,6 +277,9 @@ export function useFahrtenbuchState() {
       }
       if (startKm < 0 || endKm < 0) throw new Error("Kilometerstände dürfen nicht negativ sein.");
       if (endKm < startKm) throw new Error("End-km muss größer oder gleich Start-km sein.");
+
+      const warning = tripOdometerWarning(values, entries);
+      if (warning) toast.warning("Kilometerstand prüfen", { description: warning, duration: 10000 });
 
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
@@ -524,6 +530,7 @@ export function useFahrtenbuchState() {
     form,
     isLoading,
     latestEntry,
+    odometerWarning,
     licensePlate,
     loadMonthlyRow,
     month,

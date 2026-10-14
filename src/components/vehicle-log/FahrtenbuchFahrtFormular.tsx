@@ -24,6 +24,7 @@ export function FahrtenbuchFahrtFormular({ state }: { state: FahrtenbuchState })
     driversLoading,
     form,
     latestEntry,
+    odometerWarning,
     saveTrip,
     selectCustomer,
     selectVehicle,
@@ -270,6 +271,12 @@ export function FahrtenbuchFahrtFormular({ state }: { state: FahrtenbuchState })
           />
         </div>
       </div>
+
+      {odometerWarning && (
+        <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+          {odometerWarning}
+        </p>
+      )}
 
       <Button
         onClick={() =>

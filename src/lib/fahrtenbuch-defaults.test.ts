@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyForm, latestOdometerTrip, newTripForm, selectTripVehicle } from "@/components/vehicle-log/shared";
+import { emptyForm, latestOdometerTrip, tripOdometerWarning, newTripForm, selectTripVehicle } from "@/components/vehicle-log/shared";
 
 const trips = [
   { vehicle_id: "a", trip_date: "2026-10-11", trip_time: "10:00", created_at: "2026-10-11T10:00:00Z", end_km: 12500.5 },
@@ -31,5 +31,32 @@ describe("Start-km-Vorschlag für neue Fahrten", () => {
     ];
     expect(latestOdometerTrip(sameTime, "a")?.end_km).toBe(0);
     expect(newTripForm(sameTime).start_km).toBe("0");
+  });
+});
+
+
+describe("Warnung bei niedrigerem Kilometerstand", () => {
+  it("vergleicht mit dem letzten Endstand desselben Fahrzeugs", () => {
+    const warning = tripOdometerWarning({ ...emptyForm(), vehicle_id: "a", start_km: "12500" }, trips);
+    expect(warning).toContain("Start-km");
+    expect(warning).toContain("12.520,5 km");
+    expect(warning).toContain("12.10.2026");
+  });
+  it("warnt auch bei einem niedrigeren Endstand", () => {
+    expect(tripOdometerWarning({ ...emptyForm(), vehicle_id: "a", end_km: "12500" }, trips))
+      .toContain("End-km");
+  });
+  it("warnt bei gleichen oder höheren Werten nicht und ignoriert andere Fahrzeuge", () => {
+    expect(tripOdometerWarning({ ...emptyForm(), vehicle_id: "a", start_km: "12520.5", end_km: "12530" }, trips)).toBeNull();
+    expect(tripOdometerWarning({ ...emptyForm(), vehicle_id: "a", start_km: "12520,5" }, trips)).toBeNull();
+  });
+  it("interpretiert leere oder ungültige Felder nicht als Null", () => {
+    expect(tripOdometerWarning({ ...emptyForm(), vehicle_id: "a" }, trips)).toBeNull();
+    expect(tripOdometerWarning({ ...emptyForm(), vehicle_id: "a", start_km: "abc" }, trips)).toBeNull();
+  });
+  it("benötigt eine zugeordnete Vorfahrt und warnt nicht bei historischen Bearbeitungen", () => {
+    expect(tripOdometerWarning({ ...emptyForm(), vehicle_id: "new", start_km: "1" }, trips)).toBeNull();
+    expect(tripOdometerWarning({ ...emptyForm(), start_km: "1" }, trips)).toBeNull();
+    expect(tripOdometerWarning({ ...emptyForm(), id: "old", vehicle_id: "a", start_km: "1" }, trips)).toBeNull();
   });
 });

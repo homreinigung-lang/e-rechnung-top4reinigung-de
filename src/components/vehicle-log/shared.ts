@@ -131,6 +131,24 @@ export function selectTripVehicle(form: FormState, vehicleId: string, entries: O
   };
 }
 
+
+/** Advisory for new trips; historical edits retain their original readings. */
+export function tripOdometerWarning(form: FormState, entries: OdometerTrip[]): string | null {
+  if (form.id || form.vehicle_id === "none") return null;
+  const latest = latestOdometerTrip(entries, form.vehicle_id);
+  if (!latest || !Number.isFinite(latest.end_km)) return null;
+  const lowerFields = [
+    ["Start-km", form.start_km],
+    ["End-km", form.end_km],
+  ].filter(([, raw]) => {
+    if (!raw?.trim()) return false;
+    const value = Number(raw.replace(",", "."));
+    return Number.isFinite(value) && value >= 0 && value < latest.end_km;
+  }).map(([label]) => label);
+  if (!lowerFields.length) return null;
+  return `Achtung: ${lowerFields.join(" und ")} ${lowerFields.length > 1 ? "liegen" : "liegt"} unter dem letzten End-km-Stand dieses Fahrzeugs (${formatKm(latest.end_km)} km vom ${formatDate(latest.trip_date)}). Bitte Kilometerstand prüfen.`;
+}
+
 export function customerLabel(c: Customer) {
   return c.company?.trim() || c.name?.trim() || "Kunde";
 }
