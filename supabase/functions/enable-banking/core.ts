@@ -1,3 +1,4 @@
+import { bankConsentValidUntil, BANK_RENEWAL_MESSAGE, isClosedBankSession } from "./consent.ts";
 export type BankTransaction = {
   transaction_id?: string;
   entry_reference?: string;
@@ -172,11 +173,12 @@ export function createBankHandler(
         const country = stringValue(bank?.country, "Land").toUpperCase();
         if (!/^[A-Z]{2}$/.test(country) || !redirectUrl)
           throw new BankError("Ungültige Bank-Konfiguration.");
+        const validUntil = await bankConsentValidUntil(api, name, country, now());
         const state = crypto.randomUUID();
         const result = (await api("/auth", {
           method: "POST",
           body: JSON.stringify({
-            access: { valid_until: new Date(now().getTime() + 10 * 86400000).toISOString() },
+            access: { valid_until: validUntil },
             aspsp: { name, country },
             state,
             redirect_url: redirectUrl,
@@ -286,6 +288,7 @@ export function createBankHandler(
       }
       throw new BankError("Unbekannte Aktion.");
     } catch (error) {
+      if (isClosedBankSession(error)) return json({ error: BANK_RENEWAL_MESSAGE, reauthorization_required: true }, 403);
       const status = error instanceof BankError ? error.status : 500;
       // No raw provider payloads, authorization codes, or bank identifiers in logs/errors.
       return json(

@@ -230,8 +230,8 @@ function BankverbindungPage() {
       toast.error(e instanceof Error ? e.message : "Speichern fehlgeschlagen"),
   });
 
-  const connectBank = async () => {
-    const bank = banks.find((item) => `${item.name}|${item.country}` === selectedBank);
+  const connectBank = async (savedBank?: EnableBank) => {
+    const bank = savedBank ?? banks.find((item) => `${item.name}|${item.country}` === selectedBank);
     if (!bank) {
       toast.error("Bitte zuerst eine Bank auswählen.");
       return;
@@ -379,9 +379,15 @@ function BankverbindungPage() {
                     {account?.account_id?.iban ?? account?.name ?? "Konto verbunden"}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={() => void refreshBank()} disabled={bankBusy}>
                     <RefreshCw className="mr-2 size-4" /> Aktualisieren
+                  </Button>
+                  <Button
+                    onClick={() => void connectBank({ name: session.aspsp!.name!, country: session.aspsp!.country || "DE" })}
+                    disabled={bankBusy || !session.aspsp?.name}
+                  >
+                    Freigabe erneuern (TAN)
                   </Button>
                   <Button
                     variant="outline"
@@ -392,6 +398,11 @@ function BankverbindungPage() {
                   </Button>
                 </div>
               </div>
+
+              <p className="text-sm text-muted-foreground">
+                Das Konto bleibt gespeichert. Eine erneute Freigabe erfolgt direkt bei Ihrer Bank,
+                gegebenenfalls per TAN. Die Laufzeit richtet sich nach der Bank.
+              </p>
 
               <div className="grid gap-3 sm:grid-cols-3">
                 {balances.length ? (

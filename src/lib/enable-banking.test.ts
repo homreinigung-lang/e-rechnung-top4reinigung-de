@@ -77,6 +77,7 @@ function fixture() {
     accounts_data: [{ uid: "account-a", identification_hash: "stable-account-identity" }],
   };
   const api = vi.fn<BankApi>(async (path) => {
+    if (path === "/aspsps?country=DE") return { aspsps: [{ name: "Test", country: "DE", maximum_consent_validity: 180 * 86400 }] };
     if (path === "/auth")
       return { url: "https://auth.enablebanking.com/test", psu_id_hash: "psu-a" };
     if (path === "/sessions")
@@ -177,7 +178,7 @@ describe("Enable Banking authorization", () => {
     ).json();
     expect(f.states.has(result.state)).toBe(false);
     expect(f.states.get(await hashText(result.state))?.user).toBe("user-a");
-    expect(JSON.parse(String(f.api.mock.calls[0]?.[1]?.body)).psu_id).toBe("user-a");
+    expect(JSON.parse(String(f.api.mock.calls.find(([path]) => path === "/auth")?.[1]?.body)).psu_id).toBe("user-a");
   });
   it("rejects another user's state without redeeming a code", async () => {
     const f = fixture();
@@ -189,7 +190,7 @@ describe("Enable Banking authorization", () => {
       (await f.request({ action: "exchange_code", code: "code", state: start.state })).status,
     ).toBe(403);
     expect(f.store.attach).not.toHaveBeenCalled();
-    expect(f.api.mock.calls).toHaveLength(1);
+    expect(f.api.mock.calls).toHaveLength(2);
   });
   it("rejects expired state", async () => {
     const f = fixture();
@@ -380,4 +381,24 @@ describe("Bank callback state validation", () => {
   it("accepts identical nonempty states", () => {
     expect(validBankState("value", "value")).toBe(true);
   });
+});
+
+
+it("startet eine neue Freigabe mit Banklimit, ohne die bestehende Verbindung zu trennen", async () => {
+  const f = fixture();
+  const result = await f.request({ action: "start_auth", bank: { name: "Test", country: "DE", maximum_consent_validity: 999999999999 } });
+  expect(result.status).toBe(200);
+  const request = JSON.parse(String(f.api.mock.calls.find(([path]) => path === "/auth")?.[1]?.body));
+  expect(request.access.valid_until).toBe(new Date(f.clock.getTime() + 180 * 86400000).toISOString());
+  expect(f.store.disconnect).not.toHaveBeenCalled();
+  expect(f.store.attach).not.toHaveBeenCalled();
+});
+
+it("fordert bei einer geschlossenen Sitzung erneute Freigabe und behält die Verbindung", async () => {
+  const f = fixture();
+  f.api.mockRejectedValueOnce(Object.assign(new Error("private"), { status: 401, data: { error: "CLOSED_SESSION" } }));
+  const result = await f.request({ action: "balances", account_id: "account-a" });
+  expect(result.status).toBe(403);
+  expect(await result.json()).toMatchObject({ reauthorization_required: true, error: expect.stringContaining("TAN") });
+  expect(f.store.disconnect).not.toHaveBeenCalled();
 });
