@@ -12,6 +12,7 @@ type DocLike = Record<string, unknown> | null | undefined;
  */
 export function isLockedDocument(doc: DocLike): boolean {
   if (!doc) return false;
+  if (doc["parent_order_id"] && doc["type"] === "quote" && doc["approved_at"]) return true;
   if (doc["type"] === "quote" || doc["type"] === "order") return false;
   return Boolean(doc["locked_at"]);
 }
@@ -29,11 +30,15 @@ export function documentLabel(doc: DocLike): string {
 
 /** Klare Warnung beim Versuch, einen geschützten Beleg zu löschen. */
 export function deleteBlockedMessage(doc: DocLike): string {
+  if (doc?.["parent_order_id"] && doc?.["type"] === "quote" && doc?.["approved_at"])
+    return "Freigegebene Nachträge bleiben erhalten.";
   return `Löschen gesperrt: ${documentLabel(doc)} ist ein echter, festgeschriebener Beleg und muss gemäß GoBD und § 14b UStG dauerhaft erhalten bleiben. Korrekturen sind nur über eine Stornorechnung möglich.`;
 }
 
 /** Klare Warnung beim Versuch, einen geschützten Beleg zu überschreiben. */
 export function editBlockedMessage(doc: DocLike): string {
+  if (doc?.["parent_order_id"] && doc?.["type"] === "quote" && doc?.["approved_at"])
+    return "Freigegebener Nachtrag ist unveränderbar. Bitte neuen Nachtrag anlegen.";
   return `Änderung gesperrt: ${documentLabel(doc)} ist festgeschrieben und darf nicht überschrieben werden (GoBD, § 14 UStG). Bitte eine Stornorechnung erstellen und anschließend einen neuen Beleg ausstellen.`;
 }
 

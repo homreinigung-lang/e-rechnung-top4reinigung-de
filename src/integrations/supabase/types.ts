@@ -756,6 +756,10 @@ export type Database = {
       }
       documents: {
         Row: {
+          parent_order_id: string | null
+          approval_note: string
+          approved_at: string | null
+          completed_at: string | null
           archived_at: string | null
           attachment_text: string
           attachment_title: string
@@ -814,6 +818,10 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          parent_order_id?: string | null
+          approval_note?: string
+          approved_at?: string | null
+          completed_at?: string | null
           archived_at?: string | null
           attachment_text?: string
           attachment_title?: string
@@ -872,6 +880,10 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          parent_order_id?: string | null
+          approval_note?: string
+          approved_at?: string | null
+          completed_at?: string | null
           archived_at?: string | null
           attachment_text?: string
           attachment_title?: string
@@ -1768,6 +1780,9 @@ export type Database = {
       }
       project_rooms: {
         Row: {
+          length_m: number | null
+          width_m: number | null
+          glass_sqm: number
           area_sqm: number
           confirmed: boolean
           created_at: string
@@ -1784,6 +1799,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          length_m?: number | null
+          width_m?: number | null
+          glass_sqm?: number
           area_sqm?: number
           confirmed?: boolean
           created_at?: string
@@ -1800,6 +1818,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          length_m?: number | null
+          width_m?: number | null
+          glass_sqm?: number
           area_sqm?: number
           confirmed?: boolean
           created_at?: string
@@ -2438,6 +2459,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_supplement: { Args: { _order_id: string }; Returns: string }
+      approve_supplement: { Args: { _id: string; _note: string }; Returns: undefined }
+      complete_supplement: { Args: { _id: string }; Returns: undefined }
+      invoice_supplement: { Args: { _id: string }; Returns: string }
+
       check_accountant_access: {
         Args: { _token: string; _candidate_hash: string }
         Returns: Json

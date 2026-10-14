@@ -128,7 +128,7 @@ export function useDocumentDetailForm() {
   const discountPercent = discountItemPresent ? 0 : enteredDiscountPercent;
   const discountReason = String(form["discount_reason"] ?? "");
   const { itemsTotal, discountAmount, netTotal, vatAmount, grossTotal } = computeDocumentTotals(
-    items,
+    data?.doc.parent_order_id ? items.filter((item) => !item.is_optional) : items,
     discountPercent,
     vatRate,
   );
@@ -169,7 +169,7 @@ export function useDocumentDetailForm() {
       if (check.level === "error") throw new Error(check.message);
 
       // 2. Keine zweite Rechnung für denselben Kunden und Leistungsmonat.
-      if (String(form["status"] ?? "draft") !== "draft") {
+      if (String(form["status"] ?? "draft") !== "draft" && !current?.["parent_order_id"]) {
         const dup = await findDuplicateInvoice({
           currentId: id,
           customerId: (form["customer_id"] as string | null) || null,

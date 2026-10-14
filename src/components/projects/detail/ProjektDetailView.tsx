@@ -278,7 +278,7 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
         <section className="surface space-y-4 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">Raumbuch</h2>
+              <h2 className="text-lg font-semibold">Raumbuch / Aufmaß</h2>
               <p className="text-sm text-muted-foreground">
                 {rooms.length} von {expected} Räumen erkannt · {confirmedRooms} geprüft
               </p>
@@ -286,6 +286,21 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
             <Button variant="outline" onClick={() => addRoom.mutate()}>
               <Plus className="size-4" /> Raum ergänzen
             </Button>
+            {rooms.length > 0 && (
+              <Button asChild variant="outline">
+                <Link
+                  to="/kalkulation"
+                  search={{
+                    area: totalSqm,
+                    objekt: project.name || "",
+                    belag: topCover[0]?.[0] ?? "",
+                    projekt: project.id,
+                  }}
+                >
+                  <Calculator className="size-4" /> Bodenfläche kalkulieren
+                </Link>
+              </Button>
+            )}
           </div>
 
           {rooms.length === 0 ? (
@@ -301,7 +316,8 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
                     <th className="py-2 pr-3">Raum</th>
                     <th className="py-2 pr-3">Etage</th>
                     <th className="py-2 pr-3">Nutzung</th>
-                    <th className="py-2 pr-3 text-right">m²</th>
+                    <th className="py-2 pr-3 text-right">Boden m²</th>
+                    <th className="py-2 pr-3 text-right">Glas m²</th>
                     <th className="py-2 pr-3">Bodenbelag</th>
                     <th className="py-2 pr-3">Geprüft</th>
                     <th className="py-2" />
@@ -322,6 +338,9 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
                       <td className="py-2 pr-3">{r.floor}</td>
                       <td className="py-2 pr-3">{r.usage_type}</td>
                       <td className="py-2 pr-3 text-right">{formatNumber(Number(r.area_sqm))}</td>
+                      <td className="py-2 pr-3 text-right">
+                        {formatNumber(Number(r.glass_sqm ?? 0))}
+                      </td>
                       <td className="py-2 pr-3">{r.floor_covering}</td>
                       <td className="py-2 pr-3">
                         <Checkbox

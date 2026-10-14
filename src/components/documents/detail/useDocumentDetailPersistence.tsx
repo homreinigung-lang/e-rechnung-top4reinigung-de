@@ -208,6 +208,10 @@ export function useDocumentDetailPersistence(input: {
         cancelled_by_document_id: _cb,
         storno_reason: _sr,
         converted_document_id: _cv,
+        approved_at: _approved,
+        completed_at: _completed,
+        approval_note: _approvalNote,
+        parent_order_id: _parentOrder,
         paid_at: _pa,
         reminder_level: _rl,
         last_reminder_at: _lr,
@@ -220,6 +224,7 @@ export function useDocumentDetailPersistence(input: {
         .from("documents")
         .insert({
           ...rest,
+          ...(doc["type"] === "quote" ? { parent_order_id: _parentOrder } : {}),
           user_id: userId,
           number: nextNr,
           status: "draft",

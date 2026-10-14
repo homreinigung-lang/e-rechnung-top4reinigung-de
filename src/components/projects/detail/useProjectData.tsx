@@ -29,6 +29,7 @@ export function useProjectData() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["project", id] });
     queryClient.invalidateQueries({ queryKey: ["project_rooms", id] });
+    queryClient.invalidateQueries({ queryKey: ["raumbuch-kalkulation", id] });
     queryClient.invalidateQueries({ queryKey: ["project_lv", id] });
     queryClient.invalidateQueries({ queryKey: ["project_assignments", id] });
   };

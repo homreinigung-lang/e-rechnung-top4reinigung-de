@@ -14,6 +14,7 @@ import {
 export type RaumbuchInfo = {
   roomCount: number;
   totalArea: number;
+  totalGlassArea: number;
   /** Stunden je Reinigungsdurchgang aus den Raumflächen. */
   hoursPerVisit: number;
   matched: number;
@@ -39,7 +40,7 @@ export function useRaumbuch(projectId: string | null) {
       const [roomsRes, ratesRes, projectRes] = await Promise.all([
         supabase
           .from("project_rooms")
-          .select("name, usage_type, floor_covering, area_sqm")
+          .select("name, usage_type, floor_covering, area_sqm, glass_sqm")
           .eq("project_id", projectId),
         supabase
           .from("performance_rates")
@@ -55,9 +56,11 @@ export function useRaumbuch(projectId: string | null) {
         usage_type: r.usage_type ?? "",
         floor_covering: r.floor_covering ?? "",
         area_sqm: Number(r.area_sqm || 0),
+        glass_sqm: Number(r.glass_sqm || 0),
       }));
       const totalArea = rooms.reduce((s, r) => s + r.area_sqm, 0);
-      if (rooms.length === 0 || totalArea <= 0) return null;
+      const totalGlassArea = rooms.reduce((s, r) => s + r.glass_sqm, 0);
+      if (rooms.length === 0 || (totalArea <= 0 && totalGlassArea <= 0)) return null;
 
       const rates = (ratesRes.data ?? []) as PerformanceRate[];
       const usable = rates.length > 0 ? rates : fallbackRates();
@@ -67,6 +70,7 @@ export function useRaumbuch(projectId: string | null) {
       return {
         roomCount: rooms.length,
         totalArea: Math.round(totalArea * 100) / 100,
+        totalGlassArea: Math.round(totalGlassArea * 100) / 100,
         hoursPerVisit: Math.round(hours * 100) / 100,
         matched,
         unmatched,
