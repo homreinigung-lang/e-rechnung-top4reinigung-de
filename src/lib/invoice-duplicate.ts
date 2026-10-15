@@ -18,6 +18,7 @@ export async function findDuplicateInvoice(params: {
     .from("documents")
     .select("id, number, status, service_period, is_storno, deleted_at")
     .eq("type", "invoice")
+    .is("parent_order_id", null)
     .eq("customer_id", params.customerId)
     .is("deleted_at", null)
     .neq("id", params.currentId);

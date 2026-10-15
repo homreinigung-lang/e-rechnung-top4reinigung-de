@@ -134,6 +134,7 @@ export function useKalkulationForm() {
       return;
     }
     setArea(String(raumbuch.totalArea).replace(".", ","));
+    setGlassArea(String(raumbuch.totalGlassArea).replace(".", ","));
     if (raumbuch.hoursPerVisit > 0) setHours(String(raumbuch.hoursPerVisit).replace(".", ","));
     setRaumbuchApplied(true);
   }, [raumbuch]);

@@ -54,7 +54,11 @@ export function useDocumentViewData(input: {
   const doc = data.doc;
   const docRecord = doc as unknown as Record<string, unknown>;
   const lockedAt = (docRecord["locked_at"] as string | null) ?? null;
-  const locked = Boolean(lockedAt);
+  const locked =
+    Boolean(lockedAt) ||
+    Boolean(
+      docRecord["parent_order_id"] && docRecord["type"] === "quote" && docRecord["approved_at"],
+    );
   // A finalized invoice is not proof of successful email delivery.
   const emailPending =
     doc.type === "invoice" && locked && !docRecord["sent_at"] && doc.status === "sent";

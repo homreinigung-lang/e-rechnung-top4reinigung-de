@@ -61,6 +61,7 @@ export function DocumentEditor({ state }: { state: DocumentDetailStateContext })
         onTaxModeChange: (value) => setField("tax_mode", value),
       }}
       metadata={{
+        isSupplement: Boolean(data?.doc.parent_order_id),
         isInvoice,
         isOrder,
         isPrivat,

@@ -9,6 +9,9 @@ export type Room = {
   floor: string;
   usage_type: string;
   area_sqm: number;
+  length_m?: number | null;
+  width_m?: number | null;
+  glass_sqm?: number;
   floor_covering: string;
   frequency: string;
   note: string;

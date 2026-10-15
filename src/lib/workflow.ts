@@ -2,8 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/lib/gobd";
 import { addDays, today } from "@/lib/format";
 import { draftPlaceholderNumber, ensureOfficialNumber } from "@/lib/doc-number";
-import { assertInvoiceActionAllowed, assertInvoicePaymentReversible } from "@/lib/invoice-action-eligibility";
-import { assertQuoteDecisionAllowed, assertQuoteCompletionAllowed } from "@/lib/quote-decision-eligibility";
+import {
+  assertInvoiceActionAllowed,
+  assertInvoicePaymentReversible,
+} from "@/lib/invoice-action-eligibility";
+import {
+  assertQuoteDecisionAllowed,
+  assertQuoteCompletionAllowed,
+} from "@/lib/quote-decision-eligibility";
 import { assertDocumentConversionAllowed } from "@/lib/document-conversion-eligibility";
 
 async function currentUserId(): Promise<string> {
@@ -152,7 +158,8 @@ export async function unmarkInvoicePaid(id: string): Promise<void> {
     .eq("is_storno", false)
     .select("id");
   if (updateError) throw updateError;
-  if (!updated?.length) throw new Error("Der Rechnungsstatus hat sich geändert. Bitte erneut laden.");
+  if (!updated?.length)
+    throw new Error("Der Rechnungsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("payment_reverted", { id, number: doc.number }, {});
 }
 
@@ -174,7 +181,8 @@ export async function setQuoteDecision(id: string, decision: "accepted" | "decli
     .or("is_storno.is.false,is_storno.is.null")
     .select("id");
   if (updateError) throw updateError;
-  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
+  if (!updated?.length)
+    throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   if (decision === "accepted") await ensureOfficialNumber(id);
   await logAudit(decision === "accepted" ? "quote_accepted" : "quote_declined", doc, {});
 }
@@ -201,7 +209,8 @@ export async function declineQuote(id: string, reason: string): Promise<void> {
     .or("is_storno.is.false,is_storno.is.null")
     .select("id");
   if (updateError) throw updateError;
-  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
+  if (!updated?.length)
+    throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("quote_declined", { id, number: doc.number }, { reason: trimmed });
 }
 
@@ -223,7 +232,8 @@ export async function completeQuote(id: string): Promise<void> {
     .or("is_storno.is.false,is_storno.is.null")
     .select("id");
   if (updateError) throw updateError;
-  if (!updated?.length) throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
+  if (!updated?.length)
+    throw new Error("Der Angebotsstatus hat sich geändert. Bitte erneut laden.");
   await logAudit("quote_completed", { id, number: doc.number }, {});
 }
 
@@ -244,6 +254,14 @@ async function convertDocument(sourceId: string, target: "order" | "invoice"): P
     .single();
   if (error) throw error;
 
+  if (src.parent_order_id) {
+    if (target !== "invoice")
+      throw new Error("Nachträge werden nach Freigabe und Ausführung direkt abgerechnet.");
+    await ensureOfficialNumber(sourceId);
+    const { data, error } = await supabase.rpc("invoice_supplement", { _id: sourceId });
+    if (error) throw error;
+    return data;
+  }
   assertDocumentConversionAllowed(src, target);
 
   // Der Quellbeleg wird mit der Umwandlung verbindlich – offizielle Nummer vergeben.
@@ -369,7 +387,6 @@ export async function convertQuoteToOrder(quoteId: string): Promise<string> {
 export async function convertQuoteToInvoice(quoteId: string): Promise<string> {
   return convertDocument(quoteId, "invoice");
 }
-
 
 /** Auftragsbestätigung in eine Rechnung (Entwurf) umwandeln. */
 export async function convertOrderToInvoice(orderId: string): Promise<string> {
