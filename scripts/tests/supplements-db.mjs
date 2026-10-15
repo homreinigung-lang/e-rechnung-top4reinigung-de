@@ -27,9 +27,11 @@ add vat_rate numeric not null default 19, add title text not null default '', ad
 add discount_percent numeric not null default 0, add discount_amount numeric not null default 0,
 add net_total numeric not null default 0, add vat_amount numeric not null default 0,
 add deleted_at timestamptz, add converted_document_id uuid references public.documents(id),
-add completed_placeholder text, add service_period text not null default '',
+add customer_phone text not null default '', add service_description text not null default '',
+add attachment_title text not null default '', add attachment_text text not null default '',
+add discount_reason text not null default '', add service_period text not null default '',
 add locked_at timestamptz, add pdf_path text not null default '', add pdf_sha256 text not null default '',
-add archived_at timestamptz, add retention_until date, add paid_at date, add reminder_level int not null default 0,
+add archived_at timestamptz, add retention_until date generated always as ((issue_date + interval '10 years')::date) stored, add paid_at date, add reminder_level int not null default 0,
 add last_reminder_at timestamptz, add recurring_invoice_id uuid, add recurring_run_date date;
 alter table public.document_items add is_optional boolean not null default false;
 create table public.project_rooms(id uuid primary key default gen_random_uuid());
@@ -42,6 +44,15 @@ const migration = await readFile(
   "utf8",
 );
 await db.exec(migration);
+await db.exec(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261015064420_fix_supplement_invoice_generated_columns.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 const owner = "11111111-1111-1111-1111-111111111111",
   other = "22222222-2222-2222-2222-222222222222";
 await db.query("insert into auth.users values ($1),($2)", [owner, other]);
@@ -105,6 +116,11 @@ assert.equal(
 assert.equal(
   Number((await q("select total from public.documents where id=$1", [invoice]))[0].total),
   35.7,
+);
+assert.deepEqual(
+  (await q("select retention_until from public.documents where id=$1", [invoice]))[0]
+    .retention_until,
+  (await q("select retention_until from public.documents where id=$1", [id]))[0].retention_until,
 );
 assert.deepEqual((await q("select * from public.documents where id=$1", [order]))[0], before);
 assert.equal((await q("select * from public.document_audit_log")).length, 4);

@@ -27,7 +27,8 @@ unbefristeten Unterhaltsreinigung.
 ## Bereitstellung
 
 Vor Veröffentlichung des neuen Frontends muss die Migration
-`20261014221452_aufmass_nachtraege.sql` im Zielprojekt ausgeführt werden.
+`20261014221452_aufmass_nachtraege.sql` und anschließend
+`20261015064420_fix_supplement_invoice_generated_columns.sql` im Zielprojekt ausgeführt werden.
 Der Branch ändert keine Live-Daten und veröffentlicht das Programm nicht.
 Die bestehenden mandantenbezogenen RLS-Regeln bleiben aktiv; neue RPCs sind
 `SECURITY INVOKER` und ausschließlich für `authenticated` aufrufbar.
