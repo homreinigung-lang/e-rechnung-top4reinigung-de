@@ -1,0 +1,28 @@
+name: Validate TanStack security fix
+on:
+  push:
+    branches:
+      - security/fix-tanstack-xss-2026
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          bun-version: '1.4.2'
+      - name: Install patched dependencies
+        run: bun install --frozen-lockfile
+      - name: Audit
+        run: bun audit --audit-level=high
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Test
+        run: bun run test
+      - name: Build
+        run: bun run build
