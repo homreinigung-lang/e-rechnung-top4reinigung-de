@@ -12,6 +12,8 @@ type GeminiJsonOptions = {
   validate?: (value: Record<string, unknown>) => boolean;
   timeoutMs?: number;
   maxOutputTokens?: number;
+  /** Only workflows that allow a model change may fall back on quota errors. */
+  fallbackOnQuota?: boolean;
 };
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
@@ -79,6 +81,7 @@ export async function generateGeminiJson({
   validate,
   timeoutMs = 60_000,
   maxOutputTokens,
+  fallbackOnQuota = false,
 }: GeminiJsonOptions): Promise<Record<string, unknown>> {
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
@@ -168,7 +171,12 @@ export async function generateGeminiJson({
         throw new Error("KI-Zugang ist nicht korrekt konfiguriert.");
       }
       if (lastStatus === 429) {
-        throw new Error("KI-Limit erreicht. Bitte später erneut versuchen.");
+        // A model can have no quota on the project's tier, even on its first request.
+        // Try the configured fallback once; repeating the same model cannot fix that.
+        if (fallbackOnQuota && modelIndex < models.length - 1) break;
+        throw new Error(
+          "Google-Gemini-Kontingent für die KI-Modelle nicht verfügbar oder ausgeschöpft. Bitte Modellfreigabe und Kontingent des Google-Projekts prüfen.",
+        );
       }
       // A missing/retired model should switch immediately to the fallback.
       if (lastStatus === 404 && modelIndex < models.length - 1) break;
