@@ -163,7 +163,7 @@ export function useKalkulationForm() {
     area: number;
     hours: number;
     frequency: number;
-    frequencyUnit: "week" | "month";
+    frequencyUnit: RecurrenceUnit;
     pricePerSqm: number;
     hourlyRate: number;
     floors: number;

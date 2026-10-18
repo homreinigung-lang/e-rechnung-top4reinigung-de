@@ -19,6 +19,13 @@ export const WEEKS_PER_MONTH_LABEL = "4,33";
 /** Unterstützte Turnusse für wiederkehrende Leistungen. */
 export type RecurrenceUnit = "week" | "fortnight" | "month" | "quarter" | "year";
 
+/** Restore only supported saved periods; retain the historic fallback for unknown values. */
+export function readRecurrenceUnit(value: unknown): RecurrenceUnit {
+  return value === "week" || value === "fortnight" || value === "quarter" || value === "year"
+    ? value
+    : "month";
+}
+
 /**
  * Verbindliche Jahresbasis für Einsatzmengen.
  * Wochenbasierte Turnusse werden immer aus 52 Wochen/Jahr abgeleitet.

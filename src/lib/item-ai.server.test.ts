@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { generateCalculation } from "./item-ai.server";
 import { generateGeminiJson } from "./gemini-json.server";
 import { normalizeItems, positionsTotal } from "./kalkulation-engine";
+import { visitsPerYear, visitsPerMonth } from "./constants";
 
 vi.mock("./gemini-json.server", () => ({
   generateGeminiJson: vi.fn(async () => ({
@@ -97,6 +98,45 @@ describe("KI-Kalkulation für Praxisreinigung", () => {
 });
 
 describe("KI-Kalkulation nach Auftragsart", () => {
+  it.each([
+    ["2x monatlich", 2, "month", 24, 100, 36],
+    ["alle 2 Wochen", 1, "fortnight", 26, 108.33, 39],
+    ["14-tägig", 1, "fortnight", 26, 108.33, 39],
+    ["1x wöchentlich", 1, "week", 52, 216.67, 78],
+  ] as const)(
+    "behält Anzahl und Zeitraum für %s bis zur Jahresmenge",
+    async (rhythm, frequency, unit, annual, stairs, corridor) => {
+      const result = await generateCalculation(
+        `Treppenhausreinigung 4 Etagen ${rhythm} plus 30 m² Flur`,
+      );
+      expect(result.frequency).toBe(frequency);
+      expect(result.frequency_unit).toBe(unit);
+      expect(visitsPerYear(result.frequency, result.frequency_unit)).toBe(annual);
+      expect(visitsPerMonth(result.frequency, result.frequency_unit)).toBeCloseTo(annual / 12);
+      expect(result.items.map((i) => i.unit_price)).toEqual([stairs, corridor]);
+      if (unit === "fortnight") expect(result.items[0]?.description).toContain("1× alle 2 Wochen");
+    },
+  );
+
+  it.each([
+    [2, "month", 100, 36],
+    [1, "fortnight", 108.33, 39],
+    [1, "week", 216.67, 78],
+    [1, "quarter", 16.67, 6],
+    [1, "year", 4.17, 1.5],
+  ] as const)(
+    "berechnet mit der expliziten Auswahl %s / %s statt dem alten Beschreibungsturnus",
+    async (value, unit, stairs, corridor) => {
+      const result = await generateCalculation(
+        "Treppenhausreinigung 4 Etagen 2x monatlich plus 30 m² Flur",
+        { value, unit },
+      );
+      expect(result.frequency).toBe(value);
+      expect(result.frequency_unit).toBe(unit);
+      expect(result.review_questions).toEqual([]);
+      expect(result.items.map((i) => i.unit_price)).toEqual([stairs, corridor]);
+    },
+  );
   it.each([
     "Treppenhausreinigung 4 Etagen, zweimal monatlich, zusätzlich 30 m² Flur. Flurreinigung separat ausweisen und berechnen.",
     "Treppenhausreinigung 4 Etagen 2 mall monatlich mit Flur 30 qm",

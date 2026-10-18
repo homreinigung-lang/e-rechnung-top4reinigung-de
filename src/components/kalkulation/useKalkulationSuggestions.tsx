@@ -6,7 +6,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { calculateRooms, replaceScannedRooms, roomsFromScan } from "@/lib/room-calculation";
 import { analyzeProject } from "@/lib/project-scan.functions";
 
-import { visitsPerMonth as calculateVisitsPerMonth, visitsPerYear } from "@/lib/constants";
+import {
+  visitsPerMonth as calculateVisitsPerMonth,
+  visitsPerYear,
+  type RecurrenceUnit,
+} from "@/lib/constants";
 import { fileUrl } from "@/lib/storage";
 
 import { detectStairs, normalizeItems, round2 } from "@/lib/kalkulation-engine";
@@ -102,7 +106,8 @@ export function useKalkulationSuggestions(input: {
     updateAttachment,
   } = input;
   const aiSuggest = useMutation({
-    mutationFn: async () => analyze({ data: { prompt: aiPrompt } }),
+    mutationFn: async (recurrence?: { value: number; unit: RecurrenceUnit }) =>
+      analyze({ data: { prompt: aiPrompt, recurrence } }),
     onMutate: () => {
       setKiItems([]);
       setAiReviewQuestions([]);
@@ -300,12 +305,12 @@ export function useKalkulationSuggestions(input: {
 
   /** Einsätze immer aus der exakten Jahresmenge auf den Monatsdurchschnitt umgerechnet. */
   const visitsPerMonth = useMemo(() => {
-    const times = Math.max(1, num(frequency) || 1);
+    const times = num(frequency);
     return calculateVisitsPerMonth(times, frequencyUnit);
   }, [frequency, frequencyUnit]);
 
   const annualVisits = useMemo(() => {
-    const times = Math.max(1, num(frequency) || 1);
+    const times = num(frequency);
     return visitsPerYear(times, frequencyUnit);
   }, [frequency, frequencyUnit]);
 

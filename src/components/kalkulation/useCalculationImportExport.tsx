@@ -1,4 +1,5 @@
 import { readRoomCalculation } from "@/lib/room-calculation";
+import { readRecurrenceUnit } from "@/lib/constants";
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -141,7 +142,7 @@ export function useCalculationImportExport(input: {
       setHours(dec(head.hours));
       setHourlyRate(dec(head.hourly_rate));
       setFrequency(dec(head.frequency));
-      setFrequencyUnit(head.frequency_unit === "week" ? "week" : "month");
+      setFrequencyUnit(readRecurrenceUnit(head.frequency_unit));
       setTravel(dec(head.travel));
       setExtras(head.extras ?? []);
       setStairs(head.stairs);

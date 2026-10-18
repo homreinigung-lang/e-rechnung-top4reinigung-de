@@ -1,9 +1,22 @@
 import { AlertTriangle, Sparkles, Trash2 } from "lucide-react";
 import { formatMoney, formatNumber, parseGermanNumber } from "@/lib/format";
-import { STAIR_RATE_PER_FLOOR, recurrenceUnitLabel } from "@/lib/constants";
+import {
+  STAIR_RATE_PER_FLOOR,
+  recurrenceUnitLabel,
+  visitsPerYear as annualVisitsFor,
+  type RecurrenceUnit,
+} from "@/lib/constants";
 import { round2 } from "@/lib/kalkulation-engine";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
@@ -11,6 +24,7 @@ import type { KalkulationStateContext } from "./useKalkulationState";
 export function SuggestedPositions({ state }: { state: KalkulationStateContext }) {
   const {
     aiReviewQuestions,
+    aiSuggest,
     annualVisits,
     applyKiAnalysis,
     area,
@@ -24,6 +38,7 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
     kiBillingPeriod,
     kiItemChanged,
     kiItems,
+    kiPrompt,
     kiOutOfSync,
     kiPositions,
     kiPricingBasis,
@@ -33,6 +48,8 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
     patchKiItem,
     pricePerSqm,
     setKiItems,
+    setFrequency,
+    setFrequencyUnit,
     visitsPerMonth,
   } = state;
   return (
@@ -47,6 +64,65 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {(kiBasis || kiPrompt) && kiBillingPeriod === "month" && (
+          <div className="space-y-3 rounded-md border p-3">
+            {kiBasis ? (
+              <>
+                <p className="text-sm font-medium">
+                  Berechneter Rhythmus: {formatNumber(kiBasis.frequency)}{" "}
+                  {kiBasis.frequency === 1 ? "Einsatz" : "Einsätze"}{" "}
+                  {recurrenceUnitLabel(kiBasis.frequencyUnit)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatNumber(annualVisitsFor(kiBasis.frequency, kiBasis.frequencyUnit))} Einsätze
+                  pro Jahr. Die Abrechnungsmenge „1 Monat“ umfasst diese regelmäßigen Einsätze.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm font-medium">Reinigungsrhythmus festlegen</p>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="ki-frequency">Anzahl Einsätze</Label>
+                <Input
+                  id="ki-frequency"
+                  inputMode="decimal"
+                  value={frequency}
+                  onChange={(e) => setFrequency(e.target.value)}
+                  disabled={aiSuggest.isPending}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ki-frequency-unit">Zeitraum</Label>
+                <Select
+                  value={frequencyUnit}
+                  onValueChange={(v) => setFrequencyUnit(v as RecurrenceUnit)}
+                  disabled={aiSuggest.isPending}
+                >
+                  <SelectTrigger id="ki-frequency-unit">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Pro Woche</SelectItem>
+                    <SelectItem value="fortnight">Alle 2 Wochen (14-tägig)</SelectItem>
+                    <SelectItem value="month">Pro Monat</SelectItem>
+                    <SelectItem value="quarter">Pro Quartal</SelectItem>
+                    <SelectItem value="year">Pro Jahr</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={aiSuggest.isPending || num(frequency) <= 0}
+              onClick={() => aiSuggest.mutate({ value: num(frequency), unit: frequencyUnit })}
+            >
+              Mit diesem Rhythmus neu berechnen
+            </Button>
+          </div>
+        )}
         {kiItems.length === 0 ? (
           <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
             Noch keine KI-Positionen. Auftrag oben beschreiben oder einen Grundriss im Tab
@@ -67,25 +143,41 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
                 key={i.id}
                 className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center"
               >
-                <Input
-                  value={i.description}
-                  placeholder="Leistung"
-                  onChange={(e) => patchKiItem(i.id, { description: e.target.value })}
-                />
-                <Input
-                  inputMode="decimal"
-                  value={i.quantity}
-                  onChange={(e) => patchKiItem(i.id, { quantity: e.target.value })}
-                />
-                <Input
-                  value={i.unit}
-                  onChange={(e) => patchKiItem(i.id, { unit: e.target.value })}
-                />
-                <Input
-                  inputMode="decimal"
-                  value={i.unit_price}
-                  onChange={(e) => patchKiItem(i.id, { unit_price: e.target.value })}
-                />
+                <label className="space-y-1">
+                  <span className="text-xs text-muted-foreground sm:hidden">Leistung</span>
+                  <Input
+                    value={i.description}
+                    placeholder="Leistung"
+                    onChange={(e) => patchKiItem(i.id, { description: e.target.value })}
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-muted-foreground sm:hidden">Abrechnungsmenge</span>
+                  <Input
+                    inputMode="decimal"
+                    value={i.quantity}
+                    onChange={(e) => patchKiItem(i.id, { quantity: e.target.value })}
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-muted-foreground sm:hidden">
+                    Abrechnungseinheit
+                  </span>
+                  <Input
+                    value={i.unit}
+                    onChange={(e) => patchKiItem(i.id, { unit: e.target.value })}
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-muted-foreground sm:hidden">
+                    Preis je Abrechnungseinheit (netto)
+                  </span>
+                  <Input
+                    inputMode="decimal"
+                    value={i.unit_price}
+                    onChange={(e) => patchKiItem(i.id, { unit_price: e.target.value })}
+                  />
+                </label>
                 <span className="text-right text-sm tabular-nums">
                   {formatMoney(round2(num(i.quantity) * parseGermanNumber(i.unit_price)))}
                 </span>
