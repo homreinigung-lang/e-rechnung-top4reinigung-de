@@ -117,6 +117,30 @@ function explicitArea(prompt: string): number {
   return match ? num(match[1]) : 0;
 }
 
+/** Only split an explicitly additional corridor with one unambiguous area.
+ * Total/included areas must keep their existing calculation without a surcharge.
+ */
+function additionalCorridorArea(prompt: string): number {
+  const text = normalizedText(prompt);
+  if (
+    !/\b(?:mit|zusätzlich|zusaetzlich|zusätzlicher|zusaetzlicher|plus|separat)\b/.test(text) ||
+    /\b(?:gesamt\w*|insgesamt|inkl\w*|einschließlich|einschliesslich|enthalten)\b/.test(text)
+  )
+    return 0;
+  const areaPattern = /(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(?:m2|qm|quadratmeter)\b/g;
+  const areas = [...text.matchAll(areaPattern)];
+  if (areas.length !== 1) return 0;
+  const area = areas[0]!;
+  const before = text.slice(0, area.index).trim();
+  const after = text.slice(area.index + area[0].length).trim();
+  return /\bflur(?:fläche|flaeche|reinigung)?\s*(?:(?:mit|von|ca\.?)\s*)?$/.test(before) ||
+    /^(?:zusätzliche[rnms]?\s+|zusaetzliche[rnms]?\s+)?flur(?:fläche|flaeche|reinigung)?\b/.test(
+      after,
+    )
+    ? num(area[1])
+    : 0;
+}
+
 function explicitFrequency(prompt: string): { value: number; unit: "week" | "month" } | null {
   const text = normalizedText(prompt).replace(/inderwoche/g, "in der woche");
   const connector = "(?:pro\\s+|in\\s+der\\s+|inder\\s+|im\\s+|die\\s+|je\\s+|/\\s*)?";
@@ -316,7 +340,12 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
 
   const recurring = ["praxis", "buero", "unterhalt", "treppenhaus"].includes(cleaningType);
   const statedArea = explicitArea(prompt);
-  const area = statedArea;
+  const floors = explicitFloors(prompt);
+  const corridorArea =
+    cleaningType === "treppenhaus" && floors > 0 ? additionalCorridorArea(prompt) : 0;
+  // The corridor's m² are not the staircase's area. Keep the staircase on
+  // its floor basis and add the corridor as its own proposal below.
+  const area = corridorArea > 0 ? 0 : statedArea;
 
   const statedFrequency = explicitFrequency(prompt);
   const annualFrequency =
@@ -347,10 +376,25 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
     /(\d+(?:[.,]\d+)?)\s*(?:stunden?|std\.?|h)\b(?:\s*(?:pro|je)\s*(?:einsatz|besuch|reinigung))?/i,
   );
   const hours = hoursMatch ? num(hoursMatch[1]) : 0;
-  const floors = explicitFloors(prompt);
   const pricingBasis = area > 0 ? "area" : hours > 0 ? "hours" : "floor";
 
   const reviewQuestions: string[] = [];
+  if (corridorArea > 0 && hours > 0) {
+    reviewQuestions.push(
+      "Beziehen sich die Stunden auf das Treppenhaus, den Flur oder beide Leistungen?",
+    );
+  }
+  if (corridorArea > 0) {
+    const frequencies = prompt
+      .split(/[,;!\n]|\bflur(?:reinigung)?\b/i)
+      .map(explicitFrequency)
+      .filter((v) => v !== null);
+    if (frequencies.some((v) => v.value !== frequency || v.unit !== frequencyUnit)) {
+      reviewQuestions.push(
+        "Bitte Treppenhaus und Flur mit ihrem jeweiligen Turnus getrennt kalkulieren.",
+      );
+    }
+  }
   if (ambiguousDaily)
     reviewQuestions.push(
       "An welchen Tagen wird gereinigt: Montag bis Freitag, sieben Tage oder ein anderer Turnus?",
@@ -394,7 +438,10 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
       "Sanitär, Desinfektion, Abfall und Materialeinsatz vor dem Angebot abstimmen.",
     );
   }
-  if ((area > 0 && !statedSqmPrice) || (area <= 0 && hours > 0 && !statedHourlyRate)) {
+  if (
+    ((area > 0 || corridorArea > 0) && !statedSqmPrice) ||
+    (area <= 0 && hours > 0 && !statedHourlyRate)
+  ) {
     reviewNotes.push(
       "Der verwendete Einheitspreis ist ein Richtwert. Eigene Kosten und vereinbarten Preis prüfen.",
     );
@@ -417,6 +464,30 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
   // Die KI liefert nur Kontext. Mengen, Turnus und zusätzliche Positionen
   // dürfen ohne eindeutige Angaben nicht in das Angebot geraten.
   const items = reviewQuestions.length === 0 && baseItem ? [baseItem] : [];
+  if (items.length > 0 && corridorArea > 0) {
+    const corridorItem = deterministicBaseItem({
+      type: cleaningType,
+      area: corridorArea,
+      hours: 0,
+      floors: 0,
+      frequency,
+      frequencyUnit,
+      billingPeriod,
+      pricePerSqm,
+      hourlyRate,
+    });
+    if (corridorItem)
+      items.push({
+        ...corridorItem,
+        description: corridorItem.description.replace(
+          "Treppenhausreinigung",
+          "Zusätzliche Flurreinigung",
+        ),
+      });
+    reviewNotes.push(
+      "Treppenhaus nach Etagen und zusätzlicher Flur nach m² getrennt kalkuliert. Prüfen, dass der Flur nicht bereits im Etagenpreis enthalten ist.",
+    );
+  }
 
   return {
     cleaning_type: cleaningType,
@@ -436,7 +507,7 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
     review_notes: reviewNotes,
     billing_period: billingPeriod,
     price_source:
-      area > 0
+      area > 0 || corridorArea > 0
         ? statedSqmPrice > 0
           ? "stated"
           : "estimate"
