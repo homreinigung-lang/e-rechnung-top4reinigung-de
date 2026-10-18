@@ -1,3 +1,5 @@
+import { calculateRooms } from "@/lib/room-calculation";
+import type { Json } from "@/integrations/supabase/types";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -10,6 +12,7 @@ import type { useCalculationTotals } from "./useCalculationTotals";
 import type { useKalkulationSuggestions } from "./useKalkulationSuggestions";
 
 export function useCalculationSave(input: {
+  roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
   area: ReturnType<typeof useKalkulationForm>["area"];
   calcId: ReturnType<typeof useKalkulationForm>["calcId"];
   calcTitle: ReturnType<typeof useKalkulationForm>["calcTitle"];
@@ -45,6 +48,7 @@ export function useCalculationSave(input: {
   type: ReturnType<typeof useKalkulationForm>["type"];
 }) {
   const {
+    roomCalculation,
     area,
     calcId,
     calcTitle,
@@ -85,19 +89,23 @@ export function useCalculationSave(input: {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
 
+      const rooms = calculateRooms(roomCalculation, num(hourlyRate));
+      if (roomCalculation.enabled && rooms.errors.length > 0)
+        throw new Error(rooms.errors.join(" "));
       const payload = {
         user_id: userId,
         project_id: projectId,
         title: calcTitle.trim() || proposalTitle.trim() || selected.label,
         cleaning_type: type,
-        mode,
-        area_sqm: num(area),
+        room_calculation: roomCalculation as unknown as Json,
+        mode: roomCalculation.enabled ? "hours" : mode,
+        area_sqm: roomCalculation.enabled ? rooms.area : num(area),
         glass_sqm: num(glassArea),
         price_per_sqm: num(pricePerSqm),
-        hours: num(hours),
+        hours: roomCalculation.enabled ? rooms.monthlyHours : num(hours),
         hourly_rate: num(hourlyRate),
-        frequency: num(frequency),
-        frequency_unit: frequencyUnit,
+        frequency: roomCalculation.enabled ? 1 : num(frequency),
+        frequency_unit: roomCalculation.enabled ? "month" : frequencyUnit,
         travel: num(travel),
         extras,
         stairs,

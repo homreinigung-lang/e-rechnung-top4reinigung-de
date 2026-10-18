@@ -1,3 +1,4 @@
+import { RoomCalculationEditor } from "./RoomCalculationEditor";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { toast } from "sonner";
 import { FileText, Sparkles, Trash2 } from "lucide-react";
@@ -30,8 +31,8 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
       <div>
         <Label>Grundrisse & Fotos</Label>
         <p className="text-xs text-muted-foreground">
-          PDF-Grundrisse oder Fotos (JPG, PNG) hochladen – nur zur internen Ablage und für Notizen.
-          m², Räume und Etagen tragen Sie bitte manuell ein.
+          PDF-Grundrisse oder Fotos hochladen und analysieren. Erkannte Räume unten prüfen,
+          Leistungswerte und Reinigungsrhythmus festlegen und die Raumstunden übernehmen.
         </p>
       </div>
       <FileUploadButton
@@ -99,7 +100,13 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => setAttachments((prev) => prev.filter((x) => x.path !== a.path))}
+                    onClick={() => {
+                      setAttachments((prev) => prev.filter((x) => x.path !== a.path));
+                      state.setRoomCalculation((current) => ({
+                        ...current,
+                        rooms: current.rooms.filter((room) => room.source !== a.path),
+                      }));
+                    }}
                     aria-label="Entfernen"
                   >
                     <Trash2 className="size-4" />
@@ -160,6 +167,7 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
                     size="sm"
                     disabled={num(a.sqm) <= 0}
                     onClick={() => {
+                      state.setRoomCalculation((current) => ({ ...current, enabled: false }));
                       setMode("area");
                       setArea(a.sqm);
                       toast.success("Fläche in die Kalkulation übernommen");
@@ -219,6 +227,7 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
                 size="sm"
                 className="mt-2"
                 onClick={() => {
+                  state.setRoomCalculation((current) => ({ ...current, enabled: false }));
                   setMode("area");
                   setArea(String(analysisTotals.sqm));
                   toast.success("Gesamtfläche übernommen");
@@ -230,6 +239,7 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
           </div>
         </>
       )}
+      <RoomCalculationEditor state={state} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 
+import { calculateRooms, replaceScannedRooms, roomsFromScan } from "@/lib/room-calculation";
 import { analyzeProject } from "@/lib/project-scan.functions";
 
 import { visitsPerMonth as calculateVisitsPerMonth, visitsPerYear } from "@/lib/constants";
@@ -15,6 +16,9 @@ import { CLEANING_TYPES, EXTRAS, num, type Attachment, type AiItem, KI_SECTION }
 import type { useKalkulationForm } from "./useKalkulationForm";
 
 export function useKalkulationSuggestions(input: {
+  roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
+  setRoomCalculation: ReturnType<typeof useKalkulationForm>["setRoomCalculation"];
+  visiblePerformanceRates: ReturnType<typeof useKalkulationForm>["visiblePerformanceRates"];
   aiPrompt: ReturnType<typeof useKalkulationForm>["aiPrompt"];
   analyze: ReturnType<typeof useKalkulationForm>["analyze"];
   attachments: ReturnType<typeof useKalkulationForm>["attachments"];
@@ -55,6 +59,9 @@ export function useKalkulationSuggestions(input: {
   updateAttachment: ReturnType<typeof useKalkulationForm>["updateAttachment"];
 }) {
   const {
+    roomCalculation,
+    setRoomCalculation,
+    visiblePerformanceRates,
     aiPrompt,
     analyze,
     attachments,
@@ -217,6 +224,13 @@ export function useKalkulationSuggestions(input: {
       return { a, scan };
     },
     onSuccess: ({ a, scan }) => {
+      setRoomCalculation((current) =>
+        replaceScannedRooms(
+          current,
+          a.path,
+          roomsFromScan(a.path, scan.rooms, visiblePerformanceRates),
+        ),
+      );
       const sqm = scan.rooms.reduce((s, r) => s + Number(r.area_sqm || 0), 0);
       const floorSet = new Set(scan.rooms.map((r) => r.floor).filter(Boolean));
       updateAttachment(a.path, {
@@ -233,10 +247,7 @@ export function useKalkulationSuggestions(input: {
         setArea(String(Math.round(sqm * 100) / 100).replace(".", ","));
       }
 
-      if (floorSet.size > 1) {
-        setStairs(true);
-        setFloors(String(floorSet.size));
-      }
+      if (floorSet.size > 0) setFloors(String(floorSet.size));
       if (scan.requirements.length > 0) {
         const line = `Kundenanforderungen: ${scan.requirements.join("; ")}`;
         setNote((prev) => (prev.trim() ? `${prev}\n${line}` : line));
@@ -267,12 +278,24 @@ export function useKalkulationSuggestions(input: {
 
   /** Summierte Eckdaten aus allen hochgeladenen Grundrissen/Fotos. */
   const analysisTotals = useMemo(
-    () => ({
-      sqm: attachments.reduce((s, a) => s + num(a.sqm), 0),
-      rooms: attachments.reduce((s, a) => s + num(a.rooms), 0),
-      floors: attachments.reduce((s, a) => s + num(a.floors), 0),
-    }),
-    [attachments],
+    () =>
+      roomCalculation.enabled
+        ? {
+            sqm: calculateRooms(roomCalculation, 1).area,
+            rooms: roomCalculation.rooms.filter((room) => room.included).length,
+            floors: new Set(
+              roomCalculation.rooms
+                .filter((room) => room.included)
+                .map((room) => room.floor)
+                .filter(Boolean),
+            ).size,
+          }
+        : {
+            sqm: attachments.reduce((s, a) => s + num(a.sqm), 0),
+            rooms: attachments.reduce((s, a) => s + num(a.rooms), 0),
+            floors: attachments.reduce((s, a) => s + num(a.floors), 0),
+          },
+    [attachments, roomCalculation],
   );
 
   /** Einsätze immer aus der exakten Jahresmenge auf den Monatsdurchschnitt umgerechnet. */

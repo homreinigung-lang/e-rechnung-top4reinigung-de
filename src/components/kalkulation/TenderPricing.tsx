@@ -345,7 +345,13 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
 
         <Button
           className="w-full"
-          disabled={toQuote.isPending || lvTotal <= 0 || !confirmed || warnings.length > 0}
+          disabled={
+            toQuote.isPending ||
+            lvTotal <= 0 ||
+            !confirmed ||
+            warnings.length > 0 ||
+            (state.roomCalculation.enabled && state.calcOutOfSync)
+          }
           onClick={() => toQuote.mutate()}
         >
           <FileSignature className="size-4" />

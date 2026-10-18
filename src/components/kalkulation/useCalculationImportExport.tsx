@@ -1,3 +1,4 @@
+import { readRoomCalculation } from "@/lib/room-calculation";
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,11 +11,16 @@ import { saveFile } from "@/lib/download";
 
 import { num, KALK_SECTION } from "./shared";
 
+import type { useCalculationApply } from "./useCalculationApply";
 import type { useKalkulationSuggestions } from "./useKalkulationSuggestions";
 import type { useKalkulationForm } from "./useKalkulationForm";
 import type { useCalculationTotals } from "./useCalculationTotals";
 
 export function useCalculationImportExport(input: {
+  calcOutOfSync: ReturnType<typeof useCalculationApply>["calcOutOfSync"];
+  warnings: ReturnType<typeof useCalculationTotals>["warnings"];
+  roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
+  setRoomCalculation: ReturnType<typeof useKalkulationForm>["setRoomCalculation"];
   analysisTotals: ReturnType<typeof useKalkulationSuggestions>["analysisTotals"];
   area: ReturnType<typeof useKalkulationForm>["area"];
   floorplanSummary: ReturnType<typeof useKalkulationForm>["floorplanSummary"];
@@ -59,6 +65,10 @@ export function useCalculationImportExport(input: {
   visitsPerMonth: ReturnType<typeof useKalkulationSuggestions>["visitsPerMonth"];
 }) {
   const {
+    setRoomCalculation,
+    calcOutOfSync,
+    warnings,
+    roomCalculation,
     analysisTotals,
     area,
     floorplanSummary,
@@ -119,6 +129,7 @@ export function useCalculationImportExport(input: {
     },
     onSuccess: ({ head, items }) => {
       const dec = (v: unknown) => String(Number(v) || 0).replace(".", ",");
+      setRoomCalculation(readRoomCalculation(head.room_calculation));
       setCalcId(head.id);
       setCalcTitle(head.title);
       setProjectId(head.project_id);
@@ -210,6 +221,10 @@ export function useCalculationImportExport(input: {
   /** Leistungsverzeichnis als abgabefertiges PDF exportieren. */
   const exportLv = useMutation({
     mutationFn: async () => {
+      if (roomCalculation.enabled && (calcOutOfSync || warnings.length > 0))
+        throw new Error(
+          "Bitte die Raumdaten prüfen und die aktuelle Grundkalkulation vor dem PDF-Export übernehmen.",
+        );
       const positions = lvPositions.map((i, n) => ({
         oz: `${n + 1}.10`,
         description: i.description,
@@ -254,7 +269,12 @@ export function useCalculationImportExport(input: {
             label: "Fläche",
             value: `${formatNumber(mode === "area" ? num(area) : analysisTotals.sqm)} m²`,
           },
-          { label: "Einsätze/Monat", value: formatNumber(visitsPerMonth) },
+          {
+            label: "Einsätze/Monat",
+            value: roomCalculation.enabled
+              ? "Je Raum laut Positionen"
+              : formatNumber(visitsPerMonth),
+          },
           { label: "Stundenbedarf", value: `${formatNumber(monthlyHours)} Std./Monat` },
         ],
         positions,

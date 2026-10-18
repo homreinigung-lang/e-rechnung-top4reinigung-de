@@ -1,3 +1,4 @@
+import { calculateRooms } from "@/lib/room-calculation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -11,11 +12,14 @@ import { round2 } from "@/lib/kalkulation-engine";
 
 import { num } from "./shared";
 
+import type { useCalculationApply } from "./useCalculationApply";
 import type { useKalkulationSuggestions } from "./useKalkulationSuggestions";
 import type { useKalkulationForm } from "./useKalkulationForm";
 import type { useCalculationTotals } from "./useCalculationTotals";
 
 export function useCalculationQuote(input: {
+  calcOutOfSync: ReturnType<typeof useCalculationApply>["calcOutOfSync"];
+  roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
   annualVisits: ReturnType<typeof useKalkulationSuggestions>["annualVisits"];
   discountReason: ReturnType<typeof useKalkulationForm>["discountReason"];
   floorplanSummary: ReturnType<typeof useKalkulationForm>["floorplanSummary"];
@@ -35,6 +39,8 @@ export function useCalculationQuote(input: {
   warnings: ReturnType<typeof useCalculationTotals>["warnings"];
 }) {
   const {
+    roomCalculation,
+    calcOutOfSync,
     annualVisits,
     discountReason,
     floorplanSummary,
@@ -55,6 +61,8 @@ export function useCalculationQuote(input: {
   } = input;
   const toQuote = useMutation({
     mutationFn: async () => {
+      if (roomCalculation.enabled && calcOutOfSync)
+        throw new Error("Bitte die aktuelle Raumkalkulation zuerst für das Angebot übernehmen.");
       // Nur geprüfte, rechnerisch gültige Daten dürfen ins Angebot.
       if (warnings.length > 0) {
         throw new Error("Bitte zuerst die Plausibilitätshinweise klären.");
@@ -91,7 +99,9 @@ export function useCalculationQuote(input: {
         parts.push(line);
       }
       parts.push(
-        `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(visitsPerMonth)} pro Monat`,
+        roomCalculation.enabled
+          ? "Turnus je Raum gemäß Positionen; Abrechnung als Monatsdurchschnitt."
+          : `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(visitsPerMonth)} pro Monat`,
       );
       if (discountReason.trim() && pct > 0) {
         parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
@@ -143,7 +153,9 @@ export function useCalculationQuote(input: {
           vat_amount: vat,
           total: grossTotal,
           planned_hours_month: monthlyHours,
-          planned_visits_month: visitsPerMonth,
+          planned_visits_month: roomCalculation.enabled
+            ? calculateRooms(roomCalculation, 1).commonVisitsPerMonth
+            : visitsPerMonth,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;

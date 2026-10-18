@@ -102,7 +102,11 @@ export function CleaningParameters({ state }: { state: KalkulationStateContext }
           </div>
           <div className="space-y-2">
             <Label>Berechnungsart</Label>
-            <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
+            <Select
+              disabled={state.roomCalculation.enabled}
+              value={state.roomCalculation.enabled ? "hours" : mode}
+              onValueChange={(v) => setMode(v as Mode)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -114,12 +118,12 @@ export function CleaningParameters({ state }: { state: KalkulationStateContext }
           </div>
         </div>
 
-        {mode === "area" ? (
+        {!state.roomCalculation.enabled && mode === "area" ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Fläche (m²)</Label>
               <Input inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} />
-              {raumbuchApplied && raumbuch ? (
+              {!state.roomCalculation.enabled && raumbuchApplied && raumbuch ? (
                 <p className="text-xs text-sky-700 dark:text-sky-400">
                   Aus Raumbuch übernommen – {raumbuch.roomCount} Räume aus dem Grundriss-Scan
                   (manuell überschreibbar).
@@ -153,12 +157,28 @@ export function CleaningParameters({ state }: { state: KalkulationStateContext }
           </div>
         )}
 
-        {mode === "hours" ? (
+        {state.roomCalculation.enabled || mode === "hours" ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Stunden</Label>
-              <Input inputMode="decimal" value={hours} onChange={(e) => setHours(e.target.value)} />
-              {raumbuchApplied && raumbuch ? (
+              <Label>
+                {state.roomCalculation.enabled ? "Stunden/Monat aus Raumliste" : "Stunden"}
+              </Label>
+              <Input
+                disabled={state.roomCalculation.enabled}
+                inputMode="decimal"
+                value={
+                  state.roomCalculation.enabled
+                    ? formatNumber(state.roomSummary.monthlyHours)
+                    : hours
+                }
+                onChange={(e) => setHours(e.target.value)}
+              />
+              {state.roomCalculation.enabled && (
+                <a href="#raumkalkulation" className="text-xs text-primary underline">
+                  Räume, Leistungswerte und Turnusse bearbeiten
+                </a>
+              )}
+              {!state.roomCalculation.enabled && raumbuchApplied && raumbuch ? (
                 <p className="text-xs text-sky-700 dark:text-sky-400">
                   Aus Raumbuch berechnet – Leistungswerte für {raumbuch.matched} Räume
                   {raumbuch.unmatched > 0 ? `, ${raumbuch.unmatched} pauschal` : ""} (manuell
@@ -205,14 +225,16 @@ export function CleaningParameters({ state }: { state: KalkulationStateContext }
             <Label>Durchgänge / Einsätze</Label>
             <Input
               inputMode="decimal"
-              value={frequency}
+              disabled={state.roomCalculation.enabled}
+              value={state.roomCalculation.enabled ? "1" : frequency}
               onChange={(e) => setFrequency(e.target.value)}
             />
           </div>
           <div className="space-y-2">
             <Label>Zeitraum</Label>
             <Select
-              value={frequencyUnit}
+              disabled={state.roomCalculation.enabled}
+              value={state.roomCalculation.enabled ? "month" : frequencyUnit}
               onValueChange={(v) => setFrequencyUnit(v as RecurrenceUnit)}
             >
               <SelectTrigger>
@@ -234,9 +256,15 @@ export function CleaningParameters({ state }: { state: KalkulationStateContext }
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Jahresbasis: {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 ={" "}
-          {formatNumber(visitsPerMonth)} Einsätze pro Monat. Wochenbasierte Turnusse rechnen
-          verbindlich mit 52 Wochen/Jahr.
+          {state.roomCalculation.enabled ? (
+            "Abrechnung: Monatsdurchschnitt. Der Reinigungsrhythmus wird je Raum festgelegt."
+          ) : (
+            <>
+              Jahresbasis: {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 ={" "}
+              {formatNumber(visitsPerMonth)} Einsätze pro Monat. Wochenbasierte Turnusse rechnen
+              verbindlich mit 52 Wochen/Jahr.
+            </>
+          )}
         </p>
 
         {search.area ? (
@@ -272,10 +300,18 @@ export function CleaningParameters({ state }: { state: KalkulationStateContext }
 
         <div className="space-y-3 rounded-md border p-3">
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-            <Checkbox checked={stairs} onCheckedChange={(checked) => setStairs(Boolean(checked))} />
-            <span>Treppenhausreinigung</span>
+            <Checkbox
+              disabled={state.roomCalculation.enabled}
+              checked={state.roomCalculation.enabled ? false : stairs}
+              onCheckedChange={(checked) => setStairs(Boolean(checked))}
+            />
+            <span>
+              {state.roomCalculation.enabled
+                ? "Treppenhaus bitte als Raum in der Raumliste erfassen"
+                : "Treppenhausreinigung"}
+            </span>
           </label>
-          {stairs && (
+          {!state.roomCalculation.enabled && stairs && (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">

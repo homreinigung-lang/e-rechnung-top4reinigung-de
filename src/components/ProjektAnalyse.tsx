@@ -32,6 +32,8 @@ type RoomRow = {
 };
 
 export type KalkulationSnapshot = {
+  /** Explicit reviewed room calculation takes priority over project defaults. */
+  roomHours?: boolean;
   /** Bezeichnung der Reinigungsart */
   typeLabel: string;
   areaSqm: number;
@@ -169,6 +171,7 @@ export function ProjektAnalyse({
       rates.length > 0
         ? rates
         : DEFAULT_PERFORMANCE_RATES.map((r, n) => ({ ...r, id: `default-${n}`, active: true }));
+    if (snapshot.roomHours) return null;
     const { hours, matched, unmatched } = hoursPerVisit(
       rooms,
       usable,
@@ -176,7 +179,7 @@ export function ProjektAnalyse({
     );
     if (hours <= 0) return null;
     return { monthly: hours * snapshot.visitsPerMonth, matched, unmatched };
-  }, [rooms, rates, detail?.fallbackSqmPerHour, snapshot.visitsPerMonth]);
+  }, [rooms, rates, detail?.fallbackSqmPerHour, snapshot.visitsPerMonth, snapshot.roomHours]);
 
   const effectiveMonthlyHours = roomBased ? roomBased.monthly : snapshot.monthlyHours;
 
@@ -248,7 +251,9 @@ export function ProjektAnalyse({
             <p className="text-xs text-muted-foreground">Stundenbedarf / Monat</p>
             <p className="text-lg font-semibold">{formatNumber(effectiveMonthlyHours)} Std.</p>
             <p className="text-[11px] text-muted-foreground">
-              {formatNumber(snapshot.visitsPerMonth)} Einsätze pro Monat
+              {snapshot.roomHours
+                ? "Turnus je Raum laut Raumkalkulation"
+                : `${formatNumber(snapshot.visitsPerMonth)} Einsätze pro Monat`}
               {roomBased
                 ? ` · aus ${rooms.length} Räumen (${roomBased.matched} mit Leistungswert${
                     roomBased.unmatched > 0 ? `, ${roomBased.unmatched} pauschal` : ""

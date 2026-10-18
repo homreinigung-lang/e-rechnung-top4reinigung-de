@@ -1,0 +1,162 @@
+import { recurrenceUnitLabel, visitsPerMonth, type RecurrenceUnit } from "./constants";
+import { parsePositiveNumber, formatNumber } from "./format";
+import { findRate, type PerformanceRate } from "./leistungswerte";
+import { round2, type CalcPosition } from "./kalkulation-engine";
+
+export type CalculationRoom = {
+  id: string;
+  source: string;
+  name: string;
+  floor: string;
+  usage_type: string;
+  floor_covering: string;
+  area: string;
+  sqmPerHour: string;
+  rateLabel: string;
+  frequency: string;
+  frequencyUnit: RecurrenceUnit;
+  included: boolean;
+};
+
+export type RoomCalculation = { version: 1; enabled: boolean; rooms: CalculationRoom[] };
+export const emptyRoomCalculation = (): RoomCalculation => ({
+  version: 1,
+  enabled: false,
+  rooms: [],
+});
+
+/** A scan supplies rooms, never an invented cleaning schedule. */
+export function roomsFromScan(
+  source: string,
+  rooms: {
+    name: string;
+    floor: string;
+    usage_type: string;
+    floor_covering: string;
+    area_sqm: number;
+  }[],
+  rates: PerformanceRate[],
+): CalculationRoom[] {
+  return rooms.map((room, index) => {
+    const rate = findRate(rates, room);
+    return {
+      id: `${source}#${index}`,
+      source,
+      name: room.name,
+      floor: room.floor,
+      usage_type: room.usage_type,
+      floor_covering: room.floor_covering,
+      area: String(room.area_sqm > 0 ? room.area_sqm : "").replace(".", ","),
+      sqmPerHour: rate ? String(rate.sqm_per_hour).replace(".", ",") : "",
+      rateLabel: rate?.label ?? "Kein passender Leistungswert",
+      frequency: "",
+      frequencyUnit: "week",
+      included: true,
+    };
+  });
+}
+
+/** Re-analysis replaces only the scanned document, never duplicates its rooms. */
+export function replaceScannedRooms(
+  current: RoomCalculation,
+  source: string,
+  rooms: CalculationRoom[],
+): RoomCalculation {
+  return {
+    ...current,
+    rooms: [...current.rooms.filter((room) => room.source !== source), ...rooms],
+  };
+}
+
+const UNITS: RecurrenceUnit[] = ["week", "fortnight", "month", "quarter", "year"];
+
+/** Old saved calculations have no room data; reject malformed/unsupported snapshots. */
+export function readRoomCalculation(value: unknown): RoomCalculation {
+  if (!value || typeof value !== "object") return emptyRoomCalculation();
+  const data = value as Record<string, unknown>;
+  if (
+    data["version"] !== 1 ||
+    typeof data["enabled"] !== "boolean" ||
+    !Array.isArray(data["rooms"])
+  )
+    return emptyRoomCalculation();
+  const ids = new Set<string>();
+  const rooms: CalculationRoom[] = [];
+  for (const entry of data["rooms"]) {
+    if (!entry || typeof entry !== "object") return emptyRoomCalculation();
+    const row = entry as Record<string, unknown>;
+    const keys = [
+      "id",
+      "source",
+      "name",
+      "floor",
+      "usage_type",
+      "floor_covering",
+      "area",
+      "sqmPerHour",
+      "rateLabel",
+      "frequency",
+    ];
+    if (
+      keys.some((key) => typeof row[key] !== "string") ||
+      typeof row["included"] !== "boolean" ||
+      !UNITS.includes(row["frequencyUnit"] as RecurrenceUnit) ||
+      !row["id"] ||
+      ids.has(String(row["id"]))
+    )
+      return emptyRoomCalculation();
+    ids.add(String(row["id"]));
+    rooms.push(row as unknown as CalculationRoom);
+  }
+  return { version: 1, enabled: data["enabled"], rooms };
+}
+
+export function calculateRooms(calculation: RoomCalculation, hourlyRate: number) {
+  const errors: string[] = [];
+  let area = 0;
+  let monthlyHours = 0;
+  const positions: CalcPosition[] = [];
+  const rows = calculation.rooms
+    .filter((room) => room.included)
+    .map((room) => {
+      const sqm = parsePositiveNumber(room.area);
+      const performance = parsePositiveNumber(room.sqmPerHour);
+      const frequency = parsePositiveNumber(room.frequency);
+      const label = room.name.trim() || "Unbenannter Raum";
+      if (!room.name.trim() || sqm <= 0 || performance <= 0 || frequency <= 0) {
+        errors.push(`${label}: Raumname, Fläche, Leistungswert und Turnus vollständig angeben.`);
+      }
+      const hoursPerVisit = performance > 0 ? sqm / performance : 0;
+      const visits = visitsPerMonth(frequency, room.frequencyUnit);
+      const billedHours = round2(hoursPerVisit * visits);
+      if (sqm > 0 && performance > 0 && frequency > 0 && billedHours <= 0)
+        errors.push(`${label}: Stundenbedarf liegt unter 0,01 Std./Monat – Ansatz prüfen.`);
+      area += sqm;
+      monthlyHours += billedHours;
+      if (billedHours > 0 && hourlyRate > 0) {
+        positions.push({
+          description: `${label}${room.floor ? ` (${room.floor})` : ""} – ${formatNumber(sqm)} m²${room.floor_covering ? `, ${room.floor_covering}` : ""}, ${formatNumber(performance)} m²/Std., ${formatNumber(frequency)} ${recurrenceUnitLabel(room.frequencyUnit)} – Monatsdurchschnitt`,
+          quantity: billedHours,
+          unit: "Std.",
+          unit_price: round2(hourlyRate),
+        });
+      }
+      return { room, hoursPerVisit, visitsPerMonth: visits, monthlyHours: billedHours };
+    });
+  if (rows.length === 0) errors.push("Mindestens einen Raum zur Reinigung auswählen.");
+  if (round2(hourlyRate) <= 0)
+    errors.push("Einen positiven Stundensatz für die Raumkalkulation angeben.");
+  const commonVisitsPerMonth =
+    rows.length > 0 &&
+    rows.every((row) => Math.abs(row.visitsPerMonth - rows[0]!.visitsPerMonth) < 1e-9)
+      ? rows[0]!.visitsPerMonth
+      : 0;
+  return {
+    rows,
+    commonVisitsPerMonth,
+    area: round2(area),
+    monthlyHours: round2(monthlyHours),
+    errors,
+    positions: errors.length ? [] : positions,
+  };
+}
