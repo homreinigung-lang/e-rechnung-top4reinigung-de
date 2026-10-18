@@ -54,6 +54,7 @@ export const DEFAULT_PERFORMANCE_RATES: PerformanceRateSeed[] = [
 function norm(value: string): string {
   return (value ?? "")
     .toLowerCase()
+    .replace(/linoleum/g, "pvc")
     .replace(/[äÄ]/g, "a")
     .replace(/[öÖ]/g, "o")
     .replace(/[üÜ]/g, "u")

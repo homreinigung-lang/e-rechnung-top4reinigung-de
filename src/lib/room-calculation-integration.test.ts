@@ -1,0 +1,107 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { expect, it, vi } from "vitest";
+import { useCalculationTotals } from "@/components/kalkulation/useCalculationTotals";
+import { CLEANING_TYPES } from "@/components/kalkulation/shared";
+import { emptyRoomCalculation, roomsFromScan } from "./room-calculation";
+import { DEFAULT_PERFORMANCE_RATES } from "./leistungswerte";
+
+function totals(enabled = true) {
+  const rates = DEFAULT_PERFORMANCE_RATES.map((rate, i) => ({
+    ...rate,
+    id: String(i),
+    active: true,
+  }));
+  const rooms = roomsFromScan(
+    "plan.pdf",
+    [{ name: "Büro", floor: "EG", usage_type: "Büro", floor_covering: "Teppich", area_sqm: 30 }],
+    rates,
+  ).map((room) => ({ ...room, frequency: "2" }));
+  return {
+    roomCalculation: { ...emptyRoomCalculation(), enabled, rooms },
+    aiPrompt: "",
+    analysisTotals: { sqm: 30, rooms: 1, floors: 1 },
+    area: "999",
+    discountAmountInput: "0",
+    discountReason: "",
+    extras: [],
+    extrasTotal: 0,
+    floors: "1",
+    frequency: "1",
+    frequencyUnit: "month",
+    glassArea: "0",
+    hasLift: false,
+    hourlyRate: "35",
+    hours: "50",
+    kiBasis: null,
+    kiItems: [],
+    kiOriginalItem: null,
+    kiPricingBasis: "hours",
+    kiPrompt: "",
+    laborBurdenPercent: "32",
+    laborWage: "15",
+    liftRate: "0",
+    lvItems: [],
+    materialCost: "1,20",
+    mode: "hours",
+    note: "",
+    overheadCost: "3,50",
+    pct: 0,
+    pricePerSqm: "0,35",
+    profitMarkup: "20",
+    raumbuch: {
+      roomCount: 1,
+      totalArea: 999,
+      totalGlassArea: 0,
+      hoursPerVisit: 80,
+      matched: 1,
+      unmatched: 0,
+    },
+    selected: CLEANING_TYPES[0]!,
+    setConfirmed: vi.fn(),
+    stairRate: "12,5",
+    stairVisitsPerMonth: 1,
+    stairs: false,
+    stairsTotal: 0,
+    taxMode: "domestic",
+    travel: "0",
+    type: "unterhalt",
+    visitsPerMonth: 1,
+  } satisfies Parameters<typeof useCalculationTotals>[0];
+}
+
+function renderTotals(input: Parameters<typeof useCalculationTotals>[0]) {
+  let result: ReturnType<typeof useCalculationTotals> | undefined;
+  function Component() {
+    result = useCalculationTotals(input);
+    return null;
+  }
+  renderToStaticMarkup(createElement(Component));
+  return result!;
+}
+
+it("nutzt geprüfte Raumstunden für Preis UND Kosten statt alter Formular- oder Projektstunden", () => {
+  const result = renderTotals(totals());
+  expect(result.monthlyHours).toBe(1.04);
+  expect(result.costingMonthlyHours).toBe(1.04);
+  expect(result.stagedPositions).toHaveLength(1);
+  expect(result.stagedPositions[0]?.quantity).toBe(1.04);
+  expect(result.suggested).toBe(36.4);
+  expect(result.monthlySelfCost).toBe(25.48);
+});
+
+it("erhält manuelle Kalkulationen, wenn die Raumquelle nicht aktiviert ist", () => {
+  const result = renderTotals(totals(false));
+  expect(result.monthlyHours).toBe(50);
+  expect(result.costingMonthlyHours).toBe(80);
+  expect(result.stagedPositions[0]?.quantity).toBe(50);
+});
+
+it("blockiert unvollständige aktive Raumdaten und verhindert zusätzliche Treppenpauschalen", () => {
+  const input = totals();
+  input.roomCalculation.rooms[0]!.frequency = "";
+  const result = renderTotals({ ...input, stairs: true, stairsTotal: 12.5 });
+  expect(result.warnings.some((warning) => warning.includes("Turnus"))).toBe(true);
+  expect(result.stagedPositions).toEqual([]);
+  expect(result.base).toBe(0);
+});

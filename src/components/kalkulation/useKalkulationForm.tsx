@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { STAIR_RATE_PER_FLOOR, type RecurrenceUnit } from "@/lib/constants";
 
+import { emptyRoomCalculation, type RoomCalculation } from "@/lib/room-calculation";
 import { useRaumbuch } from "@/lib/raumbuch";
 import { DEFAULT_PERFORMANCE_RATES, type PerformanceRate } from "@/lib/leistungswerte";
 
@@ -103,6 +104,7 @@ export function useKalkulationForm() {
     if (search.belag) parts.push(`Bodenbelag: ${search.belag}`);
     return parts.join(" · ");
   });
+  const [roomCalculation, setRoomCalculation] = useState<RoomCalculation>(emptyRoomCalculation);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [tenderDocs, setTenderDocs] = useState<Attachment[]>([]);
   const [floorplanSummary, setFloorplanSummary] = useState("");
@@ -129,6 +131,10 @@ export function useKalkulationForm() {
   }, [raumbuchError]);
 
   useEffect(() => {
+    if (roomCalculation.enabled) {
+      setRaumbuchApplied(false);
+      return;
+    }
     if (!raumbuch) {
       setRaumbuchApplied(false);
       return;
@@ -137,7 +143,7 @@ export function useKalkulationForm() {
     setGlassArea(String(raumbuch.totalGlassArea).replace(".", ","));
     if (raumbuch.hoursPerVisit > 0) setHours(String(raumbuch.hoursPerVisit).replace(".", ","));
     setRaumbuchApplied(true);
-  }, [raumbuch]);
+  }, [raumbuch, roomCalculation.enabled]);
 
   function updateAttachment(path: string, patch: Partial<Attachment>) {
     setAttachments((prev) => prev.map((a) => (a.path === path ? { ...a, ...patch } : a)));
@@ -212,6 +218,8 @@ export function useKalkulationForm() {
     queryClient,
     raumbuch,
     raumbuchApplied,
+    roomCalculation,
+    setRoomCalculation,
     search,
     selected,
     setAiPrompt,

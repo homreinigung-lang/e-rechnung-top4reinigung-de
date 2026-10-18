@@ -303,6 +303,7 @@ export type Database = {
       }
       calculations: {
         Row: {
+          room_calculation: Json
           area_sqm: number
           cleaning_type: string
           created_at: string
@@ -336,6 +337,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          room_calculation?: Json
           area_sqm?: number
           cleaning_type?: string
           created_at?: string
@@ -369,6 +371,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          room_calculation?: Json
           area_sqm?: number
           cleaning_type?: string
           created_at?: string

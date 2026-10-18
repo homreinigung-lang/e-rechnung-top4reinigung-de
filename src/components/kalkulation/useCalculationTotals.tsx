@@ -1,3 +1,4 @@
+import { calculateRooms } from "@/lib/room-calculation";
 import { useEffect, useMemo } from "react";
 
 import { parseGermanNumber, taxNoteForTaxMode, vatRateForTaxMode } from "@/lib/format";
@@ -16,6 +17,7 @@ import type { useKalkulationForm } from "./useKalkulationForm";
 import type { useKalkulationSuggestions } from "./useKalkulationSuggestions";
 
 export function useCalculationTotals(input: {
+  roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
   aiPrompt: ReturnType<typeof useKalkulationForm>["aiPrompt"];
   analysisTotals: ReturnType<typeof useKalkulationSuggestions>["analysisTotals"];
   area: ReturnType<typeof useKalkulationForm>["area"];
@@ -59,6 +61,7 @@ export function useCalculationTotals(input: {
   visitsPerMonth: ReturnType<typeof useKalkulationSuggestions>["visitsPerMonth"];
 }) {
   const {
+    roomCalculation,
     aiPrompt,
     analysisTotals,
     area,
@@ -101,54 +104,59 @@ export function useCalculationTotals(input: {
     type,
     visitsPerMonth,
   } = input;
-  const stagedPositionsBeforeDiscount = useMemo(
-    () =>
-      buildConsolidatedPositions({
-        typeValue: selected.value,
-        typeLabel: selected.label,
-        mode,
-        // Glasreinigung rechnet mit der separat erfassten Glasfläche.
-        areaSqm: selected.value === "glas" ? num(glassArea) : num(area),
-
-        pricePerSqm: num(pricePerSqm),
-        hours: num(hours),
-        hourlyRate: num(hourlyRate),
-        visitsPerMonth,
-        stairs,
-        floors: num(floors),
-        stairRate: num(stairRate),
-        stairVisitsPerMonth,
-        hasLift,
-        liftRate: num(liftRate),
-        extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
-          label: e.label,
-          price: e.price,
-        })),
-        travel: num(travel),
-        discountPercent: 0,
-        discountReason: "",
-      }),
-    [
-      selected.value,
-      selected.label,
+  const roomSummary = useMemo(
+    () => calculateRooms(roomCalculation, num(hourlyRate)),
+    [roomCalculation, hourlyRate],
+  );
+  const stagedPositionsBeforeDiscount = useMemo(() => {
+    const additional = buildConsolidatedPositions({
+      typeValue: selected.value,
+      typeLabel: selected.label,
       mode,
-      area,
-      glassArea,
+      // Glasreinigung rechnet mit der separat erfassten Glasfläche.
+      areaSqm: roomCalculation.enabled ? 0 : selected.value === "glas" ? num(glassArea) : num(area),
 
-      pricePerSqm,
-      hours,
-      hourlyRate,
+      pricePerSqm: num(pricePerSqm),
+      hours: roomCalculation.enabled ? 0 : num(hours),
+      hourlyRate: num(hourlyRate),
       visitsPerMonth,
-      stairs,
-      floors,
-      stairRate,
+      stairs: roomCalculation.enabled ? false : stairs,
+      floors: num(floors),
+      stairRate: num(stairRate),
       stairVisitsPerMonth,
       hasLift,
-      liftRate,
-      extras,
-      travel,
-    ],
-  );
+      liftRate: num(liftRate),
+      extras: EXTRAS.filter((e) => extras.includes(e.key)).map((e) => ({
+        label: e.label,
+        price: e.price,
+      })),
+      travel: num(travel),
+      discountPercent: 0,
+      discountReason: "",
+    });
+    return roomCalculation.enabled ? [...roomSummary.positions, ...additional] : additional;
+  }, [
+    roomCalculation.enabled,
+    roomSummary,
+    selected.value,
+    selected.label,
+    mode,
+    area,
+    glassArea,
+
+    pricePerSqm,
+    hours,
+    hourlyRate,
+    visitsPerMonth,
+    stairs,
+    floors,
+    stairRate,
+    stairVisitsPerMonth,
+    hasLift,
+    liftRate,
+    extras,
+    travel,
+  ]);
   const subtotal = useMemo(
     () => positionsTotal(stagedPositionsBeforeDiscount),
     [stagedPositionsBeforeDiscount],
@@ -171,7 +179,9 @@ export function useCalculationTotals(input: {
         : stagedPositionsBeforeDiscount,
     [stagedPositionsBeforeDiscount, stagedDiscountPosition],
   );
-  const base = round2(subtotal - extrasTotal - stairsTotal - round2(num(travel)));
+  const base = round2(
+    subtotal - extrasTotal - (roomCalculation.enabled ? 0 : stairsTotal) - round2(num(travel)),
+  );
   const suggested = useMemo(() => positionsTotal(stagedPositions), [stagedPositions]);
 
   /**
@@ -250,23 +260,34 @@ export function useCalculationTotals(input: {
   // wieder auf – insbesondere direkte Änderungen am Leistungsverzeichnis.
   useEffect(() => {
     setConfirmed(false);
-  }, [note, discountReason, selected.value, taxMode, lvItems]);
+  }, [note, discountReason, selected.value, taxMode, lvItems, roomCalculation, hourlyRate]);
 
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
+    if (roomCalculation.enabled) return roomSummary.monthlyHours;
     if (mode === "hours") return num(hours) * visitsPerMonth;
     const rate = num(hourlyRate);
     if (rate <= 0) return 0;
     return (num(area) * num(pricePerSqm) * visitsPerMonth) / rate;
-  }, [mode, hours, area, pricePerSqm, hourlyRate, visitsPerMonth]);
+  }, [
+    roomCalculation.enabled,
+    roomSummary.monthlyHours,
+    mode,
+    hours,
+    area,
+    pricePerSqm,
+    hourlyRate,
+    visitsPerMonth,
+  ]);
 
   /**
    * Interne Kostenkalkulation vor Angebotsabgabe.
    * Wenn ein Raumbuch vorhanden ist, werden dessen Leistungswerte für den
    * Stundenbedarf bevorzugt; sonst greift die bestehende Kalkulationslogik.
    */
-  const costingMonthlyHours =
-    raumbuch && raumbuch.hoursPerVisit > 0
+  const costingMonthlyHours = roomCalculation.enabled
+    ? roomSummary.monthlyHours
+    : raumbuch && raumbuch.hoursPerVisit > 0
       ? round2(raumbuch.hoursPerVisit * visitsPerMonth)
       : round2(monthlyHours);
   const laborBurdenPerHour = round2(
@@ -291,13 +312,19 @@ export function useCalculationTotals(input: {
 
   /** Plausibilitätsprüfung der Eingaben (Fläche vs. Räume/Etagen/Sanitär). */
   const warnings = useMemo(
-    () =>
-      checkPlausibility({
-        areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
+    () => [
+      ...(roomCalculation.enabled ? roomSummary.errors : []),
+      ...checkPlausibility({
+        areaSqm: roomCalculation.enabled
+          ? roomSummary.area
+          : mode === "area"
+            ? num(area)
+            : analysisTotals.sqm,
         rooms: analysisTotals.rooms,
         floors: Math.max(analysisTotals.floors, stairs ? num(floors) : 0),
       }),
-    [mode, area, analysisTotals, stairs, floors],
+    ],
+    [roomCalculation.enabled, roomSummary, mode, area, analysisTotals, stairs, floors],
   );
 
   /**
@@ -319,6 +346,7 @@ export function useCalculationTotals(input: {
   /** Herkunftsbereich einer LV-Zeile (Fallback: „Kalkulation"). */
   const sectionOf = (i: AiItem) => (i.section || "").trim() || KALK_SECTION;
   return {
+    roomSummary,
     base,
     contribution,
     contributionMargin,

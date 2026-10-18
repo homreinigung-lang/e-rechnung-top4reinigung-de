@@ -52,6 +52,8 @@ export function useKalkulationState() {
     queryClient,
     raumbuch,
     raumbuchApplied,
+    roomCalculation,
+    setRoomCalculation,
     search,
     selected,
     setAiPrompt,
@@ -119,6 +121,9 @@ export function useKalkulationState() {
     stairsTotal,
     visitsPerMonth,
   } = useKalkulationSuggestions({
+    roomCalculation,
+    setRoomCalculation,
+    visiblePerformanceRates,
     aiPrompt,
     analyze,
     attachments,
@@ -164,6 +169,7 @@ export function useKalkulationState() {
    * Dadurch kann die Grundkalkulation nicht von ihrem späteren LV abweichen.
    */
   const {
+    roomSummary,
     base,
     contribution,
     contributionMargin,
@@ -195,6 +201,7 @@ export function useKalkulationState() {
     vatRate,
     warnings,
   } = useCalculationTotals({
+    roomCalculation,
     aiPrompt,
     analysisTotals,
     area,
@@ -252,6 +259,8 @@ export function useKalkulationState() {
     setPendingApply,
     writeSource,
   } = useCalculationApply({
+    setRoomCalculation,
+    roomCalculation,
     aiReviewQuestions,
     analysisTotals,
     area,
@@ -278,6 +287,7 @@ export function useKalkulationState() {
   });
 
   const { saveCalculation } = useCalculationSave({
+    roomCalculation,
     area,
     calcId,
     calcTitle,
@@ -314,6 +324,8 @@ export function useKalkulationState() {
   });
 
   const { exportLv, importProjectLv, loadCalculation } = useCalculationImportExport({
+    roomCalculation,
+    setRoomCalculation,
     analysisTotals,
     area,
     floorplanSummary,
@@ -359,6 +371,8 @@ export function useKalkulationState() {
   });
 
   const { toQuote } = useCalculationQuote({
+    calcOutOfSync,
+    roomCalculation,
     annualVisits,
     discountReason,
     floorplanSummary,
@@ -456,6 +470,9 @@ export function useKalkulationState() {
     proposalTitle,
     raumbuch,
     raumbuchApplied,
+    roomCalculation,
+    roomSummary,
+    setRoomCalculation,
     resetCalculation,
     saveCalculation,
     savedCalcs,

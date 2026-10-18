@@ -1,3 +1,4 @@
+import { readRoomCalculation } from "@/lib/room-calculation";
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -15,6 +16,8 @@ import type { useKalkulationForm } from "./useKalkulationForm";
 import type { useCalculationTotals } from "./useCalculationTotals";
 
 export function useCalculationImportExport(input: {
+  roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
+  setRoomCalculation: ReturnType<typeof useKalkulationForm>["setRoomCalculation"];
   analysisTotals: ReturnType<typeof useKalkulationSuggestions>["analysisTotals"];
   area: ReturnType<typeof useKalkulationForm>["area"];
   floorplanSummary: ReturnType<typeof useKalkulationForm>["floorplanSummary"];
@@ -59,6 +62,8 @@ export function useCalculationImportExport(input: {
   visitsPerMonth: ReturnType<typeof useKalkulationSuggestions>["visitsPerMonth"];
 }) {
   const {
+    setRoomCalculation,
+    roomCalculation,
     analysisTotals,
     area,
     floorplanSummary,
@@ -119,6 +124,7 @@ export function useCalculationImportExport(input: {
     },
     onSuccess: ({ head, items }) => {
       const dec = (v: unknown) => String(Number(v) || 0).replace(".", ",");
+      setRoomCalculation(readRoomCalculation(head.room_calculation));
       setCalcId(head.id);
       setCalcTitle(head.title);
       setProjectId(head.project_id);
@@ -254,7 +260,12 @@ export function useCalculationImportExport(input: {
             label: "Fläche",
             value: `${formatNumber(mode === "area" ? num(area) : analysisTotals.sqm)} m²`,
           },
-          { label: "Einsätze/Monat", value: formatNumber(visitsPerMonth) },
+          {
+            label: "Einsätze/Monat",
+            value: roomCalculation.enabled
+              ? "Je Raum laut Positionen"
+              : formatNumber(visitsPerMonth),
+          },
           { label: "Stundenbedarf", value: `${formatNumber(monthlyHours)} Std./Monat` },
         ],
         positions,

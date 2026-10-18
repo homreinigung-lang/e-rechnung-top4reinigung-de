@@ -1,3 +1,4 @@
+import { emptyRoomCalculation } from "@/lib/room-calculation";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,6 +17,8 @@ import type { useKalkulationSuggestions } from "./useKalkulationSuggestions";
 import type { useCalculationTotals } from "./useCalculationTotals";
 
 export function useCalculationApply(input: {
+  setRoomCalculation: ReturnType<typeof useKalkulationForm>["setRoomCalculation"];
+  roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
   aiReviewQuestions: ReturnType<typeof useKalkulationForm>["aiReviewQuestions"];
   analysisTotals: ReturnType<typeof useKalkulationSuggestions>["analysisTotals"];
   area: ReturnType<typeof useKalkulationForm>["area"];
@@ -41,6 +44,8 @@ export function useCalculationApply(input: {
   warnings: ReturnType<typeof useCalculationTotals>["warnings"];
 }) {
   const {
+    setRoomCalculation,
+    roomCalculation,
     aiReviewQuestions,
     analysisTotals,
     area,
@@ -134,7 +139,7 @@ export function useCalculationApply(input: {
    * für den Kunden sichtbare Position – keine stille Ausgleichsbuchung.
    */
   function applyCalculation() {
-    if (num(frequency) <= 0) {
+    if (!roomCalculation.enabled && num(frequency) <= 0) {
       toast.error("Bitte zuerst die Anzahl der Einsätze angeben.");
       return;
     }
@@ -164,10 +169,24 @@ export function useCalculationApply(input: {
     () => positionsTotal(lvPositions.filter((p) => p.section === KALK_SECTION)),
     [lvPositions],
   );
-  const calcOutOfSync = useMemo(
-    () => Math.abs(round2(lvCalcTotal) - round2(suggested)) >= 0.01,
-    [lvCalcTotal, suggested],
-  );
+  const calcOutOfSync = useMemo(() => {
+    if (Math.abs(round2(lvCalcTotal) - round2(suggested)) >= 0.01) return true;
+    if (!roomCalculation.enabled) return false;
+    const current = lvPositions.filter((position) => position.section === KALK_SECTION);
+    return (
+      current.length !== stagedPositions.length ||
+      current.some((position, index) => {
+        const expected = stagedPositions[index];
+        return (
+          !expected ||
+          position.description !== expected.description ||
+          position.quantity !== expected.quantity ||
+          position.unit !== expected.unit ||
+          position.unit_price !== expected.unit_price
+        );
+      })
+    );
+  }, [roomCalculation.enabled, lvPositions, stagedPositions, lvCalcTotal, suggested]);
   /** Gleicher Abgleich für den KI-Bereich. */
   const lvKiTotal = useMemo(
     () => positionsTotal(lvPositions.filter((p) => p.section === KI_SECTION)),
@@ -179,6 +198,7 @@ export function useCalculationApply(input: {
   );
 
   const analyseSnapshot: KalkulationSnapshot = {
+    roomHours: roomCalculation.enabled,
     typeLabel: selected.label,
     areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
     monthlyHours,
@@ -203,6 +223,7 @@ export function useCalculationApply(input: {
   });
 
   function resetCalculation() {
+    setRoomCalculation(emptyRoomCalculation());
     setCalcId(null);
     setCalcTitle("");
     setLvItems([]);
