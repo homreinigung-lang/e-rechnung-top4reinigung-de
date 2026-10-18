@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -71,9 +72,9 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
       <div>
         <h3 className="font-semibold">Räume & Stundenberechnung</h3>
         <p className="text-sm text-muted-foreground">
-          Fläche ÷ m² pro Stunde × Reinigungshäufigkeit. Leistungswerte sind prüfbare Vorschläge für
-          Unterhaltsreinigung. Turnusse bitte selbst festlegen; ein Grundriss enthält normalerweise
-          keinen Reinigungsplan.
+          Je Raum Minuten für alle vereinbarten Aufgaben pro Besuch festlegen oder nach m²/Std.
+          rechnen. Der Zeitansatz ist Personalzeit: Zwei Personen à 15 Minuten ergeben 30 Minuten.
+          Ein Grundriss liefert weder den vollständigen Leistungsumfang noch den Turnus.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -161,7 +162,6 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                     ["usage_type", "Raumart"],
                     ["floor_covering", "Bodenbelag"],
                     ["area", "Fläche (m²)"],
-                    ["sqmPerHour", "Leistungswert (m²/Std.)"],
                   ] as const
                 ).map(([key, label]) => (
                   <div key={key} className="space-y-1">
@@ -169,17 +169,63 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                     <Input
                       id={`room-${index}-${key}`}
                       disabled={!room.included}
-                      inputMode={key === "area" || key === "sqmPerHour" ? "decimal" : "text"}
+                      inputMode={key === "area" ? "decimal" : "text"}
                       value={room[key]}
                       onChange={(event) =>
                         patch(room.id, {
                           [key]: event.target.value,
-                          ...(key === "sqmPerHour" ? { rateLabel: "Eigener Leistungswert" } : {}),
                         })
                       }
                     />
                   </div>
                 ))}
+                <div className="space-y-1">
+                  <Label>Berechnung je Besuch</Label>
+                  <Select
+                    disabled={!room.included}
+                    value={room.calculationMode ?? "area"}
+                    onValueChange={(value) =>
+                      patch(room.id, { calculationMode: value as "area" | "minutes" })
+                    }
+                  >
+                    <SelectTrigger aria-label={`Berechnung ${room.name || index + 1}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">Minuten je Besuch (alle Aufgaben)</SelectItem>
+                      <SelectItem value="area">Fläche ÷ m²/Std.</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {room.calculationMode === "minutes" ? (
+                  <div className="space-y-1">
+                    <Label htmlFor={`room-${index}-minutes`}>Personalminuten je Besuch</Label>
+                    <Input
+                      id={`room-${index}-minutes`}
+                      inputMode="decimal"
+                      disabled={!room.included}
+                      value={room.minutesPerVisit ?? ""}
+                      placeholder="Zeit selbst einschätzen"
+                      onChange={(event) => patch(room.id, { minutesPerVisit: event.target.value })}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label htmlFor={`room-${index}-performance`}>Leistungswert (m²/Std.)</Label>
+                    <Input
+                      id={`room-${index}-performance`}
+                      inputMode="decimal"
+                      disabled={!room.included}
+                      value={room.sqmPerHour}
+                      onChange={(event) =>
+                        patch(room.id, {
+                          sqmPerHour: event.target.value,
+                          rateLabel: "Eigener Leistungswert",
+                        })
+                      }
+                    />
+                  </div>
+                )}
                 <div className="space-y-1">
                   <Label htmlFor={`room-${index}-frequency`}>Reinigungen</Label>
                   <Input
@@ -213,26 +259,42 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                   </Select>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Ansatz: {room.rateLabel}</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!room.included}
-                onClick={() => {
-                  const rate = findRate(visiblePerformanceRates, room);
-                  if (!rate) {
-                    toast.error("Kein passender Leistungswert – bitte m²/Std. selbst angeben.");
-                    return;
-                  }
-                  patch(room.id, {
-                    sqmPerHour: String(rate.sqm_per_hour).replace(".", ","),
-                    rateLabel: rate.label,
-                  });
-                }}
-              >
-                Leistungswert neu vorschlagen
-              </Button>
+              <div className="space-y-1">
+                <Label htmlFor={`room-${index}-tasks`}>Enthaltene Aufgaben</Label>
+                <Textarea
+                  id={`room-${index}-tasks`}
+                  disabled={!room.included}
+                  value={room.tasks ?? ""}
+                  placeholder="z. B. Boden, Oberflächen, Abfall, WC und Waschbecken"
+                  onChange={(event) => patch(room.id, { tasks: event.target.value })}
+                />
+              </div>
+              {room.calculationMode !== "minutes" && (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Ansatz: {room.rateLabel}. Nur die damit abgedeckten Aufgaben sind enthalten.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!room.included}
+                    onClick={() => {
+                      const rate = findRate(visiblePerformanceRates, room);
+                      if (!rate) {
+                        toast.error("Kein passender Leistungswert – bitte m²/Std. selbst angeben.");
+                        return;
+                      }
+                      patch(room.id, {
+                        sqmPerHour: String(rate.sqm_per_hour).replace(".", ","),
+                        rateLabel: rate.label,
+                      });
+                    }}
+                  >
+                    Leistungswert neu vorschlagen
+                  </Button>
+                </>
+              )}
               {result && (
                 <p className="text-sm">
                   <strong>{formatNumber(result.hoursPerVisit * 60)} Min./Reinigung</strong> ·{" "}
@@ -264,12 +326,15 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                 frequency: "",
                 frequencyUnit: "week",
                 included: true,
+                calculationMode: "minutes",
+                minutesPerVisit: "",
+                tasks: "",
               },
             ],
           }))
         }
       >
-        Fehlenden Raum ergänzen
+        Raum / Rüst- oder Wegezeit ergänzen
       </Button>
       {roomSummary.errors.length > 0 && (
         <div role="alert" className="rounded-md border border-amber-500/60 p-3 text-sm">
@@ -292,8 +357,8 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
         </p>
         <p className="text-xs text-muted-foreground">
           Wochenbasierte Turnusse: 52 Wochen ÷ 12 Monate. Abrechenbare Stunden je Raum auf zwei
-          Nachkommastellen gerundet. Ohne Wege-, Rüst- und Nebenzeiten; diese im Ansatz
-          berücksichtigen.
+          Nachkommastellen gerundet. Rüst-, Wege- und Nebenzeiten in den Minuten berücksichtigen
+          oder als eigene Zeitposition ergänzen; gemeinsame Zeiten nur einmal pro Besuch ansetzen.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">

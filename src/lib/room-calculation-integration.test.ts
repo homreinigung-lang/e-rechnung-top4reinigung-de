@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { useCalculationTotals } from "@/components/kalkulation/useCalculationTotals";
 import { CLEANING_TYPES } from "@/components/kalkulation/shared";
-import { emptyRoomCalculation, roomsFromScan } from "./room-calculation";
+import { type CalculationRoom, emptyRoomCalculation, roomsFromScan } from "./room-calculation";
 import { DEFAULT_PERFORMANCE_RATES } from "./leistungswerte";
 
 function totals(enabled = true) {
@@ -12,11 +12,11 @@ function totals(enabled = true) {
     id: String(i),
     active: true,
   }));
-  const rooms = roomsFromScan(
+  const rooms: CalculationRoom[] = roomsFromScan(
     "plan.pdf",
     [{ name: "Büro", floor: "EG", usage_type: "Büro", floor_covering: "Teppich", area_sqm: 30 }],
     rates,
-  ).map((room) => ({ ...room, frequency: "2" }));
+  ).map((room) => ({ ...room, calculationMode: "area" as const, frequency: "2" }));
   return {
     roomCalculation: { ...emptyRoomCalculation(), enabled, rooms },
     aiPrompt: "",
@@ -104,4 +104,21 @@ it("blockiert unvollständige aktive Raumdaten und verhindert zusätzliche Trepp
   expect(result.warnings.some((warning) => warning.includes("Turnus"))).toBe(true);
   expect(result.stagedPositions).toEqual([]);
   expect(result.base).toBe(0);
+});
+
+it("übernimmt Minuten inklusive Aufgaben in Preis und Selbstkosten statt Flächenvorschlag", () => {
+  const input = totals();
+  input.roomCalculation.rooms[0] = {
+    ...input.roomCalculation.rooms[0]!,
+    calculationMode: "minutes",
+    minutesPerVisit: "90",
+    tasks: "Alle vereinbarten Aufgaben",
+    frequency: "1",
+  };
+  const result = renderTotals(input);
+  expect(result.monthlyHours).toBe(6.5);
+  expect(result.costingMonthlyHours).toBe(6.5);
+  expect(result.suggested).toBe(227.5);
+  expect(result.monthlySelfCost).toBe(159.25);
+  expect(result.stagedPositions[0]?.description).toContain("Alle vereinbarten Aufgaben");
 });

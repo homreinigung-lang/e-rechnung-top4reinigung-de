@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PERFORMANCE_RATES } from "./leistungswerte";
 import {
+  type RoomCalculation,
   calculateRooms,
   emptyRoomCalculation,
   readRoomCalculation,
@@ -21,11 +22,15 @@ const scan = [
   { name: "WC", usage_type: "WC", floor: "EG", floor_covering: "Fliesen", area_sqm: 10 },
   { name: "Teeküche", usage_type: "Küche", floor: "EG", floor_covering: "Fliesen", area_sqm: 10 },
 ];
-function scheduled() {
+function scheduled(): RoomCalculation {
   return {
     ...emptyRoomCalculation(),
     enabled: true,
-    rooms: roomsFromScan("plan.pdf", scan, rates).map((room) => ({ ...room, frequency: "2" })),
+    rooms: roomsFromScan("plan.pdf", scan, rates).map((room) => ({
+      ...room,
+      calculationMode: "area" as const,
+      frequency: "2",
+    })),
   };
 }
 
@@ -116,4 +121,52 @@ describe("Grundriss → Raumstunden → Angebot", () => {
       emptyRoomCalculation(),
     );
   });
+});
+
+it("rechnet Personalminuten mit gemischten Ansätzen und erhält sie beim Speichern", () => {
+  const data = scheduled();
+  data.rooms = data.rooms.slice(0, 2);
+  data.rooms[0] = {
+    ...data.rooms[0]!,
+    calculationMode: "minutes",
+    minutesPerVisit: "90",
+    tasks: "Boden, WC, Abfall",
+    area: "",
+    sqmPerHour: "",
+    frequency: "1",
+  };
+  const restored = readRoomCalculation(JSON.parse(JSON.stringify(data)));
+  expect(restored).toEqual(data);
+  const result = calculateRooms(restored, 35);
+  expect(result.errors).toEqual([]);
+  expect(result.rows[0]?.hoursPerVisit).toBe(1.5);
+  expect(result.rows[0]?.monthlyHours).toBe(6.5);
+  expect(result.positions[0]?.unit_price).toBe(35);
+  expect(result.positions[0]?.description).toContain("90 Min./Besuch");
+  expect(result.positions[0]?.description).toContain("Leistungen: Boden, WC, Abfall");
+  expect(result.positions[0]?.description).not.toContain("m²/Std.");
+  expect(positionsTotal([result.positions[0]!])).toBe(227.5);
+  expect(result.positions[1]?.description).toContain("m²/Std.");
+});
+
+it.each(["", "0", "-5", "abc"])("blockiert ungültige Personalminuten %s", (minutes) => {
+  const data = scheduled();
+  data.rooms[0] = { ...data.rooms[0]!, calculationMode: "minutes", minutesPerVisit: minutes };
+  expect(calculateRooms(data, 35).positions).toEqual([]);
+  expect(calculateRooms(data, 35).errors.join()).toContain("Minuten je Besuch");
+});
+
+it("lädt alte Raumdaten ohne neue Felder weiter als Flächenansatz", () => {
+  const data = scheduled();
+  const legacy = JSON.parse(JSON.stringify(data));
+  for (const room of legacy.rooms) {
+    delete room.calculationMode;
+    delete room.minutesPerVisit;
+    delete room.tasks;
+  }
+  const restored = readRoomCalculation(legacy);
+  expect(calculateRooms(restored, 35).monthlyHours).toBe(5.11);
+  expect(
+    readRoomCalculation({ ...legacy, rooms: [{ ...legacy.rooms[0], calculationMode: "unknown" }] }),
+  ).toEqual(emptyRoomCalculation());
 });
