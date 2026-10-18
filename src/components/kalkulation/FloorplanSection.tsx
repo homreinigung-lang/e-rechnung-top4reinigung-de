@@ -109,7 +109,7 @@ export function FloorplanSection({ state }: { state: KalkulationStateContext }) 
           <Button
             type="button"
             disabled={aiSuggest.isPending || aiPrompt.trim().length < 5}
-            onClick={() => aiSuggest.mutate()}
+            onClick={() => aiSuggest.mutate(undefined)}
           >
             <Sparkles className="size-4" />
             {aiSuggest.isPending ? "Wird kalkuliert…" : "Kalkulation erstellen"}

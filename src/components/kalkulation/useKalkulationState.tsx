@@ -440,6 +440,7 @@ export function useKalkulationState() {
     kiItemChanged,
     kiItems,
     kiOutOfSync,
+    kiPrompt,
     kiPositions,
     kiPricingBasis,
     kiTotal,

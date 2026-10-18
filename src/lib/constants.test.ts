@@ -1,8 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { visitsPerMonth, visitsPerYear } from "@/lib/constants";
+import { visitsPerMonth, visitsPerYear, readRecurrenceUnit } from "@/lib/constants";
 import { buildConsolidatedPositions, positionsTotal } from "@/lib/kalkulation-engine";
 
 describe("Turnusberechnung auf Jahresbasis", () => {
+  it.each(["week", "fortnight", "month", "quarter", "year"] as const)(
+    "behält den gespeicherten Zeitraum %s beim Laden",
+    (unit) => {
+      expect(readRecurrenceUnit(unit)).toBe(unit);
+    },
+  );
+
+  it("behält den bisherigen Monats-Fallback für unbekannte Speicherwerte", () => {
+    expect(readRecurrenceUnit(null)).toBe("month");
+    expect(readRecurrenceUnit("unknown")).toBe("month");
+  });
   it("rechnet wöchentlich mit exakt 52 Wochen pro Jahr", () => {
     expect(visitsPerYear(1, "week")).toBe(52);
     expect(visitsPerMonth(1, "week")).toBeCloseTo(52 / 12, 10);
@@ -22,7 +33,6 @@ describe("Turnusberechnung auf Jahresbasis", () => {
     expect(visitsPerMonth(1, "year")).toBeCloseTo(1 / 12, 10);
   });
 });
-
 
 describe("Angebotspreis mit exakter Einsatzmenge", () => {
   it("berechnet 14-tägig mit 1,5 Std. × 35 € als 113,75 € pro Monat", () => {

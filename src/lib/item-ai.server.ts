@@ -1,5 +1,10 @@
 import { generateGeminiJson } from "./gemini-json.server";
-import { STAIR_RATE_PER_FLOOR, WEEKS_PER_MONTH } from "./constants";
+import {
+  STAIR_RATE_PER_FLOOR,
+  visitsPerMonth,
+  recurrenceUnitLabel,
+  type RecurrenceUnit,
+} from "./constants";
 
 export type GeneratedItem = {
   description: string;
@@ -16,7 +21,7 @@ export type GeneratedCalculation = {
   hourly_rate: number;
   price_per_sqm: number;
   frequency: number;
-  frequency_unit: "week" | "month";
+  frequency_unit: RecurrenceUnit;
   floors: number;
   stairs: boolean;
   travel: number;
@@ -141,7 +146,7 @@ function additionalCorridorArea(prompt: string): number {
     : 0;
 }
 
-function explicitFrequency(prompt: string): { value: number; unit: "week" | "month" } | null {
+function explicitFrequency(prompt: string): { value: number; unit: RecurrenceUnit } | null {
   const text = normalizedText(prompt).replace(/inderwoche/g, "in der woche");
   const connector = "(?:pro\\s+|in\\s+der\\s+|inder\\s+|im\\s+|die\\s+|je\\s+|/\\s*)?";
 
@@ -154,7 +159,7 @@ function explicitFrequency(prompt: string): { value: number; unit: "week" | "mon
       text,
     )
   ) {
-    return { value: 0.5, unit: "week" };
+    return { value: 1, unit: "fortnight" };
   }
   if (/\b(?:mo\s*[-–]\s*fr|montag\s+bis\s+freitag|werktäglich|werktags)\b/i.test(text)) {
     return { value: 5, unit: "week" };
@@ -287,7 +292,7 @@ function deterministicBaseItem(args: {
   hours: number;
   floors: number;
   frequency: number;
-  frequencyUnit: "week" | "month";
+  frequencyUnit: RecurrenceUnit;
   billingPeriod: "once" | "month";
   pricePerSqm: number;
   hourlyRate: number;
@@ -297,8 +302,7 @@ function deterministicBaseItem(args: {
     !(args.frequency > 0)
   )
     return null;
-  const visitsPerMonth =
-    args.frequencyUnit === "week" ? args.frequency * WEEKS_PER_MONTH : args.frequency;
+  const monthlyVisits = visitsPerMonth(args.frequency, args.frequencyUnit);
   const perVisit =
     args.area > 0
       ? round2(args.area * args.pricePerSqm)
@@ -309,17 +313,17 @@ function deterministicBaseItem(args: {
     args.billingPeriod === "once"
       ? "einmalig"
       : args.frequencyUnit === "week"
-        ? args.frequency === 0.5
-          ? "14-täglich"
-          : `${args.frequency}× wöchentlich`
-        : `${args.frequency}× monatlich`;
+        ? `${args.frequency}× wöchentlich`
+        : args.frequencyUnit === "month"
+          ? `${args.frequency}× monatlich`
+          : `${args.frequency}× ${recurrenceUnitLabel(args.frequencyUnit)}`;
   return {
     description: `${defaultsFor(args.type).label} (${args.area > 0 ? `${String(args.area).replace(".", ",")} m²` : args.hours > 0 ? `${String(args.hours).replace(".", ",")} Std. je Einsatz` : `${args.floors} Etagen`}, ${turnus})`,
     quantity: 1,
     unit: args.billingPeriod === "once" ? "Pauschal" : "Monat",
     // Der monatliche Betrag wird einmal gerundet. 21,67 × 80 € würde bei
     // fünf Einsätzen/Woche andernfalls 27 Cent zu hoch ausfallen.
-    unit_price: args.billingPeriod === "once" ? perVisit : round2(perVisit * visitsPerMonth),
+    unit_price: args.billingPeriod === "once" ? perVisit : round2(perVisit * monthlyVisits),
   };
 }
 
@@ -333,7 +337,10 @@ export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
   return normalizeItems(parsed["items"]);
 }
 
-export async function generateCalculation(prompt: string): Promise<GeneratedCalculation> {
+export async function generateCalculation(
+  prompt: string,
+  recurrence?: { value: number; unit: RecurrenceUnit },
+): Promise<GeneratedCalculation> {
   const statedType = explicitCleaningType(prompt);
   const cleaningType = statedType ?? "unterhalt";
   const defaults = defaultsFor(cleaningType);
@@ -347,7 +354,7 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
   // its floor basis and add the corridor as its own proposal below.
   const area = corridorArea > 0 ? 0 : statedArea;
 
-  const statedFrequency = explicitFrequency(prompt);
+  const statedFrequency = recurrence ?? explicitFrequency(prompt);
   const annualFrequency =
     !statedFrequency &&
     /\b(?:\d+\s*[-–—]?\s*(?:x|mal)\s*(?:(?:pro|im|je)\s*|\/\s*)?jahr|(?:einmal|zweimal|dreimal)\s*(?:pro|im|je)\s*jahr|jährlich|jaehrlich|halbjährlich|halbjaehrlich)\b/i.test(
@@ -384,7 +391,7 @@ export async function generateCalculation(prompt: string): Promise<GeneratedCalc
       "Beziehen sich die Stunden auf das Treppenhaus, den Flur oder beide Leistungen?",
     );
   }
-  if (corridorArea > 0) {
+  if (corridorArea > 0 && !recurrence) {
     const frequencies = prompt
       .split(/[,;!\n]|\bflur(?:reinigung)?\b/i)
       .map(explicitFrequency)
