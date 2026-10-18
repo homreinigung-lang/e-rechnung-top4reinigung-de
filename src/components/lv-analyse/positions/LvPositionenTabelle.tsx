@@ -32,15 +32,17 @@ import {
 import { parseFrequency } from "@/lib/lv-analyse/normalize";
 import {
   CALC_STATUS_LABELS,
-  NO_OWN_PRICE_HINT,
   annualOfferPrice,
   calcStatus,
   hasOwnPrice,
+  canRelease,
+  ownUnitPrice,
   offerPrice,
   summarizeOwnCalculation,
 } from "@/lib/lv-analyse/calculation";
 import { REVIEW_LABEL, needsReview, reviewFields } from "@/lib/lv-analyse/export";
 import { CATEGORY_OPTIONS, EMPTY, COLUMNS, type Filter, FILTERS, type Props } from "./shared";
+import { LvCalculationEditor } from "./LvCalculationEditor";
 import { ReviewMark, Placeholder, NumCell } from "@/components/lv-analyse/positions/PositionCells";
 
 export function LvPositionenTabelle({
@@ -67,7 +69,7 @@ export function LvPositionenTabelle({
     const q = query.trim().toLowerCase();
     return items.filter((item) => {
       if (filter === "freigegeben" && !item.approved) return false;
-      if (filter === "offen" && (item.approved || hasOwnPrice(item))) return false;
+      if (filter === "offen" && canRelease(item)) return false;
       if (filter === "pruefung" && !needsReview(item)) return false;
       if (!q) return true;
       return [
@@ -83,15 +85,23 @@ export function LvPositionenTabelle({
     });
   }, [items, filter, query]);
 
-  const approvedPriced = useMemo(() => items.filter((i) => i.approved && hasOwnPrice(i)), [items]);
+  const approvedPriced = useMemo(() => items.filter((i) => i.approved && canRelease(i)), [items]);
   const summary = useMemo(() => summarizeOwnCalculation(approvedPriced), [approvedPriced]);
 
   const updateCalc = (item: LvNormalizedItem, patch: Partial<LvNormalizedItem["calculation"]>) =>
-    onUpdate(item.id, { calculation: { ...item.calculation, ...patch } });
+    onUpdate(item.id, {
+      calculation: {
+        ...item.calculation,
+        pricing_basis: item.calculation.pricing_basis ?? null,
+        ...patch,
+      },
+    });
 
   const toggleApprove = (item: LvNormalizedItem) => {
-    if (!item.approved && !hasOwnPrice(item)) {
-      toast.error("Freigabe nicht möglich", { description: NO_OWN_PRICE_HINT });
+    if (!item.approved && !canRelease(item)) {
+      toast.error("Freigabe nicht möglich", {
+        description: "Preisbezug, eigene Menge/Einheit, Turnus und Kalkulation vollständig prüfen.",
+      });
       return;
     }
     onUpdate(item.id, { approved: !item.approved });
@@ -101,6 +111,10 @@ export function LvPositionenTabelle({
 
   return (
     <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Bearbeitungen gelten für diese Analyse. Ergebnisse vor dem Verlassen exportieren. Mengen und
+        Preise nicht zusätzlich in einer zweiten Raumkalkulation abrechnen.
+      </p>
       {/* Kopfbereich */}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium">{items.length} Positionen extrahiert</span>
@@ -195,6 +209,15 @@ export function LvPositionenTabelle({
                             {detailId === item.id ? "Details ausblenden" : "Details"}
                           </button>
                         </div>
+                        <details className="mt-2">
+                          <summary className="cursor-pointer font-medium">
+                            Eigene Kalkulation bearbeiten
+                          </summary>
+                          <LvCalculationEditor
+                            item={item}
+                            onChange={(calculation) => onUpdate(item.id, { calculation })}
+                          />
+                        </details>
                       </TableCell>
                       <TableCell className="w-40">
                         <select
@@ -256,10 +279,18 @@ export function LvPositionenTabelle({
                         />
                       </TableCell>
                       <TableCell className="w-32">
-                        <NumCell
-                          value={item.calculation.own_unit_price}
-                          onChange={(v) => updateCalc(item, { own_unit_price: v })}
-                        />
+                        {item.calculation.mode === "time" ? (
+                          ownUnitPrice(item) === null ? (
+                            <Placeholder />
+                          ) : (
+                            `${ownUnitPrice(item)!.toLocaleString("de-DE", { maximumFractionDigits: 6 })} €`
+                          )
+                        ) : (
+                          <NumCell
+                            value={item.calculation.own_unit_price}
+                            onChange={(v) => updateCalc(item, { own_unit_price: v })}
+                          />
+                        )}
                         <ReviewMark show={!hasOwnPrice(item)} />
                       </TableCell>
                       <TableCell className="w-28 text-right tabular-nums">
@@ -357,10 +388,10 @@ export function LvPositionenTabelle({
                 ],
                 [
                   "Eigener Einheitspreis (€)",
-                  item.calculation.own_unit_price === null ? (
+                  ownUnitPrice(item) === null ? (
                     <Placeholder />
                   ) : (
-                    formatMoney(item.calculation.own_unit_price)
+                    `${ownUnitPrice(item)!.toLocaleString("de-DE", { maximumFractionDigits: 6 })} €`
                   ),
                 ],
                 ["Gesamtpreis (€)", total === null ? <Placeholder /> : formatMoney(total)],
@@ -389,11 +420,11 @@ export function LvPositionenTabelle({
                         </div>
                       ))}
                     </dl>
+                    <LvCalculationEditor
+                      item={item}
+                      onChange={(calculation) => onUpdate(item.id, { calculation })}
+                    />
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <NumCell
-                        value={item.calculation.own_unit_price}
-                        onChange={(v) => updateCalc(item, { own_unit_price: v })}
-                      />
                       <Button
                         size="sm"
                         variant={item.approved ? "default" : "outline"}
@@ -450,14 +481,21 @@ export function LvPositionenTabelle({
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 <p className="text-sm">
-                  Gesamtsumme der freigegebenen Positionen:{" "}
+                  Summe Positionspreise (je gewähltem Preisbezug):{" "}
                   <span className="font-semibold tabular-nums">{formatMoney(summary.net)}</span>
                 </p>
                 <p className="text-sm">
-                  Jahressumme der freigegebenen Positionen:{" "}
+                  Jahressumme wiederkehrender Positionen:{" "}
                   <span className="font-semibold tabular-nums">
                     {formatMoney(summary.annualNet)}
                   </span>
+                </p>
+                <p className="text-sm">
+                  Monatsdurchschnitt netto: <strong>{formatMoney(summary.monthlyNet)}</strong>
+                </p>
+                <p className="text-sm">
+                  Einmalig / Vertragsgesamt netto:{" "}
+                  <strong>{formatMoney(summary.oneTimeNet)}</strong>
                 </p>
               </div>
             )}

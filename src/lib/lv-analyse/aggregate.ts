@@ -1,6 +1,6 @@
 import { MONTHS_PER_YEAR } from "@/lib/constants";
 import { fromCents, toCents } from "@/lib/kalkulation-engine";
-import { annualOfferPrice, isCalculable, offerPrice } from "./calculation";
+import { annualOfferPrice, isCalculable, offerPrice, pricingFrequency } from "./calculation";
 import type { LvItemCategory, LvNormalizedItem, LvTotalLine } from "./types";
 
 const round2 = (n: number) => fromCents(toCents(n));
@@ -25,7 +25,10 @@ export function aggregateByCategory(items: LvNormalizedItem[]): CategoryAggregat
     };
     entry.items += 1;
     entry.area_m2 += item.area_m2 ?? 0;
-    entry.hours += item.working_hours ?? 0;
+    entry.hours +=
+      item.calculation.mode === "time"
+        ? (item.calculation.minutes_per_execution ?? 0) / 60
+        : (item.working_hours ?? 0);
     entry.total += offerPrice(item) ?? 0;
     map.set(item.category, entry);
   }
@@ -89,14 +92,24 @@ export function summarizeHours(
   items: LvNormalizedItem[],
   performanceRate = DEFAULT_PERFORMANCE_RATE,
 ): HoursSummary {
-  const withHours = items.filter((i) => (i.working_hours ?? 0) > 0);
-  const totalHours = withHours.reduce((s, i) => s + (i.working_hours ?? 0), 0);
+  const hoursFor = (i: LvNormalizedItem) =>
+    i.calculation.mode === "time"
+      ? Math.max(0, i.calculation.minutes_per_execution ?? 0) / 60
+      : (i.working_hours ?? 0);
+  const withHours = items.filter((i) => hoursFor(i) > 0);
+  const totalHours = withHours.reduce((s, i) => s + hoursFor(i), 0);
   const annualHours = withHours.reduce(
-    (s, i) => s + (i.working_hours ?? 0) * (i.frequency.perYear ?? 1),
+    (s, i) =>
+      s +
+      (i.calculation.pricing_basis === "once"
+        ? 0
+        : hoursFor(i) * (pricingFrequency(i).perYear ?? 1)),
     0,
   );
   const areaWithoutHours = items
-    .filter((i) => (i.working_hours ?? 0) <= 0 && (i.area_m2 ?? 0) > 0)
+    .filter(
+      (i) => i.calculation.mode !== "time" && (i.working_hours ?? 0) <= 0 && (i.area_m2 ?? 0) > 0,
+    )
     .reduce((s, i) => s + (i.area_m2 ?? 0) * (i.frequency.perYear ?? 1), 0);
   const estimatedFromArea = round2(performanceRate > 0 ? areaWithoutHours / performanceRate : 0);
   const annualHoursTotal = round2(annualHours + estimatedFromArea);
@@ -150,11 +163,17 @@ export function summarizeCost(
   const priced = items.filter(isCalculable);
   const netCents = priced.reduce((s, i) => s + toCents(offerPrice(i) ?? 0), 0);
   const annualCents = priced.reduce(
-    (s, i) => s + toCents(annualOfferPrice(i) ?? offerPrice(i) ?? 0),
+    (s, i) =>
+      s +
+      (i.calculation.pricing_basis === "once"
+        ? 0
+        : toCents(annualOfferPrice(i) ?? offerPrice(i) ?? 0)),
     0,
   );
   const vatCents = Math.round((netCents * vatRate) / 100);
-  const itemsWithoutFrequency = priced.filter((i) => i.frequency.perYear === null).length;
+  const itemsWithoutFrequency = priced.filter(
+    (i) => !i.calculation.pricing_basis && pricingFrequency(i).perYear === null,
+  ).length;
   const documentRate = items.find((i) => i.vat_rate !== null)?.vat_rate ?? null;
   return {
     net: fromCents(netCents),
@@ -169,7 +188,6 @@ export function summarizeCost(
     documentVatRateHint: documentRate !== null && documentRate !== vatRate ? documentRate : null,
   };
 }
-
 
 export type PriceRecommendation = {
   hourlyRate: number;

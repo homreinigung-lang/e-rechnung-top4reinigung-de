@@ -88,7 +88,10 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
       {/* 2) Flächen */}
       <TabsContent value="area" className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-4">
-          <Kpi label="Gesamtfläche" value={`${formatNumber(area.totalArea)} m²`} />
+          <Kpi
+            label="Summe Positionsflächen (ggf. mehrfach)"
+            value={`${formatNumber(area.totalArea)} m²`}
+          />
           <Kpi label="Jahresfläche" value={`${formatNumber(area.annualArea)} m²`} />
           <Kpi label="Positionen mit Fläche" value={String(area.itemsWithArea)} />
           <Kpi label="Ohne Flächenangabe" value={String(area.itemsWithoutArea)} />
@@ -118,7 +121,10 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-4">
             <Kpi label="Positionen" value={String(items.length)} />
-            <Kpi label="Gesamtfläche" value={`${formatNumber(area.totalArea)} m²`} />
+            <Kpi
+              label="Summe Positionsflächen (ggf. mehrfach)"
+              value={`${formatNumber(area.totalArea)} m²`}
+            />
             <Kpi label="Jahresstunden gesamt" value={formatNumber(hours.annualHoursTotal)} />
             <Kpi label="Ohne eigenen Preis" value={String(ownSummary.openItems)} />
           </CardContent>
@@ -130,10 +136,18 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-4">
-              <Kpi label="Angebotssumme netto" value={formatMoney(ownSummary.net)} />
+              <Kpi
+                label="Positionspreise netto (je Preisbezug)"
+                value={formatMoney(ownSummary.net)}
+              />
               <Kpi label={`MwSt ${formatNumber(cost.vatRate)} %`} value={formatMoney(cost.vat)} />
               <Kpi label="Brutto" value={formatMoney(cost.gross)} />
-              <Kpi label="Jahresnetto" value={formatMoney(ownSummary.annualNet)} />
+              <Kpi label="Jahresnetto (wiederkehrend)" value={formatMoney(ownSummary.annualNet)} />
+              <Kpi label="Monatsdurchschnitt netto" value={formatMoney(ownSummary.monthlyNet)} />
+              <Kpi
+                label="Einmalig / Vertragsgesamt netto"
+                value={formatMoney(ownSummary.oneTimeNet)}
+              />
             </div>
             <p className="text-sm text-muted-foreground">
               {cost.documentVatRateHint !== null

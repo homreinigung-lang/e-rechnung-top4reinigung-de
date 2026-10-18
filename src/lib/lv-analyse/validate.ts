@@ -1,3 +1,4 @@
+import { hasOwnPrice, pricingFrequency } from "./calculation";
 import type { LvNormalizedItem, LvValidationIssue } from "./types";
 
 /**
@@ -36,7 +37,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         hint: "Einheit ergänzen (m², Stk, Std, Monat, pauschal).",
       });
     }
-    if (item.frequency.perYear === null) {
+    if (pricingFrequency(item).perYear === null) {
       issues.push({
         itemId: item.id,
         field: "frequency",
@@ -45,7 +46,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         hint: "Intervall manuell ergänzen, sofern es aus der Ausschreibung eindeutig hervorgeht.",
       });
     }
-    if (item.unit_price === null || item.unit_price <= 0) {
+    if (!hasOwnPrice(item)) {
       issues.push({
         itemId: item.id,
         field: "unit_price",
