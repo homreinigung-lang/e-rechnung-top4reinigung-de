@@ -16,6 +16,9 @@ export type CalculationRoom = {
   frequency: string;
   frequencyUnit: RecurrenceUnit;
   included: boolean;
+  calculationMode?: "area" | "minutes";
+  minutesPerVisit?: string;
+  tasks?: string;
 };
 
 export type RoomCalculation = { version: 1; enabled: boolean; rooms: CalculationRoom[] };
@@ -52,6 +55,9 @@ export function roomsFromScan(
       frequency: "",
       frequencyUnit: "week",
       included: true,
+      calculationMode: "minutes",
+      minutesPerVisit: "",
+      tasks: "",
     };
   });
 }
@@ -105,6 +111,14 @@ export function readRoomCalculation(value: unknown): RoomCalculation {
       ids.has(String(row["id"]))
     )
       return emptyRoomCalculation();
+    if (
+      (row["calculationMode"] !== undefined &&
+        row["calculationMode"] !== "area" &&
+        row["calculationMode"] !== "minutes") ||
+      (row["minutesPerVisit"] !== undefined && typeof row["minutesPerVisit"] !== "string") ||
+      (row["tasks"] !== undefined && typeof row["tasks"] !== "string")
+    )
+      return emptyRoomCalculation();
     ids.add(String(row["id"]));
     rooms.push(row as unknown as CalculationRoom);
   }
@@ -123,19 +137,24 @@ export function calculateRooms(calculation: RoomCalculation, hourlyRate: number)
       const performance = parsePositiveNumber(room.sqmPerHour);
       const frequency = parsePositiveNumber(room.frequency);
       const label = room.name.trim() || "Unbenannter Raum";
-      if (!room.name.trim() || sqm <= 0 || performance <= 0 || frequency <= 0) {
-        errors.push(`${label}: Raumname, Fläche, Leistungswert und Turnus vollständig angeben.`);
+      const manualTime = room.calculationMode === "minutes";
+      const minutes = parsePositiveNumber(room.minutesPerVisit ?? "");
+      const validTime = manualTime ? minutes > 0 : sqm > 0 && performance > 0;
+      if (!room.name.trim() || !validTime || frequency <= 0) {
+        errors.push(
+          `${label}: Raumname, ${manualTime ? "Minuten je Besuch" : "Fläche und Leistungswert"} und Turnus vollständig angeben.`,
+        );
       }
-      const hoursPerVisit = performance > 0 ? sqm / performance : 0;
+      const hoursPerVisit = manualTime ? minutes / 60 : performance > 0 ? sqm / performance : 0;
       const visits = visitsPerMonth(frequency, room.frequencyUnit);
       const billedHours = round2(hoursPerVisit * visits);
-      if (sqm > 0 && performance > 0 && frequency > 0 && billedHours <= 0)
+      if (validTime && frequency > 0 && billedHours <= 0)
         errors.push(`${label}: Stundenbedarf liegt unter 0,01 Std./Monat – Ansatz prüfen.`);
       area += sqm;
       monthlyHours += billedHours;
       if (billedHours > 0 && hourlyRate > 0) {
         positions.push({
-          description: `${label}${room.floor ? ` (${room.floor})` : ""} – ${formatNumber(sqm)} m²${room.floor_covering ? `, ${room.floor_covering}` : ""}, ${formatNumber(performance)} m²/Std., ${formatNumber(frequency)} ${recurrenceUnitLabel(room.frequencyUnit)} – Monatsdurchschnitt`,
+          description: `${label}${room.floor ? ` (${room.floor})` : ""} – ${sqm > 0 ? `${formatNumber(sqm)} m², ` : ""}${room.floor_covering ? `${room.floor_covering}, ` : ""}${manualTime ? `${formatNumber(minutes)} Min./Besuch` : `${formatNumber(performance)} m²/Std.`}, ${formatNumber(frequency)} ${recurrenceUnitLabel(room.frequencyUnit)} – Monatsdurchschnitt${room.tasks?.trim() ? `; Leistungen: ${room.tasks.trim()}` : ""}`,
           quantity: billedHours,
           unit: "Std.",
           unit_price: round2(hourlyRate),
