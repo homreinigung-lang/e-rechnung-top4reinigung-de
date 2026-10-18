@@ -43,6 +43,8 @@ describe("unabhängige Grundrissprüfungen", () => {
     expect(first?.mimeType).toBe(second?.mimeType);
     expect(first?.model).toBe("gemini-3.8-flash");
     expect(first?.model).toBe(second?.model);
+    expect(first?.fallbackOnQuota).toBe(true);
+    expect(second?.fallbackOnQuota).toBe(true);
     finishRooms(plan);
     const result = await pending;
     expect(result.rooms).toEqual([

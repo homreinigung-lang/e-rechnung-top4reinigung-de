@@ -41,6 +41,7 @@ it("wiederholt einen Timeout mit demselben Modell und derselben Anfrage", async 
 
 const options = {
   model: "test-pro",
+  fallbackOnQuota: true,
   system: "system",
   prompt: "prompt",
   schema: { type: "object" },
@@ -101,6 +102,19 @@ it("versucht bei ungültigem API-Zugang kein Ersatzmodell", async () => {
   );
   await expect(generateGeminiJson(options)).rejects.toThrow(
     "KI-Zugang ist nicht korrekt konfiguriert",
+  );
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("behält ohne Opt-in den sofortigen Abbruch bei 429 bei", async () => {
+  vi.stubEnv("GEMINI_API_KEY", "test-only");
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response("quota", { status: 429 })),
+  );
+  await expect(generateGeminiJson({ ...options, fallbackOnQuota: false })).rejects.toThrow(
+    "Google-Gemini-Kontingent",
   );
   expect(fetch).toHaveBeenCalledTimes(1);
 });
