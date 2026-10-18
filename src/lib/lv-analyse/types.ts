@@ -26,6 +26,17 @@ export type LvFrequency = {
 
 /** Eigene Kalkulationsdaten – ausschließlich manuell erfasst. */
 export type LvCalculation = {
+  mode?: "unit_price" | "time";
+  scope_checked?: boolean;
+  /** Basis der eigenen Preise; undefined erhält alte Berechnungen. null = noch nicht gewählt. */
+  pricing_basis?: "execution" | "month" | "year" | "once" | null;
+  /** Nur wenn die Ausschreibung keine Menge/Einheit vorgibt. */
+  own_quantity?: number | null;
+  own_unit?: string;
+  own_frequency?: LvFrequency;
+  /** Personalzeit für die GESAMTE Position je Ausführung, nicht je Einheit. */
+  minutes_per_execution?: number | null;
+  hourly_rate?: number | null;
   /** Eigener Einheitspreis (€). null = „Noch kein eigener Preis eingetragen". */
   own_unit_price: number | null;
   /** Eigene Arbeitskosten (€) je Position. */
@@ -113,7 +124,6 @@ export type LvAnalysisResult = {
   /** Teilfehler der Verarbeitung (KI, OCR, GAEB) – werden dem Nutzer angezeigt. */
   failures?: string[];
 };
-
 
 /** Eintrag im Import-Protokoll. */
 export type LvImportLogEntry = {

@@ -26,7 +26,8 @@ import {
 import {
   NO_OWN_PRICE_HINT,
   emptyCalculation,
-  hasOwnPrice,
+  canRelease,
+  updateLvItem,
   summarizeOwnCalculation,
 } from "@/lib/lv-analyse/calculation";
 
@@ -222,7 +223,7 @@ export function useLvAnalyseState() {
   const price = useMemo(() => recommendPrice(items, priceInputs), [items, priceInputs]);
 
   const update = (id: string, patch: Partial<LvNormalizedItem>) =>
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+    setItems((prev) => prev.map((item) => (item.id === id ? updateLvItem(item, patch) : item)));
 
   const addItem = () =>
     setItems((prev) => [
@@ -250,11 +251,11 @@ export function useLvAnalyseState() {
     ]);
 
   const approveAll = () => {
-    const open = items.filter((i) => !hasOwnPrice(i)).length;
-    setItems((prev) => prev.map((i) => (hasOwnPrice(i) ? { ...i, approved: true } : i)));
+    const open = items.filter((i) => !canRelease(i)).length;
+    setItems((prev) => prev.map((i) => (canRelease(i) ? { ...i, approved: true } : i)));
     if (open > 0) {
       toast.warning("Kalkulierte Positionen freigegeben", {
-        description: `${open} Positionen ohne eigenen Einheitspreis bleiben offen. ${NO_OWN_PRICE_HINT}`,
+        description: `${open} Positionen mit unvollständiger Kalkulation bleiben offen. ${NO_OWN_PRICE_HINT}`,
       });
     } else {
       toast.success("Alle Positionen freigegeben");

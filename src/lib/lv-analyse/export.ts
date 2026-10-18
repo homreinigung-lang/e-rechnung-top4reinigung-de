@@ -7,9 +7,16 @@
 import JSZip from "jszip";
 import {
   CALC_STATUS_LABELS,
+  annualOfferPrice,
   NO_OWN_PRICE_LABEL,
   calcStatus,
   hasOwnPrice,
+  canRelease,
+  ownUnitPrice,
+  pricingQuantity,
+  pricingUnit,
+  pricingFrequency,
+  PRICING_BASIS_LABELS,
   offerPrice,
   summarizeOwnCalculation,
 } from "./calculation";
@@ -81,7 +88,7 @@ export function selectExportItems(
   analysisId?: string | null,
 ): LvNormalizedItem[] {
   return items.filter(
-    (i) => i.approved && (!analysisId || i.analysis_id === analysisId) && hasOwnPrice(i),
+    (i) => i.approved && (!analysisId || i.analysis_id === analysisId) && canRelease(i),
   );
 }
 
@@ -110,6 +117,19 @@ export const CALCULATION_HEADERS = [
   "Gewinn (%)",
   "Angebotspreis (€)",
   "Kalkulationsstatus",
+  "Eigene Menge (nur bei fehlender LV-Menge)",
+  "Eigene Einheit (nur bei fehlender LV-Einheit)",
+  "Preisbezug",
+  "Berechnungsart",
+  "Eigene Personalminuten je Ausführung",
+  "Eigener Stundensatz (€)",
+  "Geprüfter Turnus",
+  "Geprüfte Einsätze/Jahr",
+  "Berechnete Menge",
+  "Berechnete Einheit",
+  "Jahrespreis (€)",
+  "Angebots-Einheitspreis inkl. Zuschläge (€)",
+  "Leistungsumfang auf Doppelberechnung geprüft",
 ] as const;
 
 export const EXPORT_HEADERS = [...TENDER_HEADERS, ...CALCULATION_HEADERS] as const;
@@ -139,13 +159,35 @@ export function buildExportRows(items: LvNormalizedItem[]): string[][] {
       item.source_page === null ? REVIEW_LABEL : String(item.source_page),
       String(Math.round(item.confidence_score * 100)),
       review.length ? `${REVIEW_LABEL}: ${review.join(", ")}` : "geprüft",
-      hasOwnPrice(item) ? own(item.calculation.own_unit_price) : NO_OWN_PRICE_LABEL,
-      own(item.calculation.labor_cost),
+      hasOwnPrice(item) ? own(ownUnitPrice(item)) : NO_OWN_PRICE_LABEL,
+      own(
+        item.calculation.mode === "time"
+          ? ((item.calculation.minutes_per_execution ?? 0) / 60) *
+              (item.calculation.hourly_rate ?? 0)
+          : item.calculation.labor_cost,
+      ),
       own(item.calculation.material_cost),
       own(item.calculation.overhead_cost),
       own(item.calculation.profit_percent),
       price === null ? (hasOwnPrice(item) ? REVIEW_LABEL : NO_OWN_PRICE_LABEL) : own(price),
       CALC_STATUS_LABELS[calcStatus(item)],
+      own(item.calculation.own_quantity ?? null),
+      item.calculation.own_unit ?? "",
+      item.calculation.pricing_basis
+        ? PRICING_BASIS_LABELS[item.calculation.pricing_basis]
+        : "Je Ausführung (bisheriger Ansatz)",
+      item.calculation.mode === "time"
+        ? "Zeitansatz; Material/Gemeinkosten je Ausführung"
+        : "Einheitspreis; Zuschläge je Preisbezug",
+      own(item.calculation.minutes_per_execution ?? null),
+      own(item.calculation.hourly_rate ?? null),
+      pricingFrequency(item).label,
+      own(pricingFrequency(item).perYear),
+      own(pricingQuantity(item)),
+      pricingUnit(item),
+      own(annualOfferPrice(item)),
+      own(price !== null && pricingQuantity(item) ? price / pricingQuantity(item)! : null),
+      item.calculation.scope_checked === true ? "ja" : "nein",
     ];
   });
 }
@@ -164,10 +206,12 @@ function ownSummaryRows(items: LvNormalizedItem[], vatRate: number): string[][] 
     [],
     ["Eigene Kalkulation – Gesamtsumme"],
     ["Kalkulierte Positionen", String(s.calculatedItems)],
-    ["Angebotssumme netto €", String(s.net).replace(".", ",")],
+    ["Summe Positionspreise je gewähltem Preisbezug netto €", String(s.net).replace(".", ",")],
     [`MwSt ${String(s.vatRate).replace(".", ",")} % €`, String(s.vat).replace(".", ",")],
-    ["Angebotssumme brutto €", String(s.gross).replace(".", ",")],
+    ["Summe Positionspreise je gewähltem Preisbezug brutto €", String(s.gross).replace(".", ",")],
     ["Jahressumme netto €", String(s.annualNet).replace(".", ",")],
+    ["Monatsdurchschnitt netto €", String(s.monthlyNet).replace(".", ",")],
+    ["Einmalig / Vertragsgesamt netto €", String(s.oneTimeNet).replace(".", ",")],
   ];
   if (s.itemsWithoutFrequency > 0) {
     rows.push([
@@ -346,7 +390,13 @@ export async function buildPdfReport(
   doc.text(`Status: ${result.statusMessage}`, marginX, y);
   y += 4.5;
   doc.text(
-    `Freigegebene Positionen: ${items.length} · Fläche: ${summary.totalArea.toLocaleString("de-DE")} m² · Stunden: ${summary.totalHours.toLocaleString("de-DE")} · Summe: ${summary.totalCost.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
+    `Freigegebene Positionen: ${items.length} · Summe Positionsflächen (ggf. mehrfach): ${summary.totalArea.toLocaleString("de-DE")} m² · Stunden/Jahr: ${summary.totalHours.toLocaleString("de-DE")}`,
+    marginX,
+    y,
+  );
+  y += 4.5;
+  doc.text(
+    `Summe Positionspreise netto (je Preisbezug, ggf. gemischt): ${summary.totalCost.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
     marginX,
     y,
   );
@@ -380,14 +430,14 @@ export async function buildPdfReport(
 
   const cols: { title: string; w: number; align?: "right" }[] = [
     { title: "Pos.", w: 18 },
-    { title: "Beschreibung", w: 88 },
+    { title: "Beschreibung / Preisbezug", w: 75 },
     { title: "Menge", w: 22, align: "right" },
     { title: "Einheit", w: 16 },
     { title: "Intervall", w: 28 },
     { title: "m²", w: 20, align: "right" },
     { title: "Std.", w: 18, align: "right" },
     { title: "Eigener EP €", w: 20, align: "right" },
-    { title: "Angebotspreis €", w: 22, align: "right" },
+    { title: "Preis €", w: 22, align: "right" },
     { title: "Seite", w: 14, align: "right" },
     { title: "Sich. %", w: 16, align: "right" },
   ];
@@ -396,13 +446,16 @@ export async function buildPdfReport(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     let x = marginX;
-    for (const col of cols) {
-      doc.text(col.title, col.align === "right" ? x + col.w - 2 : x, y, {
-        align: col.align ?? "left",
+    const headings = cols.map((col) => doc.splitTextToSize(col.title, col.w - 3) as string[]);
+    cols.forEach((col, index) => {
+      headings[index]!.forEach((line, lineIndex) => {
+        doc.text(line, col.align === "right" ? x + col.w - 2 : x, y + lineIndex * 3.8, {
+          align: col.align ?? "left",
+        });
       });
       x += col.w;
-    }
-    y += 2;
+    });
+    y += Math.max(...headings.map((lines) => lines.length)) * 3.8;
     doc.setLineWidth(0.3);
     doc.line(marginX, y, pageW - marginX, y);
     y += 4;
@@ -415,10 +468,10 @@ export async function buildPdfReport(
   for (const row of rows) {
     const values = [
       row[0],
-      row[1],
-      row[3],
-      row[4],
-      row[5],
+      `${row[1]}\nPreisbezug: ${row[21]}${row[22]?.startsWith("Zeitansatz") ? `; ${row[23]} Personalmin./Ausführung; ${row[24]} €/Std.` : ""}\nLV-Menge/Einheit: ${row[3]} ${row[4]}`,
+      row[27],
+      row[28],
+      row[25],
       row[7],
       row[8],
       row[12],

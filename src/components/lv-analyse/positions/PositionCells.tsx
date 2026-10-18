@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
+import { parseGermanNumber } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 
 import { REVIEW_LABEL } from "@/lib/lv-analyse/export";
@@ -18,8 +19,10 @@ export function Placeholder() {
 export function NumCell({
   value,
   onChange,
+  ariaLabel,
 }: {
   value: number | null;
+  ariaLabel?: string;
   onChange: (v: number | null) => void;
 }) {
   const format = (v: number | null) => (v === null ? "" : String(v).replace(".", ","));
@@ -33,7 +36,9 @@ export function NumCell({
 
   return (
     <Input
-      className="h-7 text-right text-xs tabular-nums"
+      aria-label={ariaLabel}
+      inputMode="decimal"
+      className="h-10 text-right text-xs tabular-nums"
       value={text}
       placeholder={EMPTY}
       onFocus={() => setFocused(true)}
@@ -46,7 +51,7 @@ export function NumCell({
         setText(raw);
         const trimmed = raw.trim();
         if (!trimmed) return onChange(null);
-        const n = Number(trimmed.replace(/\./g, "").replace(",", "."));
+        const n = /^[\d.,\s+-]+$/.test(trimmed) ? parseGermanNumber(trimmed) : NaN;
         if (Number.isFinite(n)) onChange(n);
       }}
     />
