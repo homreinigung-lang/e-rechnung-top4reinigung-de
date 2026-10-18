@@ -248,7 +248,8 @@ export function useCalculationTotals(input: {
       (mode === "hours" && num(hours) !== kiBasis.hours) ||
       num(frequency) !== kiBasis.frequency ||
       frequencyUnit !== kiBasis.frequencyUnit ||
-      (kiPricingBasis === "area" && num(pricePerSqm) !== kiBasis.pricePerSqm) ||
+      ((kiPricingBasis === "area" || (kiPricingBasis === "floor" && kiItems.length > 1)) &&
+        num(pricePerSqm) !== kiBasis.pricePerSqm) ||
       (mode === "hours" && num(hourlyRate) !== kiBasis.hourlyRate) ||
       (kiPricingBasis === "floor" && num(floors) !== kiBasis.floors));
   const vatRate = vatRateForTaxMode(taxMode);

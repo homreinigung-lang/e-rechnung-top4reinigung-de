@@ -116,7 +116,12 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
                     ? "Einmalige Leistung."
                     : "Wiederkehrende Leistung als Monatspauschale."}
                 </p>
-                {kiPricingBasis === "floor" ? (
+                {kiPricingBasis === "floor" && kiItems.length > 1 ? (
+                  <p>
+                    Die Leistungen werden getrennt berechnet. Maßgeblich sind die oben aufgeführten
+                    Positionen und deren Summe.
+                  </p>
+                ) : kiPricingBasis === "floor" ? (
                   <p>
                     {formatNumber(num(floors))} Etagen × {formatMoney(STAIR_RATE_PER_FLOOR)} ={" "}
                     {formatMoney(round2(num(floors) * STAIR_RATE_PER_FLOOR))} je Einsatz.

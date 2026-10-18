@@ -98,6 +98,81 @@ describe("KI-Kalkulation für Praxisreinigung", () => {
 
 describe("KI-Kalkulation nach Auftragsart", () => {
   it.each([
+    "Treppenhausreinigung 4 Etagen, zweimal monatlich, zusätzlich 30 m² Flur. Flurreinigung separat ausweisen und berechnen.",
+    "Treppenhausreinigung 4 Etagen 2 mall monatlich mit Flur 30 qm",
+    "Treppenhausreinigung 4 Etagen 2x monatlich plus Flurfläche von 30 m²",
+  ])("trennt Etagen und zusätzliche Flurfläche in %s", async (prompt) => {
+    const result = await generateCalculation(prompt);
+    expect(result.review_questions).toEqual([]);
+    expect(result.area_sqm).toBe(0);
+    expect(result.floors).toBe(4);
+    expect(result.pricing_basis).toBe("floor");
+    expect(result.price_source).toBe("estimate");
+    expect(result.items).toEqual([
+      {
+        description: "Treppenhausreinigung (4 Etagen, 2× monatlich)",
+        quantity: 1,
+        unit: "Monat",
+        unit_price: 100,
+      },
+      {
+        description: "Zusätzliche Flurreinigung (30 m², 2× monatlich)",
+        quantity: 1,
+        unit: "Monat",
+        unit_price: 36,
+      },
+    ]);
+    const positions = normalizeItems(result.items, { hourlyRate: 35, stairRate: 12.5, floors: 4 });
+    expect(positionsTotal(positions)).toBe(136);
+  });
+
+  it("verwendet einen genannten m²-Preis nur für den zusätzlichen Flur", async () => {
+    const result = await generateCalculation(
+      "Treppenhausreinigung 4 Etagen 2x monatlich plus 30 m² Flur, 0,50 € pro m²",
+    );
+    expect(result.items.map((item) => item.unit_price)).toEqual([100, 30]);
+    expect(result.price_source).toBe("stated");
+  });
+
+  it.each([
+    ["Treppenhausreinigung 4 Etagen wöchentlich plus 30 m² Flur", 216.67, 78],
+    ["Treppenhausreinigung 4 Etagen alle 2 Wochen plus 30 m² Flur", 108.33, 39],
+    ["Treppenhausreinigung 4 Etagen einmalig plus 30 m² Flur", 50, 18],
+  ] as const)(
+    "berechnet beide Positionen mit demselben Turnus: %s",
+    async (prompt, stairs, corridor) => {
+      const result = await generateCalculation(prompt);
+      expect(result.review_questions).toEqual([]);
+      expect(result.items.map((item) => item.unit_price)).toEqual([stairs, corridor]);
+    },
+  );
+
+  it.each([
+    ["Treppenhausreinigung 4 Etagen 30 m² gesamt inklusive Flur, 2x monatlich", "treppenhaus", 36],
+    ["Treppenhausreinigung 4 Etagen 30 m², 2x monatlich", "treppenhaus", 36],
+    ["Treppenhausreinigung 4 Etagen 2x monatlich", "treppenhaus", 100],
+    ["Büroreinigung 200 m² 2x monatlich mit Flur", "buero", 160],
+    ["Treppenhausreinigung 2 Stunden pro Einsatz 2x monatlich", "treppenhaus", 140],
+  ] as const)("behält die bisherige Einzelberechnung bei: %s", async (prompt, type, total) => {
+    const result = await generateCalculation(prompt);
+    expect(result.cleaning_type).toBe(type);
+    expect(result.review_questions).toEqual([]);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.unit_price).toBe(total);
+  });
+
+  it.each([
+    "Treppenhausreinigung 4 Etagen plus 30 m² Flur",
+    "Treppenhausreinigung 4 Etagen täglich plus 30 m² Flur",
+    "Treppenhausreinigung 4 Etagen 2x monatlich plus Flur 30 m² 1x wöchentlich",
+    "Treppenhausreinigung 4 Etagen 2x monatlich plus 30 m² Flur, 2 Stunden pro Einsatz",
+  ])("fragt bei unklarem Umfang oder abweichendem Turnus nach: %s", async (prompt) => {
+    const result = await generateCalculation(prompt);
+    expect(result.items).toEqual([]);
+    expect(result.review_questions.length).toBeGreaterThan(0);
+  });
+
+  it.each([
     ["Glas-Reinigung 80 m²", "glas", 112],
     ["Grund Reinigung 100 qm einmalig", "grund", 190],
     ["Bau Reinigung 150 qm", "bau", 390],
