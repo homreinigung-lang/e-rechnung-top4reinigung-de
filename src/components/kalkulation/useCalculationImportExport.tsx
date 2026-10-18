@@ -11,11 +11,14 @@ import { saveFile } from "@/lib/download";
 
 import { num, KALK_SECTION } from "./shared";
 
+import type { useCalculationApply } from "./useCalculationApply";
 import type { useKalkulationSuggestions } from "./useKalkulationSuggestions";
 import type { useKalkulationForm } from "./useKalkulationForm";
 import type { useCalculationTotals } from "./useCalculationTotals";
 
 export function useCalculationImportExport(input: {
+  calcOutOfSync: ReturnType<typeof useCalculationApply>["calcOutOfSync"];
+  warnings: ReturnType<typeof useCalculationTotals>["warnings"];
   roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
   setRoomCalculation: ReturnType<typeof useKalkulationForm>["setRoomCalculation"];
   analysisTotals: ReturnType<typeof useKalkulationSuggestions>["analysisTotals"];
@@ -63,6 +66,8 @@ export function useCalculationImportExport(input: {
 }) {
   const {
     setRoomCalculation,
+    calcOutOfSync,
+    warnings,
     roomCalculation,
     analysisTotals,
     area,
@@ -216,6 +221,10 @@ export function useCalculationImportExport(input: {
   /** Leistungsverzeichnis als abgabefertiges PDF exportieren. */
   const exportLv = useMutation({
     mutationFn: async () => {
+      if (roomCalculation.enabled && (calcOutOfSync || warnings.length > 0))
+        throw new Error(
+          "Bitte die Raumdaten prüfen und die aktuelle Grundkalkulation vor dem PDF-Export übernehmen.",
+        );
       const positions = lvPositions.map((i, n) => ({
         oz: `${n + 1}.10`,
         description: i.description,

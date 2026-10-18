@@ -324,6 +324,8 @@ export function useKalkulationState() {
   });
 
   const { exportLv, importProjectLv, loadCalculation } = useCalculationImportExport({
+    calcOutOfSync,
+    warnings,
     roomCalculation,
     setRoomCalculation,
     analysisTotals,
