@@ -14,12 +14,16 @@ const plan = {
 
 beforeEach(() => {
   gemini.mockReset();
+  vi.stubEnv("GEMINI_MODEL_PROJECT", "");
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => new Response("plan")),
   );
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 describe("unabhängige Grundrissprüfungen", () => {
   it("startet die Summenprüfung vor Abschluss der Raumerkennung und behält die Warnung", async () => {
@@ -37,6 +41,7 @@ describe("unabhängige Grundrissprüfungen", () => {
     const [first, second] = gemini.mock.calls.map(([options]) => options);
     expect(first?.dataUrl).toBe(second?.dataUrl);
     expect(first?.mimeType).toBe(second?.mimeType);
+    expect(first?.model).toBe("gemini-3.8-flash");
     expect(first?.model).toBe(second?.model);
     finishRooms(plan);
     const result = await pending;
@@ -86,4 +91,14 @@ describe("unabhängige Grundrissprüfungen", () => {
       analyzeProjectFile("https://example.test/plan.pdf", "application/pdf", "floorplan"),
     ).rejects.toThrow("main failed");
   });
+});
+
+it("respektiert ein ausdrücklich konfiguriertes Projektmodell", async () => {
+  vi.stubEnv("GEMINI_MODEL_PROJECT", " custom-project-model ");
+  gemini.mockResolvedValueOnce(plan).mockResolvedValueOnce({ total_area_sqm: 50 });
+  await analyzeProjectFile("https://example.test/plan.pdf", "application/pdf", "floorplan");
+  expect(gemini.mock.calls.map(([options]) => options.model)).toEqual([
+    "custom-project-model",
+    "custom-project-model",
+  ]);
 });
