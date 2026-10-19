@@ -47,6 +47,83 @@ const options = {
   schema: { type: "object" },
 };
 
+it("wechselt bei 503 auf das getestete Analyse-Ersatzmodell und erhält PDF, Prompt und Schema", async () => {
+  vi.useFakeTimers();
+  vi.stubEnv("GEMINI_API_KEY", "test-only");
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(new Response("overloaded", { status: 503 }))
+    .mockResolvedValueOnce(new Response("overloaded", { status: 503 }))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            { finishReason: "STOP", content: { parts: [{ text: '{"rooms":[{"area_sqm":30}]}' }] } },
+          ],
+        }),
+      ),
+    );
+  vi.stubGlobal("fetch", fetchMock);
+  const pending = generateGeminiJson({
+    ...options,
+    fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
+    dataUrl: "data:application/pdf;base64,dGVzdA==",
+  });
+  await vi.advanceTimersByTimeAsync(1200);
+  expect(await pending).toEqual({ rooms: [{ area_sqm: 30 }] });
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(fetchMock.mock.calls[2]?.[0]).toContain("gemini-3.5-flash-lite:generateContent");
+  expect(fetchMock.mock.calls[2]?.[1].body).toBe(fetchMock.mock.calls[0]?.[1].body);
+});
+
+it("überspringt bei fehlender Modellfreigabe zum nächsten eindeutigen Analysemodell", async () => {
+  vi.stubEnv("GEMINI_API_KEY", "test-only");
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(new Response("quota", { status: 429 }))
+    .mockResolvedValueOnce(new Response("missing model", { status: 404 }))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"items":[]}' }] } }] }),
+      ),
+    );
+  vi.stubGlobal("fetch", fetchMock);
+  expect(
+    await generateGeminiJson({
+      ...options,
+      fallbackModels: [
+        "test-pro",
+        "gemini-3.5-flash-lite",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite",
+      ],
+    }),
+  ).toEqual({ items: [] });
+  expect(fetchMock).toHaveBeenCalledTimes(3);
+  expect(fetchMock.mock.calls[2]?.[0]).toContain("gemini-3.1-flash-lite:generateContent");
+});
+
+it("meldet den Ausfall aller Analysemodelle ohne irreführenden Rechnungsbezug", async () => {
+  vi.useFakeTimers();
+  vi.stubEnv("GEMINI_API_KEY", "test-only");
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response("overloaded", { status: 503 })),
+  );
+  const check = expect(
+    generateGeminiJson({
+      ...options,
+      fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
+    }),
+  ).rejects.toThrow("Die angefragten KI-Modelle sind derzeit nicht verfügbar");
+  await vi.runAllTimersAsync();
+  await check;
+  expect(fetch).toHaveBeenCalledTimes(6);
+});
+
 it("nutzt bei Google 429 das Ersatzmodell statt sofort abzubrechen", async () => {
   vi.stubEnv("GEMINI_API_KEY", "test-only");
   vi.spyOn(console, "warn").mockImplementation(() => {});

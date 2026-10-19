@@ -14,6 +14,8 @@ type GeminiJsonOptions = {
   maxOutputTokens?: number;
   /** Only workflows that allow a model change may fall back on quota errors. */
   fallbackOnQuota?: boolean;
+  /** Ordered, workflow-specific alternatives; the requested model is tried first. */
+  fallbackModels?: readonly string[];
 };
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
@@ -82,6 +84,7 @@ export async function generateGeminiJson({
   timeoutMs = 60_000,
   maxOutputTokens,
   fallbackOnQuota = false,
+  fallbackModels = [FALLBACK_MODEL],
 }: GeminiJsonOptions): Promise<Record<string, unknown>> {
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
@@ -114,7 +117,7 @@ export async function generateGeminiJson({
     });
   }
 
-  const models = model === FALLBACK_MODEL ? [model] : [model, FALLBACK_MODEL];
+  const models = [...new Set([model, ...fallbackModels].map((name) => name.trim()).filter(Boolean))];
   let lastStatus = 503;
   let invalidOutput = false;
   for (const [modelIndex, modelName] of models.entries()) {
@@ -192,6 +195,6 @@ export async function generateGeminiJson({
     );
   }
   throw new Error(
-    `KI-Analyse vorübergehend nicht verfügbar (${lastStatus}). Auch das Ersatzmodell konnte die Rechnung nicht lesen. Bitte später erneut versuchen.`,
+    `KI-Analyse vorübergehend nicht verfügbar (${lastStatus}). Die angefragten KI-Modelle sind derzeit nicht verfügbar. Bitte später erneut versuchen.`,
   );
 }

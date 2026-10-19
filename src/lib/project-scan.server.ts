@@ -306,6 +306,7 @@ async function readStatedTotalArea(dataUrl: string, mimeType: string): Promise<n
     const parsed = await generateGeminiJson({
       model: process.env["GEMINI_MODEL_PROJECT"]?.trim() || "gemini-3.8-flash",
       fallbackOnQuota: true,
+      fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
       system:
         'Du prüfst Grundrisse und Raumbücher. Antworte ausschließlich mit reinem JSON. Nur wörtlich im Dokument stehende Werte; sonst 0 und source = "".',
       prompt:
@@ -348,6 +349,7 @@ export async function analyzeProjectFile(
   const parsedPromise = generateGeminiJson({
     model: process.env["GEMINI_MODEL_PROJECT"]?.trim() || "gemini-3.8-flash",
     fallbackOnQuota: true,
+    fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
     system: mode === "floorplan" ? FLOORPLAN_SYSTEM : TENDER_SYSTEM,
     prompt,
     schema: SCHEMA as unknown as Record<string, unknown>,
