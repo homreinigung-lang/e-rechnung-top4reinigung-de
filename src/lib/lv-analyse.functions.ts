@@ -144,6 +144,8 @@ async function analyseWithGemini(prompt: string, dataUrl?: string, mimeType?: st
   const { generateGeminiJson } = await import("@/lib/gemini-json.server");
   const parsed = await generateGeminiJson({
     model: process.env["GEMINI_MODEL_LV"] || "gemini-3.6-flash",
+    fallbackOnQuota: true,
+    fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
     system: SYSTEM,
     prompt,
     schema: RESPONSE_SCHEMA,
