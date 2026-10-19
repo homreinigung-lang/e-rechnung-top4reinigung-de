@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { analysisAiOptions } from "./analysis-ai";
 
 export type LvAnalyseRawItem = {
   item_number: string;
@@ -143,9 +144,7 @@ function normalize(parsed: Record<string, unknown>): LvAnalyseResponse {
 async function analyseWithGemini(prompt: string, dataUrl?: string, mimeType?: string): Promise<LvAnalyseResponse> {
   const { generateGeminiJson } = await import("@/lib/gemini-json.server");
   const parsed = await generateGeminiJson({
-    model: process.env["GEMINI_MODEL_LV"] || "gemini-3.6-flash",
-    fallbackOnQuota: true,
-    fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
+    ...analysisAiOptions(process.env["GEMINI_MODEL_LV"]),
     system: SYSTEM,
     prompt,
     schema: RESPONSE_SCHEMA,

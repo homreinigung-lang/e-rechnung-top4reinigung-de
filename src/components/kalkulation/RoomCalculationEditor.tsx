@@ -17,7 +17,7 @@ import { positionsTotal } from "@/lib/kalkulation-engine";
 import { findRate } from "@/lib/leistungswerte";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { type RecurrenceUnit, recurrenceUnitLabel } from "@/lib/constants";
-import { type CalculationRoom } from "@/lib/room-calculation";
+import { type CalculationRoom, suggestRoomDefaults } from "@/lib/room-calculation";
 import { num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
@@ -42,7 +42,33 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
   function patch(id: string, values: Partial<CalculationRoom>) {
     setRoomCalculation((current) => ({
       ...current,
-      rooms: current.rooms.map((room) => (room.id === id ? { ...room, ...values } : room)),
+      rooms: current.rooms.map((room) => {
+        if (room.id !== id) return room;
+        const next = { ...room, ...values };
+        const typeChanged = "usage_type" in values || "floor_covering" in values;
+        if (room.tasksOrigin === "estimate" && (typeChanged || "name" in values)) {
+          next.tasks = "";
+        }
+        if (
+          room.minutesOrigin === "estimate" &&
+          ("area" in values ||
+            "sqmPerHour" in values ||
+            "usage_type" in values ||
+            "floor_covering" in values)
+        ) {
+          next.minutesPerVisit = "";
+          if (typeChanged) {
+            const rate = findRate(visiblePerformanceRates, next);
+            next.sqmPerHour = rate ? String(rate.sqm_per_hour).replace(".", ",") : "";
+            next.rateLabel = rate?.label ?? "Kein passender Leistungswert";
+          }
+          return suggestRoomDefaults(next, visiblePerformanceRates);
+        }
+        if (room.tasksOrigin === "estimate" && (typeChanged || "name" in values)) {
+          return suggestRoomDefaults(next, visiblePerformanceRates);
+        }
+        return next;
+      }),
     }));
   }
 
@@ -74,10 +100,26 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
         <p className="text-sm text-muted-foreground">
           Je Raum Minuten für alle vereinbarten Aufgaben pro Besuch festlegen oder nach m²/Std.
           rechnen. Der Zeitansatz ist Personalzeit: Zwei Personen à 15 Minuten ergeben 30 Minuten.
-          Ein Grundriss liefert weder den vollständigen Leistungsumfang noch den Turnus.
+          Zeiten aus Leistungswerten und Standardaufgaben sind Vorschläge: Umfang und Aufwand prüfen
+          und bei Bedarf ändern. Ein nicht im Dokument genannter Turnus bleibt offen.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            setRoomCalculation((current) => ({
+              ...current,
+              rooms: current.rooms.map((room) =>
+                room.included ? suggestRoomDefaults(room, visiblePerformanceRates) : room,
+              ),
+            }))
+          }
+        >
+          Fehlende Zeiten und Aufgaben vorschlagen
+        </Button>
         {[
           ...new Set(
             roomCalculation.rooms
@@ -206,8 +248,20 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                       disabled={!room.included}
                       value={room.minutesPerVisit ?? ""}
                       placeholder="Zeit selbst einschätzen"
-                      onChange={(event) => patch(room.id, { minutesPerVisit: event.target.value })}
+                      onChange={(event) =>
+                        patch(room.id, {
+                          minutesPerVisit: event.target.value,
+                          minutesOrigin: undefined,
+                        })
+                      }
                     />
+                    {room.minutesOrigin && (
+                      <p className="text-xs text-muted-foreground">
+                        {room.minutesOrigin === "estimate"
+                          ? `Zeitvorschlag aus Fläche und Leistungswert (${room.rateLabel}) – Aufgaben und Aufwand prüfen.`
+                          : "Minuten aus dem Dokument übernommen – bitte prüfen."}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-1">
@@ -266,8 +320,15 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                   disabled={!room.included}
                   value={room.tasks ?? ""}
                   placeholder="z. B. Boden, Oberflächen, Abfall, WC und Waschbecken"
-                  onChange={(event) => patch(room.id, { tasks: event.target.value })}
+                  onChange={(event) =>
+                    patch(room.id, { tasks: event.target.value, tasksOrigin: undefined })
+                  }
                 />
+                {room.tasksOrigin === "estimate" && (
+                  <p className="text-xs text-muted-foreground">
+                    Aufgabenvorschlag nach Raumart – tatsächlichen Leistungsumfang prüfen.
+                  </p>
+                )}
               </div>
               {room.calculationMode !== "minutes" && (
                 <>

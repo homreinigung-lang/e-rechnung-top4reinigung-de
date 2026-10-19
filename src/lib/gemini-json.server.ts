@@ -16,6 +16,8 @@ type GeminiJsonOptions = {
   fallbackOnQuota?: boolean;
   /** Ordered, workflow-specific alternatives; the requested model is tried first. */
   fallbackModels?: readonly string[];
+  attemptsPerModel?: 1 | 2;
+  totalTimeoutMs?: number;
 };
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
@@ -85,7 +87,11 @@ export async function generateGeminiJson({
   maxOutputTokens,
   fallbackOnQuota = false,
   fallbackModels = [FALLBACK_MODEL],
+  attemptsPerModel = 2,
+  totalTimeoutMs,
 }: GeminiJsonOptions): Promise<Record<string, unknown>> {
+  const deadline = totalTimeoutMs === undefined ? Infinity : Date.now() + totalTimeoutMs;
+  const timeoutError = () => new Error("KI-Analyse hat zu lange gedauert. Bitte erneut versuchen.");
   const apiKey = process.env["GEMINI_API_KEY"]?.trim();
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
   const headers = { "Content-Type": "application/json", "x-goog-api-key": apiKey };
@@ -99,11 +105,13 @@ export async function generateGeminiJson({
   }
 
   async function request(modelName: string, withSchema: boolean): Promise<Response> {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw timeoutError();
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
     return fetch(endpoint, {
       method: "POST",
       headers,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: AbortSignal.timeout(Math.max(1, Math.min(timeoutMs, remaining))),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts }],
@@ -117,11 +125,14 @@ export async function generateGeminiJson({
     });
   }
 
-  const models = [...new Set([model, ...fallbackModels].map((name) => name.trim()).filter(Boolean))];
+  const models = [
+    ...new Set([model, ...fallbackModels].map((name) => name.trim()).filter(Boolean)),
+  ];
   let lastStatus = 503;
   let invalidOutput = false;
   for (const [modelIndex, modelName] of models.entries()) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < attemptsPerModel; attempt++) {
+      if (Date.now() >= deadline) throw timeoutError();
       let response: Response;
       try {
         response = await request(modelName, true);
@@ -139,7 +150,8 @@ export async function generateGeminiJson({
           `Gemini network request failed for ${modelName}, attempt ${attempt + 1}`,
           error,
         );
-        if (attempt === 0) {
+        if (Date.now() >= deadline) throw timeoutError();
+        if (attempt + 1 < attemptsPerModel) {
           await sleep(1200);
           continue;
         }
@@ -160,7 +172,7 @@ export async function generateGeminiJson({
         if (parsed && (!validate || validate(parsed))) return parsed;
         invalidOutput = true;
         console.warn(`Gemini returned unusable JSON for ${modelName}, attempt ${attempt + 1}`);
-        if (attempt === 0) await sleep(1200);
+        if (attempt + 1 < attemptsPerModel) await sleep(1200);
         continue;
       }
 
@@ -186,7 +198,7 @@ export async function generateGeminiJson({
       if (!RETRYABLE_STATUSES.has(lastStatus)) {
         throw new Error(`KI-Analyse fehlgeschlagen (${lastStatus}): ${detail.slice(0, 240)}`);
       }
-      if (attempt === 0) await sleep(1200);
+      if (attempt + 1 < attemptsPerModel) await sleep(1200);
     }
   }
   if (invalidOutput) {
