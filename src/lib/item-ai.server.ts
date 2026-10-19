@@ -1,4 +1,5 @@
 import { generateGeminiJson } from "./gemini-json.server";
+import { analysisAiOptions } from "./analysis-ai";
 import {
   STAIR_RATE_PER_FLOOR,
   visitsPerMonth,
@@ -329,9 +330,7 @@ function deterministicBaseItem(args: {
 
 export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
   const parsed = await generateGeminiJson({
-    model: process.env["GEMINI_MODEL_CALC"] || "gemini-3.6-flash",
-    fallbackOnQuota: true,
-    fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
+    ...analysisAiOptions(process.env["GEMINI_MODEL_CALC"]),
     system: `${SYSTEM}\nAntworte ausschließlich mit JSON gemäß Schema.`,
     prompt: `Erstelle 3 bis 10 sinnvolle Angebotspositionen für: ${canonicalPrompt(prompt)}`,
     schema: ITEMS_SCHEMA,

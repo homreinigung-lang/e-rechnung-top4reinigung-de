@@ -19,6 +19,8 @@ export type CalculationRoom = {
   calculationMode?: "area" | "minutes";
   minutesPerVisit?: string;
   tasks?: string;
+  minutesOrigin?: "estimate" | "document";
+  tasksOrigin?: "estimate" | "document";
 };
 
 export type RoomCalculation = { version: 1; enabled: boolean; rooms: CalculationRoom[] };
@@ -28,7 +30,49 @@ export const emptyRoomCalculation = (): RoomCalculation => ({
   rooms: [],
 });
 
-/** A scan supplies rooms, never an invented cleaning schedule. */
+function suggestedTasks(room: {
+  name: string;
+  usage_type: string;
+  floor_covering: string;
+}): string {
+  const kind = `${room.usage_type} ${room.name}`.toLowerCase();
+  const floor = /teppich/i.test(room.floor_covering) ? "Boden saugen" : "Boden reinigen";
+  if (/\bwc\b|sanitär|sanitaer|toilette/.test(kind))
+    return `${floor}; WC, Waschbecken, Spiegel und Kontaktflächen reinigen; Abfall leeren`;
+  if (/küche|kueche|teeküche|sozialraum/.test(kind))
+    return `${floor}; freie Arbeitsflächen und Spüle reinigen; Abfall leeren`;
+  if (/büro|buero|besprechung/.test(kind))
+    return `${floor}; freie Oberflächen reinigen; Abfall leeren`;
+  if (/flur|treppe|verkehr/.test(kind)) return `${floor}; zugängliche Kontaktflächen reinigen`;
+  return "";
+}
+
+/** Fill missing values only; the saved performance rate is an estimate, never document evidence. */
+export function suggestRoomDefaults(
+  room: CalculationRoom,
+  rates: PerformanceRate[],
+): CalculationRoom {
+  const result = { ...room };
+  if (!(room.minutesPerVisit ?? "").trim()) {
+    const performance =
+      parsePositiveNumber(room.sqmPerHour) || findRate(rates, room)?.sqm_per_hour || 0;
+    const area = parsePositiveNumber(room.area);
+    if (area > 0 && performance > 0) {
+      result.minutesPerVisit = String(Math.ceil((area / performance) * 600) / 10).replace(".", ",");
+      result.minutesOrigin = "estimate";
+    }
+  }
+  if (!(room.tasks ?? "").trim()) {
+    const tasks = suggestedTasks(room);
+    if (tasks) {
+      result.tasks = tasks;
+      result.tasksOrigin = "estimate";
+    }
+  }
+  return result;
+}
+
+/** A scan supplies documented facts; local rate-based suggestions are explicitly marked. */
 export function roomsFromScan(
   source: string,
   rooms: {
@@ -37,28 +81,45 @@ export function roomsFromScan(
     usage_type: string;
     floor_covering: string;
     area_sqm: number;
+    minutes_per_visit?: number;
+    cleaning_tasks?: string;
+    cleaning_frequency?: number;
+    cleaning_frequency_unit?: RecurrenceUnit;
   }[],
   rates: PerformanceRate[],
 ): CalculationRoom[] {
   return rooms.map((room, index) => {
     const rate = findRate(rates, room);
-    return {
-      id: `${source}#${index}`,
-      source,
-      name: room.name,
-      floor: room.floor,
-      usage_type: room.usage_type,
-      floor_covering: room.floor_covering,
-      area: String(room.area_sqm > 0 ? room.area_sqm : "").replace(".", ","),
-      sqmPerHour: rate ? String(rate.sqm_per_hour).replace(".", ",") : "",
-      rateLabel: rate?.label ?? "Kein passender Leistungswert",
-      frequency: "",
-      frequencyUnit: "week",
-      included: true,
-      calculationMode: "minutes",
-      minutesPerVisit: "",
-      tasks: "",
-    };
+    const documentedMinutes =
+      Number.isFinite(room.minutes_per_visit) && room.minutes_per_visit! > 0;
+    const documentedFrequency =
+      Number.isFinite(room.cleaning_frequency) &&
+      room.cleaning_frequency! > 0 &&
+      ["week", "fortnight", "month", "quarter", "year"].includes(
+        room.cleaning_frequency_unit ?? "",
+      );
+    return suggestRoomDefaults(
+      {
+        id: `${source}#${index}`,
+        source,
+        name: room.name,
+        floor: room.floor,
+        usage_type: room.usage_type,
+        floor_covering: room.floor_covering,
+        area: String(room.area_sqm > 0 ? room.area_sqm : "").replace(".", ","),
+        sqmPerHour: rate ? String(rate.sqm_per_hour).replace(".", ",") : "",
+        rateLabel: rate?.label ?? "Kein passender Leistungswert",
+        frequency: documentedFrequency ? String(room.cleaning_frequency).replace(".", ",") : "",
+        frequencyUnit: documentedFrequency ? room.cleaning_frequency_unit! : "week",
+        included: true,
+        calculationMode: "minutes",
+        minutesPerVisit: documentedMinutes ? String(room.minutes_per_visit).replace(".", ",") : "",
+        minutesOrigin: documentedMinutes ? "document" : undefined,
+        tasks: room.cleaning_tasks?.trim() || "",
+        tasksOrigin: room.cleaning_tasks?.trim() ? "document" : undefined,
+      },
+      rates,
+    );
   });
 }
 
@@ -116,7 +177,10 @@ export function readRoomCalculation(value: unknown): RoomCalculation {
         row["calculationMode"] !== "area" &&
         row["calculationMode"] !== "minutes") ||
       (row["minutesPerVisit"] !== undefined && typeof row["minutesPerVisit"] !== "string") ||
-      (row["tasks"] !== undefined && typeof row["tasks"] !== "string")
+      (row["tasks"] !== undefined && typeof row["tasks"] !== "string") ||
+      ["minutesOrigin", "tasksOrigin"].some(
+        (key) => row[key] !== undefined && row[key] !== "estimate" && row[key] !== "document",
+      )
     )
       return emptyRoomCalculation();
     ids.add(String(row["id"]));

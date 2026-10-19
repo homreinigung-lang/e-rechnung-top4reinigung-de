@@ -1,4 +1,6 @@
 import { generateGeminiJson } from "./gemini-json.server";
+import { analysisAiOptions } from "./analysis-ai";
+import type { RecurrenceUnit } from "./constants";
 
 export type ScannedRoom = {
   name: string;
@@ -7,6 +9,10 @@ export type ScannedRoom = {
   area_sqm: number;
   /** Bodenbelag / Oberflächenbeschaffenheit, z. B. "Teppich", "Fliesen", "PVC". */
   floor_covering: string;
+  minutes_per_visit?: number;
+  cleaning_tasks?: string;
+  cleaning_frequency?: number;
+  cleaning_frequency_unit?: RecurrenceUnit;
 };
 
 export type ScannedLvItem = {
@@ -109,6 +115,8 @@ Vorgehen:
 6. expected_room_count = Anzahl der tatsächlich gelesenen Räume.
 7. items bleibt eine leere Liste.
 8. floor_covering = Bodenbelag / Oberfläche des Raums, nur wenn im Dokument oder auf dem Foto klar erkennbar (z. B. "Teppich", "Fliesen", "PVC/Linoleum", "Parkett", "Beton", "Sanitärkeramik"), sonst "".
+9. minutes_per_visit und cleaning_tasks nur übernehmen, wenn die Personalminuten je Besuch bzw. Aufgaben ausdrücklich für diesen Raum angegeben sind; sonst 0 bzw. "". Keine Zeit schätzen.
+10. cleaning_frequency und cleaning_frequency_unit nur aus einem ausdrücklich angegebenen Reinigungsturnus (auch einer ausdrücklich für alle Räume geltenden Angabe). Einheit: week, fortnight, month, quarter, year. Ohne Angabe: 0 und "". Keine typischen Turnusse erfinden.
 
 FOTOS UND SKIZZEN (nur wenn keine Tabelle/kein Raumbuch vorhanden ist):
 - Bei Fotos oder Handskizzen ohne geschriebene Zahlen darfst du die Fläche fachlich schätzen; schreibe die Schätzung dann in area_sqm und ergänze im Raumnamen NICHTS, sondern kennzeichne die Schätzung im Feld usage_type nicht, sondern in highlights mit dem Wort "geschätzt".
@@ -165,8 +173,25 @@ const SCHEMA = {
           usage_type: { type: "string" },
           area_sqm: { type: "number" },
           floor_covering: { type: "string" },
+          minutes_per_visit: { type: "number", minimum: 0 },
+          cleaning_tasks: { type: "string" },
+          cleaning_frequency: { type: "number", minimum: 0 },
+          cleaning_frequency_unit: {
+            type: "string",
+            enum: ["", "week", "fortnight", "month", "quarter", "year"],
+          },
         },
-        required: ["name", "floor", "usage_type", "area_sqm", "floor_covering"],
+        required: [
+          "name",
+          "floor",
+          "usage_type",
+          "area_sqm",
+          "floor_covering",
+          "minutes_per_visit",
+          "cleaning_tasks",
+          "cleaning_frequency",
+          "cleaning_frequency_unit",
+        ],
       },
     },
     items: {
@@ -227,7 +252,12 @@ function sanitizeRooms(input: ScannedRoom[]): ScannedRoom[] {
       .filter(Boolean);
     if (parts.length > 1) {
       for (const part of parts) {
-        split.push({ ...room, name: part, area_sqm: 0 });
+        split.push({
+          ...room,
+          name: part,
+          area_sqm: 0,
+          ...(room.minutes_per_visit ? { minutes_per_visit: 0 } : {}),
+        });
       }
     } else {
       split.push({ ...room, name: parts[0] ?? room.name });
@@ -304,9 +334,10 @@ const TOTALS_SCHEMA = {
 async function readStatedTotalArea(dataUrl: string, mimeType: string): Promise<number> {
   try {
     const parsed = await generateGeminiJson({
-      model: process.env["GEMINI_MODEL_PROJECT"]?.trim() || "gemini-3.8-flash",
-      fallbackOnQuota: true,
-      fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
+      ...analysisAiOptions(process.env["GEMINI_MODEL_PROJECT"]),
+      // Optional cross-check must not hold up the room extraction.
+      timeoutMs: 8_000,
+      totalTimeoutMs: 10_000,
       system:
         'Du prüfst Grundrisse und Raumbücher. Antworte ausschließlich mit reinem JSON. Nur wörtlich im Dokument stehende Werte; sonst 0 und source = "".',
       prompt:
@@ -347,9 +378,7 @@ export async function analyzeProjectFile(
       : "Analysiere diese Ausschreibung und erstelle das strukturierte Leistungsverzeichnis.";
 
   const parsedPromise = generateGeminiJson({
-    model: process.env["GEMINI_MODEL_PROJECT"]?.trim() || "gemini-3.8-flash",
-    fallbackOnQuota: true,
-    fallbackModels: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
+    ...analysisAiOptions(process.env["GEMINI_MODEL_PROJECT"]),
     system: mode === "floorplan" ? FLOORPLAN_SYSTEM : TENDER_SYSTEM,
     prompt,
     schema: SCHEMA as unknown as Record<string, unknown>,
@@ -359,9 +388,8 @@ export async function analyzeProjectFile(
 
   // Both calls read the same document independently. Keep model, prompts and retries unchanged.
   // The optional check catches its own errors. Empty/failed room scans need not wait for it.
-  const statedTotalPromise = mode === "floorplan"
-    ? readStatedTotalArea(dataUrl, mimeType)
-    : Promise.resolve(0);
+  const statedTotalPromise =
+    mode === "floorplan" ? readStatedTotalArea(dataUrl, mimeType) : Promise.resolve(0);
   const parsed = await parsedPromise;
 
   if (!Object.keys(parsed).length) return EMPTY;
@@ -373,6 +401,21 @@ export async function analyzeProjectFile(
         usage_type: String(r["usage_type"] ?? "").trim(),
         area_sqm: num(r["area_sqm"]),
         floor_covering: String(r["floor_covering"] ?? "").trim(),
+        ...(num(r["minutes_per_visit"]) > 0
+          ? { minutes_per_visit: num(r["minutes_per_visit"]) }
+          : {}),
+        ...(String(r["cleaning_tasks"] ?? "").trim()
+          ? { cleaning_tasks: String(r["cleaning_tasks"]).trim() }
+          : {}),
+        ...(num(r["cleaning_frequency"]) > 0 &&
+        ["week", "fortnight", "month", "quarter", "year"].includes(
+          String(r["cleaning_frequency_unit"]),
+        )
+          ? {
+              cleaning_frequency: num(r["cleaning_frequency"]),
+              cleaning_frequency_unit: r["cleaning_frequency_unit"] as RecurrenceUnit,
+            }
+          : {}),
       }))
     : [];
 

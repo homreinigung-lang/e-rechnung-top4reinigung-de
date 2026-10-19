@@ -41,10 +41,13 @@ describe("unabhängige Grundrissprüfungen", () => {
     const [first, second] = gemini.mock.calls.map(([options]) => options);
     expect(first?.dataUrl).toBe(second?.dataUrl);
     expect(first?.mimeType).toBe(second?.mimeType);
-    expect(first?.model).toBe("gemini-3.8-flash");
+    expect(first?.model).toBe("gemini-3.5-flash-lite");
     expect(first?.model).toBe(second?.model);
     expect(first?.fallbackOnQuota).toBe(true);
     expect(second?.fallbackOnQuota).toBe(true);
+    expect(first?.attemptsPerModel).toBe(1);
+    expect(first?.totalTimeoutMs).toBe(45_000);
+    expect(second?.totalTimeoutMs).toBe(10_000);
     finishRooms(plan);
     const result = await pending;
     expect(result.rooms).toEqual([
@@ -92,6 +95,33 @@ describe("unabhängige Grundrissprüfungen", () => {
     await expect(
       analyzeProjectFile("https://example.test/plan.pdf", "application/pdf", "floorplan"),
     ).rejects.toThrow("main failed");
+  });
+});
+
+it("übernimmt ausdrücklich gelesene Raumminuten, Aufgaben und Turnus vollständig", async () => {
+  gemini.mockResolvedValueOnce({
+    ...plan,
+    rooms: [
+      {
+        ...plan.rooms[0],
+        minutes_per_visit: 12,
+        cleaning_tasks: "Boden saugen",
+        cleaning_frequency: 2,
+        cleaning_frequency_unit: "week",
+      },
+    ],
+  });
+  await expect(
+    analyzeProjectFile("https://example.test/lv.pdf", "application/pdf", "tender"),
+  ).resolves.toMatchObject({
+    rooms: [
+      expect.objectContaining({
+        minutes_per_visit: 12,
+        cleaning_tasks: "Boden saugen",
+        cleaning_frequency: 2,
+        cleaning_frequency_unit: "week",
+      }),
+    ],
   });
 });
 

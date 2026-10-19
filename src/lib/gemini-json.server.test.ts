@@ -1,7 +1,47 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { generateGeminiJson } from "./gemini-json.server";
+import { analysisAiOptions } from "./analysis-ai";
 
 vi.mock("@tanstack/react-start/server-only", () => ({}));
+
+it("nutzt für Analysen zuerst das geprüfte schnelle Modell und wechselt bei 503 ohne Wiederholungswartezeit", async () => {
+  vi.stubEnv("GEMINI_API_KEY", "test-only");
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(new Response("overloaded", { status: 503 }))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"rooms":[]}' }] } }] }),
+      ),
+    );
+  vi.stubGlobal("fetch", fetchMock);
+  expect(
+    await generateGeminiJson({ ...options, ...analysisAiOptions(), schema: { type: "object" } }),
+  ).toEqual({ rooms: [] });
+  expect(fetchMock.mock.calls[0]?.[0]).toContain("gemini-3.5-flash-lite");
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(analysisAiOptions(" configured-model ").model).toBe("configured-model");
+});
+
+it("begrenzt die gesamte Wartezeit über alle Modelle statt jedem Modell neue 60 Sekunden zu geben", async () => {
+  vi.useFakeTimers();
+  vi.stubEnv("GEMINI_API_KEY", "test-only");
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const signals: AbortSignal[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url, init) => {
+      signals.push(init.signal);
+      await vi.advanceTimersByTimeAsync(signals.length === 1 ? 25_000 : 20_000);
+      throw new DOMException("timed out", "TimeoutError");
+    }),
+  );
+  await expect(generateGeminiJson({ ...options, ...analysisAiOptions() })).rejects.toThrow(
+    "hat zu lange gedauert",
+  );
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();

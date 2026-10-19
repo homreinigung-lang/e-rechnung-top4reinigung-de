@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PERFORMANCE_RATES } from "./leistungswerte";
+import { suggestRoomDefaults } from "./room-calculation";
 import {
   type RoomCalculation,
   calculateRooms,
@@ -22,6 +23,60 @@ const scan = [
   { name: "WC", usage_type: "WC", floor: "EG", floor_covering: "Fliesen", area_sqm: 10 },
   { name: "Teeküche", usage_type: "Küche", floor: "EG", floor_covering: "Fliesen", area_sqm: 10 },
 ];
+
+it("ergänzt im 100-m²-Testplan editierbare Zeit- und Aufgabenvorschläge ohne erfundenen Turnus", () => {
+  const rooms = roomsFromScan("plan.pdf", scan, rates);
+  expect(rooms.map((r) => r.minutesPerVisit)).toEqual(["7,2", "8,2", "4", "10", "6"]);
+  expect(rooms.every((r) => r.minutesOrigin === "estimate" && r.tasksOrigin === "estimate")).toBe(
+    true,
+  );
+  expect(rooms[0]?.tasks).toContain("saugen");
+  expect(rooms[3]?.tasks).toContain("WC, Waschbecken");
+  expect(rooms[4]?.tasks).toContain("Spüle");
+  expect(rooms.every((r) => r.frequency === "")).toBe(true);
+  const result = calculateRooms(
+    { version: 1, enabled: true, rooms: rooms.map((r) => ({ ...r, frequency: "2" })) },
+    35,
+  );
+  expect(result.errors).toEqual([]);
+  expect(result.monthlyHours).toBeGreaterThan(5);
+  expect(
+    readRoomCalculation(JSON.parse(JSON.stringify({ version: 1, enabled: false, rooms }))),
+  ).toEqual({ version: 1, enabled: false, rooms });
+});
+
+it("bewahrt dokumentierte Minuten, Aufgaben und 14-täglichen Turnus statt Schätzungen einzusetzen", () => {
+  const [room] = roomsFromScan(
+    "plan",
+    [
+      {
+        ...scan[0]!,
+        minutes_per_visit: 17,
+        cleaning_tasks: "Nur Boden saugen",
+        cleaning_frequency: 1,
+        cleaning_frequency_unit: "fortnight",
+      },
+    ],
+    rates,
+  );
+  expect(room).toMatchObject({
+    minutesPerVisit: "17",
+    minutesOrigin: "document",
+    tasks: "Nur Boden saugen",
+    tasksOrigin: "document",
+    frequency: "1",
+    frequencyUnit: "fortnight",
+  });
+  expect(
+    suggestRoomDefaults({ ...room!, minutesPerVisit: "22", tasks: "Eigener Umfang" }, rates),
+  ).toMatchObject({ minutesPerVisit: "22", tasks: "Eigener Umfang" });
+});
+
+it("erfindet ohne Fläche oder Leistungswert keine Minuten", () => {
+  const [unknown] = roomsFromScan("x", [{ ...scan[0]!, area_sqm: 0 }], rates);
+  expect(unknown?.minutesPerVisit).toBe("");
+  expect(roomsFromScan("x", scan, [])[0]?.minutesPerVisit).toBe("");
+});
 function scheduled(): RoomCalculation {
   return {
     ...emptyRoomCalculation(),
