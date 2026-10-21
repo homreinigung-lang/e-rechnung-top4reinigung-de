@@ -10,10 +10,13 @@ describe("signature HTML security", () => {
     "<img src=x onerror=alert(1)>",
     '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
     '<div style="background-image:url(https://tracker.invalid);position:fixed">ok</div>',
+    '<div><noscript></div><img src=x onerror=alert(1)></noscript>',
+    '<svg><a xmlns:p="http://www.w3.org/1999/xlink" p:href="javascript:alert(1)"><animate attributeName="p:href" values="javascript:alert(1)" /></a></svg>',
+    '<meta http-equiv="refresh" content="0;url=javascript:alert(1)">',
   ])("removes active content from %s", (html) => {
     const clean = sanitizeSignatureHtml(html);
     expect(clean).not.toMatch(
-      /javascript|onerror|<svg|<iframe|srcdoc|<script|background-image|position:/i,
+      /javascript|onerror|<svg|<iframe|srcdoc|<script|<meta|<animate|background-image|position:/i,
     );
   });
   it("preserves ordinary company formatting and logo", () => {
