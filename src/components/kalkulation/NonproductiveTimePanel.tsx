@@ -45,6 +45,10 @@ export function NonproductiveTimePanel({
   );
 
   const operatingResult = comparison.estimatedMonthlyResult;
+  const cleaning = Math.max(0, cleaningHoursPerMonth);
+  const travelHours = positiveNumber(travel);
+  const preparationHours = positiveNumber(preparation);
+  const otherHours = positiveNumber(other);
   const resultPerCleaningHour = cleaningHoursPerMonth > 0 ? operatingResult / cleaningHoursPerMonth : null;
   return (
     <details className="rounded-md border">
@@ -80,7 +84,12 @@ export function NonproductiveTimePanel({
         </div>
         <div className={`rounded-md border p-3 text-sm ${operatingResult < 0 ? "border-red-500/60" : "border-emerald-500/60"}`}>
           <p className="font-semibold">Kundenpreis aus gesamter Arbeitszeit (netto)</p>
-          <p>Kundenpreis (alle bezahlten Stunden): <strong>{formatMoney(comparison.suggestedMonthlyRevenue)}</strong></p>
+          <p>Reinigung: {formatNumber(cleaning)} Std. × {formatMoney(sellingRatePerPaidHour)} = {formatMoney(cleaning * sellingRatePerPaidHour)}</p>
+          <p>Fahrtzeit: {formatNumber(travelHours)} Std. × {formatMoney(sellingRatePerPaidHour)} = {formatMoney(travelHours * sellingRatePerPaidHour)}</p>
+          <p>Vorbereitung: {formatNumber(preparationHours)} Std. × {formatMoney(sellingRatePerPaidHour)} = {formatMoney(preparationHours * sellingRatePerPaidHour)}</p>
+          {otherHours > 0 && <p>Sonstige Zeit: {formatNumber(otherHours)} Std. × {formatMoney(sellingRatePerPaidHour)} = {formatMoney(otherHours * sellingRatePerPaidHour)}</p>}
+          <p className="font-semibold">Kundenpreis (alle bezahlten Stunden): <strong>{formatMoney(comparison.suggestedMonthlyRevenue)}</strong></p>
+          <p>Gesamtkosten: <strong>{formatMoney(comparison.totalMonthlyCost)}</strong></p>
           <p>Ergebnis nach Gesamtkosten: <strong>{formatMoney(operatingResult)}</strong></p>
           <p>Ergebnis je Reinigungsstunde (Vergleich): <strong>{resultPerCleaningHour === null ? "–" : formatMoney(resultPerCleaningHour)}</strong></p>
           <p className="text-xs text-muted-foreground">Interne Simulation vor Steuern. Keine automatische Preisübernahme.</p>
