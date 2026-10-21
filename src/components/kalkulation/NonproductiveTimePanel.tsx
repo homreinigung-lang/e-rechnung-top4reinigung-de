@@ -53,8 +53,8 @@ export function NonproductiveTimePanel({
       </summary>
       <div className="space-y-3 border-t p-3">
         <p className="text-xs text-muted-foreground">
-          Interne Simulation: Bezahlte Fahrt-, Vorbereitungs- und sonstige Zeiten
-          zusätzlich zu {formatNumber(cleaningHoursPerMonth)} Reinigungsstunden pro Monat.
+          Kundenkalkulation: Reinigungs-, Fahrt-, Vorbereitungs- und sonstige bezahlte Zeiten
+          zusammen mit {formatNumber(cleaningHoursPerMonth)} Reinigungsstunden pro Monat zum gleichen Stundensatz. Material nur für Reinigungsstunden.
           Keine Änderung an LV-Positionen, Angeboten oder gespeicherten Daten.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -81,8 +81,8 @@ export function NonproductiveTimePanel({
         <div className={`rounded-md border p-3 text-sm ${operatingResult < 0 ? "border-red-500/60" : "border-emerald-500/60"}`}>
           <p className="font-semibold">Kundenpreis aus gesamter Arbeitszeit (netto)</p>
           <p>Kundenpreis (alle bezahlten Stunden): <strong>{formatMoney(comparison.suggestedMonthlyRevenue)}</strong></p>
-          <p>Ergebnis nach zusätzlichen bezahlten Zeiten: <strong>{formatMoney(operatingResult)}</strong></p>
-          <p>Ergebnis je Reinigungsstunde: <strong>{resultPerCleaningHour === null ? "–" : formatMoney(resultPerCleaningHour)}</strong></p>
+          <p>Ergebnis nach Gesamtkosten: <strong>{formatMoney(operatingResult)}</strong></p>
+          <p>Ergebnis je Reinigungsstunde (Vergleich): <strong>{resultPerCleaningHour === null ? "–" : formatMoney(resultPerCleaningHour)}</strong></p>
           <p className="text-xs text-muted-foreground">Interne Simulation vor Steuern. Keine automatische Preisübernahme.</p>
         </div>
         <p className="text-xs text-muted-foreground">
