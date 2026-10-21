@@ -8,6 +8,7 @@ import { SectionIntro } from "./SectionIntro";
 import type { KalkulationStateContext } from "./useKalkulationState";
 import { CleaningParameters } from "./CleaningParameters";
 import { SuggestedPositions } from "./SuggestedPositions";
+import { KiTrainingPanel } from "./KiTrainingPanel";
 
 export function FloorplanSection({ state, mode }: { state: KalkulationStateContext; mode: "room" | "ki" }) {
   const {
@@ -149,6 +150,7 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
       )}
 
       {mode === "ki" && <SuggestedPositions state={state} />}
+      {mode === "ki" && <KiTrainingPanel state={state} />}
       {mode === "room" && <CleaningParameters state={state} />}
     </TabsContent>
   );
