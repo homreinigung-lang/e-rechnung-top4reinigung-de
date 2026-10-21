@@ -106,6 +106,9 @@ function KartePage() {
           .order("created_at", { ascending: false }),
       ]);
       if (customers.error) throw customers.error;
+      if (projects.error) throw projects.error;
+      if (entries.error) throw entries.error;
+      if (locations.error) throw locations.error;
       return {
         customers: customers.data ?? [],
         projects: projects.data ?? [],
