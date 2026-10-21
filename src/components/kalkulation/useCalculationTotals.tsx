@@ -300,10 +300,13 @@ export function useCalculationTotals(input: {
   const targetSellingRate = round2(selfCostPerHour * (1 + Math.min(100, num(profitMarkup)) / 100));
   const monthlySelfCost = round2(selfCostPerHour * costingMonthlyHours);
   const targetMonthlyRevenue = round2(targetSellingRate * costingMonthlyHours);
+  // LV is the source of truth once positions are present; otherwise preview the proposal.
+  // Both revenue and costingMonthlyHours must describe the same billing period.
+  const profitabilityRevenue = lvPositions.length > 0 ? lvTotal : suggested;
   const effectiveSellingRate =
-    costingMonthlyHours > 0 ? round2(suggested / costingMonthlyHours) : 0;
-  const contribution = round2(suggested - monthlySelfCost);
-  const contributionMargin = suggested > 0 ? round2((contribution / suggested) * 100) : 0;
+    costingMonthlyHours > 0 ? round2(profitabilityRevenue / costingMonthlyHours) : 0;
+  const contribution = round2(profitabilityRevenue - monthlySelfCost);
+  const contributionMargin = profitabilityRevenue > 0 ? round2((contribution / profitabilityRevenue) * 100) : 0;
   const economyLevel =
     effectiveSellingRate >= targetSellingRate && targetSellingRate > 0
       ? "good"
@@ -367,6 +370,7 @@ export function useCalculationTotals(input: {
     monthlyHours,
     monthlySelfCost,
     priceHints,
+    profitabilityRevenue,
     sectionOf,
     selfCostPerHour,
     stagedPositions,
