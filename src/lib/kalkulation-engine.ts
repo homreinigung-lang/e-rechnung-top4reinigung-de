@@ -82,7 +82,7 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
     const effective = monthly / hoursPerMonth;
     if (effective < MIN_EFFECTIVE_HOURLY_RATE) {
       warnings.push(
-        `Rechnerischer Stundenerlös nur ${round2(effective)} €/Std. – unterhalb des konfigurierten Richtwerts von ${MIN_EFFECTIVE_HOURLY_RATE} €/Std. Bitte individuelle Kosten prüfen.`,
+        `Rechnerischer Stundenerlös nur ${round2(effective)} €/Std. – unterhalb des allgemeinen Richtwerts von ${MIN_EFFECTIVE_HOURLY_RATE} €/Std. Bitte individuelle Kosten prüfen.`,
       );
     }
   }
