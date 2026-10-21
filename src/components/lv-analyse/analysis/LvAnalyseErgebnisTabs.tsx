@@ -1,4 +1,5 @@
-import { RefreshCw, Trash2 } from "lucide-react";
+import { RefreshCw, Trash2, Copy } from "lucide-react";
+import { buildLvReviewReport } from "@/lib/lv-analyse/review-report";
 
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -246,6 +247,12 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
 
       {/* 6) Fehlende Daten */}
       <TabsContent value="missing" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">LV-Prüfbericht: {issues.filter(i => i.level === "error").length} Fehler, {issues.filter(i => i.level === "warning").length} Hinweise. Bitte mit dem Original vergleichen.</p>
+          <Button variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(buildLvReviewReport(issues))}>
+            <Copy className="mr-1 size-4" /> Prüfbericht kopieren
+          </Button>
+        </div>
         {issues.length === 0 ? (
           <p className="text-sm text-muted-foreground">Keine fehlenden Pflichtangaben.</p>
         ) : (
