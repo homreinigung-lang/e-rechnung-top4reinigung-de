@@ -209,6 +209,7 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
 
             <NonproductiveTimePanel
               cleaningHoursPerMonth={costingMonthlyHours}
+              monthlyRevenue={lvPositions.length > 0 ? lvTotal : suggested}
               laborCostPerHour={num(laborWage) + laborBurdenPerHour}
               materialCostPerHour={num(materialCost)}
               overheadCostPerHour={num(overheadCost)}
