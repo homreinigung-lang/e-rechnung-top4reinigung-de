@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KalkulationSearch } from "@/components/kalkulation/shared";
 import { useKalkulationState } from "@/components/kalkulation/useKalkulationState";
 import { ApplyCalculationDialog } from "@/components/kalkulation/ApplyCalculationDialog";
+import { TenderPricing } from "@/components/kalkulation/TenderPricing";
 import { TenderSection } from "@/components/kalkulation/TenderSection";
 import { FloorplanSection } from "@/components/kalkulation/FloorplanSection";
 import { CalculationAnalysis } from "@/components/kalkulation/CalculationAnalysis";
@@ -47,26 +48,32 @@ function KalkulationPage() {
       <div>
         <h1 className="font-display text-2xl font-semibold">Kalkulation</h1>
         <p className="text-sm text-muted-foreground">
-          Zentraler Bereich für Analyse, Grundriss-Kalkulation und Ausschreibungen. Alles bleibt
-          manuell änderbar und geht mit einem Klick ins Angebot.
+          Drei klare Wege: schnell kalkulieren, Räume planen oder LV für Ausschreibungen bearbeiten.
         </p>
       </div>
 
-      <Tabs defaultValue="grundriss" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="analyse">Analyse & Kennzahlen</TabsTrigger>
-          <TabsTrigger value="grundriss">Grundriss (Planung)</TabsTrigger>
-          <TabsTrigger value="ausschreibung">Ausschreibung (Angebot & Vergabe)</TabsTrigger>
+      <Tabs defaultValue="schnell" className="space-y-6">
+        <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="schnell">1. Schnellkalkulation</TabsTrigger>
+          <TabsTrigger value="grundriss">2. Räume & Flächen</TabsTrigger>
+          <TabsTrigger value="ausschreibung">3. LV / Ausschreibungen</TabsTrigger>
         </TabsList>
 
         <CalculationBasis state={state} />
 
-        <CalculationAnalysis state={state} />
+        <TabsContent value="schnell" className="space-y-4">
+          <TenderPricing state={state} />
+        </TabsContent>
 
         <FloorplanSection state={state} />
 
         <TenderSection state={state} />
       </Tabs>
+
+      <details className="rounded-lg border p-3">
+        <summary className="cursor-pointer font-medium">Analyse & Kennzahlen (optional)</summary>
+        <CalculationAnalysis state={state} />
+      </details>
 
       <ApplyCalculationDialog state={state} />
     </div>
