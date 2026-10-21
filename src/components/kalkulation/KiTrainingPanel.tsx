@@ -26,6 +26,8 @@ function loadLocal(): Experience[] {
 export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
   const [cloud, setCloud] = useState<Experience[]>([]);
   const [local, setLocal] = useState<Experience[]>([]);
+  const [verifiedArea, setVerifiedArea] = useState("");
+  const [verifiedExpected, setVerifiedExpected] = useState("");
   const [actual, setActual] = useState("");
   const [approved, setApproved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -79,8 +81,10 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
   const totalHours = similar.reduce((sum, e) => sum + e.actual, 0);
   const productivity = totalHours > 0 ? totalArea / totalHours : null;
   const save = async () => {
+    const enteredArea = Number(verifiedArea.replace(",", "."));
+    const enteredExpected = Number(verifiedExpected.replace(",", "."));
     const value = Number(actual.replace(",", "."));
-    if (!approved || !Number.isFinite(area) || area <= 0 || !Number.isFinite(expected) || expected <= 0 || !Number.isFinite(value) || value <= 0) {
+    if (!approved || !verifiedArea.trim() || !verifiedExpected.trim() || !Number.isFinite(enteredArea) || enteredArea <= 0 || !Number.isFinite(enteredExpected) || enteredExpected <= 0 || !Number.isFinite(value) || value <= 0) {
       setError("Bitte Fläche, geplante und tatsächliche Stunden (> 0) prüfen und bestätigen.");
       return;
     }
@@ -88,12 +92,12 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
     try {
       const uid = await requireUserId();
       const { error: saveError } = await supabase.from("ki_training_experiences").insert({
-        user_id: uid, cleaning_type: kind, area_sqm: area,
-        estimated_labor_hours: expected, actual_labor_hours: value,
+        user_id: uid, cleaning_type: kind, area_sqm: enteredArea,
+        estimated_labor_hours: enteredExpected, actual_labor_hours: value,
       });
       if (saveError) throw saveError;
       await refresh();
-      setActual(""); setApproved(false);
+      setVerifiedArea(""); setVerifiedExpected(""); setActual(""); setApproved(false);
     } catch {
       setError("Speichern in der Cloud fehlgeschlagen. Bitte Verbindung, Anmeldung und Tabellenfreigabe prüfen.");
     } finally { setBusy(false); }
@@ -117,6 +121,15 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm">Aktuelle Grundlage: {kind} · {Number.isFinite(area) ? area : 0} m² · {Number.isFinite(expected) ? expected : 0} kalkulierte Arbeitsstunden.</p>
+        <p className="text-sm text-muted-foreground">Die Werte aus der Kalkulation können vorbelegt sein. Für das Lernsystem bitte die echte Objektfläche und die tatsächlich geplanten Stunden erneut eingeben. Diese Eingaben ändern die Kalkulation nicht.</p>
+        <div className="space-y-2">
+          <Label htmlFor="ki-verified-area">Bestätigte Objektfläche (m²)</Label>
+          <Input id="ki-verified-area" type="text" inputMode="decimal" value={verifiedArea} onChange={(e) => setVerifiedArea(e.target.value)} placeholder="Tatsächliche Fläche eingeben" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ki-verified-expected">Kalkulierte Arbeitsstunden für dieses Objekt</Label>
+          <Input id="ki-verified-expected" type="text" inputMode="decimal" value={verifiedExpected} onChange={(e) => setVerifiedExpected(e.target.value)} placeholder="Geplante Stunden eingeben" />
+        </div>
         <div className="space-y-2">
           <Label htmlFor="ki-actual-hours">Tatsächlich geleistete Arbeitsstunden (alle Mitarbeiter zusammen)</Label>
           <Input id="ki-actual-hours" type="text" inputMode="decimal" value={actual} onChange={(e) => setActual(e.target.value)} placeholder="z. B. 3,5" />
@@ -126,7 +139,7 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
           Ich bestätige die tatsächlichen Stunden und die Speicherung in meinem Firmenkonto.
         </label>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <Button type="button" disabled={!approved || busy || !loaded} onClick={() => void save()}>{busy ? "Bitte warten…" : "Erfahrungswert in Cloud speichern"}</Button>
+        <Button type="button" disabled={!approved || !verifiedArea.trim() || !verifiedExpected.trim() || !actual.trim() || busy || !loaded} onClick={() => void save()}>{busy ? "Bitte warten…" : "Erfahrungswert in Cloud speichern"}</Button>
         <div className="rounded-md border p-3 text-sm space-y-2">
           <p className="font-medium">Cloud-Erfahrungen: {loaded ? cloud.length : "Wird geladen…"}</p>
           {productivity !== null ? (
