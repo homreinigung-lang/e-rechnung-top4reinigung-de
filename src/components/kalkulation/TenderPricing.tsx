@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AlertTriangle, FileSignature } from "lucide-react";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { num } from "./shared";
+import { CLEANING_TYPES, num } from "./shared";
 import { NonproductiveTimePanel } from "./NonproductiveTimePanel";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
@@ -39,6 +40,14 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
     lvTotal,
     materialCost,
     mode,
+    type,
+    area,
+    hours,
+    setMode,
+    setType,
+    setHours,
+    hourlyRate,
+    roomCalculation,
     monthlySelfCost,
     navigate,
     overheadCost,
@@ -65,6 +74,13 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
     vatRate,
     warnings,
   } = state;
+  const [productivityInput, setProductivityInput] = useState("120");
+  const [workerInput, setWorkerInput] = useState("1");
+  const productivity = num(productivityInput);
+  const workers = num(workerInput);
+  const estimatedLaborHours = productivity > 0 ? num(area) / productivity : 0;
+  const estimatedElapsedHours = workers > 0 ? estimatedLaborHours / workers : 0;
+  const validEstimate = num(area) > 0 && productivity > 0 && Number.isInteger(workers) && workers >= 1 && workers <= 100;
   return (
     <Card>
       <CardHeader>
@@ -72,6 +88,43 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
         <CardDescription>Automatische Vorab-Berechnung und freier Endpreis</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <details className="rounded-md border p-3">
+          <summary className="cursor-pointer text-sm font-medium">Schnellkalkulation nach Reinigungsart</summary>
+          <div className="mt-3 space-y-2 text-sm">
+            <p className="text-xs text-muted-foreground">Reinigungsart wählen; Ihre eigenen Kosten und Stundensätze bleiben maßgeblich.</p>
+            <div className="flex flex-wrap gap-2">
+              {CLEANING_TYPES.map((service) => (
+                <Button key={service.value} type="button" size="sm" variant={type === service.value ? "default" : "outline"} onClick={() => { setType(service.value); setConfirmed(false); }}>
+                  {service.label}
+                </Button>
+              ))}
+            </div>
+            <p>Fläche: {formatNumber(num(area))} m² · Reinigungszeit: {formatNumber(num(hours))} Std.</p>
+            <p>Selbstkosten: {formatMoney(selfCostPerHour)} / Std. · Zielpreis: {formatMoney(targetSellingRate)} / Std.</p>
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => setMode("hours")}>Nach Stunden</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setMode("area")}>Nach Fläche</Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1"><Label htmlFor="productivity-sqm">Leistung (m² je Mitarbeiterstunde)</Label><Input id="productivity-sqm" inputMode="decimal" value={productivityInput} onChange={(e) => setProductivityInput(e.target.value)} /></div>
+              <div className="space-y-1"><Label htmlFor="productivity-workers">Anzahl Mitarbeiter</Label><Input id="productivity-workers" inputMode="numeric" value={workerInput} onChange={(e) => setWorkerInput(e.target.value)} /></div>
+            </div>
+            {validEstimate ? (
+              <div className="rounded-md border p-2">
+                <p>Geschätzte Arbeitsstunden gesamt: <strong>{formatNumber(estimatedLaborHours)} Std. / Einsatz</strong></p>
+                <p>Dauer vor Ort mit {workers} Mitarbeiter(n): <strong>{formatNumber(estimatedElapsedHours)} Std.</strong></p>
+                <p>Geschätzte Personalkosten inkl. Zuschläge und Gemeinkosten: <strong>{formatMoney(estimatedLaborHours * (num(laborWage) + laborBurdenPerHour + num(overheadCost)))}</strong></p>
+                {mode === "hours" && !roomCalculation.enabled && lvPositions.length === 0 && (
+                  <Button type="button" size="sm" variant="outline" onClick={() => { setHours(String(Math.round(estimatedLaborHours * 100) / 100).replace(".", ",")); setConfirmed(false); }}>
+                    Arbeitsstunden übernehmen
+                  </Button>
+                )}
+              </div>
+            ) : <p className="text-xs text-destructive">Bitte gültige Fläche, Leistung und Mitarbeiterzahl (1–100) eingeben.</p>}
+            <p className="text-xs text-muted-foreground">120 m²/Std. ist nur ein editierbarer Beispielwert, kein geprüfter Leistungswert für diese Reinigungsart. Mitarbeiterzahl verkürzt die Einsatzdauer, nicht die bezahlten Gesamtstunden. Bitte tatsächliche Leistungswerte prüfen; keine automatische Angebotsübernahme.</p>
+            <p className="text-xs text-muted-foreground">Bitte Zeit, Fläche und Preise prüfen. Keine automatische Angebotsübernahme.</p>
+          </div>
+        </details>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Grundleistung</span>
@@ -209,7 +262,11 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
 
             <NonproductiveTimePanel
               cleaningHoursPerMonth={costingMonthlyHours}
-              sellingRatePerPaidHour={effectiveSellingRate}
+              sellingRatePerPaidHour={mode === "hours" ? num(hourlyRate) : effectiveSellingRate}
+              onApplyCustomerRate={mode === "hours" && !roomCalculation.enabled && lvPositions.length === 0 ? (rate) => {
+                setHourlyRate(String(rate).replace(".", ","));
+                setConfirmed(false);
+              } : undefined}
               laborCostPerHour={num(laborWage) + laborBurdenPerHour}
               materialCostPerHour={num(materialCost)}
               overheadCostPerHour={num(overheadCost)}
