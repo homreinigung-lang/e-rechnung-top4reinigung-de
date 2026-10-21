@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { requireUserId } from "@/lib/auth-user";
+import { formatNumber, parseGermanNumber } from "@/lib/format";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
 type Experience = { id: string; kind: string; area: number; expected: number; actual: number; savedAt: string };
@@ -33,8 +34,8 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
-  const area = Number(state.area);
-  const expected = Number(state.hours);
+  const area = parseGermanNumber(state.area);
+  const expected = parseGermanNumber(state.hours);
   const kind = state.selected.label;
 
   useEffect(() => { setLocal(loadLocal()); }, []);
@@ -81,9 +82,9 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
   const totalHours = similar.reduce((sum, e) => sum + e.actual, 0);
   const productivity = totalHours > 0 ? totalArea / totalHours : null;
   const save = async () => {
-    const enteredArea = Number(verifiedArea.replace(",", "."));
-    const enteredExpected = Number(verifiedExpected.replace(",", "."));
-    const value = Number(actual.replace(",", "."));
+    const enteredArea = parseGermanNumber(verifiedArea);
+    const enteredExpected = parseGermanNumber(verifiedExpected);
+    const value = parseGermanNumber(actual);
     if (!approved || !verifiedArea.trim() || !verifiedExpected.trim() || !Number.isFinite(enteredArea) || enteredArea <= 0 || !Number.isFinite(enteredExpected) || enteredExpected <= 0 || !Number.isFinite(value) || value <= 0) {
       setError("Bitte Fläche, geplante und tatsächliche Stunden (> 0) prüfen und bestätigen.");
       return;
@@ -120,7 +121,7 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
         <CardDescription>Freigegebene Ist-Stunden sicher im Firmenkonto speichern. Preise und Angebote bleiben unverändert.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm">Aktuelle Grundlage: {kind} · {Number.isFinite(area) ? area : 0} m² · {Number.isFinite(expected) ? expected : 0} kalkulierte Arbeitsstunden.</p>
+        <p className="text-sm">Aktuelle Grundlage: {kind} · {formatNumber(area)} m² · {formatNumber(expected)} kalkulierte Arbeitsstunden.</p>
         <p className="text-sm text-muted-foreground">Die Werte aus der Kalkulation können vorbelegt sein. Für das Lernsystem bitte die echte Objektfläche und die tatsächlich geplanten Stunden erneut eingeben. Diese Eingaben ändern die Kalkulation nicht.</p>
         <div className="space-y-2">
           <Label htmlFor="ki-verified-area">Bestätigte Objektfläche (m²)</Label>
@@ -143,11 +144,11 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
         <div className="rounded-md border p-3 text-sm space-y-2">
           <p className="font-medium">Cloud-Erfahrungen: {loaded ? cloud.length : "Wird geladen…"}</p>
           {productivity !== null ? (
-            <p>Orientierungswert für {kind}: ca. {productivity.toFixed(1)} m² je Mitarbeiterstunde aus {similar.length} Einträgen.</p>
+            <p>Orientierungswert für {kind}: ca. {formatNumber(Math.round(productivity * 10) / 10)} m² je Mitarbeiterstunde aus {similar.length} Einträgen.</p>
           ) : <p className="text-muted-foreground">Noch keine vergleichbaren Cloud-Erfahrungen für diese Reinigungsart.</p>}
           {cloud.slice(0, 10).map((e) => (
             <div key={e.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
-              <span>{e.kind} · {e.area} m² · Soll {e.expected} h / Ist {e.actual} h</span>
+              <span>{e.kind} · {formatNumber(e.area)} m² · Soll {formatNumber(e.expected)} h / Ist {formatNumber(e.actual)} h</span>
               <Button size="sm" variant="outline" disabled={busy} onClick={() => void deleteEntry(e.id)}>Löschen</Button>
             </div>
           ))}
