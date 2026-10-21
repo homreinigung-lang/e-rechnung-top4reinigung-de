@@ -10,6 +10,7 @@ type Props = {
   materialCostPerHour: number;
   overheadCostPerHour: number;
   profitMarkupPercent: number;
+  monthlyRevenue: number;
 };
 
 function positiveNumber(value: string): number {
@@ -23,6 +24,7 @@ export function NonproductiveTimePanel({
   materialCostPerHour,
   overheadCostPerHour,
   profitMarkupPercent,
+  monthlyRevenue,
 }: Props) {
   const [travel, setTravel] = useState("0");
   const [preparation, setPreparation] = useState("0");
@@ -41,6 +43,8 @@ export function NonproductiveTimePanel({
     [cleaningHoursPerMonth, travel, preparation, other, laborCostPerHour, materialCostPerHour, overheadCostPerHour, profitMarkupPercent],
   );
 
+  const operatingResult = monthlyRevenue - comparison.totalMonthlyCost;
+  const resultPerCleaningHour = cleaningHoursPerMonth > 0 ? operatingResult / cleaningHoursPerMonth : null;
   return (
     <details className="rounded-md border">
       <summary className="cursor-pointer p-3 text-sm font-medium">
@@ -72,6 +76,13 @@ export function NonproductiveTimePanel({
           <p className="text-sm">Monatliche Gesamtkosten: <strong>{formatMoney(comparison.totalMonthlyCost)}</strong></p>
           <p className="text-sm">Kostendeckend / Reinigungsstd.: <strong>{comparison.breakEvenPerCleaningHour === null ? "–" : formatMoney(comparison.breakEvenPerCleaningHour)}</strong></p>
           <p className="text-sm">Zielpreis / Reinigungsstd.: <strong>{comparison.targetPerCleaningHour === null ? "–" : formatMoney(comparison.targetPerCleaningHour)}</strong></p>
+        </div>
+        <div className={`rounded-md border p-3 text-sm ${operatingResult < 0 ? "border-red-500/60" : "border-emerald-500/60"}`}>
+          <p className="font-semibold">Vergleich mit aktuellem Monatsumsatz (netto)</p>
+          <p>Umsatz: <strong>{formatMoney(monthlyRevenue)}</strong></p>
+          <p>Ergebnis nach zusätzlichen bezahlten Zeiten: <strong>{formatMoney(operatingResult)}</strong></p>
+          <p>Ergebnis je Reinigungsstunde: <strong>{resultPerCleaningHour === null ? "–" : formatMoney(resultPerCleaningHour)}</strong></p>
+          <p className="text-xs text-muted-foreground">Interne Simulation vor Steuern. Keine automatische Preisübernahme.</p>
         </div>
         <p className="text-xs text-muted-foreground">
           Die Eingaben gelten nur für diese Vorschau und werden nicht gespeichert.
