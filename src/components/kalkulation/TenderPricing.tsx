@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { AlertTriangle, FileSignature } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -20,7 +19,6 @@ import type { KalkulationStateContext } from "./useKalkulationState";
 export function TenderPricing({ state }: { state: KalkulationStateContext }) {
   const {
     base,
-    confirmed,
     contribution,
     contributionMargin,
     costingMonthlyHours,
@@ -68,7 +66,6 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
     targetSellingRate,
     taxMode,
     taxNote,
-    toQuote,
     travel,
     vatAmount,
     vatRate,
@@ -414,34 +411,6 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
           </div>
         )}
 
-        <div className="space-y-3 rounded-md border border-dashed p-3">
-          <p className="text-xs text-muted-foreground">
-            Diese Kalkulation ist ein interner Entwurf. Bitte alle Angaben prüfen und final
-            bestätigen – erst danach kann ein Angebot erstellt werden.
-          </p>
-          <label className="flex cursor-pointer items-start gap-2 text-sm font-medium">
-            <Checkbox
-              checked={confirmed}
-              onCheckedChange={(checked) => setConfirmed(Boolean(checked))}
-            />
-            <span>Kalkulation geprüft und final bestätigt</span>
-          </label>
-        </div>
-
-        <Button
-          className="w-full"
-          disabled={
-            toQuote.isPending ||
-            lvTotal <= 0 ||
-            !confirmed ||
-            warnings.length > 0 ||
-            (state.roomCalculation.enabled && state.calcOutOfSync)
-          }
-          onClick={() => toQuote.mutate()}
-        >
-          <FileSignature className="size-4" />
-          In Angebot übernehmen
-        </Button>
       </CardContent>
     </Card>
   );
