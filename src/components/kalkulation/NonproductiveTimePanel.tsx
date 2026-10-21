@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, formatNumber } from "@/lib/format";
@@ -11,6 +12,7 @@ type Props = {
   overheadCostPerHour: number;
   profitMarkupPercent: number;
   sellingRatePerPaidHour: number;
+  onApplyCustomerRate?: (rate: number) => void;
 };
 
 function positiveNumber(value: string): number {
@@ -25,6 +27,7 @@ export function NonproductiveTimePanel({
   overheadCostPerHour,
   profitMarkupPercent,
   sellingRatePerPaidHour,
+  onApplyCustomerRate,
 }: Props) {
   const [travel, setTravel] = useState("0");
   const [preparation, setPreparation] = useState("0");
@@ -45,6 +48,9 @@ export function NonproductiveTimePanel({
   );
 
   const operatingResult = comparison.estimatedMonthlyResult;
+  const adjustedHourlyRate = cleaningHoursPerMonth > 0
+    ? Math.round((comparison.suggestedMonthlyRevenue / cleaningHoursPerMonth) * 100) / 100
+    : 0;
   const cleaning = Math.max(0, cleaningHoursPerMonth);
   const travelHours = positiveNumber(travel);
   const preparationHours = positiveNumber(preparation);
@@ -93,6 +99,12 @@ export function NonproductiveTimePanel({
           <p>Ergebnis nach Gesamtkosten: <strong>{formatMoney(operatingResult)}</strong></p>
           <p>Ergebnis je Reinigungsstunde (Vergleich): <strong>{resultPerCleaningHour === null ? "–" : formatMoney(resultPerCleaningHour)}</strong></p>
           <p className="text-xs text-muted-foreground">Interne Simulation vor Steuern. Keine automatische Preisübernahme.</p>
+          {onApplyCustomerRate && adjustedHourlyRate > 0 && (
+            <Button type="button" variant="outline" className="mt-2" onClick={() => onApplyCustomerRate(adjustedHourlyRate)}>
+              Berechneten Preis übernehmen ({formatMoney(adjustedHourlyRate)} / Reinigungsstd.)
+            </Button>
+          )}
+          {onApplyCustomerRate && <p className="text-xs text-muted-foreground">Übernimmt den Gesamtpreis als umgerechneten Stundensatz in die Grundkalkulation. LV-Positionen und Angebote bleiben unverändert, bis Sie die Grundkalkulation ausdrücklich übernehmen.</p>}
         </div>
         <p className="text-xs text-muted-foreground">
           Die Eingaben gelten nur für diese Vorschau und werden nicht gespeichert.
