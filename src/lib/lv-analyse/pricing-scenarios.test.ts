@@ -9,9 +9,9 @@ describe("LV pricing scenarios", () => {
   });
   it("accounts for extra paid hours without selling more cleaning hours", () => {
     const rows = pricingScenarios(120, 25, 5)!;
-    expect(rows[0].annualCost).toBe(4500);
-    expect(rows[0].hourlyRate).toBe(40.5);
-    expect(rows[0].annualResult).toBe(360);
+    expect(rows[0]!.annualCost).toBe(4500);
+    expect(rows[0]!.hourlyRate).toBe(40.5);
+    expect(rows[0]!.annualResult).toBe(360);
     expect(pricingScenarios(120, 25, -1)).toBeNull();
   });
   it("keeps each scenario above full cost", () => {
