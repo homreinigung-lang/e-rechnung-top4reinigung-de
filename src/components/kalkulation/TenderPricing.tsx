@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { num } from "./shared";
+import { NonproductiveTimePanel } from "./NonproductiveTimePanel";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
 export function TenderPricing({ state }: { state: KalkulationStateContext }) {
@@ -205,6 +206,14 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
                 Marge {formatMoney(targetMonthlyRevenue)}
               </p>
             </div>
+
+            <NonproductiveTimePanel
+              cleaningHoursPerMonth={costingMonthlyHours}
+              laborCostPerHour={num(laborWage) + laborBurdenPerHour}
+              materialCostPerHour={num(materialCost)}
+              overheadCostPerHour={num(overheadCost)}
+              profitMarkupPercent={num(profitMarkup)}
+            />
 
             <div className="flex flex-wrap gap-2">
               <Button

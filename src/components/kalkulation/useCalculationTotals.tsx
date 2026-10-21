@@ -339,9 +339,9 @@ export function useCalculationTotals(input: {
         rooms: 0,
         floors: 0,
         monthlyNet: suggested,
-        hoursPerMonth: monthlyHours,
+        hoursPerMonth: costingMonthlyHours,
       }),
-    [mode, area, analysisTotals, suggested, monthlyHours],
+    [mode, area, analysisTotals, suggested, costingMonthlyHours],
   );
 
   /** Herkunftsbereich einer LV-Zeile (Fallback: „Kalkulation"). */
