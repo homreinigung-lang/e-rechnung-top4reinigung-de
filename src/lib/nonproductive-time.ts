@@ -11,12 +11,15 @@ export type NonproductiveTimeInput = {
   materialCostPerCleaningHour?: number;
   overheadCostPerPaidHour?: number;
   profitMarkupPercent?: number;
+  sellingRatePerPaidHour?: number;
 };
 
 export type NonproductiveTimeResult = {
   paidHoursPerMonth: number;
   nonproductiveHoursPerMonth: number;
   totalMonthlyCost: number;
+  suggestedMonthlyRevenue: number;
+  estimatedMonthlyResult: number;
   breakEvenPerCleaningHour: number | null;
   targetPerCleaningHour: number | null;
 };
@@ -37,10 +40,13 @@ export function calculateNonproductiveTime(input: NonproductiveTimeInput): Nonpr
   const overhead = valid(input.overheadCostPerPaidHour);
   const markup = valid(input.profitMarkupPercent);
   const total = cents(paid * (labor + overhead) + cleaning * materials);
+  const revenue = cents(paid * valid(input.sellingRatePerPaidHour));
   return {
     paidHoursPerMonth: cents(paid),
     nonproductiveHoursPerMonth: cents(nonproductive),
     totalMonthlyCost: total,
+    suggestedMonthlyRevenue: revenue,
+    estimatedMonthlyResult: cents(revenue - total),
     breakEvenPerCleaningHour: cleaning > 0 ? cents(total / cleaning) : null,
     targetPerCleaningHour: cleaning > 0 ? cents((total / cleaning) * (1 + markup / 100)) : null,
   };

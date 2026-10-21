@@ -2,6 +2,21 @@ import { describe, expect, it } from "vitest";
 import { calculateNonproductiveTime } from "./nonproductive-time";
 
 describe("calculateNonproductiveTime", () => {
+  it("prices cleaning, travel and preparation at the selling rate but materials only for cleaning", () => {
+    const result = calculateNonproductiveTime({
+      cleaningHoursPerMonth: 1,
+      paidTravelHoursPerMonth: 0.5,
+      paidPreparationHoursPerMonth: 0.25,
+      laborCostPerHour: 19.8,
+      overheadCostPerPaidHour: 3.8,
+      materialCostPerCleaningHour: 1.8,
+      sellingRatePerPaidHour: 35,
+    });
+    expect(result.paidHoursPerMonth).toBe(1.75);
+    expect(result.totalMonthlyCost).toBe(43.1);
+    expect(result.suggestedMonthlyRevenue).toBe(61.25);
+    expect(result.estimatedMonthlyResult).toBe(18.15);
+  });
   it("accounts for paid travel and preparation without charging material twice", () => {
     const result = calculateNonproductiveTime({
       cleaningHoursPerMonth: 100,
