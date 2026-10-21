@@ -77,10 +77,10 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
   const [productivityInput, setProductivityInput] = useState("120");
   const [workerInput, setWorkerInput] = useState("1");
   const productivity = num(productivityInput);
-  const workers = Math.floor(num(workerInput));
+  const workers = num(workerInput);
   const estimatedLaborHours = productivity > 0 ? num(area) / productivity : 0;
   const estimatedElapsedHours = workers > 0 ? estimatedLaborHours / workers : 0;
-  const validEstimate = num(area) > 0 && productivity > 0 && workers >= 1 && workers <= 100;
+  const validEstimate = num(area) > 0 && productivity > 0 && Number.isInteger(workers) && workers >= 1 && workers <= 100;
   return (
     <Card>
       <CardHeader>
