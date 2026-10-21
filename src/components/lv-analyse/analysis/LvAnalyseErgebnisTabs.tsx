@@ -35,6 +35,7 @@ import { LabeledNumber } from "./LabeledNumber";
 import type { LvAnalyseState } from "./useLvAnalyseState";
 export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
   const [costPerHour, setCostPerHour] = useState(0);
+  const [extraPaidHours, setExtraPaidHours] = useState(0);
   const copyText = async (value: string, label: string) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -260,13 +261,16 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
             <CardTitle className="text-sm">Preisszenarien – interne Simulation</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <LabeledNumber label="Eigene Vollkosten je Arbeitsstunde (€)" value={costPerHour} onChange={setCostPerHour} />
-            <p className="text-xs text-muted-foreground">Vollkosten inklusive Lohnnebenkosten, Material, Gemeinkosten und bezahlter Fahrt-/Vorbereitungszeit eintragen. Die Werte 8 %, 18 % und 30 % sind frei gewählte Kalkulationsaufschläge, keine Marktpreise oder garantierten Gewinne.</p>
-            {pricingScenarios(price.annualHours, costPerHour) === null ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <LabeledNumber label="Eigene Kosten je bezahlter Stunde (€)" value={costPerHour} onChange={setCostPerHour} />
+              <LabeledNumber label="Zusätzliche bezahlte Fahrt-/Vorbereitungsstunden pro Monat" value={extraPaidHours} onChange={setExtraPaidHours} />
+            </div>
+            <p className="text-xs text-muted-foreground">Stundenkosten inklusive Lohnnebenkosten, Material und Gemeinkosten eintragen. Zusätzliche bezahlte Fahrt-/Vorbereitungsstunden separat erfassen; nicht doppelt berücksichtigen. Die Werte 8 %, 18 % und 30 % sind frei gewählte Kalkulationsaufschläge, keine Marktpreise oder garantierten Gewinne.</p>
+            {pricingScenarios(price.annualHours, costPerHour, extraPaidHours) === null ? (
               <p className="text-sm text-muted-foreground">Für eine Simulation bitte gültige Jahresstunden und Vollkosten je Stunde eingeben.</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-3">
-                {pricingScenarios(price.annualHours, costPerHour)!.map((scenario) => (
+                {pricingScenarios(price.annualHours, costPerHour, extraPaidHours)!.map((scenario) => (
                   <div key={scenario.label} className="rounded-md border p-3 space-y-1 text-sm">
                     <p className="font-semibold">{scenario.label}</p>
                     <p>Stundensatz: <strong>{formatMoney(scenario.hourlyRate)}</strong></p>
