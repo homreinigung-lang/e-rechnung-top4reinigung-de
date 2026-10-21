@@ -23,9 +23,9 @@ export function useKalkulationForm() {
   const search = routeApi.useSearch();
   const [type, setType] = useState(CLEANING_TYPES[0]!.value);
   const [mode, setMode] = useState<Mode>("area");
-  const [area, setArea] = useState(search.area ? String(search.area).replace(".", ",") : "100");
+  const [area, setArea] = useState(search.area ? String(search.area).replace(".", ",") : "150");
   const [pricePerSqm, setPricePerSqm] = useState(String(CLEANING_TYPES[0]!.area));
-  const [hours, setHours] = useState("4");
+  const [hours, setHours] = useState("1");
   const [hourlyRate, setHourlyRate] = useState(String(CLEANING_TYPES[0]!.hourly));
   const [frequency, setFrequency] = useState("1");
   const [frequencyUnit, setFrequencyUnit] = useState<RecurrenceUnit>("month");
