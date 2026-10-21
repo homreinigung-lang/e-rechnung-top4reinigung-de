@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KalkulationSearch } from "@/components/kalkulation/shared";
@@ -5,6 +6,7 @@ import { useKalkulationState } from "@/components/kalkulation/useKalkulationStat
 import { ApplyCalculationDialog } from "@/components/kalkulation/ApplyCalculationDialog";
 import { TenderSection } from "@/components/kalkulation/TenderSection";
 import { FloorplanSection } from "@/components/kalkulation/FloorplanSection";
+import { CalculationAnalysis } from "@/components/kalkulation/CalculationAnalysis";
 import { TenderPricing } from "@/components/kalkulation/TenderPricing";
 import { CalculationBasis } from "@/components/kalkulation/CalculationBasis";
 
@@ -41,6 +43,7 @@ export const Route = createFileRoute("/_authenticated/kalkulation")({
 
 function KalkulationPage() {
   const state = useKalkulationState();
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -70,10 +73,12 @@ function KalkulationPage() {
 
         <TenderSection state={state} />
 
-        <details className="rounded-lg border p-3">
-          <summary className="cursor-pointer text-sm font-medium">Analyse & Kennzahlen</summary>
-          <div className="pt-3 text-sm text-muted-foreground">Die detaillierte Auswertung bleibt über die bestehende Analyse erreichbar.</div>
-        </details>
+        <div className="rounded-lg border p-3">
+          <button type="button" className="text-sm font-medium text-primary" aria-expanded={showAnalytics} onClick={() => setShowAnalytics((value) => !value)}>
+            {showAnalytics ? "Analyse & Kennzahlen schließen" : "Analyse & Kennzahlen anzeigen"}
+          </button>
+          {showAnalytics && <div className="pt-4"><CalculationAnalysis state={state} /></div>}
+        </div>
       </Tabs>
 
       <ApplyCalculationDialog state={state} />
