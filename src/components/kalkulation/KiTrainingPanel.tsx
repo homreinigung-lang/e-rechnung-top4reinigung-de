@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,8 @@ const KEY = "gebcalc-ki-training-experiences-v1";
 
 function loadExperiences(): Experience[] {
   try {
-    const raw = localStorage.getItem(KEY);
+    if (typeof window === "undefined") return [];
+    const raw = window.localStorage.getItem(KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((item): item is Experience =>
@@ -23,7 +24,8 @@ function loadExperiences(): Experience[] {
 }
 
 export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
-  const [entries, setEntries] = useState<Experience[]>(loadExperiences);
+  const [entries, setEntries] = useState<Experience[]>([]);
+  useEffect(() => { setEntries(loadExperiences()); }, []);
   const [actual, setActual] = useState("");
   const [approved, setApproved] = useState(false);
   const [error, setError] = useState("");
@@ -31,9 +33,9 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
   const expected = Number(state.hours);
   const kind = state.selected.label;
   const similar = useMemo(() => entries.filter((e) => e.kind === kind && e.area > 0 && e.actual > 0), [entries, kind]);
-  const productivity = similar.length ? similar.reduce((sum, e) => sum + e.area / e.actual, 0) / similar.length : null;
+  const productivity = similar.length ? similar.reduce((sum, e) => sum + e.area, 0) / similar.reduce((sum, e) => sum + e.actual, 0) : null;
   const persist = (next: Experience[]) => {
-    try { localStorage.setItem(KEY, JSON.stringify(next)); setEntries(next); setError(""); }
+    try { window.localStorage.setItem(KEY, JSON.stringify(next)); setEntries(next); setError(""); }
     catch { setError("Speichern auf diesem Gerät nicht möglich. Bitte Browser-Speicher prüfen."); }
   };
   const save = () => {
@@ -42,7 +44,7 @@ export function KiTrainingPanel({ state }: { state: KalkulationStateContext }) {
       setError("Bitte Fläche, kalkulierte Stunden und tatsächliche Stunden (jeweils > 0) eingeben und die Freigabe bestätigen.");
       return;
     }
-    persist([{ id: crypto.randomUUID(), kind, area, expected, actual: value, savedAt: new Date().toISOString() }, ...entries].slice(0, 100));
+    persist([{ id: window.crypto.randomUUID(), kind, area, expected, actual: value, savedAt: new Date().toISOString() }, ...entries].slice(0, 100));
     setActual(""); setApproved(false);
   };
   return (
