@@ -7,6 +7,13 @@ describe("LV pricing scenarios", () => {
     expect(pricingScenarios(100, 0)).toBeNull();
     expect(pricingScenarios(Number.NaN, 25)).toBeNull();
   });
+  it("accounts for extra paid hours without selling more cleaning hours", () => {
+    const rows = pricingScenarios(120, 25, 5)!;
+    expect(rows[0].annualCost).toBe(4500);
+    expect(rows[0].hourlyRate).toBe(40.5);
+    expect(rows[0].annualResult).toBe(360);
+    expect(pricingScenarios(120, 25, -1)).toBeNull();
+  });
   it("keeps each scenario above full cost", () => {
     const rows = pricingScenarios(100, 25.4)!;
     expect(rows).toHaveLength(3);
