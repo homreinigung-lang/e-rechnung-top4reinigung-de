@@ -19,7 +19,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         hint: "Beschreibung aus dem Original ergänzen.",
       });
     }
-    if (item.quantity === null || item.quantity <= 0) {
+    if (item.quantity === null || !Number.isFinite(item.quantity) || item.quantity <= 0) {
       issues.push({
         itemId: item.id,
         field: "quantity",
@@ -37,7 +37,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         hint: "Einheit ergänzen (m², Stk, Std, Monat, pauschal).",
       });
     }
-    if (pricingFrequency(item).perYear === null) {
+    if (pricingFrequency(item).perYear === null || !Number.isFinite(pricingFrequency(item).perYear!) || pricingFrequency(item).perYear! <= 0) {
       issues.push({
         itemId: item.id,
         field: "frequency",
@@ -53,6 +53,35 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         level: "warning",
         message: `Einheitspreis für Position ${name} fehlt.`,
         hint: "Preis aus der eigenen Kalkulation eintragen, bevor das Angebot abgegeben wird.",
+      });
+    }
+    if (item.area_m2 !== null && (!Number.isFinite(item.area_m2) || item.area_m2 <= 0)) {
+      issues.push({
+        itemId: item.id,
+        field: "document",
+        level: "warning",
+        message: `Position ${name}: ungültige Reinigungsfläche.`,
+        hint: "Flächenangabe mit dem Originaldokument abgleichen.",
+      });
+    }
+    if (item.working_hours !== null && (!Number.isFinite(item.working_hours) || item.working_hours <= 0)) {
+      issues.push({
+        itemId: item.id,
+        field: "document",
+        level: "warning",
+        message: `Position ${name}: ungültiger Zeitansatz.`,
+        hint: "Arbeitszeit mit den Anforderungen der Ausschreibung abgleichen.",
+      });
+    }
+    if (item.area_m2 !== null && item.area_m2 > 0 && item.quantity !== null && item.quantity > 0 &&
+        /^(m²|m2|qm|m\^2)$/i.test(item.unit.trim()) &&
+        Math.abs(item.quantity - item.area_m2) / Math.max(item.quantity, item.area_m2) > 0.05) {
+      issues.push({
+        itemId: item.id,
+        field: "document",
+        level: "warning",
+        message: `Position ${name}: Menge und erkannte Fläche weichen voneinander ab.`,
+        hint: "Prüfen, ob Menge und Fläche tatsächlich dieselbe Bezugsgröße haben.",
       });
     }
     if (item.confidence_score < 0.5) {
