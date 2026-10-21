@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ki_training_experiences: {
+        Row: {
+          id: string
+          user_id: string
+          cleaning_type: string
+          area_sqm: number
+          estimated_labor_hours: number
+          actual_labor_hours: number
+          approved_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          cleaning_type: string
+          area_sqm: number
+          estimated_labor_hours: number
+          actual_labor_hours: number
+          approved_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          cleaning_type?: string
+          area_sqm?: number
+          estimated_labor_hours?: number
+          actual_labor_hours?: number
+          approved_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       account_approvals: {
         Row: {
           auth_user_id: string
