@@ -1,4 +1,5 @@
 import { RefreshCw, Trash2, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { buildLvReviewReport, buildBieterfragen } from "@/lib/lv-analyse/review-report";
 
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
@@ -31,6 +32,14 @@ import { CategoryTable } from "./CategoryTable";
 import { LabeledNumber } from "./LabeledNumber";
 import type { LvAnalyseState } from "./useLvAnalyseState";
 export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
+  const copyText = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} kopiert`);
+    } catch {
+      toast.error("Kopieren nicht möglich", { description: "Bitte Browserberechtigungen für die Zwischenablage prüfen." });
+    }
+  };
   const {
     addItem,
     approveAll,
@@ -249,12 +258,12 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
       <TabsContent value="missing" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">LV-Prüfbericht: {issues.filter(i => i.level === "error").length} Fehler, {issues.filter(i => i.level === "warning").length} Hinweise. Bitte mit dem Original vergleichen.</p>
-          <Button variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(buildLvReviewReport(issues))}>
+          <Button variant="outline" size="sm" onClick={() => void copyText(buildLvReviewReport(issues), "Prüfbericht")}>
             <Copy className="mr-1 size-4" /> Prüfbericht kopieren
           </Button>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" disabled={issues.length === 0} onClick={() => void navigator.clipboard.writeText(buildBieterfragen(issues, items))}>
+          <Button variant="outline" size="sm" disabled={issues.length === 0} onClick={() => void copyText(buildBieterfragen(issues, items), "Bieterfragen-Entwurf")}>
             <Copy className="mr-1 size-4" /> Bieterfragen-Entwurf kopieren
           </Button>
           <p className="text-xs text-muted-foreground self-center">Nur Entwurf. Keine automatische Übermittlung.</p>
