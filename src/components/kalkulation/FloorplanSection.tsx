@@ -9,7 +9,7 @@ import type { KalkulationStateContext } from "./useKalkulationState";
 import { CleaningParameters } from "./CleaningParameters";
 import { SuggestedPositions } from "./SuggestedPositions";
 
-export function FloorplanSection({ state }: { state: KalkulationStateContext }) {
+export function FloorplanSection({ state, mode }: { state: KalkulationStateContext; mode: "room" | "ki" }) {
   const {
     aiPrompt,
     aiReviewNotes,
@@ -22,10 +22,10 @@ export function FloorplanSection({ state }: { state: KalkulationStateContext }) 
     warnings,
   } = state;
   return (
-    <TabsContent value="grundriss" className="space-y-6">
+    <TabsContent value={mode === "room" ? "raum" : "ki"} className="space-y-6">
       <SectionIntro
-        title="Grundriss (Planung)"
-        text="Grundlage der Kalkulation: Grundrisse und Objektfotos hochladen, Flächen, Räume und Etagen dokumentieren und den Reinigungsaufwand berechnen. Die hier ermittelten Werte fließen automatisch in die Ausschreibung und in die Kennzahlen."
+        title={mode === "room" ? "Raumkalkulation" : "KI-Kalkulation"}
+        text={mode === "room" ? "Räume, Flächen und Leistungswerte erfassen und prüfen." : "KI analysiert den Auftrag; Preise stammen aus den hinterlegten Kalkulationsgrundlagen und bleiben vor der Übernahme prüfbar."}
       />
 
       {warnings.length > 0 && (
@@ -55,6 +55,7 @@ export function FloorplanSection({ state }: { state: KalkulationStateContext }) 
         </div>
       )}
 
+      {mode === "room" && (
       <Card>
         <CardHeader>
           <CardTitle>Objektbeschreibung</CardTitle>
@@ -81,6 +82,9 @@ export function FloorplanSection({ state }: { state: KalkulationStateContext }) 
         </CardContent>
       </Card>
 
+      )}
+
+      {mode === "ki" && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -142,10 +146,10 @@ export function FloorplanSection({ state }: { state: KalkulationStateContext }) 
         </CardContent>
       </Card>
 
-      {/* --- Bereich A: KI-Analyse (eigene Positionen, eigener Übernahme-Button) --- */}
-      <SuggestedPositions state={state} />
+      )}
 
-      <CleaningParameters state={state} />
+      {mode === "ki" && <SuggestedPositions state={state} />}
+      {mode === "room" && <CleaningParameters state={state} />}
     </TabsContent>
   );
 }

@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KalkulationSearch } from "@/components/kalkulation/shared";
 import { useKalkulationState } from "@/components/kalkulation/useKalkulationState";
 import { ApplyCalculationDialog } from "@/components/kalkulation/ApplyCalculationDialog";
 import { TenderSection } from "@/components/kalkulation/TenderSection";
 import { FloorplanSection } from "@/components/kalkulation/FloorplanSection";
 import { CalculationAnalysis } from "@/components/kalkulation/CalculationAnalysis";
+import { TenderPricing } from "@/components/kalkulation/TenderPricing";
 import { CalculationBasis } from "@/components/kalkulation/CalculationBasis";
 
 export const Route = createFileRoute("/_authenticated/kalkulation")({
@@ -41,31 +43,42 @@ export const Route = createFileRoute("/_authenticated/kalkulation")({
 
 function KalkulationPage() {
   const state = useKalkulationState();
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold">Kalkulation</h1>
         <p className="text-sm text-muted-foreground">
-          Zentraler Bereich für Analyse, Grundriss-Kalkulation und Ausschreibungen. Alles bleibt
-          manuell änderbar und geht mit einem Klick ins Angebot.
+          Vier Arbeitswege für schnelle Preise, Räume, KI-Vorschläge und Ausschreibungen. Alle Preise basieren auf den hinterlegten Kalkulationsgrundlagen.
         </p>
       </div>
 
-      <Tabs defaultValue="grundriss" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="analyse">Analyse & Kennzahlen</TabsTrigger>
-          <TabsTrigger value="grundriss">Grundriss (Planung)</TabsTrigger>
-          <TabsTrigger value="ausschreibung">Ausschreibung (Angebot & Vergabe)</TabsTrigger>
+      <Tabs defaultValue="schnell" className="space-y-6">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="schnell">Schnellkalkulation</TabsTrigger>
+          <TabsTrigger value="raum">Raumkalkulation</TabsTrigger>
+          <TabsTrigger value="ki">KI-Kalkulation</TabsTrigger>
+          <TabsTrigger value="ausschreibung">LV / Ausschreibungen</TabsTrigger>
         </TabsList>
 
         <CalculationBasis state={state} />
 
-        <CalculationAnalysis state={state} />
+        <TabsContent value="schnell" className="space-y-4">
+          <TenderPricing state={state} />
+        </TabsContent>
 
-        <FloorplanSection state={state} />
+        <FloorplanSection state={state} mode="room" />
+        <FloorplanSection state={state} mode="ki" />
 
         <TenderSection state={state} />
+
+        <div className="rounded-lg border p-3">
+          <button type="button" className="text-sm font-medium text-primary" aria-expanded={showAnalytics} onClick={() => setShowAnalytics((value) => !value)}>
+            {showAnalytics ? "Analyse & Kennzahlen schließen" : "Analyse & Kennzahlen anzeigen"}
+          </button>
+          {showAnalytics && <div className="pt-4"><CalculationAnalysis state={state} /></div>}
+        </div>
       </Tabs>
 
       <ApplyCalculationDialog state={state} />
