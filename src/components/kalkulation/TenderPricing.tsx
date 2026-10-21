@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { num } from "./shared";
+import { CLEANING_TYPES, num } from "./shared";
 import { NonproductiveTimePanel } from "./NonproductiveTimePanel";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
@@ -39,6 +39,11 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
     lvTotal,
     materialCost,
     mode,
+    type,
+    area,
+    hours,
+    setMode,
+    setType,
     hourlyRate,
     roomCalculation,
     monthlySelfCost,
@@ -74,6 +79,26 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
         <CardDescription>Automatische Vorab-Berechnung und freier Endpreis</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <details className="rounded-md border p-3">
+          <summary className="cursor-pointer text-sm font-medium">Schnellkalkulation nach Reinigungsart</summary>
+          <div className="mt-3 space-y-2 text-sm">
+            <p className="text-xs text-muted-foreground">Reinigungsart wählen; Ihre eigenen Kosten und Stundensätze bleiben maßgeblich.</p>
+            <div className="flex flex-wrap gap-2">
+              {CLEANING_TYPES.map((service) => (
+                <Button key={service.value} type="button" size="sm" variant={type === service.value ? "default" : "outline"} onClick={() => { setType(service.value); setConfirmed(false); }}>
+                  {service.label}
+                </Button>
+              ))}
+            </div>
+            <p>Fläche: {formatNumber(num(area))} m² · Reinigungszeit: {formatNumber(num(hours))} Std.</p>
+            <p>Selbstkosten: {formatMoney(selfCostPerHour)} / Std. · Zielpreis: {formatMoney(targetSellingRate)} / Std.</p>
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => setMode("hours")}>Nach Stunden</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setMode("area")}>Nach Fläche</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Bitte Zeit, Fläche und Preise prüfen. Keine automatische Angebotsübernahme.</p>
+          </div>
+        </details>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Grundleistung</span>
