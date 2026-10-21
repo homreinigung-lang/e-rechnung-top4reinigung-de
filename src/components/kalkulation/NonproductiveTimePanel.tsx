@@ -10,7 +10,7 @@ type Props = {
   materialCostPerHour: number;
   overheadCostPerHour: number;
   profitMarkupPercent: number;
-  monthlyRevenue: number;
+  sellingRatePerPaidHour: number;
 };
 
 function positiveNumber(value: string): number {
@@ -24,7 +24,7 @@ export function NonproductiveTimePanel({
   materialCostPerHour,
   overheadCostPerHour,
   profitMarkupPercent,
-  monthlyRevenue,
+  sellingRatePerPaidHour,
 }: Props) {
   const [travel, setTravel] = useState("0");
   const [preparation, setPreparation] = useState("0");
@@ -39,16 +39,17 @@ export function NonproductiveTimePanel({
       materialCostPerCleaningHour: materialCostPerHour,
       overheadCostPerPaidHour: overheadCostPerHour,
       profitMarkupPercent,
+      sellingRatePerPaidHour,
     }),
-    [cleaningHoursPerMonth, travel, preparation, other, laborCostPerHour, materialCostPerHour, overheadCostPerHour, profitMarkupPercent],
+    [cleaningHoursPerMonth, travel, preparation, other, laborCostPerHour, materialCostPerHour, overheadCostPerHour, profitMarkupPercent, sellingRatePerPaidHour],
   );
 
-  const operatingResult = monthlyRevenue - comparison.totalMonthlyCost;
+  const operatingResult = comparison.estimatedMonthlyResult;
   const resultPerCleaningHour = cleaningHoursPerMonth > 0 ? operatingResult / cleaningHoursPerMonth : null;
   return (
     <details className="rounded-md border">
       <summary className="cursor-pointer p-3 text-sm font-medium">
-        Zusätzliche Arbeitszeiten – optionale Kostenprüfung
+        Gesamtarbeitszeit – Kundenkalkulation (Vorschau)
       </summary>
       <div className="space-y-3 border-t p-3">
         <p className="text-xs text-muted-foreground">
@@ -78,8 +79,8 @@ export function NonproductiveTimePanel({
           <p className="text-sm">Zielpreis / Reinigungsstd.: <strong>{comparison.targetPerCleaningHour === null ? "–" : formatMoney(comparison.targetPerCleaningHour)}</strong></p>
         </div>
         <div className={`rounded-md border p-3 text-sm ${operatingResult < 0 ? "border-red-500/60" : "border-emerald-500/60"}`}>
-          <p className="font-semibold">Vergleich mit aktuellem Monatsumsatz (netto)</p>
-          <p>Umsatz: <strong>{formatMoney(monthlyRevenue)}</strong></p>
+          <p className="font-semibold">Kundenpreis aus gesamter Arbeitszeit (netto)</p>
+          <p>Kundenpreis (alle bezahlten Stunden): <strong>{formatMoney(comparison.suggestedMonthlyRevenue)}</strong></p>
           <p>Ergebnis nach zusätzlichen bezahlten Zeiten: <strong>{formatMoney(operatingResult)}</strong></p>
           <p>Ergebnis je Reinigungsstunde: <strong>{resultPerCleaningHour === null ? "–" : formatMoney(resultPerCleaningHour)}</strong></p>
           <p className="text-xs text-muted-foreground">Interne Simulation vor Steuern. Keine automatische Preisübernahme.</p>
