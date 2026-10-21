@@ -15,4 +15,8 @@ grant select, insert, delete on public.ki_training_experiences to authenticated;
 create policy "ki_training_select_own" on public.ki_training_experiences for select to authenticated using ((select auth.uid()) = user_id);
 create policy "ki_training_insert_own" on public.ki_training_experiences for insert to authenticated with check ((select auth.uid()) = user_id);
 create policy "ki_training_delete_own" on public.ki_training_experiences for delete to authenticated using ((select auth.uid()) = user_id);
+create policy "Gesperrte Konten ausgeschlossen" on public.ki_training_experiences
+  as restrictive for all to authenticated
+  using ((select app_private.is_account_active()))
+  with check ((select app_private.is_account_active()));
 create index if not exists ki_training_user_type_idx on public.ki_training_experiences(user_id, cleaning_type, created_at desc);
