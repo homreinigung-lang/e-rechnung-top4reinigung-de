@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { FileSignature } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { formatMoney } from "@/lib/format";
 import { createFileRoute } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KalkulationSearch } from "@/components/kalkulation/shared";
@@ -81,6 +85,21 @@ function KalkulationPage() {
         </div>
       </Tabs>
 
+      <div className="rounded-xl border bg-card p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div><p className="font-semibold">In Angebot übernehmen</p><p className="text-xs text-muted-foreground">Geprüfte LV-Positionen aus der aktuellen Kalkulation übernehmen.</p></div>
+          <p className="font-semibold">{formatMoney(state.lvTotal)} netto</p>
+        </div>
+        <label className="flex items-start gap-2 text-sm">
+          <Checkbox checked={state.confirmed} onCheckedChange={(value) => state.setConfirmed(Boolean(value))} />
+          Kalkulation und Positionen geprüft und final bestätigt
+        </label>
+        {state.lvTotal <= 0 && <p className="text-xs text-muted-foreground">Bitte zuerst berechnete Positionen ins Leistungsverzeichnis übernehmen. KI-Vorschläge werden nicht automatisch übertragen.</p>}
+        {state.warnings.length > 0 && <p className="text-xs text-destructive">Bitte vor der Angebotsübernahme die Kalkulationswarnungen beheben.</p>}
+        <Button className="w-full" disabled={state.toQuote.isPending || state.lvTotal <= 0 || !state.confirmed || state.warnings.length > 0 || (state.roomCalculation.enabled && state.calcOutOfSync)} onClick={() => state.toQuote.mutate()}>
+          <FileSignature className="size-4" /> In Angebot übernehmen
+        </Button>
+      </div>
       <ApplyCalculationDialog state={state} />
     </div>
   );
