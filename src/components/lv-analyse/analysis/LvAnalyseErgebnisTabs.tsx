@@ -1,5 +1,5 @@
 import { RefreshCw, Trash2, Copy } from "lucide-react";
-import { buildLvReviewReport } from "@/lib/lv-analyse/review-report";
+import { buildLvReviewReport, buildBieterfragen } from "@/lib/lv-analyse/review-report";
 
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -252,6 +252,12 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
           <Button variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(buildLvReviewReport(issues))}>
             <Copy className="mr-1 size-4" /> Prüfbericht kopieren
           </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" disabled={issues.length === 0} onClick={() => void navigator.clipboard.writeText(buildBieterfragen(issues, items))}>
+            <Copy className="mr-1 size-4" /> Bieterfragen-Entwurf kopieren
+          </Button>
+          <p className="text-xs text-muted-foreground self-center">Nur Entwurf. Keine automatische Übermittlung.</p>
         </div>
         {issues.length === 0 ? (
           <p className="text-sm text-muted-foreground">Keine fehlenden Pflichtangaben.</p>
