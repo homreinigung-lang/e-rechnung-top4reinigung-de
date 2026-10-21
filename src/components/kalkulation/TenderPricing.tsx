@@ -94,7 +94,7 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
         <CardDescription>Automatische Vorab-Berechnung und freier Endpreis</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <details className="rounded-md border p-3">
+        <details open className="rounded-md border p-3">
           <summary className="cursor-pointer text-sm font-medium">Schnellkalkulation nach Reinigungsart</summary>
           <div className="mt-3 space-y-2 text-sm">
             <p className="text-xs text-muted-foreground">Reinigungsart wählen; Ihre eigenen Kosten und Stundensätze bleiben maßgeblich.</p>
