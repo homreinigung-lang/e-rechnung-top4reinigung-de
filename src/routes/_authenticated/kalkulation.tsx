@@ -55,11 +55,11 @@ function KalkulationPage() {
       </div>
 
       <Tabs defaultValue="schnell" className="space-y-6">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="schnell">Schnellkalkulation</TabsTrigger>
-          <TabsTrigger value="raum">Raumkalkulation</TabsTrigger>
-          <TabsTrigger value="ki">KI-Kalkulation</TabsTrigger>
-          <TabsTrigger value="ausschreibung">LV / Ausschreibungen</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
+          <TabsTrigger className="h-auto min-h-11 whitespace-normal text-center" value="schnell">Schnellkalkulation</TabsTrigger>
+          <TabsTrigger className="h-auto min-h-11 whitespace-normal text-center" value="raum">Raumkalkulation</TabsTrigger>
+          <TabsTrigger className="h-auto min-h-11 whitespace-normal text-center" value="ki">KI-Kalkulation</TabsTrigger>
+          <TabsTrigger className="h-auto min-h-11 whitespace-normal text-center" value="ausschreibung">LV / Ausschreibungen</TabsTrigger>
         </TabsList>
 
         <CalculationBasis state={state} />
