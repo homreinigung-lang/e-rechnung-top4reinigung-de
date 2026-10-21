@@ -76,6 +76,17 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
   const monthly = Number(input.monthlyNet) || 0;
   const hoursPerMonth = Number(input.hoursPerMonth) || 0;
 
+  // Der Stundenerlös lässt sich auch ohne Flächenangabe prüfen.
+  // Fehlende Fläche darf diese unabhängige Wirtschaftlichkeitsprüfung nicht überspringen.
+  if (monthly > 0 && hoursPerMonth > 0) {
+    const effective = monthly / hoursPerMonth;
+    if (effective < MIN_EFFECTIVE_HOURLY_RATE) {
+      warnings.push(
+        `Rechnerischer Stundenerlös nur ${round2(effective)} €/Std. – unterhalb des konfigurierten Richtwerts von ${MIN_EFFECTIVE_HOURLY_RATE} €/Std. Bitte individuelle Kosten prüfen.`,
+      );
+    }
+  }
+
   if (area <= 0) return warnings;
 
   if (rooms > 0 && area / rooms < 6) {
@@ -104,14 +115,6 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
       warnings.push(
         `Der Monatspreis entspricht ${round2(perSqm)} €/m² – marktüblich sind bis ca. ${MAX_MONTHLY_EUR_PER_SQM.toFixed(2).replace(".", ",")} €/m² pro Monat. Bitte m²-Preis oder Turnus prüfen.`,
       );
-    }
-    if (hoursPerMonth > 0) {
-      const effective = monthly / hoursPerMonth;
-      if (effective < MIN_EFFECTIVE_HOURLY_RATE) {
-        warnings.push(
-          `Rechnerischer Stundenerlös nur ${round2(effective)} €/Std. – unterhalb der Tarif-/Kostendeckung (ca. ${MIN_EFFECTIVE_HOURLY_RATE} €/Std.).`,
-        );
-      }
     }
   }
   return warnings;
