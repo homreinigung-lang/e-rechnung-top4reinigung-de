@@ -39,6 +39,8 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
     lvTotal,
     materialCost,
     mode,
+    hourlyRate,
+    roomCalculation,
     monthlySelfCost,
     navigate,
     overheadCost,
@@ -209,7 +211,11 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
 
             <NonproductiveTimePanel
               cleaningHoursPerMonth={costingMonthlyHours}
-              sellingRatePerPaidHour={effectiveSellingRate}
+              sellingRatePerPaidHour={mode === "hours" ? num(hourlyRate) : effectiveSellingRate}
+              onApplyCustomerRate={mode === "hours" && !roomCalculation.enabled && lvPositions.length === 0 ? (rate) => {
+                setHourlyRate(String(rate).replace(".", ","));
+                setConfirmed(false);
+              } : undefined}
               laborCostPerHour={num(laborWage) + laborBurdenPerHour}
               materialCostPerHour={num(materialCost)}
               overheadCostPerHour={num(overheadCost)}
