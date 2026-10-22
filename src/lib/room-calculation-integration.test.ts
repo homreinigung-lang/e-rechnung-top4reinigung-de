@@ -40,6 +40,7 @@ function totals(enabled = true) {
     kiPrompt: "",
     laborBurdenPercent: "32",
     laborWage: "15",
+    glassGrossWage: "18",
     liftRate: "0",
     lvItems: [],
     materialCost: "1,20",
