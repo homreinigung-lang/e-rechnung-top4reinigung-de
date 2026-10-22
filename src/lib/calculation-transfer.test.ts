@@ -33,7 +33,10 @@ describe("independent calculation transfer", () => {
     expect(lv).toHaveLength(1);
   });
   it("does not fall back to a default quick price when room or AI data is missing", () => {
-    expect(calculationTransfer({ ...input, workflow: "raum", roomEnabled: false }).issues).not.toEqual([]);
+    const inactiveRoom = calculationTransfer({ ...input, workflow: "raum", roomEnabled: false });
+    expect(inactiveRoom.issues).not.toEqual([]);
+    expect(inactiveRoom.positions).toEqual([]);
+    expect(inactiveRoom.total).toBe(0);
     expect(calculationTransfer({ ...input, workflow: "ki", ai: [] }).issues).not.toEqual([]);
     expect(calculationTransfer({ ...input, workflow: "ausschreibung", lv: [] }).total).toBe(0);
   });

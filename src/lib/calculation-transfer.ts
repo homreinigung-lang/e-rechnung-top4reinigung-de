@@ -23,7 +23,8 @@ export function calculationTransfer(input: {
   frequency: number;
 }) {
   const positions = input.workflow === "ausschreibung" ? input.lv
-    : input.workflow === "ki" ? input.ai : input.calculated;
+    : input.workflow === "ki" ? input.ai
+    : input.workflow === "raum" && !input.roomEnabled ? [] : input.calculated;
   const issues = [...input.warnings];
   if (input.workflow === "raum" && !input.roomEnabled)
     issues.push("Bitte zuerst Räume erfassen und die raumweise Stundenberechnung aktivieren.");
@@ -34,7 +35,7 @@ export function calculationTransfer(input: {
   if (positions.some((p) => !p.description.trim() || !Number.isFinite(p.quantity) || p.quantity <= 0 || !Number.isFinite(p.unit_price)))
     issues.push("Bitte Beschreibung, Menge und Einzelpreis jeder Position prüfen.");
   const total = positionsTotal(positions);
-  if (!positions.length || !Number.isFinite(total) || total <= 0)
+  if ((!positions.length || !Number.isFinite(total) || total <= 0) && !(input.workflow === "raum" && !input.roomEnabled))
     issues.push("Noch keine gültigen Leistungspositionen mit positivem Gesamtpreis vorhanden.");
   return { positions, total, issues };
 }
