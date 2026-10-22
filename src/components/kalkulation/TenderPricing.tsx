@@ -1,3 +1,6 @@
+import { DiscountPanel } from "./DiscountPanel";
+import { TaxModePanel } from "./TaxModePanel";
+import { LvTotalsPanel } from "./LvTotalsPanel";
 import { CostProfitabilityPanel } from "./CostProfitabilityPanel";
 import { GlassCalculationPanel } from "./GlassCalculationPanel";
 import { StaircaseCalculationPanel } from "./StaircaseCalculationPanel";
@@ -223,94 +226,9 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
 
         <CostProfitabilityPanel state={state} />
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label>Rabatt (%)</Label>
-            <Input
-              inputMode="decimal"
-              value={discountPercent}
-              onChange={(e) => setDiscountPercent(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Rabatt (fester Betrag netto)</Label>
-            <Input
-              inputMode="decimal"
-              value={discountAmountInput}
-              onChange={(e) => setDiscountAmountInput(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Rabattgrund</Label>
-            <Input
-              value={discountReason}
-              onChange={(e) => setDiscountReason(e.target.value)}
-              placeholder="z. B. Treuerabatt"
-            />
-          </div>
-        </div>
-
-        {discountTotal > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">
-              Rabatt{pct > 0 ? ` ${formatNumber(pct)} %` : ""}
-              {discountFixed > 0 ? ` + ${formatMoney(discountFixed)}` : ""}
-              {discountReason ? ` – ${discountReason}` : ""}
-            </span>
-            <span>−{formatMoney(discountTotal)}</span>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label>Steuerart</Label>
-          <Select value={taxMode} onValueChange={setTaxMode}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="domestic">Inland – 19 % USt.</SelectItem>
-              <SelectItem value="eu_reverse_charge">EU-Ausland – Reverse-Charge (0 %)</SelectItem>
-              <SelectItem value="kleinunternehmer">Kleinunternehmer § 19 UStG (0 %)</SelectItem>
-            </SelectContent>
-          </Select>
-          {taxNote ? <p className="text-xs text-muted-foreground">{taxNote}</p> : null}
-        </div>
-
-        <div className="space-y-2 rounded-md border p-3 text-sm">
-          <div className="flex justify-between font-medium">
-            <span>Vorschlag Grundkalkulation (netto)</span>
-            <span>{formatMoney(suggested)}</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Quelle: Grundkalkulation (primär für Ausschreibungen/LV). Über „Grundkalkulation für
-            Angebot übernehmen“ werden diese Werte als Positionen in das Leistungsverzeichnis
-            geschrieben. Maßgeblich für Angebot und PDF ist immer die Summe der LV-Positionen.
-          </p>
-        </div>
-
-        <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Positionen im Leistungsverzeichnis</span>
-            <span>{lvPositions.length}</span>
-          </div>
-          <div className="flex justify-between border-t pt-1 font-medium">
-            <span>Gesamt netto</span>
-            <span>{formatMoney(lvTotal)}</span>
-          </div>
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{vatRate > 0 ? `zzgl. ${formatNumber(vatRate)} % MwSt.` : "Umsatzsteuer"}</span>
-            <span>{formatMoney(vatAmount)}</span>
-          </div>
-          <div className="flex justify-between text-base font-semibold">
-            <span>{vatRate > 0 ? "Gesamt brutto" : "Gesamtbetrag"}</span>
-            <span>{formatMoney(grossTotal)}</span>
-          </div>
-          <p className="pt-1 text-xs text-muted-foreground">
-            Die Gesamtsumme ergibt sich ausschließlich aus Menge × Einzelpreis der LV-Positionen –
-            ohne stille Ausgleichsposition.
-          </p>
-        </div>
-
+        <DiscountPanel state={state} />
+        <TaxModePanel state={state} />
+        <LvTotalsPanel state={state} />
         {warnings.length > 0 && (
           <div className="flex gap-2 rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
