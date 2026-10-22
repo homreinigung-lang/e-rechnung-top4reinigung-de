@@ -1,6 +1,5 @@
 import { AlertTriangle, Sparkles } from "lucide-react";
 import { SpeechToTextButton } from "@/components/SpeechToTextButton";
-import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +22,7 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
     warnings,
   } = state;
   return (
-    <TabsContent value={mode === "room" ? "raum" : "ki"} className="space-y-6">
+    <div className="space-y-6">
       <SectionIntro
         title={mode === "room" ? "Raumkalkulation" : "KI-Kalkulation"}
         text={mode === "room" ? "Räume, Flächen und Leistungswerte erfassen und prüfen." : "KI analysiert den Auftrag; Preise stammen aus den hinterlegten Kalkulationsgrundlagen und bleiben vor der Übernahme prüfbar."}
@@ -149,9 +148,9 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
 
       )}
 
-      {mode === "ki" && <SuggestedPositions state={state} />}
+      {mode === "ki" && <SuggestedPositions state={state} direct />}
       {mode === "ki" && <KiTrainingPanel state={state} />}
       {mode === "room" && <CleaningParameters state={state} />}
-    </TabsContent>
+    </div>
   );
 }

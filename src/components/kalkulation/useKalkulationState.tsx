@@ -5,8 +5,11 @@ import { useCalculationApply } from "./useCalculationApply";
 import { useCalculationSave } from "./useCalculationSave";
 import { useCalculationImportExport } from "./useCalculationImportExport";
 import { useCalculationQuote } from "./useCalculationQuote";
+import { calculationTransfer, type CalculationWorkflow } from "@/lib/calculation-transfer";
+import { num } from "./shared";
+import { useEffect, useState } from "react";
 
-export function useKalkulationState() {
+export function useKalkulationState(workflow: CalculationWorkflow = "ausschreibung") {
   const {
     aiPrompt,
     aiReviewNotes,
@@ -376,15 +379,42 @@ export function useKalkulationState() {
     visitsPerMonth,
   });
 
+  const transfer = calculationTransfer({
+    workflow,
+    calculated: stagedPositions,
+    ai: kiPositions,
+    lv: lvPositions,
+    roomEnabled: roomCalculation.enabled,
+    aiStale: kiBasisChanged || aiSuggest.isPending,
+    aiQuestions: aiReviewQuestions,
+    warnings,
+    frequency: num(frequency),
+  });
+  const reviewSignature = JSON.stringify([
+    transfer, taxMode, selected.label, note, floorplanSummary, proposalTitle, proposalText,
+    frequency, frequencyUnit, monthlyHours, hourlyRate, laborWage, laborBurdenPercent,
+    materialCost, overheadCost, profitMarkup,
+  ]);
+  const [reviewedSignature, setReviewedSignature] = useState<string | null>(null);
+  useEffect(() => {
+    setConfirmed(false);
+  }, [reviewSignature, setConfirmed]);
+  const transferConfirmed = confirmed && reviewedSignature === reviewSignature;
+  const setTransferConfirmed = (value: boolean) => {
+    setReviewedSignature(value ? reviewSignature : null);
+    setConfirmed(value);
+  };
+
   const { toQuote } = useCalculationQuote({
-    calcOutOfSync,
+    confirmed: transferConfirmed,
+    calcOutOfSync: workflow === "ausschreibung" && calcOutOfSync,
     roomCalculation,
     annualVisits,
     discountReason,
     floorplanSummary,
     frequency,
     frequencyUnit,
-    lvPositions,
+    lvPositions: transfer.positions,
     monthlyHours,
     navigate,
     note,
@@ -395,7 +425,7 @@ export function useKalkulationState() {
     taxMode,
     vatRate,
     visitsPerMonth,
-    warnings,
+    warnings: transfer.issues,
   });
 
   return {
@@ -538,6 +568,9 @@ export function useKalkulationState() {
     taxNote,
     tenderDocs,
     toQuote,
+    transfer,
+    transferConfirmed,
+    setTransferConfirmed,
     travel,
     type,
     updateAttachment,

@@ -9,6 +9,7 @@ import { recurrenceUnitLabel } from "@/lib/constants";
 
 import { computeDocumentTotals } from "@/lib/document-totals";
 import { round2 } from "@/lib/kalkulation-engine";
+import type { CalcPosition } from "@/lib/kalkulation-engine";
 
 import { num } from "./shared";
 
@@ -18,6 +19,7 @@ import type { useKalkulationForm } from "./useKalkulationForm";
 import type { useCalculationTotals } from "./useCalculationTotals";
 
 export function useCalculationQuote(input: {
+  confirmed: boolean;
   calcOutOfSync: ReturnType<typeof useCalculationApply>["calcOutOfSync"];
   roomCalculation: ReturnType<typeof useKalkulationForm>["roomCalculation"];
   annualVisits: ReturnType<typeof useKalkulationSuggestions>["annualVisits"];
@@ -25,7 +27,7 @@ export function useCalculationQuote(input: {
   floorplanSummary: ReturnType<typeof useKalkulationForm>["floorplanSummary"];
   frequency: ReturnType<typeof useKalkulationForm>["frequency"];
   frequencyUnit: ReturnType<typeof useKalkulationForm>["frequencyUnit"];
-  lvPositions: ReturnType<typeof useCalculationTotals>["lvPositions"];
+  lvPositions: CalcPosition[];
   monthlyHours: ReturnType<typeof useCalculationTotals>["monthlyHours"];
   navigate: ReturnType<typeof useKalkulationForm>["navigate"];
   note: ReturnType<typeof useKalkulationForm>["note"];
@@ -61,6 +63,7 @@ export function useCalculationQuote(input: {
   } = input;
   const toQuote = useMutation({
     mutationFn: async () => {
+      if (!input.confirmed) throw new Error("Bitte zuerst Positionen und Gesamtpreis bestätigen.");
       if (roomCalculation.enabled && calcOutOfSync)
         throw new Error("Bitte die aktuelle Raumkalkulation zuerst für das Angebot übernehmen.");
       // Nur geprüfte, rechnerisch gültige Daten dürfen ins Angebot.

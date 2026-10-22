@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { FileSignature } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { formatMoney } from "@/lib/format";
+import { CalculationTransfer } from "@/components/kalkulation/CalculationTransfer";
+import { CleaningParameters } from "@/components/kalkulation/CleaningParameters";
+import { CALCULATION_WORKFLOWS, WORKFLOW_LABELS, type CalculationWorkflow } from "@/lib/calculation-transfer";
+
 import { createFileRoute } from "@tanstack/react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KalkulationSearch } from "@/components/kalkulation/shared";
@@ -13,6 +13,8 @@ import { FloorplanSection } from "@/components/kalkulation/FloorplanSection";
 import { CalculationAnalysis } from "@/components/kalkulation/CalculationAnalysis";
 import { TenderPricing } from "@/components/kalkulation/TenderPricing";
 import { CalculationBasis } from "@/components/kalkulation/CalculationBasis";
+import { DiscountPanel } from "@/components/kalkulation/DiscountPanel";
+import { TaxModePanel } from "@/components/kalkulation/TaxModePanel";
 
 export const Route = createFileRoute("/_authenticated/kalkulation")({
   validateSearch: (search: Record<string, unknown>): KalkulationSearch => {
@@ -46,61 +48,62 @@ export const Route = createFileRoute("/_authenticated/kalkulation")({
 });
 
 function KalkulationPage() {
-  const state = useKalkulationState();
-  const [showAnalytics, setShowAnalytics] = useState(false);
-
+  const [active, setActive] = useState<CalculationWorkflow>("schnell");
+  const [visited, setVisited] = useState<CalculationWorkflow[]>(["schnell"]);
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-semibold">Kalkulation</h1>
         <p className="text-sm text-muted-foreground">
-          Vier Arbeitswege für schnelle Preise, Räume, KI-Vorschläge und Ausschreibungen. Alle Preise basieren auf den hinterlegten Kalkulationsgrundlagen.
+          Jeden Bereich unabhängig berechnen, Positionen prüfen und direkt als Angebot übernehmen.
+          Ihre Eingaben bleiben beim Wechsel zwischen den Bereichen erhalten. Alle Bereiche verwenden dieselben hinterlegten Kalkulationsgrundlagen.
         </p>
       </div>
-
-      <Tabs defaultValue="schnell" className="space-y-6">
+      <Tabs value={active} onValueChange={(value) => {
+        const next = value as CalculationWorkflow;
+        setActive(next);
+        setVisited((current) => current.includes(next) ? current : [...current, next]);
+      }} className="space-y-6">
         <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
-          <TabsTrigger className="h-auto min-h-11 whitespace-normal text-center" value="schnell">Schnellkalkulation</TabsTrigger>
-          <TabsTrigger className="h-auto min-h-11 whitespace-normal text-center" value="raum">Raumkalkulation</TabsTrigger>
-          <TabsTrigger className="h-auto min-h-11 whitespace-normal text-center" value="ki">KI-Kalkulation</TabsTrigger>
-          <TabsTrigger className="h-auto min-h-11 whitespace-normal text-center" value="ausschreibung">LV / Ausschreibungen</TabsTrigger>
+          {CALCULATION_WORKFLOWS.map((workflow) => (
+            <TabsTrigger key={workflow} className="h-auto min-h-11 whitespace-normal text-center" value={workflow}>
+              {WORKFLOW_LABELS[workflow]}
+            </TabsTrigger>
+          ))}
         </TabsList>
-
-        <CalculationBasis state={state} />
-
-        <TabsContent value="schnell" className="space-y-4">
-          <TenderPricing state={state} />
-        </TabsContent>
-
-        <FloorplanSection state={state} mode="room" />
-        <FloorplanSection state={state} mode="ki" />
-
-        <TenderSection state={state} />
-
-        <div className="rounded-lg border p-3">
-          <button type="button" className="text-sm font-medium text-primary" aria-expanded={showAnalytics} onClick={() => setShowAnalytics((value) => !value)}>
-            {showAnalytics ? "Analyse & Kennzahlen schließen" : "Analyse & Kennzahlen anzeigen"}
-          </button>
-          {showAnalytics && <div className="pt-4"><CalculationAnalysis state={state} /></div>}
-        </div>
+        {visited.map((workflow) => (
+          <TabsContent key={workflow} value={workflow} forceMount className="space-y-6 data-[state=inactive]:hidden">
+            <CalculationWorkflowPanel workflow={workflow} />
+          </TabsContent>
+        ))}
       </Tabs>
+    </div>
+  );
+}
 
-      <div className="rounded-xl border bg-card p-4 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div><p className="font-semibold">In Angebot übernehmen</p><p className="text-xs text-muted-foreground">Geprüfte LV-Positionen aus der aktuellen Kalkulation übernehmen.</p></div>
-          <p className="font-semibold">{formatMoney(state.lvTotal)} netto</p>
-        </div>
-        <label className="flex items-start gap-2 text-sm">
-          <Checkbox checked={state.confirmed} onCheckedChange={(value) => state.setConfirmed(Boolean(value))} />
-          Kalkulation und Positionen geprüft und final bestätigt
-        </label>
-        {state.lvTotal <= 0 && <p className="text-xs text-muted-foreground">Bitte zuerst berechnete Positionen ins Leistungsverzeichnis übernehmen. KI-Vorschläge werden nicht automatisch übertragen.</p>}
-        {state.warnings.length > 0 && <p className="text-xs text-destructive">Bitte vor der Angebotsübernahme die Kalkulationswarnungen beheben.</p>}
-        <Button className="w-full" disabled={state.toQuote.isPending || state.lvTotal <= 0 || !state.confirmed || state.warnings.length > 0 || (state.roomCalculation.enabled && state.calcOutOfSync)} onClick={() => state.toQuote.mutate()}>
-          <FileSignature className="size-4" /> In Angebot übernehmen
-        </Button>
+function CalculationWorkflowPanel({ workflow }: { workflow: CalculationWorkflow }) {
+  const state = useKalkulationState(workflow);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  return (
+    <>
+      <CalculationBasis state={state} />
+      {workflow === "schnell" && <>
+        <CleaningParameters state={state} attachments={false} />
+        <TenderPricing state={state} showLvTotals={false} />
+      </>}
+      {workflow === "raum" && <FloorplanSection state={state} mode="room" />}
+      {workflow === "ki" && <FloorplanSection state={state} mode="ki" />}
+      {workflow === "ausschreibung" && <TenderSection state={state} />}
+      {workflow === "raum" && <DiscountPanel state={state} />}
+      {(workflow === "raum" || workflow === "ki") && <TaxModePanel state={state} />}
+      <CalculationTransfer state={state} workflow={workflow} />
+      <div className="rounded-lg border p-3">
+        <button type="button" className="text-sm font-medium text-primary" aria-expanded={showAnalytics} onClick={() => setShowAnalytics((value) => !value)}>
+          {showAnalytics ? "Analyse & Kennzahlen schließen" : "Analyse & Kennzahlen anzeigen"}
+        </button>
+        {showAnalytics && <div className="pt-4"><CalculationAnalysis state={state} /></div>}
       </div>
       <ApplyCalculationDialog state={state} />
-    </div>
+    </>
   );
 }

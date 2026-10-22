@@ -24,7 +24,7 @@ import { CLEANING_TYPES, num } from "./shared";
 import { NonproductiveTimePanel } from "./NonproductiveTimePanel";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
-export function TenderPricing({ state }: { state: KalkulationStateContext }) {
+export function TenderPricing({ state, showLvTotals = true }: { state: KalkulationStateContext; showLvTotals?: boolean }) {
   const {
     base,
     contribution,
@@ -228,7 +228,7 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
 
         <DiscountPanel state={state} />
         <TaxModePanel state={state} />
-        <LvTotalsPanel state={state} />
+        {showLvTotals && <LvTotalsPanel state={state} />}
         {warnings.length > 0 && (
           <div className="flex gap-2 rounded-md border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
