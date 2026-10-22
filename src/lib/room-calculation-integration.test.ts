@@ -123,3 +123,20 @@ it("übernimmt Minuten inklusive Aufgaben in Preis und Selbstkosten statt Fläch
   expect(result.monthlySelfCost).toBe(159.25);
   expect(result.stagedPositions[0]?.description).toContain("Alle vereinbarten Aufgaben");
 });
+
+it("berechnet Glas-Bruttolohn nur einmal und addiert Arbeitgeberkosten, Material und Gemeinkosten", () => {
+  const input = totals(false);
+  const result = renderTotals({ ...input, type: "glas", selected: CLEANING_TYPES.find((item) => item.value === "glas")!, raumbuch: null });
+  expect(result.selfCostPerHour).toBe(28.46);
+  expect(result.targetSellingRate).toBe(34.15);
+  expect(result.monthlySelfCost).toBe(1423);
+  expect(result.stagedPositions).toHaveLength(1);
+});
+
+it("aktualisiert Glas-Selbstkosten bei Bruttolohnänderung und lässt andere Reinigungsarten unverändert", () => {
+  const input = totals(false);
+  const glass = { ...input, type: "glas", selected: CLEANING_TYPES.find((item) => item.value === "glas")!, raumbuch: null };
+  expect(renderTotals({ ...glass, glassGrossWage: "19" }).selfCostPerHour).toBe(29.78);
+  expect(renderTotals({ ...glass, glassGrossWage: "19" }).targetSellingRate).toBe(35.74);
+  expect(renderTotals({ ...input, glassGrossWage: "19", raumbuch: null }).selfCostPerHour).toBe(24.5);
+});
