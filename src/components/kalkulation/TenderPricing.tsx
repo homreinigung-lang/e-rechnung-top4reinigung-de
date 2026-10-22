@@ -102,9 +102,10 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
   const glassValid = Number.isInteger(num(glassWindows)) && num(glassWindows) >= 1 && num(glassWindows) <= 10000 &&
     (num(glassSides) === 1 || num(glassSides) === 2) && num(glassMinutesPerWindow) > 0 &&
     glassTotalMinutes > 0 && num(glassGrossWage) > 0;
-  const glassEmployerHourly = num(glassGrossWage) * (1 + num(laborBurdenPercent) / 100);
-  const glassSelfCostHourly = glassEmployerHourly + num(materialCost) + num(overheadCost);
-  const glassTargetHourly = glassSelfCostHourly * (1 + num(profitMarkup) / 100);
+  // The central cost engine is the only source of truth for glass labor costs.
+  const glassEmployerHourly = num(glassGrossWage) + laborBurdenPerHour;
+  const glassSelfCostHourly = selfCostPerHour;
+  const glassTargetHourly = targetSellingRate;
   const isStaircase = type === "treppenhaus";
   const entranceFactor = stairEntranceSize === "small" ? 0.75 : stairEntranceSize === "large" ? 1.5 : 1;
   const stairSuggestedMinutes = num(stairEntrances) * (num(stairFloors) * num(stairMinutesPerFloor) + num(stairEntranceMinutes) * entranceFactor);
@@ -202,7 +203,7 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
                 <p>Vorschlag: {formatNumber(glassSuggestedMinutes)} Min. · Arbeitszeit: <strong>{formatNumber(glassHours)} Std. je Einsatz</strong></p>
                 <p>Bruttolohn: {formatMoney(num(glassGrossWage))}/Std. · Arbeitgeberkosten: {formatMoney(glassEmployerHourly)}/Std. · Selbstkosten inkl. Material/Gemeinkosten: {formatMoney(glassSelfCostHourly)}/Std.</p>
                 <p>Geschätzte Selbstkosten: <strong>{formatMoney(glassHours * glassSelfCostHourly)}</strong> · Zielpreis: <strong>{formatMoney(glassHours * glassTargetHourly)}</strong></p>
-                <Button type="button" size="sm" variant="outline" disabled={roomCalculation.enabled || lvPositions.length > 0} onClick={() => { setMode("hours"); setHours(String(Math.round(glassHours * 100) / 100).replace(".", ",")); setConfirmed(false); }}>Arbeitszeit übernehmen (Nach Stunden)</Button>
+                <Button type="button" size="sm" variant="outline" disabled={!glassValid || roomCalculation.enabled || lvPositions.length > 0} onClick={() => { setMode("hours"); setHours(String(Math.round(glassHours * 100) / 100).replace(".", ",")); setConfirmed(false); }}>Arbeitszeit übernehmen (Nach Stunden)</Button>
                 <p className="text-xs text-muted-foreground">Nur die Arbeitszeit wird übernommen. Der Glas-Bruttolohn von {formatMoney(num(glassGrossWage))}/Std. fließt in die zentrale Selbstkosten- und Rentabilitätsrechnung ein. Der Angebotspreis und LV-Positionen ändern sich nicht automatisch; bitte vor Abgabe prüfen.</p>
               </> : <p className="text-destructive">Bitte gültige Fensterzahl, Minuten und Bruttolohn eingeben.</p>}
             </div>}
