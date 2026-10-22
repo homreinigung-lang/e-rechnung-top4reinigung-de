@@ -45,6 +45,7 @@ export function useKalkulationForm() {
   const [taxMode, setTaxMode] = useState("domestic");
   // Interne Kostenkalkulation: Standardwerte kommen aus den Firmeneinstellungen.
   const [laborWage, setLaborWage] = useState("15");
+  const [glassGrossWage, setGlassGrossWage] = useState("18");
   const [laborBurdenPercent, setLaborBurdenPercent] = useState("32");
   const [materialCost, setMaterialCost] = useState("1,20");
   const [overheadCost, setOverheadCost] = useState("3,50");
@@ -203,6 +204,8 @@ export function useKalkulationForm() {
     kiPrompt,
     laborBurdenPercent,
     laborWage,
+    glassGrossWage,
+    setGlassGrossWage,
     liftRate,
     lvItems,
     materialCost,
