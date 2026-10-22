@@ -157,7 +157,7 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
             {!isStaircase && <div className="flex gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => setMode("hours")}>Nach Stunden</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setMode("area")}>Nach Fläche</Button>
-            </div>
+            </div>}
             {!isStaircase && <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1"><Label htmlFor="productivity-sqm">Leistung (m² je Mitarbeiterstunde)</Label><Input id="productivity-sqm" inputMode="decimal" value={productivityInput} onChange={(e) => setProductivityInput(e.target.value)} /></div>
               <div className="space-y-1"><Label htmlFor="productivity-workers">Anzahl Mitarbeiter</Label><Input id="productivity-workers" inputMode="numeric" value={workerInput} onChange={(e) => setWorkerInput(e.target.value)} /></div>
