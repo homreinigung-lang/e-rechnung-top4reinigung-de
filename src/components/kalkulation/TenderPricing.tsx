@@ -51,6 +51,7 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
     overheadCost,
     pct,
     profitMarkup,
+    profitabilityRevenue,
     selfCostPerHour,
     setConfirmed,
     setDiscountAmountInput,
@@ -198,6 +199,9 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
           </summary>
 
           <div className="space-y-3 border-t p-3">
+            <p className="text-xs text-muted-foreground">
+              Erlösbasis: {lvPositions.length > 0 ? "LV-Endsumme (netto)" : "Kalkulationsvorschlag (netto)"} · {formatMoney(profitabilityRevenue)}. Die Deckungsbeitragsrechnung setzt voraus, dass Erlös und Selbstkosten denselben Abrechnungszeitraum betreffen; bei einmaligen LV-Positionen bitte separat prüfen.
+            </p>
             <p className="text-xs text-muted-foreground">
               Kostenbasis und Leistungswerte werden zentral unter Einstellungen →
               Kalkulationsgrundlagen gepflegt. Hier werden sie nur zur Kalkulation angezeigt.
