@@ -37,6 +37,7 @@ export function useKalkulationState() {
     kiPrompt,
     laborBurdenPercent,
     laborWage,
+    glassGrossWage,
     liftRate,
     lvItems,
     materialCost,
