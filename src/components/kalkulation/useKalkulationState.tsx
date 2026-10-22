@@ -38,6 +38,7 @@ export function useKalkulationState() {
     laborBurdenPercent,
     laborWage,
     glassGrossWage,
+    setGlassGrossWage,
     liftRate,
     lvItems,
     materialCost,
