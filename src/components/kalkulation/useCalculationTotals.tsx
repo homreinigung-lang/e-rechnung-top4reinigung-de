@@ -39,7 +39,7 @@ export function useCalculationTotals(input: {
   kiPrompt: ReturnType<typeof useKalkulationForm>["kiPrompt"];
   laborBurdenPercent: ReturnType<typeof useKalkulationForm>["laborBurdenPercent"];
   laborWage: ReturnType<typeof useKalkulationForm>["laborWage"];
-  glassGrossWage: ReturnType<typeof useKalkulationForm>["glassGrossWage"];
+  glassGrossWage?: ReturnType<typeof useKalkulationForm>["glassGrossWage"];
   liftRate: ReturnType<typeof useKalkulationForm>["liftRate"];
   lvItems: ReturnType<typeof useKalkulationForm>["lvItems"];
   materialCost: ReturnType<typeof useKalkulationForm>["materialCost"];
@@ -293,7 +293,7 @@ export function useCalculationTotals(input: {
     : raumbuch && raumbuch.hoursPerVisit > 0
       ? round2(raumbuch.hoursPerVisit * visitsPerMonth)
       : round2(monthlyHours);
-  const effectiveLaborWage = type === "glas" ? num(glassGrossWage) : num(laborWage);
+  const effectiveLaborWage = type === "glas" ? num(glassGrossWage ?? "18") : num(laborWage);
   const laborBurdenPerHour = round2(
     effectiveLaborWage * (Math.min(200, num(laborBurdenPercent)) / 100),
   );
