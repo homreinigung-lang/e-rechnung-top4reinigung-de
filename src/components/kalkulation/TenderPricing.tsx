@@ -154,14 +154,14 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
             </div>
             <p>{isStaircase ? "Treppenhaus: Berechnung nach Etagen und Arbeitszeit (ohne Pflichtfläche)." : `Fläche: ${formatNumber(num(area))} m²`} · Reinigungszeit: {formatNumber(num(hours))} Std.</p>
             <p>Selbstkosten: {formatMoney(selfCostPerHour)} / Std. · Zielpreis: {formatMoney(targetSellingRate)} / Std.</p>
-            <div className="flex gap-2">
+            {!isStaircase && <div className="flex gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => setMode("hours")}>Nach Stunden</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setMode("area")}>Nach Fläche</Button>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            {!isStaircase && <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1"><Label htmlFor="productivity-sqm">Leistung (m² je Mitarbeiterstunde)</Label><Input id="productivity-sqm" inputMode="decimal" value={productivityInput} onChange={(e) => setProductivityInput(e.target.value)} /></div>
               <div className="space-y-1"><Label htmlFor="productivity-workers">Anzahl Mitarbeiter</Label><Input id="productivity-workers" inputMode="numeric" value={workerInput} onChange={(e) => setWorkerInput(e.target.value)} /></div>
-            </div>
+            </div>}
             {isStaircase && <div className="space-y-3 rounded-md border p-3">
               <p className="font-medium">Treppenhaus: Zeitkalkulation je Einsatz</p>
               <p className="text-xs text-muted-foreground">Die Minuten sind editierbare Beispiele, keine geprüften Leistungswerte. Alle Etagenangaben gelten pro Eingang.</p>
