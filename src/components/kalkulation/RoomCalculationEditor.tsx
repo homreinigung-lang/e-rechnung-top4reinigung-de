@@ -37,7 +37,36 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
   } = state;
   const [bulkFrequency, setBulkFrequency] = useState("");
   const [bulkUnit, setBulkUnit] = useState<RecurrenceUnit>("week");
-  if (!roomCalculation.rooms.length) return null;
+  function addRoom() {
+    setRoomCalculation((current) => ({
+      ...current,
+      rooms: [...current.rooms, {
+        id: crypto.randomUUID(),
+        source: "manual",
+        name: "Neuer Raum",
+        floor: "",
+        usage_type: "",
+        floor_covering: "",
+        area: "",
+        sqmPerHour: "",
+        rateLabel: "Bitte Leistungswert festlegen",
+        frequency: "",
+        frequencyUnit: "week",
+        included: true,
+        calculationMode: "minutes",
+        minutesPerVisit: "",
+        tasks: "",
+      }],
+    }));
+  }
+
+  if (!roomCalculation.rooms.length) return (
+    <section id="raumkalkulation" className="space-y-3 rounded-lg border p-3 sm:p-4" aria-label="Raumweise Stundenberechnung">
+      <h3 className="font-semibold">Räume & Stundenberechnung</h3>
+      <p className="text-sm text-muted-foreground">Ersten Raum direkt erfassen oder Räume aus einem Grundriss analysieren. Danach Minuten, Turnus und Stundensatz prüfen und die Raumkalkulation aktivieren.</p>
+      <Button type="button" variant="outline" onClick={addRoom}>Ersten Raum hinzufügen</Button>
+    </section>
+  );
 
   function patch(id: string, values: Partial<CalculationRoom>) {
     setRoomCalculation((current) => ({
@@ -369,31 +398,7 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
       <Button
         type="button"
         variant="outline"
-        onClick={() =>
-          setRoomCalculation((current) => ({
-            ...current,
-            rooms: [
-              ...current.rooms,
-              {
-                id: crypto.randomUUID(),
-                source: "manual",
-                name: "Neuer Raum",
-                floor: "",
-                usage_type: "",
-                floor_covering: "",
-                area: "",
-                sqmPerHour: "",
-                rateLabel: "Bitte Leistungswert festlegen",
-                frequency: "",
-                frequencyUnit: "week",
-                included: true,
-                calculationMode: "minutes",
-                minutesPerVisit: "",
-                tasks: "",
-              },
-            ],
-          }))
-        }
+        onClick={addRoom}
       >
         Raum / Rüst- oder Wegezeit ergänzen
       </Button>

@@ -19,7 +19,7 @@ export function CalculationTransfer({ state, workflow }: {
           <h2 className="font-semibold">In Angebot übernehmen</h2>
           <p className="text-xs text-muted-foreground">Quelle: {WORKFLOW_LABELS[workflow]}. Nur die folgenden Positionen werden übernommen.</p>
         </div>
-        <strong>{formatMoney(totals.netTotal)} netto</strong>
+        {transfer.positions.length > 0 && <strong>{formatMoney(totals.netTotal)} netto</strong>}
       </div>
       <div className="space-y-2 text-sm">
         {transfer.positions.map((position, index) => (
@@ -31,8 +31,10 @@ export function CalculationTransfer({ state, workflow }: {
             <span>{formatMoney(position.quantity * position.unit_price)}</span>
           </div>
         ))}
-        <p className="flex justify-between"><span>Umsatzsteuer ({formatNumber(state.vatRate)} %)</span><span>{formatMoney(totals.vatAmount)}</span></p>
-        <p className="flex justify-between font-semibold"><span>Gesamtbetrag</span><span>{formatMoney(totals.grossTotal)}</span></p>
+        {transfer.positions.length > 0 ? <>
+          <p className="flex justify-between"><span>Umsatzsteuer ({formatNumber(state.vatRate)} %)</span><span>{formatMoney(totals.vatAmount)}</span></p>
+          <p className="flex justify-between font-semibold"><span>Gesamtbetrag</span><span>{formatMoney(totals.grossTotal)}</span></p>
+        </> : <p className="text-muted-foreground">Noch keine berechneten Positionen. Bitte zuerst die Leistungsdaten vervollständigen.</p>}
       </div>
       {transfer.issues.length > 0 && <ul className="space-y-1 text-xs text-destructive" role="alert">{transfer.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}
       <label className="flex items-start gap-2 text-sm">

@@ -4,11 +4,11 @@ import { expect, it, vi } from "vitest";
 import { CalculationTransfer } from "./CalculationTransfer";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
-function render(issues: string[] = [], confirmed = true) {
+function render(issues: string[] = [], confirmed = true, empty = false) {
   return renderToStaticMarkup(createElement(CalculationTransfer, {
     workflow: "schnell",
     state: {
-      transfer: { positions: [{ description: "Reinigung inkl. Anfahrt", quantity: 1, unit: "Pauschal", unit_price: 210 }], total: 210, issues },
+      transfer: { positions: empty ? [] : [{ description: "Reinigung inkl. Anfahrt", quantity: 1, unit: "Pauschal", unit_price: 210 }], total: empty ? 0 : 210, issues },
       transferConfirmed: confirmed, setTransferConfirmed: vi.fn(), vatRate: 19,
       toQuote: { isPending: false, mutate: vi.fn() },
     } as unknown as KalkulationStateContext,
@@ -29,4 +29,13 @@ it("disables transfer without review or while inputs need correction", () => {
   expect(render([], false)).toContain('disabled=""');
   expect(render(["Bitte Turnus ergänzen"])).toContain('disabled=""');
   expect(render(["Bitte Turnus ergänzen"])).toContain("Bitte Turnus ergänzen");
+});
+
+it("does not show a default price or VAT before room calculation is active", () => {
+  const html = render(["Bitte zuerst Räume erfassen"], false, true);
+  expect(html).toContain("Noch keine berechneten Positionen");
+  expect(html).not.toContain("Gesamtbetrag");
+  expect(html).not.toContain("Umsatzsteuer");
+  expect(html).not.toContain("210,00");
+  expect(html).toContain('disabled=""');
 });
