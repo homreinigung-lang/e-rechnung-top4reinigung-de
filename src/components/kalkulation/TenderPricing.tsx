@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { requireUserId } from "@/lib/auth-user";
 import { AlertTriangle } from "lucide-react";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -74,6 +76,39 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
   } = state;
   const [productivityInput, setProductivityInput] = useState("120");
   const [workerInput, setWorkerInput] = useState("1");
+  const [trainingRate, setTrainingRate] = useState<{ rate: number; count: number } | null>(null);
+  const [trainingLoading, setTrainingLoading] = useState(true);
+  const cleaningType = state.selected.label;
+  useEffect(() => {
+    let active = true;
+    setTrainingRate(null);
+    setTrainingLoading(true);
+    const load = async () => {
+      try {
+        const uid = await requireUserId();
+        const { data, error } = await supabase.from("ki_training_experiences")
+          .select("cleaning_type,area_sqm,actual_labor_hours")
+          .eq("user_id", uid)
+          .eq("cleaning_type", cleaningType)
+          .order("created_at", { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        const valid = (data ?? []).filter((row) =>
+          Number(row.area_sqm) > 0 && Number(row.actual_labor_hours) > 0 &&
+          Number.isFinite(Number(row.area_sqm)) && Number.isFinite(Number(row.actual_labor_hours)));
+        const totalHours = valid.reduce((sum, row) => sum + Number(row.actual_labor_hours), 0);
+        const totalArea = valid.reduce((sum, row) => sum + Number(row.area_sqm), 0);
+        if (active) setTrainingRate(valid.length >= 2 && totalHours > 0
+          ? { rate: totalArea / totalHours, count: valid.length } : null);
+      } catch {
+        if (active) setTrainingRate(null);
+      } finally {
+        if (active) setTrainingLoading(false);
+      }
+    };
+    void load();
+    return () => { active = false; };
+  }, [cleaningType]);
   const productivity = num(productivityInput);
   const workers = num(workerInput);
   const estimatedLaborHours = productivity > 0 ? num(area) / productivity : 0;
@@ -125,6 +160,19 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
                 )}
               </div>
             ) : <p className="text-xs text-destructive">Bitte gültige Fläche, Leistung und Mitarbeiterzahl (1–100) eingeben.</p>}
+            <div className="rounded-md border p-3 text-sm space-y-2">
+              <p className="font-medium">KI-Training: Erfahrungswert für {cleaningType}</p>
+              {trainingLoading ? <p className="text-muted-foreground">Erfahrungswerte werden geprüft…</p> : trainingRate ? (
+                <>
+                  <p>Aus {trainingRate.count} gespeicherten Einsätzen: {formatNumber(trainingRate.rate)} m² je Mitarbeiterstunde (Orientierungswert).</p>
+                  <Button type="button" size="sm" variant="outline" onClick={() => {
+                    setProductivityInput(String(Math.round(trainingRate.rate * 100) / 100).replace(".", ","));
+                    setConfirmed(false);
+                  }}>Erfahrungswert übernehmen</Button>
+                  <p className="text-xs text-muted-foreground">Nur die Leistungseingabe wird auf Ihren Klick geändert. Stunden, Preise und LV bleiben unverändert. Bitte nur echte, vergleichbare Einsätze speichern.</p>
+                </>
+              ) : <p className="text-muted-foreground">Noch nicht genügend vergleichbare Cloud-Daten (mindestens 2 echte Einsätze nötig). Der Beispielwert bleibt unverändert.</p>}
+            </div>
             <p className="text-xs text-muted-foreground">120 m²/Std. ist nur ein editierbarer Beispielwert, kein geprüfter Leistungswert für diese Reinigungsart. Mitarbeiterzahl verkürzt die Einsatzdauer, nicht die bezahlten Gesamtstunden. Bitte tatsächliche Leistungswerte prüfen; keine automatische Angebotsübernahme.</p>
             <p className="text-xs text-muted-foreground">Bitte Zeit, Fläche und Preise prüfen. Keine automatische Angebotsübernahme.</p>
           </div>
