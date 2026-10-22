@@ -76,6 +76,20 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
   } = state;
   const [productivityInput, setProductivityInput] = useState("120");
   const [workerInput, setWorkerInput] = useState("1");
+  const [stairEntrances, setStairEntrances] = useState("1");
+  const [stairFloors, setStairFloors] = useState("3");
+  const [stairMinutesPerFloor, setStairMinutesPerFloor] = useState("8");
+  const [stairEntranceSize, setStairEntranceSize] = useState("normal");
+  const [stairEntranceMinutes, setStairEntranceMinutes] = useState("10");
+  const [stairManualMinutes, setStairManualMinutes] = useState("");
+  const isStaircase = type === "treppenhaus";
+  const entranceFactor = stairEntranceSize === "small" ? 0.75 : stairEntranceSize === "large" ? 1.5 : 1;
+  const stairSuggestedMinutes = num(stairEntrances) * (num(stairFloors) * num(stairMinutesPerFloor) + num(stairEntranceMinutes) * entranceFactor);
+  const stairTotalMinutes = stairManualMinutes.trim() ? num(stairManualMinutes) : stairSuggestedMinutes;
+  const stairValid = Number.isInteger(num(stairEntrances)) && num(stairEntrances) >= 1 && num(stairEntrances) <= 100 &&
+    Number.isInteger(num(stairFloors)) && num(stairFloors) >= 1 && num(stairFloors) <= 100 &&
+    num(stairMinutesPerFloor) > 0 && num(stairEntranceMinutes) >= 0 && stairTotalMinutes > 0;
+  const stairLaborHours = stairTotalMinutes / 60;
   const [trainingRate, setTrainingRate] = useState<{ rate: number; count: number } | null>(null);
   const [trainingLoading, setTrainingLoading] = useState(true);
   const cleaningType = state.selected.label;
@@ -138,7 +152,7 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
                 </Button>
               ))}
             </div>
-            <p>Fläche: {formatNumber(num(area))} m² · Reinigungszeit: {formatNumber(num(hours))} Std.</p>
+            <p>{isStaircase ? "Treppenhaus: Berechnung nach Etagen und Arbeitszeit (ohne Pflichtfläche)." : `Fläche: ${formatNumber(num(area))} m²`} · Reinigungszeit: {formatNumber(num(hours))} Std.</p>
             <p>Selbstkosten: {formatMoney(selfCostPerHour)} / Std. · Zielpreis: {formatMoney(targetSellingRate)} / Std.</p>
             <div className="flex gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => setMode("hours")}>Nach Stunden</Button>
@@ -148,7 +162,7 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
               <div className="space-y-1"><Label htmlFor="productivity-sqm">Leistung (m² je Mitarbeiterstunde)</Label><Input id="productivity-sqm" inputMode="decimal" value={productivityInput} onChange={(e) => setProductivityInput(e.target.value)} /></div>
               <div className="space-y-1"><Label htmlFor="productivity-workers">Anzahl Mitarbeiter</Label><Input id="productivity-workers" inputMode="numeric" value={workerInput} onChange={(e) => setWorkerInput(e.target.value)} /></div>
             </div>
-            {validEstimate ? (
+            {isStaircase && <div className="space-y-3 rounded-md border p-3">\n              <p className="font-medium">Treppenhaus: Zeitkalkulation je Einsatz</p>\n              <p className="text-xs text-muted-foreground">Die Minuten sind editierbare Beispiele, keine geprüften Leistungswerte. Alle Etagenangaben gelten pro Eingang.</p>\n              <div className="grid gap-3 sm:grid-cols-2">\n                <div><Label htmlFor="stair-entrances">Anzahl Hauseingänge</Label><Input id="stair-entrances" inputMode="numeric" value={stairEntrances} onChange={(e) => setStairEntrances(e.target.value)} /></div>\n                <div><Label htmlFor="stair-floors">Etagen pro Eingang</Label><Input id="stair-floors" inputMode="numeric" value={stairFloors} onChange={(e) => setStairFloors(e.target.value)} /></div>\n                <div><Label htmlFor="stair-min-floor">Minuten pro Etage</Label><Input id="stair-min-floor" inputMode="decimal" value={stairMinutesPerFloor} onChange={(e) => setStairMinutesPerFloor(e.target.value)} /></div>\n                <div><Label htmlFor="stair-entrance-size">Größe Eingangsbereich</Label><Select value={stairEntranceSize} onValueChange={setStairEntranceSize}><SelectTrigger id="stair-entrance-size"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="small">Klein</SelectItem><SelectItem value="normal">Normal</SelectItem><SelectItem value="large">Groß</SelectItem></SelectContent></Select></div>\n                <div><Label htmlFor="stair-entrance-min">Minuten je Eingang (normal)</Label><Input id="stair-entrance-min" inputMode="decimal" value={stairEntranceMinutes} onChange={(e) => setStairEntranceMinutes(e.target.value)} /></div>\n                <div><Label htmlFor="stair-manual-min">Gesamtminuten manuell (optional)</Label><Input id="stair-manual-min" inputMode="decimal" placeholder="Leer = Vorschlag" value={stairManualMinutes} onChange={(e) => setStairManualMinutes(e.target.value)} /></div>\n              </div>\n              {stairValid ? <><p>Vorschlag: {formatNumber(stairSuggestedMinutes)} Min. · Arbeitszeit: <strong>{formatNumber(stairLaborHours)} Std. je Einsatz</strong></p><p>Geschätzte Kosten: {formatMoney(stairLaborHours * selfCostPerHour)} · Zielpreis: {formatMoney(stairLaborHours * targetSellingRate)}</p><Button type="button" size="sm" variant="outline" disabled={roomCalculation.enabled || lvPositions.length > 0} onClick={() => { setMode("hours"); setHours(String(Math.round(stairLaborHours * 100) / 100).replace(".", ",")); setConfirmed(false); }}>Arbeitszeit übernehmen (Nach Stunden)</Button>{(roomCalculation.enabled || lvPositions.length > 0) && <p className="text-xs text-muted-foreground">Übernahme gesperrt, solange Raumkalkulation oder LV-Positionen aktiv sind.</p>}</> : <p className="text-destructive">Bitte gültige Eingänge, Etagen und Minuten eingeben.</p>}\n            </div>}\n            {!isStaircase && (validEstimate ? (
               <div className="rounded-md border p-2">
                 <p>Geschätzte Arbeitsstunden gesamt: <strong>{formatNumber(estimatedLaborHours)} Std. / Einsatz</strong></p>
                 <p>Dauer vor Ort mit {workers} Mitarbeiter(n): <strong>{formatNumber(estimatedElapsedHours)} Std.</strong></p>
@@ -159,8 +173,8 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
                   </Button>
                 )}
               </div>
-            ) : <p className="text-xs text-destructive">Bitte gültige Fläche, Leistung und Mitarbeiterzahl (1–100) eingeben.</p>}
-            <div className="rounded-md border p-3 text-sm space-y-2">
+            ) : <p className="text-xs text-destructive">Bitte gültige Fläche, Leistung und Mitarbeiterzahl (1–100) eingeben.</p>)}
+            {!isStaircase && <div className="rounded-md border p-3 text-sm space-y-2">
               <p className="font-medium">KI-Training: Erfahrungswert für {cleaningType}</p>
               {trainingLoading ? <p className="text-muted-foreground">Erfahrungswerte werden geprüft…</p> : trainingRate ? (
                 <>
@@ -172,8 +186,8 @@ export function TenderPricing({ state }: { state: KalkulationStateContext }) {
                   <p className="text-xs text-muted-foreground">Nur die Leistungseingabe wird auf Ihren Klick geändert. Stunden, Preise und LV bleiben unverändert. Bitte nur echte, vergleichbare Einsätze speichern.</p>
                 </>
               ) : <p className="text-muted-foreground">Noch nicht genügend vergleichbare Cloud-Daten (mindestens 2 echte Einsätze nötig). Der Beispielwert bleibt unverändert.</p>}
-            </div>
-            <p className="text-xs text-muted-foreground">120 m²/Std. ist nur ein editierbarer Beispielwert, kein geprüfter Leistungswert für diese Reinigungsart. Mitarbeiterzahl verkürzt die Einsatzdauer, nicht die bezahlten Gesamtstunden. Bitte tatsächliche Leistungswerte prüfen; keine automatische Angebotsübernahme.</p>
+            </div>}
+            {!isStaircase && <p className="text-xs text-muted-foreground">120 m²/Std. ist nur ein editierbarer Beispielwert, kein geprüfter Leistungswert für diese Reinigungsart. Mitarbeiterzahl verkürzt die Einsatzdauer, nicht die bezahlten Gesamtstunden. Bitte tatsächliche Leistungswerte prüfen; keine automatische Angebotsübernahme.</p>}
             <p className="text-xs text-muted-foreground">Bitte Zeit, Fläche und Preise prüfen. Keine automatische Angebotsübernahme.</p>
           </div>
         </details>
