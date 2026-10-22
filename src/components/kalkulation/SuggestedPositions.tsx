@@ -21,7 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
-export function SuggestedPositions({ state }: { state: KalkulationStateContext }) {
+export function SuggestedPositions({ state, direct = false }: { state: KalkulationStateContext; direct?: boolean }) {
   const {
     aiReviewQuestions,
     aiSuggest,
@@ -60,7 +60,7 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
         </CardTitle>
         <CardDescription>
           Quelle: KI-Analyse (Grundriss/Beschreibung) – für normale Angebote an Endkunden. Diese
-          Positionen sind ein Vorschlag und gelangen erst per Klick ins Leistungsverzeichnis.
+          Positionen bleiben bearbeitbar. Prüfen Sie die Angebotsvorschau unterhalb der Kalkulation.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -258,7 +258,7 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
           </div>
         )}
 
-        {kiOutOfSync && (
+        {!direct && kiOutOfSync && (
           <div
             role="alert"
             className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/60 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
@@ -282,7 +282,7 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
           </p>
         )}
 
-        <div className="flex justify-end">
+        {!direct && <div className="flex justify-end">
           <Button
             type="button"
             variant="outline"
@@ -292,7 +292,7 @@ export function SuggestedPositions({ state }: { state: KalkulationStateContext }
           >
             <Sparkles className="size-4" /> KI-Positionen für Angebot übernehmen
           </Button>
-        </div>
+        </div>}
       </CardContent>
     </Card>
   );

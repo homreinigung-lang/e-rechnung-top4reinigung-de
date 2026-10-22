@@ -85,7 +85,7 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
     // Stairs included in the room list must not also receive a separate floor fee.
     setStairs(false);
     toast.success(
-      "Raumweise Stundenberechnung aktiv – Vorschau und Kosten wurden aktualisiert. Danach Grundkalkulation für Angebot übernehmen.",
+      "Raumweise Stundenberechnung aktiv – Positionen und Preis in der Angebotsvorschau prüfen.",
     );
   }
 
@@ -440,8 +440,8 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
       </div>
       {roomCalculation.enabled && (
         <p className="text-sm text-primary">
-          Die Raumwerte steuern jetzt Stunden, Kosten und Grundkalkulation. Für das Angebot
-          anschließend „Grundkalkulation für Angebot übernehmen“ auswählen und das LV prüfen.
+          Die Raumwerte steuern jetzt Stunden, Kosten und Preis. Prüfen Sie die Positionen in der
+          Angebotsvorschau und wählen Sie anschließend „In Angebot übernehmen“.
         </p>
       )}
     </section>

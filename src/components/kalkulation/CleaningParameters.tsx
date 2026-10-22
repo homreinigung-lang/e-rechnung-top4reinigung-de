@@ -18,7 +18,7 @@ import { Mode, CLEANING_TYPES, EXTRAS, num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
 import { FloorplanAttachments } from "./FloorplanAttachments";
 
-export function CleaningParameters({ state }: { state: KalkulationStateContext }) {
+export function CleaningParameters({ state, attachments = true }: { state: KalkulationStateContext; attachments?: boolean }) {
   const {
     annualVisits,
     area,
@@ -391,7 +391,7 @@ export function CleaningParameters({ state }: { state: KalkulationStateContext }
           />
         </div>
 
-        <FloorplanAttachments state={state} />
+        {attachments && <FloorplanAttachments state={state} />}
       </CardContent>
     </Card>
   );
