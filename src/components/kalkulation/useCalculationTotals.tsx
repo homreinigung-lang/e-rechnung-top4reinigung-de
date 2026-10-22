@@ -39,6 +39,7 @@ export function useCalculationTotals(input: {
   kiPrompt: ReturnType<typeof useKalkulationForm>["kiPrompt"];
   laborBurdenPercent: ReturnType<typeof useKalkulationForm>["laborBurdenPercent"];
   laborWage: ReturnType<typeof useKalkulationForm>["laborWage"];
+  glassGrossWage: ReturnType<typeof useKalkulationForm>["glassGrossWage"];
   liftRate: ReturnType<typeof useKalkulationForm>["liftRate"];
   lvItems: ReturnType<typeof useKalkulationForm>["lvItems"];
   materialCost: ReturnType<typeof useKalkulationForm>["materialCost"];
@@ -83,6 +84,7 @@ export function useCalculationTotals(input: {
     kiPrompt,
     laborBurdenPercent,
     laborWage,
+    glassGrossWage,
     liftRate,
     lvItems,
     materialCost,
@@ -291,11 +293,12 @@ export function useCalculationTotals(input: {
     : raumbuch && raumbuch.hoursPerVisit > 0
       ? round2(raumbuch.hoursPerVisit * visitsPerMonth)
       : round2(monthlyHours);
+  const effectiveLaborWage = type === "glas" ? num(glassGrossWage) : num(laborWage);
   const laborBurdenPerHour = round2(
-    num(laborWage) * (Math.min(200, num(laborBurdenPercent)) / 100),
+    effectiveLaborWage * (Math.min(200, num(laborBurdenPercent)) / 100),
   );
   const selfCostPerHour = round2(
-    num(laborWage) + laborBurdenPerHour + num(materialCost) + num(overheadCost),
+    effectiveLaborWage + laborBurdenPerHour + num(materialCost) + num(overheadCost),
   );
   const targetSellingRate = round2(selfCostPerHour * (1 + Math.min(100, num(profitMarkup)) / 100));
   const monthlySelfCost = round2(selfCostPerHour * costingMonthlyHours);
