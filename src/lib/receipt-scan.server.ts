@@ -124,39 +124,16 @@ export async function extractReceipt(dataUrl: string, mimeType: string): Promise
     );
   }
 
-  // A second, independent visual pass reduces silent year-digit OCR errors.
-  // If the two readings disagree, require manual confirmation instead of guessing.
-  let verifiedDate = isoDate(parsed["expense_date"]);
-  let dateWarning = "";
-  if (verifiedDate) {
-    try {
-      const second = await generateGeminiJson({
-        model: process.env["GEMINI_MODEL_RECEIPT"] || "gemini-3.8-flash",
-        system: "Du prüfst ausschließlich das auf dem Originalbeleg gedruckte Rechnungs- oder Kaufdatum. Lies die vierstellige Jahreszahl Zeichen für Zeichen. Nicht schätzen. Bei Unsicherheit date als leeren String zurückgeben. Antworte nur als JSON.",
-        prompt: "Prüfe das gedruckte Belegdatum unabhängig von einer vorherigen Erkennung. Gib das Datum als YYYY-MM-DD zurück; bei Unsicherheit leer. Nicht das Zahlungsziel oder das heutige Datum verwenden.",
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: { date: { type: "string" } },
-          required: ["date"],
-        },
-        dataUrl,
-        mimeType,
-        timeoutMs: 20_000,
-        validate: (value) => typeof value["date"] === "string",
-      });
-      const secondDate = isoDate(second["date"]);
-      if (!secondDate || secondDate !== verifiedDate) {
-        verifiedDate = "";
-        dateWarning = "Belegdatum konnte nicht eindeutig bestätigt werden. Bitte Datum auf dem Originalbeleg prüfen und manuell eingeben.";
-      }
-    } catch {
-      verifiedDate = "";
-      dateWarning = "Zweite Datumsprüfung fehlgeschlagen. Bitte Belegdatum manuell prüfen und eingeben.";
-    }
-  } else {
-    dateWarning = "Belegdatum nicht sicher erkannt. Bitte manuell eingeben.";
-  }
+  // Validate the extracted date locally: no second AI request or extra network latency.
+  // Older receipts remain allowed; suspicious dates require user review.
+  const extractedDate = isoDate(parsed["expense_date"]);
+  const currentYear = new Date().getUTCFullYear();
+  const receiptYear = extractedDate ? Number(extractedDate.slice(0, 4)) : 0;
+  const suspiciousDate = !extractedDate || receiptYear > currentYear + 1 || receiptYear < currentYear - 3;
+  const verifiedDate = suspiciousDate ? "" : extractedDate;
+  const dateWarning = suspiciousDate
+    ? "Belegdatum fehlt oder ist auffällig. Bitte das Datum auf dem Originalbeleg prüfen und manuell eingeben."
+    : "";
 
   return {
     supplier: String(parsed["supplier"] ?? "").trim(),
