@@ -53,7 +53,7 @@ const SYSTEM = `Du extrahierst Daten aus einer deutschen EINGANGSRECHNUNG oder e
 WICHTIG – Rollen unterscheiden:
 - supplier = RECHNUNGSAUSSTELLER/VERKÄUFER/LEISTUNGSERBRINGER (Firma, die die Rechnung ausstellt bzw. auf dem Kassenbon als Händler steht). Übernimm den vollständigen gedruckten Firmennamen einschließlich Rechtsform, wenn lesbar. Nicht die Rechnungsadresse des Empfängers, nicht den Kunden, nicht die eigene Firma Hom Reinigung Service / top4reinigung.de und nicht eine Zahlungsplattform, sofern diese nicht selbst Aussteller ist. Bei mehreren Firmen orientiere dich an 'Rechnung von', Impressum, Verkäufer, USt-IdNr. des Ausstellers; rate bei Unklarheit nicht, sondern gib einen leeren String zurück und schreibe den Grund in notes.
 - document_number = ausdrücklich bezeichnete Rechnungsnummer/Belegnummer; nicht Bestellnummer, Kundennummer, Transaktions-ID, Steuer-ID oder Datum. Wenn nicht eindeutig, leerer String.
-- expense_date = ausdrücklich ausgewiesenes Rechnungsdatum/Belegdatum (bei Kassenbons das Kaufdatum); nicht Zahlungsziel, Leistungszeitraum oder Bestelldatum. Bei fehlendem Datum leerer String. Format YYYY-MM-DD.
+- expense_date = ausdrücklich ausgewiesenes Rechnungsdatum/Belegdatum (bei Kassenbons das Kaufdatum); nicht Zahlungsziel, Leistungszeitraum oder Bestelldatum. Lies Tag, Monat und insbesondere alle vier Ziffern der Jahreszahl sorgfältig aus dem Dokument ab. Verwechsle 2/6, 0/8 und 1/7 nicht; interpretiere keine Jahreszahl aus dem aktuellen Datum. Wenn eine Ziffer nicht sicher erkennbar ist, gib einen leeren String zurück und erläutere dies in notes. Format YYYY-MM-DD.
 - net_amount, vat_amount, gross_amount = GESAMTBETRÄGE der gesamten Rechnung, keine Einzelpositionen, Zwischensummen, Rückgeld, bezahlten Teilbeträge oder früheren Salden. Berücksichtige ausgewiesene Rabatte. Zahlen mit Punkt als Dezimaltrennzeichen. Erfinde keine Beträge oder Steuersätze. Bei mehreren Umsatzsteuersätzen addiere nur die ausdrücklich ausgewiesenen Steuerbeträge. Wenn die Umsatzsteuer nicht ausgewiesen ist, setze vat_amount auf 0 und vermerke das in notes. Wenn Netto nicht ausgewiesen ist, aber Brutto und Steuer ausdrücklich ausgewiesen sind, berechne Netto als Brutto minus Steuer. Ist nur Brutto ausgewiesen, setze Netto=Brutto und VAT=0, und weise in notes ausdrücklich auf die fehlende Steueraufteilung hin – keine Vorsteuer erfinden.
 - category nur aus: Material, Reinigungsmittel, Fahrzeug, Löhne, Sozialabgaben / Arbeitgeberabgaben, Miete, Versicherung, Sonstiges. Zahlungen an Sozialversicherungsträger wie Knappschaft-Bahn-See für Arbeitgeber-/Sozialabgaben ordnest du "Sozialabgaben / Arbeitgeberabgaben" zu, sofern der Beleg/Zahlungstext das eindeutig zeigt. Wähle nur bei eindeutigem Inhalt; sonst Sonstiges.
 Bei schlechter Bildqualität oder uneindeutigen Feldern nichts erfinden. Erläutere unklare oder fehlende Angaben kurz in notes. Antworte ausschließlich mit reinem JSON gemäß Schema ohne Erklärung.`;
@@ -124,14 +124,25 @@ export async function extractReceipt(dataUrl: string, mimeType: string): Promise
     );
   }
 
+  // Validate the extracted date locally: no second AI request or extra network latency.
+  // Older receipts remain allowed; suspicious dates require user review.
+  const extractedDate = isoDate(parsed["expense_date"]);
+  const currentYear = new Date().getUTCFullYear();
+  const receiptYear = extractedDate ? Number(extractedDate.slice(0, 4)) : 0;
+  const suspiciousDate = !extractedDate || receiptYear > currentYear + 1 || receiptYear < currentYear - 3;
+  const verifiedDate = suspiciousDate ? "" : extractedDate;
+  const dateWarning = suspiciousDate
+    ? "Belegdatum fehlt oder ist auffällig. Bitte das Datum auf dem Originalbeleg prüfen und manuell eingeben."
+    : "";
+
   return {
     supplier: String(parsed["supplier"] ?? "").trim(),
     document_number: String(parsed["document_number"] ?? "").trim(),
-    expense_date: isoDate(parsed["expense_date"]),
+    expense_date: verifiedDate,
     net_amount: net,
     vat_amount: vat,
     gross_amount: gross || calculatedGross,
     category: String(parsed["category"] ?? "").trim(),
-    notes: String(parsed["notes"] ?? "").trim(),
+    notes: [String(parsed["notes"] ?? "").trim(), dateWarning].filter(Boolean).join(" · "),
   };
 }
