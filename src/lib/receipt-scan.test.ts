@@ -7,6 +7,7 @@ const receipt = {
   supplier: "Testlieferant",
   document_number: "TEST-1",
   expense_date: "21.09.2026",
+  expense_date_text: "21.09.2026",
   net_amount: 100,
   vat_amount: 19,
   gross_amount: 119,
@@ -23,6 +24,7 @@ const scan = () => extractReceipt("data:application/pdf;base64,dGVzdA==", "appli
 
 beforeEach(() => {
   vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-23T12:00:00Z"));
   vi.stubEnv("GEMINI_API_KEY", "synthetic-test-key");
 });
 afterEach(() => {
@@ -67,27 +69,27 @@ describe("receipt extraction", () => {
     expect(fetchMock.mock.calls[0]![1].body).toBe(fetchMock.mock.calls[1]![1].body);
   });
 
-  it("switches to the fallback after two empty responses", async () => {
+  it("switches to the existing fallback without a fixed wait", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(reply({}))
       .mockResolvedValueOnce(reply({}))
       .mockResolvedValueOnce(reply(receipt));
     vi.stubGlobal("fetch", fetchMock);
     const result = expect(scan()).resolves.toMatchObject({ gross_amount: 119 });
     await vi.runAllTimersAsync();
     await result;
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[2]![0]).toContain("gemini-3.1-flash-lite");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]![0]).toContain("gemini-3.1-flash-lite");
+    expect(Date.now()).toBe(new Date("2026-10-23T12:00:00Z").getTime());
   });
 
-  it("stops after four unusable results and retains the attachment", async () => {
+  it("stops after two unusable results and retains the attachment", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(reply({})));
     vi.stubGlobal("fetch", fetchMock);
     const result = expect(scan()).rejects.toThrow("erneutes Hochladen ist nicht nötig");
     await vi.runAllTimersAsync();
     await result;
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it.each([401, 403, 429, 400])("does not retry permanent HTTP %i errors", async (status) => {
@@ -145,5 +147,84 @@ describe("receipt extraction", () => {
   it("rejects contradictory totals", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply({ ...receipt, gross_amount: 120 })));
     await expect(scan()).rejects.toThrow("stimmen nicht überein");
+  });
+
+  it.each([
+    ["2022-10-21", "21.10.2026"],
+    ["2022-10-21", "21.10.2022"],
+    ["2026-02-30", "30.02.2026"],
+    ["2026-10-21 trailing text", "21.10.2026"],
+    ["2026-10-21", ""],
+    ["2026-10-21", "21.10.206"],
+    ["2028-01-01", "01.01.2028"],
+  ])(
+    "requires date review instead of guessing for %s / %s",
+    async (expense_date, expense_date_text) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(reply({ ...receipt, expense_date, expense_date_text })),
+      );
+      expect(await scan()).toMatchObject({
+        expense_date: "",
+        notes: expect.stringContaining("manuell eingeben"),
+      });
+      expect(fetch).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["21.10.2026", "21/10/2026", "21.10.26", "2026-10-21", "21. Oktober 2026"])(
+    "accepts matching printed date %s",
+    async (expense_date_text) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(reply({ ...receipt, expense_date: "2026-10-21", expense_date_text })),
+      );
+      expect((await scan()).expense_date).toBe("2026-10-21");
+    },
+  );
+
+  it("preserves leading zeros in invoice numbers and German decimal totals", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        reply({
+          ...receipt,
+          document_number: "00026-OI/06",
+          net_amount: "1.000,00 €",
+          vat_amount: "190,00",
+          gross_amount: "1.190,00",
+        }),
+      ),
+    );
+    expect(await scan()).toMatchObject({
+      document_number: "00026-OI/06",
+      net_amount: 1000,
+      vat_amount: 190,
+      gross_amount: 1190,
+    });
+  });
+
+  it("omits the duplicate schema on the normal path, retaining full image and structured output", async () => {
+    const request = vi.fn().mockResolvedValue(reply(receipt));
+    vi.stubGlobal("fetch", request);
+    await scan();
+    const body = JSON.parse(request.mock.calls[0]![1].body);
+    expect(body.contents[0].parts[0].text).not.toContain("JSON Schema");
+    expect(body.contents[0].parts[1].inlineData.data).toBe("dGVzdA==");
+    expect(body.generationConfig.responseJsonSchema.required).toContain("expense_date_text");
+  });
+
+  it("bounds all OCR model requests by one 15-second deadline", async () => {
+    const fetchMock = vi.fn(async () => {
+      await vi.advanceTimersByTimeAsync(fetchMock.mock.calls.length === 1 ? 10_000 : 5_000);
+      throw new DOMException("timed out", "TimeoutError");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const start = Date.now();
+    await expect(scan()).rejects.toThrow("hat zu lange gedauert");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(Date.now() - start).toBe(15_000);
   });
 });

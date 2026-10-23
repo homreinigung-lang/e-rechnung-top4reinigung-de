@@ -84,7 +84,7 @@ export function useAusgabenState() {
     try {
       const storedFile = file.type.startsWith("image/")
         ? await receiptFileToPdf(file, {
-            date: scan?.expense_date || form.expense_date || today(),
+            date: scan?.expense_date || "",
             category: scan?.category || form.category,
             ...(scan?.supplier ? { supplier: scan.supplier } : {}),
           })
@@ -111,7 +111,8 @@ export function useAusgabenState() {
         ...f,
         supplier: values.supplier || f.supplier,
         document_number: values.document_number || f.document_number,
-        expense_date: values.expense_date || f.expense_date,
+        // An unreadable/suspicious date must not silently become today's date.
+        expense_date: values.expense_date,
         net_amount: values.net_amount,
         vat_amount: values.vat_amount,
         category: CATEGORIES.includes(values.category) ? values.category : f.category,
@@ -159,6 +160,7 @@ export function useAusgabenState() {
 
   const add = useMutation({
     mutationFn: async () => {
+      if (!form.expense_date) throw new Error("Bitte das Belegdatum auf dem Original prüfen und eingeben.");
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
