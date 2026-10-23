@@ -111,6 +111,6 @@
     "seroval": "1.6.8",
     "source-map-js": "1.2.2",
     "@tanstack/start-server-core": "1.169.39",
-    "dompurify": "3.4.16"
+    "dompurify": "3.4.17"
   }
 }
