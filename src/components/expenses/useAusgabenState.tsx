@@ -164,7 +164,7 @@ export function useAusgabenState() {
       if (!userId) throw new Error("Nicht angemeldet");
       const net = Number(form.net_amount || 0);
       const vat = Number(form.vat_amount || 0);
-      const { error } = await supabase.from("expenses").insert({
+      const { data: savedExpense, error } = await supabase.from("expenses").insert({
         user_id: userId,
         supplier: form.supplier,
         expense_date: form.expense_date,
@@ -176,10 +176,18 @@ export function useAusgabenState() {
         notes: form.notes,
         receipt_url: form.receipt_url,
         project_id: form.project_id || null,
-      } as never);
+      } as never).select("id, expense_date").single();
       if (error) throw error;
+      if (!savedExpense?.id) throw new Error("Speichern konnte nicht bestätigt werden.");
+      return savedExpense;
     },
-    onSuccess: () => {
+    onSuccess: async (savedExpense) => {
+      await queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      const refreshed = queryClient.getQueryData<Array<{ id: string }>>(["expenses"]);
+      if (!refreshed?.some((row) => row.id === savedExpense.id)) {
+        toast.warning("Ausgabe gespeichert, aber in der Liste noch nicht sichtbar. Bitte Ansicht aktualisieren.");
+        return;
+      }
       toast.success("Ausgabe erfasst");
       setForm({ ...empty, expense_date: today(), receipt_url: "", project_id: "" });
       setScanned(false);
