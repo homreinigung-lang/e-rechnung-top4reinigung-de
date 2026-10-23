@@ -18,6 +18,8 @@ type GeminiJsonOptions = {
   fallbackModels?: readonly string[];
   attemptsPerModel?: 1 | 2;
   totalTimeoutMs?: number;
+  /** Skip the redundant schema text when the provider enforces the same schema. */
+  schemaInPrompt?: boolean;
 };
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
@@ -89,6 +91,7 @@ export async function generateGeminiJson({
   fallbackModels = [FALLBACK_MODEL],
   attemptsPerModel = 2,
   totalTimeoutMs,
+  schemaInPrompt = true,
 }: GeminiJsonOptions): Promise<Record<string, unknown>> {
   const deadline = totalTimeoutMs === undefined ? Infinity : Date.now() + totalTimeoutMs;
   const timeoutError = () => new Error("KI-Analyse hat zu lange gedauert. Bitte erneut versuchen.");
@@ -96,9 +99,8 @@ export async function generateGeminiJson({
   if (!apiKey) throw new Error("KI-Dienst ist nicht konfiguriert.");
   const headers = { "Content-Type": "application/json", "x-goog-api-key": apiKey };
 
-  const parts: Array<Record<string, unknown>> = [
-    { text: `${prompt}\nAntwortformat (JSON Schema): ${JSON.stringify(schema)}` },
-  ];
+  const schemaPrompt = `${prompt}\nAntwortformat (JSON Schema): ${JSON.stringify(schema)}`;
+  const parts: Array<Record<string, unknown>> = [{ text: schemaInPrompt ? schemaPrompt : prompt }];
   if (dataUrl) {
     const decoded = parseDataUrl(dataUrl);
     parts.push({ inlineData: { mimeType: mimeType || decoded.mimeType, data: decoded.data } });
@@ -114,7 +116,9 @@ export async function generateGeminiJson({
       signal: AbortSignal.timeout(Math.max(1, Math.min(timeoutMs, remaining))),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts }],
+        contents: [
+          { role: "user", parts: withSchema ? parts : [{ text: schemaPrompt }, ...parts.slice(1)] },
+        ],
         generationConfig: {
           temperature: 0,
           ...(maxOutputTokens ? { maxOutputTokens } : {}),

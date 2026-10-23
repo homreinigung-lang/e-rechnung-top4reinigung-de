@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   finishReceiptScan,
   prepareReceiptScan,
+  prepareReceiptCanvas,
   type ReceiptScanDraft,
 } from "@/lib/receipt-image-scan";
 import { validReceiptQuad, type Quad } from "@/lib/receipt-corners";
@@ -34,6 +35,13 @@ export function ReceiptScannerButton({
   const [adjusted, setAdjusted] = useState(false);
   const [automaticScan, setAutomaticScan] = useState<File | null>(null);
   const [scanPreview, setScanPreview] = useState("");
+
+  useEffect(
+    () => () => {
+      if (draft) URL.revokeObjectURL(draft.preview);
+    },
+    [draft],
+  );
 
   useEffect(() => {
     if (!automaticScan) {
@@ -117,12 +125,19 @@ export function ReceiptScannerButton({
       close();
       return;
     }
-    const result = await prepareReceiptScan(file);
-    const cropped = result.detected ? await finishReceiptScan(result, result.corners) : null;
-    setDraft(result);
-    setCorners(result.corners);
-    setAdjusted(false);
-    setAutomaticScan(cropped);
+    await showDraft(await prepareReceiptScan(file));
+  }
+  async function showDraft(result: ReceiptScanDraft) {
+    try {
+      const cropped = result.detected ? await finishReceiptScan(result, result.corners) : null;
+      setDraft(result);
+      setCorners(result.corners);
+      setAdjusted(false);
+      setAutomaticScan(cropped);
+    } catch (error) {
+      URL.revokeObjectURL(result.preview);
+      throw error;
+    }
   }
   async function captureScan() {
     await run(async () => {
@@ -137,14 +152,7 @@ export function ReceiptScannerButton({
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Kamerabild konnte nicht verarbeitet werden.");
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error("Kamerabild konnte nicht erstellt werden."))),
-          "image/jpeg",
-          0.96,
-        ),
-      );
-      await prepare(new File([blob], `beleg-${Date.now()}.jpg`, { type: "image/jpeg" }));
+      await showDraft(await prepareReceiptCanvas(canvas, `beleg-${Date.now()}.jpg`));
     });
   }
   return (
