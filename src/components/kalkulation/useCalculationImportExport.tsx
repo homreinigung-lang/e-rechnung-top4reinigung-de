@@ -27,6 +27,7 @@ export function useCalculationImportExport(input: {
   floorplanSummary: ReturnType<typeof useKalkulationForm>["floorplanSummary"];
   lvPositions: ReturnType<typeof useCalculationTotals>["lvPositions"];
   mode: ReturnType<typeof useKalkulationForm>["mode"];
+  frequencyUnit: ReturnType<typeof useKalkulationForm>["frequencyUnit"];
   monthlyHours: ReturnType<typeof useCalculationTotals>["monthlyHours"];
   projectId: ReturnType<typeof useKalkulationForm>["projectId"];
   proposalText: ReturnType<typeof useKalkulationForm>["proposalText"];
@@ -76,6 +77,7 @@ export function useCalculationImportExport(input: {
     lvPositions,
     mode,
     monthlyHours,
+    frequencyUnit,
     projectId,
     proposalText,
     proposalTitle,
@@ -271,12 +273,18 @@ export function useCalculationImportExport(input: {
             value: `${formatNumber(mode === "area" ? num(area) : analysisTotals.sqm)} m²`,
           },
           {
-            label: "Einsätze/Monat",
-            value: roomCalculation.enabled
-              ? "Je Raum laut Positionen"
-              : formatNumber(visitsPerMonth),
+            label: frequencyUnit === "once" ? "Einmaliger Auftrag" : "Einsätze/Monat",
+            value:
+              frequencyUnit === "once"
+                ? "Ein Einsatz, Gesamtpreis"
+                : roomCalculation.enabled
+                  ? "Je Raum laut Positionen"
+                  : formatNumber(visitsPerMonth),
           },
-          { label: "Stundenbedarf", value: `${formatNumber(monthlyHours)} Std./Monat` },
+          {
+            label: "Stundenbedarf",
+            value: `${formatNumber(monthlyHours)} ${frequencyUnit === "once" ? "Std./Auftrag" : "Std./Monat"}`,
+          },
         ],
         positions,
         vatRate,

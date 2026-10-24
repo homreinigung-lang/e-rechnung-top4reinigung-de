@@ -18,7 +18,13 @@ import { Mode, CLEANING_TYPES, EXTRAS, num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
 import { FloorplanAttachments } from "./FloorplanAttachments";
 
-export function CleaningParameters({ state, attachments = true }: { state: KalkulationStateContext; attachments?: boolean }) {
+export function CleaningParameters({
+  state,
+  attachments = true,
+}: {
+  state: KalkulationStateContext;
+  attachments?: boolean;
+}) {
   const {
     annualVisits,
     area,
@@ -161,7 +167,11 @@ export function CleaningParameters({ state, attachments = true }: { state: Kalku
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>
-                {state.roomCalculation.enabled ? "Stunden/Monat aus Raumliste" : "Stunden"}
+                {state.roomCalculation.enabled
+                  ? frequencyUnit === "once"
+                    ? "Stunden je Auftrag aus Raumliste"
+                    : "Stunden/Monat aus Raumliste"
+                  : "Stunden"}
               </Label>
               <Input
                 disabled={state.roomCalculation.enabled}
@@ -225,27 +235,44 @@ export function CleaningParameters({ state, attachments = true }: { state: Kalku
             <Label>Durchgänge / Einsätze</Label>
             <Input
               inputMode="decimal"
-              disabled={state.roomCalculation.enabled}
-              value={state.roomCalculation.enabled ? "1" : frequency}
+              disabled={state.roomCalculation.enabled || frequencyUnit === "once"}
+              value={state.roomCalculation.enabled || frequencyUnit === "once" ? "1" : frequency}
               onChange={(e) => setFrequency(e.target.value)}
             />
           </div>
           <div className="space-y-2">
             <Label>Zeitraum</Label>
             <Select
-              disabled={state.roomCalculation.enabled}
-              value={state.roomCalculation.enabled ? "month" : frequencyUnit}
-              onValueChange={(v) => setFrequencyUnit(v as RecurrenceUnit)}
+              value={
+                frequencyUnit === "once"
+                  ? "once"
+                  : state.roomCalculation.enabled
+                    ? "month"
+                    : frequencyUnit
+              }
+              onValueChange={(v) => {
+                setFrequencyUnit(v as RecurrenceUnit);
+                if (v === "once") setFrequency("1");
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="week">Pro Woche</SelectItem>
-                <SelectItem value="fortnight">Alle 2 Wochen (14-tägig)</SelectItem>
+                <SelectItem value="once">Einmalige Reinigung</SelectItem>
+                <SelectItem disabled={state.roomCalculation.enabled} value="week">
+                  Pro Woche
+                </SelectItem>
+                <SelectItem disabled={state.roomCalculation.enabled} value="fortnight">
+                  Alle 2 Wochen (14-tägig)
+                </SelectItem>
                 <SelectItem value="month">Pro Monat</SelectItem>
-                <SelectItem value="quarter">Pro Quartal</SelectItem>
-                <SelectItem value="year">Pro Jahr</SelectItem>
+                <SelectItem disabled={state.roomCalculation.enabled} value="quarter">
+                  Pro Quartal
+                </SelectItem>
+                <SelectItem disabled={state.roomCalculation.enabled} value="year">
+                  Pro Jahr
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -256,7 +283,9 @@ export function CleaningParameters({ state, attachments = true }: { state: Kalku
         </div>
 
         <p className="text-xs text-muted-foreground">
-          {state.roomCalculation.enabled ? (
+          {frequencyUnit === "once" ? (
+            "Einmalige Reinigung: ein Einsatz zum Gesamtpreis. Keine monatliche oder jährliche Wiederholung."
+          ) : state.roomCalculation.enabled ? (
             "Abrechnung: Monatsdurchschnitt. Der Reinigungsrhythmus wird je Raum festgelegt."
           ) : (
             <>
@@ -332,17 +361,28 @@ export function CleaningParameters({ state, attachments = true }: { state: Kalku
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Treppenhaus-Turnus (Einsätze pro Monat)</Label>
+                <Label>
+                  {frequencyUnit === "once"
+                    ? "Treppenhaus: ein Einsatz"
+                    : "Treppenhaus-Turnus (Einsätze pro Monat)"}
+                </Label>
                 <Input
                   inputMode="decimal"
-                  value={stairFrequency}
+                  disabled={frequencyUnit === "once"}
+                  value={frequencyUnit === "once" ? "1" : stairFrequency}
                   onChange={(e) => setStairFrequency(e.target.value)}
                   placeholder="0 = wie Grundleistung"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Eigener Turnus, z. B. „2" für zweimal monatlich bei wöchentlicher
-                  Unterhaltsreinigung. 0 übernimmt den Turnus der Grundleistung (
-                  {formatNumber(visitsPerMonth)} Einsätze/Monat).
+                  {frequencyUnit === "once" ? (
+                    "Treppenhaus und Aufzug werden einmal gereinigt."
+                  ) : (
+                    <>
+                      Eigener Turnus, z. B. „2" für zweimal monatlich bei wöchentlicher
+                      Unterhaltsreinigung. 0 übernimmt den Turnus der Grundleistung (
+                      {formatNumber(visitsPerMonth)} Einsätze/Monat).
+                    </>
+                  )}
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">

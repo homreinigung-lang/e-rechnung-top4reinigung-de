@@ -107,7 +107,12 @@ export function useKalkulationSuggestions(input: {
   } = input;
   const aiSuggest = useMutation({
     mutationFn: async (recurrence?: { value: number; unit: RecurrenceUnit }) =>
-      analyze({ data: { prompt: aiPrompt, recurrence } }),
+      analyze({
+        data: {
+          prompt: aiPrompt,
+          recurrence: recurrence ?? (frequencyUnit === "once" ? { value: 1, unit: "once" } : undefined),
+        },
+      }),
     onMutate: () => {
       setKiItems([]);
       setAiReviewQuestions([]);
@@ -130,7 +135,7 @@ export function useKalkulationSuggestions(input: {
               area: res.area_sqm,
               hours: res.hours,
               frequency: res.frequency,
-              frequencyUnit: res.frequency_unit,
+              frequencyUnit: res.billing_period === "once" ? "once" : res.frequency_unit,
               pricePerSqm: res.price_per_sqm,
               hourlyRate: res.hourly_rate,
               floors: res.floors,
@@ -157,7 +162,7 @@ export function useKalkulationSuggestions(input: {
       if (res.cleaning_type === "glas" && res.area_sqm > 0) setGlassArea(dec(res.area_sqm));
 
       setFrequency(res.frequency > 0 ? dec(res.frequency) : "0");
-      setFrequencyUnit(res.frequency_unit);
+      setFrequencyUnit(res.billing_period === "once" ? "once" : res.frequency_unit);
       setTravel(dec(res.travel));
       // Treppen aus Antwort ODER Freitext erkennen – nie mit 0,00 € anlegen.
       const fromText = detectStairs(aiPrompt);
@@ -321,8 +326,9 @@ export function useKalkulationSuggestions(input: {
 
   /** Treppenhaus-Turnus: eigener Wert, sonst der Turnus der Grundleistung. */
   const stairVisitsPerMonth = useMemo(
-    () => (num(stairFrequency) > 0 ? num(stairFrequency) : visitsPerMonth),
-    [stairFrequency, visitsPerMonth],
+    () =>
+      frequencyUnit === "once" ? 1 : num(stairFrequency) > 0 ? num(stairFrequency) : visitsPerMonth,
+    [stairFrequency, visitsPerMonth, frequencyUnit],
   );
 
   const stairsTotal = useMemo(

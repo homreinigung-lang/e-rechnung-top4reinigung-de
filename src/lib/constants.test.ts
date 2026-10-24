@@ -59,3 +59,8 @@ describe("Angebotspreis mit exakter Einsatzmenge", () => {
     expect(positionsTotal(positions)).toBe(113.75);
   });
 });
+
+it("stellt einen gespeicherten Einmalauftrag wieder her und teilt ihn nicht durch zwölf", () => {
+  expect(readRecurrenceUnit("once")).toBe("once");
+  expect(visitsPerMonth(5, "once")).toBe(1);
+});

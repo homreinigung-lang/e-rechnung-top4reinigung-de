@@ -331,6 +331,7 @@ export function useKalkulationState(workflow: CalculationWorkflow = "ausschreibu
   });
 
   const { exportLv, importProjectLv, loadCalculation } = useCalculationImportExport({
+    frequencyUnit,
     calcOutOfSync,
     warnings,
     roomCalculation,

@@ -5,7 +5,7 @@ import type { RecurrenceUnit } from "./constants";
 
 const recurrenceSchema = z.object({
   value: z.number().finite().positive(),
-  unit: z.enum(["week", "fortnight", "month", "quarter", "year"]),
+  unit: z.enum(["week", "fortnight", "month", "quarter", "year", "once"]),
 });
 
 export const suggestItems = createServerFn({ method: "POST" })

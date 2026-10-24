@@ -364,12 +364,15 @@ export async function generateCalculation(
   const ambiguousDaily =
     /\b(?:täglich|taeglich|jeden\s+tag)\b/i.test(normalizedText(prompt)) && !statedFrequency;
   const explicitOnce =
-    /\b(?:einmalig|einmalige|einmaligen|einmaliger|einmaliges|einmal)\b/i.test(
+    recurrence?.unit === "once" ||
+    (/\b(?:einmalig|einmalige|einmaligen|einmaliger|einmaliges|einmal)\b/i.test(
       normalizedText(prompt),
-    ) && !statedFrequency;
+    ) &&
+      !statedFrequency);
   const billingPeriod = explicitOnce ? "once" : recurring || statedFrequency ? "month" : "once";
-  const frequency =
-    ambiguousDaily || annualFrequency
+  const frequency = explicitOnce
+    ? 1
+    : ambiguousDaily || annualFrequency
       ? 0
       : (statedFrequency?.value ?? (recurring && !explicitOnce ? 0 : 1));
   const frequencyUnit = statedFrequency?.unit ?? "month";
