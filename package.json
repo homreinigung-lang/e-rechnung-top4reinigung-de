@@ -79,7 +79,7 @@
     "tw-animate-css": "^1.3.4",
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
-    "zod": "^3.24.2"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.54.5",
@@ -107,10 +107,11 @@
   },
   "overrides": {
     "sharp": "0.35.5",
-    "undici": "7.29.1",
+    "undici": "7.30.1",
     "seroval": "1.6.8",
     "source-map-js": "1.2.2",
     "@tanstack/start-server-core": "1.169.39",
-    "dompurify": "3.4.17"
+    "dompurify": "3.4.17",
+    "zod": "4.6.7"
   }
 }
