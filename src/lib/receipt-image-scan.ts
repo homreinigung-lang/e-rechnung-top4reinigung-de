@@ -108,10 +108,19 @@ export async function prepareReceiptCanvas(
   actx.drawImage(canvas, 0, 0, analysis.width, analysis.height);
   const image = actx.getImageData(0, 0, analysis.width, analysis.height);
   const corners = detectReceiptCorners(image.data, image.width, image.height);
+  // The corner editor only needs a screen-sized preview. Keep full pixels for
+  // the final perspective correction, avoiding a second full-resolution JPEG.
+  const preview = document.createElement("canvas");
+  const previewScale = Math.min(1, 1000 / Math.max(canvas.width, canvas.height));
+  preview.width = Math.max(1, Math.round(canvas.width * previewScale));
+  preview.height = Math.max(1, Math.round(canvas.height * previewScale));
+  const previewContext = preview.getContext("2d");
+  if (!previewContext) throw new Error("Vorschau konnte nicht erstellt werden.");
+  previewContext.drawImage(canvas, 0, 0, preview.width, preview.height);
   return {
     name,
     source: ctx.getImageData(0, 0, canvas.width, canvas.height),
-    preview: URL.createObjectURL(await canvasBlob(canvas, 0.9)),
+    preview: URL.createObjectURL(await canvasBlob(preview, 0.85)),
     detected: corners !== null,
     corners: corners ?? [
       { x: 0.05, y: 0.05 },
