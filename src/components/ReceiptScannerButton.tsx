@@ -1,3 +1,4 @@
+import { ReceiptLiveEdges } from "./ReceiptLiveEdges";
 import { useEffect, useId, useRef, useState } from "react";
 import { Camera, FileUp, Loader2, ScanLine, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -226,6 +227,7 @@ export function ReceiptScannerButton({
           ) : (
             <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
               <video ref={videoRef} playsInline muted className="h-full w-full object-contain" />
+              <ReceiptLiveEdges videoRef={videoRef} ready={cameraReady} />
               {!cameraReady && !cameraError && (
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-white">
                   <Loader2 className="mr-2 size-4 animate-spin" />
