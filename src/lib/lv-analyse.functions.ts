@@ -11,6 +11,10 @@ export type LvAnalyseRawItem = {
   frequency: string;
   area_m2: number;
   working_hours: number;
+  working_hours_basis?: "execution" | "annual_total" | "evaluation_total" | "unknown";
+  executions_per_year?: number;
+  evaluation_only?: boolean;
+  hours_evidence?: string;
   unit_price: number;
   total_price: number;
   vat_rate: number;
@@ -36,6 +40,11 @@ item_number: Ordnungszahl wörtlich, sonst leer.
 description: Positionstext knapp und nah am Dokument.
 category: unterhaltsreinigung|glasreinigung|grundreinigung|sonderreinigung|winterdienst|verbrauchsmaterial|sonstiges.
 quantity, area_m2, working_hours, unit_price, total_price, vat_rate: nur aus dem Dokument, sonst 0.
+working_hours_basis: execution bei Stunden je Einsatz/Tag, annual_total bei ausdrücklich genannten Jahresstunden, evaluation_total bei fiktiven Stundenkontingenten, sonst unknown.
+executions_per_year: nur ausdrücklich genannte jährliche Anzahl (z. B. 144 Arbeitstage oder 5 Samstagseinsätze zur Wertung), sonst 0. Keine 52-Wochen-Hochrechnung über explizite Arbeitstage hinweg.
+evaluation_only: true für ausdrücklich fiktive Mengen bzw. Abrufmengen nur zur Angebotswertung, sonst false.
+hours_evidence: kurzer wörtlicher Quellausschnitt zum Zeitbezug und zur Einsatzanzahl.
+Stunden je Einsatz niemals mit einem bereits jährlichen Stundenwert verwechseln. Nicht quantity erneut multiplizieren, wenn working_hours bereits die Jahressumme ist.
 unit und frequency: wörtlich bzw. leer.
 source_page: erkannte Seite, sonst 0.
 confidence_score: 0 bis 1.
@@ -55,6 +64,10 @@ const ITEM_SCHEMA = {
     frequency: { type: "string" },
     area_m2: { type: "number" },
     working_hours: { type: "number" },
+    working_hours_basis: { type: "string", enum: ["execution", "annual_total", "evaluation_total", "unknown"] },
+    executions_per_year: { type: "number" },
+    evaluation_only: { type: "boolean" },
+    hours_evidence: { type: "string" },
     unit_price: { type: "number" },
     total_price: { type: "number" },
     vat_rate: { type: "number" },
@@ -70,6 +83,10 @@ const ITEM_SCHEMA = {
     "frequency",
     "area_m2",
     "working_hours",
+    "working_hours_basis",
+    "executions_per_year",
+    "evaluation_only",
+    "hours_evidence",
     "unit_price",
     "total_price",
     "vat_rate",
@@ -124,6 +141,11 @@ function normalize(parsed: Record<string, unknown>): LvAnalyseResponse {
         frequency: String(i["frequency"] ?? "").trim(),
         area_m2: num(i["area_m2"]),
         working_hours: num(i["working_hours"]),
+        working_hours_basis: (["execution", "annual_total", "evaluation_total", "unknown"].includes(String(i["working_hours_basis"]))
+          ? String(i["working_hours_basis"]) : "unknown") as LvAnalyseRawItem["working_hours_basis"],
+        executions_per_year: num(i["executions_per_year"]),
+        evaluation_only: i["evaluation_only"] === true,
+        hours_evidence: String(i["hours_evidence"] ?? "").trim(),
         unit_price: num(i["unit_price"]),
         total_price: num(i["total_price"]),
         vat_rate: num(i["vat_rate"]),

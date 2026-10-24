@@ -1,3 +1,4 @@
+import { annualWorkingHours } from "./working-time";
 import { hasOwnPrice, pricingFrequency } from "./calculation";
 import type { LvNormalizedItem, LvValidationIssue } from "./types";
 
@@ -10,6 +11,11 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
   for (const item of items) {
     const name = item.item_number || item.description.slice(0, 40) || "Position";
 
+    if (item.working_time && annualWorkingHours(item) === null) {
+      issues.push({ itemId: item.id, field: "document", level: "error",
+        message: `Zeitbezug für Position ${name} ist nicht eindeutig.`,
+        hint: "Stunden je Einsatz, Jahresstunden und Bewertungsmengen mit dem Original abgleichen. Bis zur Klärung keine Preisempfehlung." });
+    }
     if (!item.description.trim()) {
       issues.push({
         itemId: item.id,
@@ -37,7 +43,7 @@ export function validateItems(items: LvNormalizedItem[]): LvValidationIssue[] {
         hint: "Einheit ergänzen (m², Stk, Std, Monat, pauschal).",
       });
     }
-    if (pricingFrequency(item).perYear === null || !Number.isFinite(pricingFrequency(item).perYear!) || pricingFrequency(item).perYear! <= 0) {
+    if (item.working_time?.basis !== "evaluation_total" && item.working_time?.basis !== "annual_total" && (pricingFrequency(item).perYear === null || !Number.isFinite(pricingFrequency(item).perYear!) || pricingFrequency(item).perYear! <= 0)) {
       issues.push({
         itemId: item.id,
         field: "frequency",

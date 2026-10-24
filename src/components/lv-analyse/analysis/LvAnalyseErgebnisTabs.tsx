@@ -116,14 +116,16 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
       {/* 3) Arbeitsstunden */}
       <TabsContent value="hours" className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-4">
-          <Kpi label="Stunden je Einsatz" value={formatNumber(hours.totalHours)} />
-          <Kpi label="Jahresstunden gesamt" value={formatNumber(hours.annualHoursTotal)} />
-          <Kpi label="Monatsstunden gesamt" value={formatNumber(hours.monthlyHoursTotal)} />
+          <Kpi label="Davon nur zur Angebotswertung" value={formatNumber(hours.evaluationHours)} />
+          <Kpi label="Jahresstunden inkl. Wertungsansätze" value={formatNumber(hours.annualHoursTotal)} />
+          <Kpi label="Monatsdurchschnitt inkl. Wertung" value={formatNumber(hours.monthlyHoursTotal)} />
           <Kpi
             label={`Geschätzt aus Fläche (${formatNumber(hours.performanceRate)} m²/Std.)`}
             value={formatNumber(hours.estimatedFromArea)}
           />
         </div>
+        <p className="text-sm text-muted-foreground">Bewertungsansätze für Wochenendabrufe und fiktive Kontingente sind keine garantierten Aufträge.</p>
+        {hours.unresolvedItems > 0 && <p role="alert" className="text-sm text-destructive">Zeitbezug bei {hours.unresolvedItems} Position(en) ungeklärt. Angezeigte Stunden sind unvollständig; keine Preisempfehlung bis zur Prüfung.</p>}
         <CategoryTable rows={categories} column="hours" />
       </TabsContent>
 
@@ -139,7 +141,7 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
               label="Summe Positionsflächen (ggf. mehrfach)"
               value={`${formatNumber(area.totalArea)} m²`}
             />
-            <Kpi label="Jahresstunden gesamt" value={formatNumber(hours.annualHoursTotal)} />
+            <Kpi label="Jahresstunden inkl. Wertungsansätze" value={formatNumber(hours.annualHoursTotal)} />
             <Kpi label="Ohne eigenen Preis" value={String(ownSummary.openItems)} />
           </CardContent>
         </Card>
@@ -216,6 +218,7 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
 
       {/* 5) Preisempfehlung */}
       <TabsContent value="price" className="space-y-3">
+        {!price.complete && <p role="alert" className="text-sm text-destructive">Keine Preisempfehlung: ungeklärte Stunden oder Einsatzanzahlen zuerst mit dem Original prüfen.</p>}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Kalkulationsparameter</CardTitle>
@@ -245,9 +248,9 @@ export function LvAnalyseErgebnisTabs({ state }: { state: LvAnalyseState }) {
         </Card>
         <div className="grid gap-3 sm:grid-cols-4">
           <Kpi label="Kalkulierte Jahresstunden" value={formatNumber(price.annualHours)} />
-          <Kpi label="Empfehlung Jahr netto" value={formatMoney(price.recommendedAnnualNet)} />
-          <Kpi label="Empfehlung Monat netto" value={formatMoney(price.recommendedMonthlyNet)} />
-          <Kpi label="Preis je m²" value={formatMoney(price.recommendedPerSqm)} />
+          <Kpi label="Empfehlung Jahr netto" value={price.complete ? formatMoney(price.recommendedAnnualNet) : "Prüfung erforderlich"} />
+          <Kpi label="Empfehlung Monat netto" value={price.complete ? formatMoney(price.recommendedMonthlyNet) : "Prüfung erforderlich"} />
+          <Kpi label="Preis je m²" value={price.complete ? formatMoney(price.recommendedPerSqm) : "Prüfung erforderlich"} />
         </div>
         <p className="text-sm text-muted-foreground">
           {price.deltaPercent === null

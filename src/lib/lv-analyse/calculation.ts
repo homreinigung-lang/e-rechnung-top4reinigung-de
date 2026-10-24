@@ -1,3 +1,4 @@
+import { annualWorkingHours, workingTimeFrequency } from "./working-time";
 /**
  * Strikte Trennung zwischen Ausschreibungsdaten (aus dem Dokument gelesen) und
  * Kalkulationsdaten (vom Benutzer selbst eingegeben).
@@ -29,7 +30,7 @@ export const pricingQuantity = (item: LvNormalizedItem): number | null =>
 export const pricingUnit = (item: LvNormalizedItem): string =>
   item.unit.trim() || item.calculation.own_unit?.trim() || "";
 export const pricingFrequency = (item: LvNormalizedItem) =>
-  item.calculation.own_frequency ?? item.frequency;
+  workingTimeFrequency(item);
 
 /** Zeitansatz wird auf den verlangten Preiszeitraum verteilt, niemals die LV-Menge verändert. */
 export function timeUnitPrice(item: LvNormalizedItem): number | null {
@@ -62,6 +63,7 @@ export const ownUnitPrice = (item: LvNormalizedItem): number | null =>
 export function canRelease(item: LvNormalizedItem): boolean {
   return (
     isCalculable(item) &&
+    (!item.working_time || annualWorkingHours(item) !== null) &&
     Boolean(item.description.trim()) &&
     Boolean(pricingUnit(item)) &&
     (item.calculation.mode !== "time" || item.calculation.scope_checked === true) &&
@@ -75,6 +77,10 @@ export function updateLvItem(
   patch: Partial<LvNormalizedItem>,
 ): LvNormalizedItem {
   const next = { ...item, ...patch };
+  if (item.working_time && ["description", "quantity", "unit", "frequency", "working_hours"].some(key => key in patch)) {
+    next.working_time = { ...item.working_time, basis: "unknown", executions_per_year: null,
+      evidence: "Quelldaten geändert – Zeitbezug erneut mit dem Original prüfen." };
+  }
   next.approved = Object.keys(patch).some((key) => key !== "approved")
     ? false
     : Boolean(patch.approved) && canRelease(next);

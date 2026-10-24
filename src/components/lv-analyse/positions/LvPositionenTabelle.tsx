@@ -277,6 +277,7 @@ export function LvPositionenTabelle({
                           value={item.working_hours}
                           onChange={(v) => onUpdate(item.id, { working_hours: v })}
                         />
+                        {item.working_time && <p className="mt-1 text-xs text-muted-foreground">{item.working_time.evidence}</p>}
                       </TableCell>
                       <TableCell className="w-32">
                         {item.calculation.mode === "time" ? (
@@ -378,6 +379,7 @@ export function LvPositionenTabelle({
                 ],
                 ["Einheit", item.unit || <Placeholder />],
                 ["Intervall", item.frequency.label || <Placeholder />],
+                ...(item.working_time ? [["Zeitbezug / Nachweis", item.working_time.evidence] as [string, React.ReactNode]] : []),
                 [
                   "Fläche (m²)",
                   item.area_m2 === null ? <Placeholder /> : formatNumber(item.area_m2),
