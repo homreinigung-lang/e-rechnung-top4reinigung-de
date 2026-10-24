@@ -46,7 +46,7 @@ export type AreaSummary = {
   totalArea: number;
   itemsWithArea: number;
   itemsWithoutArea: number;
-  /** Jahresfläche = Fläche × Einsätze pro Jahr. */
+  /** Jahresfläche = Fläche × geprüfte Einsätze pro Jahr; ohne einmalige Leistungen. */
   annualArea: number;
   largest: LvNormalizedItem[];
 };
@@ -55,7 +55,11 @@ export function summarizeArea(items: LvNormalizedItem[]): AreaSummary {
   const withArea = items.filter((i) => (i.area_m2 ?? 0) > 0);
   const totalArea = withArea.reduce((s, i) => s + (i.area_m2 ?? 0), 0);
   const annualArea = withArea.reduce(
-    (s, i) => s + (i.area_m2 ?? 0) * (i.frequency.perYear ?? 0),
+    (s, i) =>
+      s +
+      (i.calculation.pricing_basis === "once"
+        ? 0
+        : (i.area_m2 ?? 0) * (pricingFrequency(i).perYear ?? 0)),
     0,
   );
   return {
@@ -108,9 +112,13 @@ export function summarizeHours(
   );
   const areaWithoutHours = items
     .filter(
-      (i) => i.calculation.mode !== "time" && (i.working_hours ?? 0) <= 0 && (i.area_m2 ?? 0) > 0,
+      (i) =>
+        i.calculation.mode !== "time" &&
+        i.calculation.pricing_basis !== "once" &&
+        (i.working_hours ?? 0) <= 0 &&
+        (i.area_m2 ?? 0) > 0,
     )
-    .reduce((s, i) => s + (i.area_m2 ?? 0) * (i.frequency.perYear ?? 1), 0);
+    .reduce((s, i) => s + (i.area_m2 ?? 0) * (pricingFrequency(i).perYear ?? 1), 0);
   const estimatedFromArea = round2(performanceRate > 0 ? areaWithoutHours / performanceRate : 0);
   const annualHoursTotal = round2(annualHours + estimatedFromArea);
   return {
@@ -120,7 +128,9 @@ export function summarizeHours(
     itemsWithHours: withHours.length,
     annualHoursTotal,
     monthlyHoursTotal: round2(annualHoursTotal / MONTHS_PER_YEAR),
-    itemsWithoutFrequency: items.filter((i) => i.frequency.perYear === null).length,
+    itemsWithoutFrequency: items.filter(
+      (i) => i.calculation.pricing_basis !== "once" && pricingFrequency(i).perYear === null,
+    ).length,
     estimatedFromArea,
     performanceRate,
   };
