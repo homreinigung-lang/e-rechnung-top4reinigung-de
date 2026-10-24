@@ -16,12 +16,16 @@ export const WORKDAYS_PER_YEAR = 250;
 /** Anzeigewert des Monatsfaktors (gerundet, nur für Texte). */
 export const WEEKS_PER_MONTH_LABEL = "4,33";
 
-/** Unterstützte Turnusse für wiederkehrende Leistungen. */
-export type RecurrenceUnit = "week" | "fortnight" | "month" | "quarter" | "year";
+/** Leistungszeiträume: einmaliger Auftrag oder wiederkehrender Turnus. */
+export type RecurrenceUnit = "week" | "fortnight" | "month" | "quarter" | "year" | "once";
 
 /** Restore only supported saved periods; retain the historic fallback for unknown values. */
 export function readRecurrenceUnit(value: unknown): RecurrenceUnit {
-  return value === "week" || value === "fortnight" || value === "quarter" || value === "year"
+  return value === "week" ||
+    value === "fortnight" ||
+    value === "quarter" ||
+    value === "year" ||
+    value === "once"
     ? value
     : "month";
 }
@@ -33,6 +37,8 @@ export function readRecurrenceUnit(value: unknown): RecurrenceUnit {
 export function visitsPerYear(frequency: number, unit: RecurrenceUnit): number {
   const times = Math.max(0, Number(frequency) || 0);
   switch (unit) {
+    case "once":
+      return 1;
     case "week":
       return times * WEEKS_PER_YEAR;
     case "fortnight":
@@ -46,13 +52,16 @@ export function visitsPerYear(frequency: number, unit: RecurrenceUnit): number {
   }
 }
 
-/** Monatsdurchschnitt aus der exakten Jahresmenge, nie aus pauschal 4 Wochen/Monat. */
+/** Monatsdurchschnitt; bei einmaliger Reinigung stattdessen genau ein Auftragseinsatz. */
 export function visitsPerMonth(frequency: number, unit: RecurrenceUnit): number {
-  return visitsPerYear(frequency, unit) / MONTHS_PER_YEAR;
+  // Einmalige Aufträge werden vollständig je Auftrag statt monatlich verteilt.
+  return unit === "once" ? 1 : visitsPerYear(frequency, unit) / MONTHS_PER_YEAR;
 }
 
 export function recurrenceUnitLabel(unit: RecurrenceUnit): string {
   switch (unit) {
+    case "once":
+      return "einmalig";
     case "week":
       return "pro Woche";
     case "fortnight":

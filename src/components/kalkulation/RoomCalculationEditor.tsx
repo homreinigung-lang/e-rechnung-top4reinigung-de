@@ -109,7 +109,7 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
     setRoomCalculation((current) => ({ ...current, enabled: true }));
     setMode("hours");
     setFrequency("1");
-    setFrequencyUnit("month");
+    if (state.frequencyUnit !== "once") setFrequencyUnit("month");
     setArea(String(roomSummary.area).replace(".", ","));
     // Stairs included in the room list must not also receive a separate floor fee.
     setStairs(false);
@@ -313,9 +313,9 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                   <Label htmlFor={`room-${index}-frequency`}>Reinigungen</Label>
                   <Input
                     id={`room-${index}-frequency`}
-                    disabled={!room.included}
+                    disabled={!room.included || state.frequencyUnit === "once"}
                     inputMode="decimal"
-                    value={room.frequency}
+                    value={state.frequencyUnit === "once" ? "1" : room.frequency}
                     placeholder="Bitte festlegen"
                     onChange={(event) => patch(room.id, { frequency: event.target.value })}
                   />
@@ -323,8 +323,8 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                 <div className="space-y-1">
                   <Label>Zeitraum</Label>
                   <Select
-                    disabled={!room.included}
-                    value={room.frequencyUnit}
+                    disabled={!room.included || state.frequencyUnit === "once"}
+                    value={state.frequencyUnit === "once" ? "once" : room.frequencyUnit}
                     onValueChange={(value) =>
                       patch(room.id, { frequencyUnit: value as RecurrenceUnit })
                     }
@@ -333,6 +333,7 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      {state.frequencyUnit === "once" && <SelectItem value="once">Einmalig</SelectItem>}
                       {units.map((unit) => (
                         <SelectItem key={unit} value={unit}>
                           {recurrenceUnitLabel(unit)}
@@ -388,7 +389,7 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
               {result && (
                 <p className="text-sm">
                   <strong>{formatNumber(result.hoursPerVisit * 60)} Min./Reinigung</strong> ·{" "}
-                  {formatNumber(result.monthlyHours)} Std./Monat
+                  {formatNumber(result.monthlyHours)} {state.frequencyUnit === "once" ? "Std./Auftrag" : "Std./Monat"}
                 </p>
               )}
             </div>
@@ -417,12 +418,12 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
           {roomSummary.rows.length} Räume · {formatNumber(roomSummary.area)} m²
         </p>
         <p className="font-semibold">
-          {formatNumber(roomSummary.monthlyHours)} Std./Monat ·{" "}
-          {formatMoney(positionsTotal(roomSummary.positions))} netto/Monat vor Zusatzleistungen und
+          {formatNumber(roomSummary.monthlyHours)} {state.frequencyUnit === "once" ? "Std./Auftrag" : "Std./Monat"} ·{" "}
+          {formatMoney(positionsTotal(roomSummary.positions))} {state.frequencyUnit === "once" ? "netto je Auftrag" : "netto/Monat"} vor Zusatzleistungen und
           Rabatt
         </p>
         <p className="text-xs text-muted-foreground">
-          Wochenbasierte Turnusse: 52 Wochen ÷ 12 Monate. Abrechenbare Stunden je Raum auf zwei
+          {state.frequencyUnit === "once" ? "Ein Einsatz je ausgewähltem Raum. " : "Wochenbasierte Turnusse: 52 Wochen ÷ 12 Monate. "}Abrechenbare Stunden je Raum auf zwei
           Nachkommastellen gerundet. Rüst-, Wege- und Nebenzeiten in den Minuten berücksichtigen
           oder als eigene Zeitposition ergänzen; gemeinsame Zeiten nur einmal pro Besuch ansetzen.
         </p>

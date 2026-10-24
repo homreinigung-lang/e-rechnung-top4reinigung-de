@@ -107,11 +107,12 @@ export function useCalculationTotals(input: {
     visitsPerMonth,
   } = input;
   const roomSummary = useMemo(
-    () => calculateRooms(roomCalculation, num(hourlyRate)),
-    [roomCalculation, hourlyRate],
+    () => calculateRooms(roomCalculation, num(hourlyRate), frequencyUnit === "once"),
+    [roomCalculation, hourlyRate, frequencyUnit],
   );
   const stagedPositionsBeforeDiscount = useMemo(() => {
     const additional = buildConsolidatedPositions({
+      oneTime: frequencyUnit === "once",
       typeValue: selected.value,
       typeLabel: selected.label,
       mode,
@@ -150,6 +151,7 @@ export function useCalculationTotals(input: {
     hours,
     hourlyRate,
     visitsPerMonth,
+    frequencyUnit,
     stairs,
     floors,
     stairRate,
@@ -309,7 +311,8 @@ export function useCalculationTotals(input: {
   const effectiveSellingRate =
     costingMonthlyHours > 0 ? round2(profitabilityRevenue / costingMonthlyHours) : 0;
   const contribution = round2(profitabilityRevenue - monthlySelfCost);
-  const contributionMargin = profitabilityRevenue > 0 ? round2((contribution / profitabilityRevenue) * 100) : 0;
+  const contributionMargin =
+    profitabilityRevenue > 0 ? round2((contribution / profitabilityRevenue) * 100) : 0;
   const economyLevel =
     effectiveSellingRate >= targetSellingRate && targetSellingRate > 0
       ? "good"
@@ -344,10 +347,11 @@ export function useCalculationTotals(input: {
         areaSqm: mode === "area" ? num(area) : analysisTotals.sqm,
         rooms: 0,
         floors: 0,
+        oneTime: frequencyUnit === "once",
         monthlyNet: suggested,
         hoursPerMonth: costingMonthlyHours,
       }),
-    [mode, area, analysisTotals, suggested, costingMonthlyHours],
+    [mode, area, analysisTotals, suggested, costingMonthlyHours, frequencyUnit],
   );
 
   /** Herkunftsbereich einer LV-Zeile (Fallback: „Kalkulation"). */

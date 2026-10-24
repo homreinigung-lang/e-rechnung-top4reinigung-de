@@ -189,7 +189,7 @@ export function readRoomCalculation(value: unknown): RoomCalculation {
   return { version: 1, enabled: data["enabled"], rooms };
 }
 
-export function calculateRooms(calculation: RoomCalculation, hourlyRate: number) {
+export function calculateRooms(calculation: RoomCalculation, hourlyRate: number, oneTime = false) {
   const errors: string[] = [];
   let area = 0;
   let monthlyHours = 0;
@@ -204,21 +204,23 @@ export function calculateRooms(calculation: RoomCalculation, hourlyRate: number)
       const manualTime = room.calculationMode === "minutes";
       const minutes = parsePositiveNumber(room.minutesPerVisit ?? "");
       const validTime = manualTime ? minutes > 0 : sqm > 0 && performance > 0;
-      if (!room.name.trim() || !validTime || frequency <= 0) {
+      if (!room.name.trim() || !validTime || (!oneTime && frequency <= 0)) {
         errors.push(
           `${label}: Raumname, ${manualTime ? "Minuten je Besuch" : "Fläche und Leistungswert"} und Turnus vollständig angeben.`,
         );
       }
       const hoursPerVisit = manualTime ? minutes / 60 : performance > 0 ? sqm / performance : 0;
-      const visits = visitsPerMonth(frequency, room.frequencyUnit);
+      const visits = oneTime ? 1 : visitsPerMonth(frequency, room.frequencyUnit);
       const billedHours = round2(hoursPerVisit * visits);
-      if (validTime && frequency > 0 && billedHours <= 0)
-        errors.push(`${label}: Stundenbedarf liegt unter 0,01 Std./Monat – Ansatz prüfen.`);
+      if (validTime && (oneTime || frequency > 0) && billedHours <= 0)
+        errors.push(
+          `${label}: Stundenbedarf liegt unter 0,01 ${oneTime ? "Std./Auftrag" : "Std./Monat"} – Ansatz prüfen.`,
+        );
       area += sqm;
       monthlyHours += billedHours;
       if (billedHours > 0 && hourlyRate > 0) {
         positions.push({
-          description: `${label}${room.floor ? ` (${room.floor})` : ""} – ${sqm > 0 ? `${formatNumber(sqm)} m², ` : ""}${room.floor_covering ? `${room.floor_covering}, ` : ""}${manualTime ? `${formatNumber(minutes)} Min./Besuch` : `${formatNumber(performance)} m²/Std.`}, ${formatNumber(frequency)} ${recurrenceUnitLabel(room.frequencyUnit)} – Monatsdurchschnitt${room.tasks?.trim() ? `; Leistungen: ${room.tasks.trim()}` : ""}`,
+          description: `${label}${room.floor ? ` (${room.floor})` : ""} – ${sqm > 0 ? `${formatNumber(sqm)} m², ` : ""}${room.floor_covering ? `${room.floor_covering}, ` : ""}${manualTime ? `${formatNumber(minutes)} Min./Besuch` : `${formatNumber(performance)} m²/Std.`}, ${oneTime ? "einmalige Reinigung" : `${formatNumber(frequency)} ${recurrenceUnitLabel(room.frequencyUnit)} – Monatsdurchschnitt`}${room.tasks?.trim() ? `; Leistungen: ${room.tasks.trim()}` : ""}`,
           quantity: billedHours,
           unit: "Std.",
           unit_price: round2(hourlyRate),

@@ -89,7 +89,7 @@ export function useCalculationSave(input: {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
 
-      const rooms = calculateRooms(roomCalculation, num(hourlyRate));
+      const rooms = calculateRooms(roomCalculation, num(hourlyRate), frequencyUnit === "once");
       if (roomCalculation.enabled && rooms.errors.length > 0)
         throw new Error(rooms.errors.join(" "));
       const payload = {
@@ -104,8 +104,9 @@ export function useCalculationSave(input: {
         price_per_sqm: num(pricePerSqm),
         hours: roomCalculation.enabled ? rooms.monthlyHours : num(hours),
         hourly_rate: num(hourlyRate),
-        frequency: roomCalculation.enabled ? 1 : num(frequency),
-        frequency_unit: roomCalculation.enabled ? "month" : frequencyUnit,
+        frequency: frequencyUnit === "once" || roomCalculation.enabled ? 1 : num(frequency),
+        frequency_unit:
+          frequencyUnit === "once" ? "once" : roomCalculation.enabled ? "month" : frequencyUnit,
         travel: num(travel),
         extras,
         stairs,

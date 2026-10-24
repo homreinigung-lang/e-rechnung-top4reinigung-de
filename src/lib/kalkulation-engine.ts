@@ -28,7 +28,6 @@ export const MIN_STAIR_RATE = STAIR_RATE_PER_FLOOR;
 import { toCents, fromCents, round2 } from "@/lib/money";
 export { toCents, fromCents, round2 };
 
-
 /** Erkennt Glas-/Fensterleistungen anhand des Positionstextes. */
 export function isGlassText(text: string): boolean {
   return /glas|fenster|verglas|scheib/i.test(text);
@@ -54,6 +53,7 @@ export type PlausibilityInput = {
   toilets?: number;
   /** Netto-Monatssumme der Kalkulation (optional, für die Preisprüfung). */
   monthlyNet?: number;
+  oneTime?: boolean;
   /** Kalkulierte Arbeitsstunden pro Monat (optional, für die Preisprüfung). */
   hoursPerMonth?: number;
 };
@@ -109,7 +109,7 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
       "Die angegebene Fläche ist ungewöhnlich klein für die genannte Raum-/Etagenanzahl. Bitte Flächenangabe kontrollieren.",
     );
   }
-  if (monthly > 0) {
+  if (!input.oneTime && monthly > 0) {
     const perSqm = monthly / area;
     if (perSqm > MAX_MONTHLY_EUR_PER_SQM) {
       warnings.push(
@@ -123,6 +123,7 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
 export type ConsolidatedInput = {
   typeValue: string;
   typeLabel: string;
+  oneTime?: boolean;
   mode: "area" | "hours";
   areaSqm: number;
   pricePerSqm: number;
@@ -149,7 +150,11 @@ export type ConsolidatedInput = {
 export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPosition[] {
   // Monatsdurchschnitte dürfen unter 1 liegen (z. B. jährlich: 1/12).
   const requestedVisits = Number(input.visitsPerMonth);
-  const visits = Number.isFinite(requestedVisits) && requestedVisits > 0 ? requestedVisits : 1;
+  const visits = input.oneTime
+    ? 1
+    : Number.isFinite(requestedVisits) && requestedVisits > 0
+      ? requestedVisits
+      : 1;
   const positions: CalcPosition[] = [];
   const glass = input.typeValue === "glas";
 
@@ -163,7 +168,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const qty = hoursPerVisit * visits;
     if (qty > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² Glasfläche, ${round2(visits)} Einsätze/Monat`,
+        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² Glasfläche, ${input.oneTime ? "einmalige Reinigung" : `${round2(visits)} Einsätze/Monat`}`,
         quantity: qty,
         unit: "Std.",
         unit_price: round2(Math.max(input.hourlyRate, GLASS_HOURLY_RATE)),
@@ -173,7 +178,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const perVisit = round2(input.areaSqm * input.pricePerSqm);
     if (perVisit > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² × ${round2(input.pricePerSqm)} €/m² je Einsatz`,
+        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² × ${round2(input.pricePerSqm)} €/m² je Einsatz${input.oneTime ? " – einmalige Reinigung" : ""}`,
         quantity: visits,
         unit: "Einsatz",
         unit_price: perVisit,
@@ -183,7 +188,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const qty = input.hours * visits;
     if (qty > 0 && input.hourlyRate > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.hours)} Std. je Einsatz, ${round2(visits)} Einsätze/Monat`,
+        description: `${input.typeLabel} – ${round2(input.hours)} Std. je Einsatz, ${input.oneTime ? "einmalige Reinigung" : `${round2(visits)} Einsätze/Monat`}`,
         quantity: qty,
         unit: "Std.",
         unit_price: round2(input.hourlyRate),
@@ -194,12 +199,13 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
   if (input.stairs) {
     const floors = Math.max(1, Math.round(input.floors || 1));
     const rate = round2(input.stairRate > 0 ? input.stairRate : MIN_STAIR_RATE);
-    const stairVisits =
-      Number.isFinite(Number(input.stairVisitsPerMonth)) && Number(input.stairVisitsPerMonth) > 0
+    const stairVisits = input.oneTime
+      ? 1
+      : Number.isFinite(Number(input.stairVisitsPerMonth)) && Number(input.stairVisitsPerMonth) > 0
         ? Number(input.stairVisitsPerMonth)
         : visits;
     positions.push({
-      description: `Treppenhausreinigung – ${floors} Etagen, ${round2(stairVisits)} Einsätze/Monat`,
+      description: `Treppenhausreinigung – ${floors} Etagen, ${input.oneTime ? "einmalige Reinigung" : `${round2(stairVisits)} Einsätze/Monat`}`,
       quantity: floors * stairVisits,
       unit: "Etage",
       unit_price: rate,

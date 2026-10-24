@@ -67,3 +67,32 @@ it("beachtet einen separaten vierteljährlichen Treppen- und Aufzugsturnus", () 
   expect(positions[1]?.quantity).toBeCloseTo(1 / 3);
   expect(positionsTotal(positions)).toBe(8.34);
 });
+
+it("berechnet eine einmalige Reinigung samt Treppenhaus, Aufzug und Anfahrt genau einmal", () => {
+  const positions = buildConsolidatedPositions({
+    ...base,
+    oneTime: true,
+    visitsPerMonth: 52,
+    stairs: true,
+    hasLift: true,
+    stairVisitsPerMonth: 8,
+    travel: 15,
+  });
+  expect(positionsTotal(positions)).toBe(160);
+  expect(positions[0]?.quantity).toBe(3);
+  expect(positions[1]?.quantity).toBe(2);
+  expect(positions[2]?.quantity).toBe(1);
+  expect(positions.map((p) => p.description).join(" ")).not.toContain("Monat");
+});
+
+it("übernimmt einmalige Flächenreinigung als vollständigen Einsatzpreis", () => {
+  const positions = buildConsolidatedPositions({
+    ...base,
+    oneTime: true,
+    mode: "area",
+    visitsPerMonth: 1 / 12,
+  });
+  expect(positionsTotal(positions)).toBe(100);
+  expect(positions[0]?.quantity).toBe(1);
+  expect(positions[0]?.description).toContain("einmalige Reinigung");
+});

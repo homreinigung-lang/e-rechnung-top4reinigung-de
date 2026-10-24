@@ -21,6 +21,7 @@ export function CalculationTransfer({ state, workflow }: {
         </div>
         {transfer.positions.length > 0 && <strong>{formatMoney(totals.netTotal)} netto</strong>}
       </div>
+      {state.frequencyUnit === "once" && <p className="text-sm font-medium">Einmalige Reinigung – Gesamtpreis für einen Einsatz.</p>}
       <div className="space-y-2 text-sm">
         {transfer.positions.map((position, index) => (
           <div key={index} className="flex flex-wrap justify-between gap-2 border-b pb-2">

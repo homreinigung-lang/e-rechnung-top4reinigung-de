@@ -308,3 +308,14 @@ describe("KI-Kalkulation nach Auftragsart", () => {
     expect(result.review_notes.some((note) => note.includes("Treppenhaus"))).toBe(true);
   });
 });
+
+it("verwendet den ausdrücklich gewählten Einmalauftrag auch für Unterhaltsreinigung", async () => {
+  const result = await generateCalculation("Unterhaltsreinigung Büro 100 m², 2 Euro pro m²", {
+    value: 1,
+    unit: "once",
+  });
+  expect(result.billing_period).toBe("once");
+  expect(result.frequency).toBe(1);
+  expect(result.items[0]?.unit).toBe("Pauschal");
+  expect(result.items[0]?.unit_price).toBe(200);
+});

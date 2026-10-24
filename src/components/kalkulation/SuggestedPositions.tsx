@@ -21,7 +21,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
-export function SuggestedPositions({ state, direct = false }: { state: KalkulationStateContext; direct?: boolean }) {
+export function SuggestedPositions({
+  state,
+  direct = false,
+}: {
+  state: KalkulationStateContext;
+  direct?: boolean;
+}) {
   const {
     aiReviewQuestions,
     aiSuggest,
@@ -103,6 +109,7 @@ export function SuggestedPositions({ state, direct = false }: { state: Kalkulati
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="once">Einmalige Reinigung</SelectItem>
                     <SelectItem value="week">Pro Woche</SelectItem>
                     <SelectItem value="fortnight">Alle 2 Wochen (14-tägig)</SelectItem>
                     <SelectItem value="month">Pro Monat</SelectItem>
@@ -282,17 +289,19 @@ export function SuggestedPositions({ state, direct = false }: { state: Kalkulati
           </p>
         )}
 
-        {!direct && <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={kiPositions.length === 0 || aiReviewQuestions.length > 0 || kiBasisChanged}
-            onClick={applyKiAnalysis}
-          >
-            <Sparkles className="size-4" /> KI-Positionen für Angebot übernehmen
-          </Button>
-        </div>}
+        {!direct && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={kiPositions.length === 0 || aiReviewQuestions.length > 0 || kiBasisChanged}
+              onClick={applyKiAnalysis}
+            >
+              <Sparkles className="size-4" /> KI-Positionen für Angebot übernehmen
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

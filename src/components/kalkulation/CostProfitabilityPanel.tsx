@@ -11,6 +11,7 @@ export function CostProfitabilityPanel({ state }: { state: KalkulationStateConte
     contribution, contributionMargin, costingMonthlyHours, monthlySelfCost,
     targetMonthlyRevenue, mode, hourlyRate, roomCalculation, setHourlyRate,
     setConfirmed, navigate } = state;
+  const once = state.frequencyUnit === "once";
   return (
         <details className="group rounded-md border">
           <summary className="cursor-pointer list-none p-3">
@@ -92,7 +93,7 @@ export function CostProfitabilityPanel({ state }: { state: KalkulationStateConte
                 <p className="font-semibold">{formatMoney(effectiveSellingRate)}</p>
               </div>
               <div className="rounded-md bg-muted/40 p-3">
-                <p className="text-xs text-muted-foreground">Deckungsbeitrag / Monat</p>
+                <p className="text-xs text-muted-foreground">{once ? "Deckungsbeitrag je Auftrag" : "Deckungsbeitrag / Monat"}</p>
                 <p className="font-semibold">{formatMoney(contribution)}</p>
               </div>
             </div>
@@ -116,16 +117,17 @@ export function CostProfitabilityPanel({ state }: { state: KalkulationStateConte
                 </strong>
                 <span>
                   Marge {formatNumber(contributionMargin)} % · {formatNumber(costingMonthlyHours)}{" "}
-                  Std./Monat
+                  {once ? "Std./Auftrag" : "Std./Monat"}
                 </span>
               </div>
               <p className="mt-1 text-xs opacity-80">
-                Monatliche Selbstkosten {formatMoney(monthlySelfCost)} · Zielumsatz bei gewünschter
+                {once ? "Selbstkosten je Auftrag" : "Monatliche Selbstkosten"} {formatMoney(monthlySelfCost)} · Zielumsatz bei gewünschter
                 Marge {formatMoney(targetMonthlyRevenue)}
               </p>
             </div>
 
             <NonproductiveTimePanel
+              oneTime={once}
               cleaningHoursPerMonth={costingMonthlyHours}
               sellingRatePerPaidHour={mode === "hours" ? num(hourlyRate) : effectiveSellingRate}
               onApplyCustomerRate={mode === "hours" && !roomCalculation.enabled && lvPositions.length === 0 ? (rate) => {

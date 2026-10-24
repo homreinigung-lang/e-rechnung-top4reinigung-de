@@ -102,9 +102,11 @@ export function useCalculationQuote(input: {
         parts.push(line);
       }
       parts.push(
-        roomCalculation.enabled
-          ? "Turnus je Raum gemäß Positionen; Abrechnung als Monatsdurchschnitt."
-          : `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(visitsPerMonth)} pro Monat`,
+        frequencyUnit === "once"
+          ? "Einmalige Reinigung: Gesamtpreis für einen Einsatz, keine monatliche Abrechnung."
+          : roomCalculation.enabled
+            ? "Turnus je Raum gemäß Positionen; Abrechnung als Monatsdurchschnitt."
+            : `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(visitsPerMonth)} pro Monat`,
       );
       if (discountReason.trim() && pct > 0) {
         parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
@@ -155,10 +157,13 @@ export function useCalculationQuote(input: {
           net_total: net,
           vat_amount: vat,
           total: grossTotal,
-          planned_hours_month: monthlyHours,
-          planned_visits_month: roomCalculation.enabled
-            ? calculateRooms(roomCalculation, 1).commonVisitsPerMonth
-            : visitsPerMonth,
+          planned_hours_month: frequencyUnit === "once" ? null : monthlyHours,
+          planned_visits_month:
+            frequencyUnit === "once"
+              ? null
+              : roomCalculation.enabled
+                ? calculateRooms(roomCalculation, 1).commonVisitsPerMonth
+                : visitsPerMonth,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;

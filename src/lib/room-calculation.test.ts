@@ -225,3 +225,19 @@ it("lädt alte Raumdaten ohne neue Felder weiter als Flächenansatz", () => {
     readRoomCalculation({ ...legacy, rooms: [{ ...legacy.rooms[0], calculationMode: "unknown" }] }),
   ).toEqual(emptyRoomCalculation());
 });
+
+it("berechnet jeden ausgewählten Raum bei einem Einmalauftrag genau einmal ohne Pflichtturnus", () => {
+  const calculation = scheduled();
+  calculation.rooms = calculation.rooms.map((r) => ({
+    ...r,
+    calculationMode: "minutes",
+    minutesPerVisit: "30",
+    frequency: "",
+  }));
+  const result = calculateRooms(calculation, 40, true);
+  expect(result.errors).toEqual([]);
+  expect(result.monthlyHours).toBe(2.5);
+  expect(positionsTotal(result.positions)).toBe(100);
+  expect(result.positions.every((p) => p.description.includes("einmalige Reinigung"))).toBe(true);
+  expect(result.positions.some((p) => p.description.includes("Monat"))).toBe(false);
+});

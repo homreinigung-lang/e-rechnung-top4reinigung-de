@@ -140,3 +140,13 @@ it("aktualisiert Glas-Selbstkosten bei Bruttolohnänderung und lässt andere Rei
   expect(renderTotals({ ...glass, glassGrossWage: "19" }).targetSellingRate).toBe(35.74);
   expect(renderTotals({ ...input, glassGrossWage: "19", raumbuch: null }).selfCostPerHour).toBe(24.5);
 });
+
+it("verwendet beim Einmalauftrag dieselben Raumstunden für den Kundenpreis und die internen Kosten", () => {
+  const input = totals();
+  const result = renderTotals({ ...input, frequencyUnit: "once" });
+  expect(result.monthlyHours).toBe(0.12);
+  expect(result.costingMonthlyHours).toBe(0.12);
+  expect(result.suggested).toBe(4.2);
+  expect(result.monthlySelfCost).toBe(2.94);
+  expect(result.stagedPositions[0]?.description).toContain("einmalige Reinigung");
+});

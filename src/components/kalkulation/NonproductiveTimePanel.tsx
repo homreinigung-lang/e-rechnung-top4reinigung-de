@@ -6,6 +6,7 @@ import { formatMoney, formatNumber } from "@/lib/format";
 import { calculateNonproductiveTime } from "@/lib/nonproductive-time";
 
 type Props = {
+  oneTime?: boolean;
   cleaningHoursPerMonth: number;
   laborCostPerHour: number;
   materialCostPerHour: number;
@@ -21,6 +22,7 @@ function positiveNumber(value: string): number {
 }
 
 export function NonproductiveTimePanel({
+  oneTime = false,
   cleaningHoursPerMonth,
   laborCostPerHour,
   materialCostPerHour,
@@ -66,27 +68,27 @@ export function NonproductiveTimePanel({
       <div className="space-y-3 border-t p-3">
         <p className="text-xs text-muted-foreground">
           Kundenkalkulation: Reinigungs-, Fahrt-, Vorbereitungs- und sonstige bezahlte Zeiten
-          zusammen mit {formatNumber(cleaningHoursPerMonth)} Reinigungsstunden pro Monat zum gleichen Stundensatz. Material nur für Reinigungsstunden.
+          zusammen mit {formatNumber(cleaningHoursPerMonth)} Reinigungsstunden {oneTime ? "je Auftrag" : "pro Monat"} zum gleichen Stundensatz. Material nur für Reinigungsstunden.
           Keine Änderung an LV-Positionen, Angeboten oder gespeicherten Daten.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1">
-            <Label htmlFor="nonproductive-travel">Bezahlte Fahrtzeit (Std./Monat)</Label>
+            <Label htmlFor="nonproductive-travel">Bezahlte Fahrtzeit ({oneTime ? "Std./Auftrag" : "Std./Monat"})</Label>
             <Input id="nonproductive-travel" inputMode="decimal" value={travel} onChange={(event) => { setTravel(event.target.value); setAppliedRate(null); }} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="nonproductive-preparation">Vorbereitung (Std./Monat)</Label>
+            <Label htmlFor="nonproductive-preparation">Vorbereitung ({oneTime ? "Std./Auftrag" : "Std./Monat"})</Label>
             <Input id="nonproductive-preparation" inputMode="decimal" value={preparation} onChange={(event) => { setPreparation(event.target.value); setAppliedRate(null); }} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="nonproductive-other">Sonstige bezahlte Zeit (Std./Monat)</Label>
+            <Label htmlFor="nonproductive-other">Sonstige bezahlte Zeit ({oneTime ? "Std./Auftrag" : "Std./Monat"})</Label>
             <Input id="nonproductive-other" inputMode="decimal" value={other} onChange={(event) => { setOther(event.target.value); setAppliedRate(null); }} />
           </div>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           <p className="text-sm">Zusätzliche Stunden: <strong>{formatNumber(comparison.nonproductiveHoursPerMonth)}</strong></p>
           <p className="text-sm">Bezahlte Stunden gesamt: <strong>{formatNumber(comparison.paidHoursPerMonth)}</strong></p>
-          <p className="text-sm">Monatliche Gesamtkosten: <strong>{formatMoney(comparison.totalMonthlyCost)}</strong></p>
+          <p className="text-sm">{oneTime ? "Gesamtkosten je Auftrag:" : "Monatliche Gesamtkosten:"} <strong>{formatMoney(comparison.totalMonthlyCost)}</strong></p>
           <p className="text-sm">Kostendeckend / Reinigungsstd.: <strong>{comparison.breakEvenPerCleaningHour === null ? "–" : formatMoney(comparison.breakEvenPerCleaningHour)}</strong></p>
           <p className="text-sm">Zielpreis / Reinigungsstd.: <strong>{comparison.targetPerCleaningHour === null ? "–" : formatMoney(comparison.targetPerCleaningHour)}</strong></p>
         </div>
