@@ -3,6 +3,7 @@ import type { LvFrequency, LvNormalizedItem, LvWorkingTime } from "./types";
 /** Explicit document counts override a generic weekly extrapolation. */
 export function workingTimeFrequency(item: LvNormalizedItem): LvFrequency {
   if (item.calculation.own_frequency) return item.calculation.own_frequency;
+  if (item.working_time?.basis === "unknown") return { label: "Zeitbezug im Original prüfen", perYear: null };
   const count = item.working_time?.executions_per_year;
   return count != null && Number.isFinite(count) && count > 0
     ? { label: `${count} Einsätze/Jahr laut Dokument`, perYear: count }

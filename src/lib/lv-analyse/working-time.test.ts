@@ -178,3 +178,14 @@ it("multipliziert ausdrücklich ausgewiesene Jahresstunden nicht ein zweites Mal
   );
   expect(summarizeHours([item]).annualHoursTotal).toBe(960);
 });
+
+it("verwendet nach unklarer Quelle keinen alten Wochenturnus für neue Zeitpreise", () => {
+  const text = priceSheet(144, 3, 5, 5, 24).replace("SAMSTAG x 5", "SAMSTAG x 6");
+  const items = reconcileWorkingTime(rows(3, 144, 24, "3x wöchentlich"), text);
+  const row = items[1]!;
+  row.frequency = { label: "wöchentlich", perYear: 52 };
+  row.calculation = { ...emptyCalculation(), mode: "time", minutes_per_execution: 180, hourly_rate: 32, pricing_basis: "year", scope_checked: true };
+  expect(canRelease(row)).toBe(false);
+  row.calculation.own_frequency = { label: "manuell geprüft", perYear: 5 };
+  expect(canRelease(row)).toBe(true);
+});
