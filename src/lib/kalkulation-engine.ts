@@ -147,7 +147,9 @@ export type ConsolidatedInput = {
  * Jede Position ist kaufmännisch auf 2 Nachkommastellen gerundet.
  */
 export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPosition[] {
-  const visits = Math.max(1, Number(input.visitsPerMonth) || 1);
+  // Monatsdurchschnitte dürfen unter 1 liegen (z. B. jährlich: 1/12).
+  const requestedVisits = Number(input.visitsPerMonth);
+  const visits = Number.isFinite(requestedVisits) && requestedVisits > 0 ? requestedVisits : 1;
   const positions: CalcPosition[] = [];
   const glass = input.typeValue === "glas";
 
@@ -193,8 +195,8 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const floors = Math.max(1, Math.round(input.floors || 1));
     const rate = round2(input.stairRate > 0 ? input.stairRate : MIN_STAIR_RATE);
     const stairVisits =
-      Number(input.stairVisitsPerMonth) > 0
-        ? Math.max(1, Number(input.stairVisitsPerMonth))
+      Number.isFinite(Number(input.stairVisitsPerMonth)) && Number(input.stairVisitsPerMonth) > 0
+        ? Number(input.stairVisitsPerMonth)
         : visits;
     positions.push({
       description: `Treppenhausreinigung – ${floors} Etagen, ${round2(stairVisits)} Einsätze/Monat`,
