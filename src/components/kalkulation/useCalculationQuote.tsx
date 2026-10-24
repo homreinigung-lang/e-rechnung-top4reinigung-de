@@ -157,10 +157,10 @@ export function useCalculationQuote(input: {
           net_total: net,
           vat_amount: vat,
           total: grossTotal,
-          planned_hours_month: frequencyUnit === "once" ? null : monthlyHours,
+          planned_hours_month: frequencyUnit === "once" ? 0 : monthlyHours,
           planned_visits_month:
             frequencyUnit === "once"
-              ? null
+              ? 0
               : roomCalculation.enabled
                 ? calculateRooms(roomCalculation, 1).commonVisitsPerMonth
                 : visitsPerMonth,

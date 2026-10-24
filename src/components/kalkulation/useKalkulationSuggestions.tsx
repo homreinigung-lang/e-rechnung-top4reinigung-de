@@ -107,7 +107,12 @@ export function useKalkulationSuggestions(input: {
   } = input;
   const aiSuggest = useMutation({
     mutationFn: async (recurrence?: { value: number; unit: RecurrenceUnit }) =>
-      analyze({ data: { prompt: aiPrompt, recurrence } }),
+      analyze({
+        data: {
+          prompt: aiPrompt,
+          recurrence: recurrence ?? (frequencyUnit === "once" ? { value: 1, unit: "once" } : undefined),
+        },
+      }),
     onMutate: () => {
       setKiItems([]);
       setAiReviewQuestions([]);

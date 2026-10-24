@@ -87,8 +87,8 @@ it("übernimmt den vollen Einmalpreis ohne wiederkehrende Monatsplanung ins Ange
     expect.objectContaining({
       net_total: 210,
       total: 249.9,
-      planned_hours_month: null,
-      planned_visits_month: null,
+      planned_hours_month: 0,
+      planned_visits_month: 0,
     }),
   );
   const description = update.mock.calls[0]![0].service_description;
