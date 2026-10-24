@@ -94,4 +94,8 @@ it("übernimmt den vollen Einmalpreis ohne wiederkehrende Monatsplanung ins Ange
   const description = update.mock.calls[0]![0].service_description;
   expect(description).toContain("Einmalige Reinigung: Gesamtpreis für einen Einsatz");
   expect(description).not.toContain("Einsätze/Jahr");
+  expect(description).not.toContain("Unterhaltsreinigung");
+  expect(description).not.toContain("Anfahrt");
+  expect(description).not.toContain("×");
+  expect(description).not.toContain("€");
 });

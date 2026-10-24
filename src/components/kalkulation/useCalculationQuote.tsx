@@ -4,11 +4,10 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
-import { formatMoney, formatNumber } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 import { recurrenceUnitLabel } from "@/lib/constants";
 
 import { computeDocumentTotals } from "@/lib/document-totals";
-import { round2 } from "@/lib/kalkulation-engine";
 import type { CalcPosition } from "@/lib/kalkulation-engine";
 
 import { num } from "./shared";
@@ -52,10 +51,8 @@ export function useCalculationQuote(input: {
     monthlyHours,
     navigate,
     note,
-    pct,
     proposalText,
     proposalTitle,
-    selected,
     taxMode,
     vatRate,
     visitsPerMonth,
@@ -83,24 +80,9 @@ export function useCalculationQuote(input: {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
 
-      /**
-       * Die Leistungsbeschreibung wird aus den tatsächlich abgerechneten
-       * Positionen abgeleitet – nicht aus dem Formularzustand. So kann der
-       * Text nie eine andere Abrechnungsmethode (m² statt Std.) nennen als
-       * die, nach der wirklich fakturiert wird.
-       */
-      const isHourUnit = (u: string) => /^(std|stunde)/i.test(u.trim());
-      const parts: string[] = [selected.label];
-      for (const p of positions) {
-        if (p.unit_price < 0) {
-          parts.push(`${p.description}: ${formatMoney(p.unit_price)}`);
-          continue;
-        }
-        const line = isHourUnit(p.unit)
-          ? `${p.description}: ${formatNumber(p.quantity)} Std. × ${formatMoney(p.unit_price)}/Std. = ${formatMoney(round2(p.quantity * p.unit_price))}`
-          : `${p.description}: ${formatNumber(p.quantity)} ${p.unit} × ${formatMoney(p.unit_price)} = ${formatMoney(round2(p.quantity * p.unit_price))}`;
-        parts.push(line);
-      }
+      // Prices, quantities, service names and discounts already appear in the
+      // item table. Only additional scope and billing information belongs here.
+      const parts: string[] = [];
       parts.push(
         frequencyUnit === "once"
           ? "Einmalige Reinigung: Gesamtpreis für einen Einsatz, keine monatliche Abrechnung."
@@ -108,10 +90,6 @@ export function useCalculationQuote(input: {
             ? "Turnus je Raum gemäß Positionen; Abrechnung als Monatsdurchschnitt."
             : `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(visitsPerMonth)} pro Monat`,
       );
-      if (discountReason.trim() && pct > 0) {
-        parts.push(`Rabatt ${formatNumber(pct)} % – ${discountReason.trim()}`);
-      }
-
       if (note.trim()) parts.push(note.trim());
 
       const { error: itemError } = await supabase.from("document_items").insert(
