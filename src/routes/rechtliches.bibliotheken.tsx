@@ -135,7 +135,7 @@ const libs: Lib[] = [
     url: "https://react-hook-form.com",
     use: "Formulare",
   },
-  { name: "Zod", version: "3.x", license: "MIT", url: "https://zod.dev", use: "Validierung" },
+  { name: "Zod", version: "4.x", license: "MIT", url: "https://zod.dev", use: "Validierung" },
   {
     name: "Recharts",
     version: "2.15",
