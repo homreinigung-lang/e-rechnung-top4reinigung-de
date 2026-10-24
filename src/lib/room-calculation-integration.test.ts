@@ -1,3 +1,5 @@
+import { PriceOverview } from "@/components/kalkulation/PriceOverview";
+import { formatMoney } from "./format";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
@@ -149,4 +151,36 @@ it("verwendet beim Einmalauftrag dieselben Raumstunden für den Kundenpreis und 
   expect(result.suggested).toBe(4.2);
   expect(result.monthlySelfCost).toBe(2.94);
   expect(result.stagedPositions[0]?.description).toContain("einmalige Reinigung");
+});
+
+it.each([
+  { unit: "month" as const, visits: 2, cost: 147, price: 240 },
+  { unit: "quarter" as const, visits: 1 / 3, cost: 24.5, price: 40 },
+  { unit: "year" as const, visits: 1 / 12, cost: 6.13, price: 10 },
+  { unit: "once" as const, visits: 1, cost: 73.5, price: 120 },
+])("vergleicht Kosten und Preis bei $unit im gleichen Zeitraum", ({ unit, visits, cost, price }) => {
+  const result = renderTotals({ ...totals(false), raumbuch: null, hours: "3", hourlyRate: "40", frequencyUnit: unit, visitsPerMonth: visits });
+  expect(result.monthlySelfCost).toBe(cost);
+  expect(result.suggested).toBe(price);
+  const html = renderToStaticMarkup(createElement(PriceOverview, {
+    oneTime: unit === "once", minimum: result.monthlySelfCost,
+    recommended: result.targetMonthlyRevenue, customer: result.suggested,
+  }));
+  expect(html).toContain(unit === "once" ? "je Auftrag" : "im Monatsdurchschnitt");
+  expect(html).toContain(formatMoney(cost));
+  expect(html).toContain(formatMoney(result.contribution));
+  expect(html).not.toContain("unter Kosten!");
+});
+
+it("berücksichtigt Rabatte bei der Warnung vor einem Preis unter Selbstkosten", () => {
+  const result = renderTotals({ ...totals(false), raumbuch: null, hours: "3", hourlyRate: "40", visitsPerMonth: 1, pct: 50 });
+  expect(result.subtotal).toBe(120);
+  expect(result.suggested).toBe(60);
+  expect(result.monthlySelfCost).toBe(73.5);
+  const html = renderToStaticMarkup(createElement(PriceOverview, {
+    oneTime: false, minimum: result.monthlySelfCost,
+    recommended: result.targetMonthlyRevenue, customer: result.suggested,
+  }));
+  expect(html).toContain("unter Kosten!");
+  expect(html).toContain(formatMoney(-13.5));
 });

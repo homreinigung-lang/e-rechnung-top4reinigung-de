@@ -1,3 +1,4 @@
+import { PriceOverview } from "./PriceOverview";
 import { DiscountPanel } from "./DiscountPanel";
 import { TaxModePanel } from "./TaxModePanel";
 import { LvTotalsPanel } from "./LvTotalsPanel";
@@ -124,10 +125,6 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
   const validEstimate = num(area) > 0 && productivity > 0 && Number.isInteger(workers) && workers >= 1 && workers <= 100;
   const previewCleaningHours = mode === "hours" ? num(hours) : estimatedLaborHours;
   const previewAvailable = mode === "hours" && !roomCalculation.enabled && lvPositions.length === 0 && previewCleaningHours > 0;
-  const previewMinimum = previewCleaningHours * selfCostPerHour;
-  const previewRecommended = previewCleaningHours * targetSellingRate;
-  const previewCustomer = subtotal;
-  const previewDifference = previewCustomer - previewMinimum;
   return (
     <Card>
       <CardHeader>
@@ -188,16 +185,12 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
           </div>
         </details>
         {previewAvailable && (
-          <div className="rounded-md border p-3 space-y-2 text-sm">
-            <p className="font-medium">Preisübersicht pro Einsatz (netto)</p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <div className="rounded bg-muted/40 p-2"><p className="text-xs text-muted-foreground">Mindestpreis (Kosten)</p><strong>{formatMoney(previewMinimum)}</strong></div>
-              <div className="rounded bg-muted/40 p-2"><p className="text-xs text-muted-foreground">Empfohlener Preis (Ziel)</p><strong>{formatMoney(previewRecommended)}</strong></div>
-              <div className="rounded bg-muted/40 p-2"><p className="text-xs text-muted-foreground">Kundenpreis (aktuell)</p><strong>{formatMoney(previewCustomer)}</strong></div>
-            </div>
-            <p className={previewDifference < 0 ? "font-medium text-destructive" : "text-muted-foreground"}>Differenz zum Mindestpreis: {formatMoney(previewDifference)} {previewDifference < 0 ? "– unter Kosten!" : "– vor weiteren nicht erfassten Kosten"}</p>
-            <p className="text-xs text-muted-foreground">Orientierung anhand der aktuell übernommenen Arbeitsstunden und Kosten pro Reinigungsstunde. Anfahrt und Zusatzleistungen sind im aktuellen Kundenpreis enthalten, aber zusätzliche bezahlte Fahr- und Rüstzeiten müssen separat geprüft werden. Kein automatisches Speichern oder Ändern von Angeboten.</p>
-          </div>
+          <PriceOverview
+            oneTime={state.frequencyUnit === "once"}
+            minimum={monthlySelfCost}
+            recommended={targetMonthlyRevenue}
+            customer={suggested}
+          />
         )}
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
