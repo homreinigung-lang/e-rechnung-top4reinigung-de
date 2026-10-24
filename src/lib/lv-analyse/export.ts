@@ -47,7 +47,7 @@ export function reviewFields(item: LvNormalizedItem): ReviewField[] {
   if (!item.description.trim()) out.add("description");
   if (item.quantity === null || item.quantity <= 0) out.add("quantity");
   if (!item.unit.trim()) out.add("unit");
-  if (item.frequency.perYear === null) out.add("frequency");
+  if (item.working_time?.basis !== "evaluation_total" && item.working_time?.basis !== "annual_total" && pricingFrequency(item).perYear === null) out.add("frequency");
   if (item.area_m2 === null) out.add("area_m2");
   if (item.working_hours === null) out.add("working_hours");
   if (!hasOwnPrice(item)) out.add("unit_price");
@@ -130,6 +130,10 @@ export const CALCULATION_HEADERS = [
   "Jahrespreis (€)",
   "Angebots-Einheitspreis inkl. Zuschläge (€)",
   "Leistungsumfang auf Doppelberechnung geprüft",
+  "Zeitbezug laut Dokument",
+  "Einsätze/Jahr laut Dokument",
+  "Nur Angebotswertung (kein garantierter Abruf)",
+  "Quelle des Zeitansatzes",
 ] as const;
 
 export const EXPORT_HEADERS = [...TENDER_HEADERS, ...CALCULATION_HEADERS] as const;
@@ -188,6 +192,10 @@ export function buildExportRows(items: LvNormalizedItem[]): string[][] {
       own(annualOfferPrice(item)),
       own(price !== null && pricingQuantity(item) ? price / pricingQuantity(item)! : null),
       item.calculation.scope_checked === true ? "ja" : "nein",
+      item.working_time?.basis ?? "",
+      own(item.working_time?.executions_per_year ?? null),
+      item.working_time?.evaluation_only ? "ja" : "nein",
+      item.working_time?.evidence ?? "",
     ];
   });
 }
@@ -357,6 +365,7 @@ export async function buildXlsx(
 export type PdfReportSummary = {
   totalArea: number;
   totalHours: number;
+  evaluationHours?: number;
   totalCost: number;
   /** Steuersatz aus den Firmeneinstellungen. */
   vatRate?: number;
@@ -395,6 +404,10 @@ export async function buildPdfReport(
     y,
   );
   y += 4.5;
+  if ((summary.evaluationHours ?? 0) > 0) {
+    doc.text(`Davon nur zur Angebotswertung: ${summary.evaluationHours!.toLocaleString("de-DE")} Std.; kein garantierter Abruf.`, marginX, y);
+    y += 4.5;
+  }
   doc.text(
     `Summe Positionspreise netto (je Preisbezug, ggf. gemischt): ${summary.totalCost.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
     marginX,
@@ -468,7 +481,7 @@ export async function buildPdfReport(
   for (const row of rows) {
     const values = [
       row[0],
-      `${row[1]}\nPreisbezug: ${row[21]}${row[22]?.startsWith("Zeitansatz") ? `; ${row[23]} Personalmin./Ausführung; ${row[24]} €/Std.` : ""}\nLV-Menge/Einheit: ${row[3]} ${row[4]}`,
+      `${row[1]}${row[35] ? `\nZeitnachweis: ${row[35]}` : ""}\nPreisbezug: ${row[21]}${row[22]?.startsWith("Zeitansatz") ? `; ${row[23]} Personalmin./Ausführung; ${row[24]} €/Std.` : ""}\nLV-Menge/Einheit: ${row[3]} ${row[4]}`,
       row[27],
       row[28],
       row[25],

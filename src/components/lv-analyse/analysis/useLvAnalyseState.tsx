@@ -321,6 +321,7 @@ export function useLvAnalyseState() {
         const blob = await buildPdfReport(result, exportItems, {
           totalArea: exportArea.totalArea,
           totalHours: exportHours.annualHoursTotal,
+          evaluationHours: exportHours.evaluationHours,
           totalCost: exportCost.net,
           vatRate: companyVatRate,
           itemsWithoutFrequency: exportCost.itemsWithoutFrequency,

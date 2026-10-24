@@ -117,6 +117,10 @@ export type RawItem = {
   frequency?: unknown;
   area_m2?: unknown;
   working_hours?: unknown;
+  working_hours_basis?: unknown;
+  executions_per_year?: unknown;
+  evaluation_only?: unknown;
+  hours_evidence?: unknown;
   unit_price?: unknown;
   total_price?: unknown;
   vat_rate?: unknown;
@@ -173,6 +177,15 @@ export function normalizeItem(raw: RawItem, method: string): LvNormalizedItem {
     frequency,
     area_m2: area,
     working_hours: hours,
+    ...(hours != null && hours > 0 && raw.working_hours_basis ? {
+      working_time: {
+        basis: (["execution", "annual_total", "evaluation_total", "unknown"].includes(String(raw.working_hours_basis))
+          ? raw.working_hours_basis : "unknown") as NonNullable<LvNormalizedItem["working_time"]>["basis"],
+        executions_per_year: (toNumberOrNull(raw.executions_per_year) ?? 0) > 0 ? toNumberOrNull(raw.executions_per_year) : null,
+        evaluation_only: raw.evaluation_only === true,
+        evidence: String(raw.hours_evidence ?? "").trim(),
+      },
+    } : {}),
     unit_price: unitPrice,
     total_price: total,
     // 0 bedeutet in KI-/Tabellenrohdaten „nicht erkannt“ – sonst würde später

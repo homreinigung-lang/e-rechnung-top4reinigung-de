@@ -51,6 +51,13 @@ export type LvCalculation = {
 
 export type LvCalcStatus = "not_calculated" | "calculated_review" | "released";
 
+export type LvWorkingTime = {
+  basis: "execution" | "annual_total" | "evaluation_total" | "unknown";
+  executions_per_year: number | null;
+  evaluation_only: boolean;
+  evidence: string;
+};
+
 /** Eine normalisierte Position aus der Ausschreibung. */
 export type LvNormalizedItem = {
   id: string;
@@ -64,6 +71,7 @@ export type LvNormalizedItem = {
   frequency: LvFrequency;
   area_m2: number | null;
   working_hours: number | null;
+  working_time?: LvWorkingTime;
   /** Im Dokument genannter Einheitspreis (Ausschreibungsdatum) – NIE eigener Preis. */
   unit_price: number | null;
   /** Im Dokument genannter Gesamtpreis – NIE eigener Preis. */

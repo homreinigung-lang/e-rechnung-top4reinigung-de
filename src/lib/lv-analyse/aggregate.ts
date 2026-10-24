@@ -1,3 +1,4 @@
+import { annualWorkingHours } from "./working-time";
 import { MONTHS_PER_YEAR } from "@/lib/constants";
 import { fromCents, toCents } from "@/lib/kalkulation-engine";
 import { annualOfferPrice, isCalculable, offerPrice, pricingFrequency } from "./calculation";
@@ -25,10 +26,7 @@ export function aggregateByCategory(items: LvNormalizedItem[]): CategoryAggregat
     };
     entry.items += 1;
     entry.area_m2 += item.area_m2 ?? 0;
-    entry.hours +=
-      item.calculation.mode === "time"
-        ? (item.calculation.minutes_per_execution ?? 0) / 60
-        : (item.working_hours ?? 0);
+    entry.hours += annualWorkingHours(item) ?? 0;
     entry.total += offerPrice(item) ?? 0;
     map.set(item.category, entry);
   }
@@ -72,6 +70,8 @@ export function summarizeArea(items: LvNormalizedItem[]): AreaSummary {
 }
 
 export type HoursSummary = {
+  evaluationHours: number;
+  unresolvedItems: number;
   totalHours: number;
   annualHours: number;
   monthlyHours: number;
@@ -102,18 +102,17 @@ export function summarizeHours(
       : (i.working_hours ?? 0);
   const withHours = items.filter((i) => hoursFor(i) > 0);
   const totalHours = withHours.reduce((s, i) => s + hoursFor(i), 0);
-  const annualHours = withHours.reduce(
-    (s, i) =>
-      s +
-      (i.calculation.pricing_basis === "once"
-        ? 0
-        : hoursFor(i) * (pricingFrequency(i).perYear ?? 1)),
-    0,
-  );
+  const annualHours = withHours.reduce((sum, item) => sum + (annualWorkingHours(item) ?? 0), 0);
+  const evaluationHours = withHours.filter(i => i.working_time?.evaluation_only)
+    .reduce((sum, item) => sum + (annualWorkingHours(item) ?? 0), 0);
+  const unresolvedItems = items.filter(i => i.calculation.pricing_basis !== "once" &&
+    ((i.working_time && annualWorkingHours(i) === null) ||
+    (i.calculation.mode === "time" && annualWorkingHours(i) === null))).length;
   const areaWithoutHours = items
     .filter(
       (i) =>
         i.calculation.mode !== "time" &&
+        !i.working_time &&
         i.calculation.pricing_basis !== "once" &&
         (i.working_hours ?? 0) <= 0 &&
         (i.area_m2 ?? 0) > 0,
@@ -122,6 +121,8 @@ export function summarizeHours(
   const estimatedFromArea = round2(performanceRate > 0 ? areaWithoutHours / performanceRate : 0);
   const annualHoursTotal = round2(annualHours + estimatedFromArea);
   return {
+    evaluationHours: round2(evaluationHours),
+    unresolvedItems,
     totalHours: round2(totalHours),
     annualHours: round2(annualHours),
     monthlyHours: round2(annualHours / MONTHS_PER_YEAR),
@@ -129,7 +130,7 @@ export function summarizeHours(
     annualHoursTotal,
     monthlyHoursTotal: round2(annualHoursTotal / MONTHS_PER_YEAR),
     itemsWithoutFrequency: items.filter(
-      (i) => i.calculation.pricing_basis !== "once" && pricingFrequency(i).perYear === null,
+      (i) => i.calculation.pricing_basis !== "once" && i.working_time?.basis !== "evaluation_total" && i.working_time?.basis !== "annual_total" && pricingFrequency(i).perYear === null,
     ).length,
     estimatedFromArea,
     performanceRate,
@@ -200,6 +201,7 @@ export function summarizeCost(
 }
 
 export type PriceRecommendation = {
+  complete: boolean;
   hourlyRate: number;
   annualHours: number;
   laborCost: number;
@@ -233,13 +235,14 @@ export function recommendPrice(
 ): PriceRecommendation {
   const hours = summarizeHours(items, inputs.performanceRate);
   // Einheitliche Stundenbasis wie in den Reitern „Arbeitsstunden“ und „Kostenanalyse“.
-  const annualHours = hours.annualHoursTotal;
+  const annualHours = hours.unresolvedItems > 0 ? 0 : hours.annualHoursTotal;
   const labor = annualHours * inputs.hourlyRate;
   const withOverhead = labor * (1 + inputs.overheadPercent / 100);
   const recommended = round2(withOverhead * (1 + inputs.profitPercent / 100));
   const area = summarizeArea(items).totalArea;
   const documentAnnualNet = summarizeCost(items, []).annualNet; // eigene Jahressumme
   return {
+    complete: hours.unresolvedItems === 0,
     hourlyRate: inputs.hourlyRate,
     annualHours,
     laborCost: round2(labor),

@@ -27,7 +27,7 @@ export function CategoryTable({
   if (rows.length === 0) {
     return <p className="text-sm text-muted-foreground">Keine Daten vorhanden.</p>;
   }
-  const header = column === "area_m2" ? "Fläche m²" : column === "hours" ? "Stunden" : "Betrag €";
+  const header = column === "area_m2" ? "Fläche m²" : column === "hours" ? "Jahresstunden inkl. Wertung" : "Betrag €";
   return (
     <Table className="text-sm">
       <TableHeader>

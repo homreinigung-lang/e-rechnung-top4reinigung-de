@@ -1,3 +1,4 @@
+import { reconcileWorkingTime } from "./working-time";
 import {
   cleanItems,
   extractDocument,
@@ -303,7 +304,7 @@ export async function analyseLvFile(file: File, deps: AnalyseDeps = {}): Promise
   }
 
   // Kalkulationsfelder bleiben leer, keine Freigabe, feste Bindung an diese Analyse-ID.
-  items = stampAnalysis(items, analysisId);
+  items = reconcileWorkingTime(stampAnalysis(items, analysisId), text);
 
   const issues = validateItems(items);
   const { status, statusMessage, recommendedAction } = describeStatus(
