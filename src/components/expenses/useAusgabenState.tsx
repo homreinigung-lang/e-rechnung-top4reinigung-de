@@ -1,3 +1,4 @@
+import { processReceipt, includeSavedExpense } from "@/lib/receipt-processing";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -79,17 +80,16 @@ export function useAusgabenState() {
   async function handleReceipt(file: File) {
     setEInvoice(null);
     setReceiptToRetry(file);
-    const scan = await analyze(file);
-
     try {
-      const storedFile = file.type.startsWith("image/")
-        ? await receiptFileToPdf(file, {
-            date: scan?.expense_date || "",
-            category: scan?.category || form.category,
-            ...(scan?.supplier ? { supplier: scan.supplier } : {}),
-          })
-        : file;
-      const path = await uploadUserFile(storedFile, "belege");
+      const path = await processReceipt(file, {
+        analyze,
+        prepare: (source, scan) => receiptFileToPdf(source, {
+          date: scan?.expense_date || "",
+          category: scan?.category || form.category,
+          ...(scan?.supplier ? { supplier: scan.supplier } : {}),
+        }),
+        upload: stored => uploadUserFile(stored, "belege"),
+      });
       setForm((f) => ({ ...f, receipt_url: path }));
     } catch {
       toast.error("Beleg konnte nicht gespeichert werden.");
@@ -178,18 +178,15 @@ export function useAusgabenState() {
         notes: form.notes,
         receipt_url: form.receipt_url,
         project_id: form.project_id || null,
-      } as never).select("id, expense_date").single();
+      } as never).select("*").single();
       if (error) throw error;
       if (!savedExpense?.id) throw new Error("Speichern konnte nicht bestätigt werden.");
       return savedExpense;
     },
-    onSuccess: async (savedExpense) => {
-      await queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      const refreshed = queryClient.getQueryData<Array<{ id: string }>>(["expenses"]);
-      if (!refreshed?.some((row) => row.id === savedExpense.id)) {
-        toast.warning("Ausgabe gespeichert, aber in der Liste noch nicht sichtbar. Bitte Ansicht aktualisieren.");
-        return;
-      }
+    onSuccess: (savedExpense) => {
+      // Render only the row confirmed by the server; refresh in the background.
+      queryClient.setQueryData<ExpenseRowData[]>(["expenses"], rows =>
+        includeSavedExpense(rows, savedExpense as ExpenseRowData));
       toast.success("Ausgabe erfasst");
       setForm({ ...empty, expense_date: today(), receipt_url: "", project_id: "" });
       setScanned(false);
