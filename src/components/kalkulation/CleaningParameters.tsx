@@ -17,6 +17,7 @@ import {
 import { Mode, CLEANING_TYPES, EXTRAS, num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
 import { FloorplanAttachments } from "./FloorplanAttachments";
+import { cleaningHoursPerVisit } from "@/lib/cleaning-hours";
 
 export function CleaningParameters({
   state,
@@ -111,7 +112,14 @@ export function CleaningParameters({
             <Select
               disabled={state.roomCalculation.enabled}
               value={state.roomCalculation.enabled ? "hours" : mode}
-              onValueChange={(v) => setMode(v as Mode)}
+              onValueChange={(v) => {
+                if (v === "hours" && mode === "area" && selectedPerformanceRate) {
+                  setHours(String(cleaningHoursPerVisit({ mode: "area", typeValue: selected.value,
+                    area: num(area), glassArea: num(glassArea), hours: 0,
+                    sqmPerHour: Number(selectedPerformanceRate.sqm_per_hour) })).replace(".", ","));
+                }
+                setMode(v as Mode);
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -170,7 +178,7 @@ export function CleaningParameters({
           </div>
         )}
 
-        {state.roomCalculation.enabled || mode === "hours" ? (
+        {(
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>
@@ -178,15 +186,19 @@ export function CleaningParameters({
                   ? frequencyUnit === "once"
                     ? "Stunden je Auftrag aus Raumliste"
                     : "Stunden/Monat aus Raumliste"
-                  : "Stunden"}
+                  : mode === "area" ? "Stunden je Einsatz aus Leistungswert" : "Stunden"}
               </Label>
               <Input
-                disabled={state.roomCalculation.enabled}
+                disabled={state.roomCalculation.enabled || mode === "area"}
                 inputMode="decimal"
                 value={
                   state.roomCalculation.enabled
                     ? formatNumber(state.roomSummary.monthlyHours)
-                    : hours
+                    : mode === "area"
+                      ? formatNumber(cleaningHoursPerVisit({ mode, typeValue: selected.value,
+                          area: num(area), glassArea: num(glassArea), hours: num(hours),
+                          sqmPerHour: Number(selectedPerformanceRate?.sqm_per_hour ?? 0) }))
+                      : hours
                 }
                 onChange={(e) => setHours(e.target.value)}
               />
@@ -214,7 +226,7 @@ export function CleaningParameters({
               <p className="text-xs text-muted-foreground">Stundensatz bitte selbst eingeben. Keine festen Preisvorschläge.</p>
             </div>
           </div>
-        ) : null}
+        )}
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
