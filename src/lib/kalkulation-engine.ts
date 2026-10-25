@@ -170,12 +170,12 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
             : 0
           : 0;
     const qty = hoursPerVisit * visits;
-    if (qty > 0) {
+    if (qty > 0 && input.hourlyRate > 0) {
       positions.push({
         description: `${input.typeLabel} – ${round2(input.areaSqm)} m² Glasfläche, ${input.oneTime ? "einmalige Reinigung" : `${round2(visits)} Einsätze/Monat`}`,
         quantity: qty,
         unit: "Std.",
-        unit_price: round2(Math.max(input.hourlyRate, GLASS_HOURLY_RATE)),
+        unit_price: round2(input.hourlyRate),
       });
     }
   } else if (input.mode === "area") {

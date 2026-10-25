@@ -90,8 +90,7 @@ export function CleaningParameters({
                 setType(v);
                 const t = CLEANING_TYPES.find((x) => x.value === v);
                 if (t) {
-                  setPricePerSqm(String(t.area));
-                  setHourlyRate(String(t.hourly));
+                  setPricePerSqm("");
                 }
               }}
             >
@@ -153,7 +152,7 @@ export function CleaningParameters({
           <p className="text-xs text-muted-foreground">
             Leistungswert {selected.label}: {selectedPerformanceRate
               ? `${formatNumber(selectedPerformanceRate.sqm_per_hour)} m²/Std. (${selectedPerformanceRate.label})`
-              : "Kein passender Leistungswert hinterlegt – bitte in den Einstellungen ergänzen."}
+              : "Kein gespeicherter Leistungswert – bitte in den Einstellungen hinterlegen."}
             {selectedPerformanceRate && mode === "area" ? ` · Zeitbedarf je Einsatz: ${formatNumber(num(selected.value === "glas" ? glassArea : area) / selectedPerformanceRate.sqm_per_hour)} Std.` : ""}
           </p>
         )}
@@ -212,28 +211,7 @@ export function CleaningParameters({
                 value={hourlyRate}
                 onChange={(e) => setHourlyRate(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                Empfehlung {selected.label}: {formatMoney(selected.range[0])} –{" "}
-                {formatMoney(selected.range[1])} pro Stunde. Frei überschreibbar – die Summe
-                aktualisiert sich sofort.
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {[
-                  selected.range[0],
-                  Math.round((selected.range[0] + selected.range[1]) / 2),
-                  selected.range[1],
-                ].map((r) => (
-                  <Button
-                    key={r}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setHourlyRate(String(r))}
-                  >
-                    {formatMoney(r)}
-                  </Button>
-                ))}
-              </div>
+              <p className="text-xs text-muted-foreground">Stundensatz bitte selbst eingeben. Keine festen Preisvorschläge.</p>
             </div>
           </div>
         ) : null}
