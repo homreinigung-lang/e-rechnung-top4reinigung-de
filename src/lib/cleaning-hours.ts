@@ -13,3 +13,10 @@ export function cleaningHoursPerVisit(input: {
     ? area / input.sqmPerHour
     : 0;
 }
+
+/** Keep the derived square-metre price unrounded until the position total is rounded. */
+export function pricePerSqmFromHourly(hourlyRate: number, sqmPerHour: number): number {
+  return Number.isFinite(hourlyRate) && hourlyRate > 0 && Number.isFinite(sqmPerHour) && sqmPerHour > 0
+    ? hourlyRate / sqmPerHour
+    : 0;
+}

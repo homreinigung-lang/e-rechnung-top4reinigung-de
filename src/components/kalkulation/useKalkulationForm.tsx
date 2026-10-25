@@ -12,6 +12,7 @@ import { STAIR_RATE_PER_FLOOR, type RecurrenceUnit } from "@/lib/constants";
 import { emptyRoomCalculation, type RoomCalculation } from "@/lib/room-calculation";
 import { useRaumbuch } from "@/lib/raumbuch";
 import { findCleaningTypeRate, type PerformanceRate } from "@/lib/leistungswerte";
+import { pricePerSqmFromHourly } from "@/lib/cleaning-hours";
 
 import { type Mode, CLEANING_TYPES, type Attachment, type AiItem, num } from "./shared";
 import { getRouteApi } from "@tanstack/react-router";
@@ -114,7 +115,7 @@ export function useKalkulationForm() {
     const sqmPerHour = Number(selectedPerformanceRate?.sqm_per_hour ?? 0);
     const hourly = num(hourlyRate);
     if (sqmPerHour > 0 && hourly > 0) {
-      setPricePerSqm(String(Math.round(hourly / sqmPerHour * 10000) / 10000).replace(".", ","));
+      setPricePerSqm(String(pricePerSqmFromHourly(hourly, sqmPerHour)).replace(".", ","));
     } else {
       setPricePerSqm("");
     }
