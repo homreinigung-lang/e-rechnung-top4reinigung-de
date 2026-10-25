@@ -44,6 +44,7 @@ export function CleaningParameters({
     raumbuchApplied,
     search,
     selected,
+    selectedPerformanceRate,
     setArea,
     setExtras,
     setFloors,
@@ -148,6 +149,14 @@ export function CleaningParameters({
           </div>
         ) : null}
 
+        {!state.roomCalculation.enabled && (
+          <p className="text-xs text-muted-foreground">
+            Leistungswert {selected.label}: {selectedPerformanceRate
+              ? `${formatNumber(selectedPerformanceRate.sqm_per_hour)} m²/Std. (${selectedPerformanceRate.label})`
+              : "Kein passender Leistungswert hinterlegt – bitte in den Einstellungen ergänzen."}
+            {selectedPerformanceRate && mode === "area" ? ` · Zeitbedarf je Einsatz: ${formatNumber(num(selected.value === "glas" ? glassArea : area) / selectedPerformanceRate.sqm_per_hour)} Std.` : ""}
+          </p>
+        )}
         {selected.value === "glas" && (
           <div className="space-y-2 rounded-md border p-3">
             <Label>Glasfläche (m²) – getrennt von der Bodenfläche</Label>
@@ -157,8 +166,7 @@ export function CleaningParameters({
               onChange={(e) => setGlassArea(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Für Glas- und Fensterreinigung wird ausschließlich diese Fläche kalkuliert (Leistung:
-              40 m² pro Stunde).
+              Für Glas- und Fensterreinigung wird ausschließlich diese Fläche kalkuliert.
             </p>
           </div>
         )}

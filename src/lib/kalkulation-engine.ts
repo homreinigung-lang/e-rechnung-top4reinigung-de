@@ -123,6 +123,8 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
 export type ConsolidatedInput = {
   typeValue: string;
   typeLabel: string;
+  /** Aktueller gespeicherter Leistungswert, 0 bei fehlender Zuordnung. */
+  performanceSqmPerHour?: number;
   oneTime?: boolean;
   mode: "area" | "hours";
   areaSqm: number;
@@ -163,7 +165,9 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
       input.mode === "hours"
         ? input.hours
         : input.areaSqm > 0
-          ? input.areaSqm / GLASS_SQM_PER_HOUR
+          ? input.performanceSqmPerHour && input.performanceSqmPerHour > 0
+            ? input.areaSqm / input.performanceSqmPerHour
+            : 0
           : 0;
     const qty = hoursPerVisit * visits;
     if (qty > 0) {

@@ -81,7 +81,9 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
     vatRate,
     warnings,
   } = state;
-  const [productivityInput, setProductivityInput] = useState("120");
+  const [productivityInput, setProductivityInput] = useState("");
+  const savedProductivity = state.selectedPerformanceRate?.sqm_per_hour ?? 0;
+  useEffect(() => { setProductivityInput(savedProductivity > 0 ? String(savedProductivity) : ""); }, [type, savedProductivity]);
   const [workerInput, setWorkerInput] = useState("1");
   const isGlass = type === "glas";
   const isStaircase = type === "treppenhaus";
@@ -180,7 +182,7 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
                 </>
               ) : <p className="text-muted-foreground">Noch nicht genügend vergleichbare Cloud-Daten (mindestens 2 echte Einsätze nötig). Der Beispielwert bleibt unverändert.</p>}
             </div>}
-            {!isStaircase && !isGlass && <p className="text-xs text-muted-foreground">120 m²/Std. ist nur ein editierbarer Beispielwert, kein geprüfter Leistungswert für diese Reinigungsart. Mitarbeiterzahl verkürzt die Einsatzdauer, nicht die bezahlten Gesamtstunden. Bitte tatsächliche Leistungswerte prüfen; keine automatische Angebotsübernahme.</p>}
+            {!isStaircase && !isGlass && <p className="text-xs text-muted-foreground">Der gespeicherte Leistungswert wird beim Wechsel der Reinigungsart geladen. Ohne passenden Wert bitte die Einstellung ergänzen. Mitarbeiterzahl verkürzt nur die Einsatzdauer, nicht die bezahlten Gesamtstunden.</p>}
             <p className="text-xs text-muted-foreground">Bitte Zeit, Fläche und Preise prüfen. Keine automatische Angebotsübernahme.</p>
           </div>
         </details>

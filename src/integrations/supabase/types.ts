@@ -1302,6 +1302,7 @@ export type Database = {
           floor_covering: string
           id: string
           label: string
+          minutes_per_floor: number | null
           sqm_per_hour: number
           updated_at: string
           usage_type: string
@@ -1313,6 +1314,7 @@ export type Database = {
           floor_covering?: string
           id?: string
           label?: string
+          minutes_per_floor?: number | null
           sqm_per_hour?: number
           updated_at?: string
           usage_type?: string
@@ -1324,6 +1326,7 @@ export type Database = {
           floor_covering?: string
           id?: string
           label?: string
+          minutes_per_floor?: number | null
           sqm_per_hour?: number
           updated_at?: string
           usage_type?: string
