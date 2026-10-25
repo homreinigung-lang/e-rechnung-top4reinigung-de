@@ -143,7 +143,9 @@ export function hoursPerVisit(
 export function findCleaningTypeRate(rates: PerformanceRate[], typeValue: string, typeLabel: string): PerformanceRate | null {
   const active = rates.filter((r) => r.active !== false && Number(r.sqm_per_hour) > 0);
   if (typeValue === "glas") {
-    return active.find((r) => norm(r.label).includes("glas") || norm(r.label).includes("fenster")) ??
+    return active.find((r) => norm(r.label) === "glasreinigung") ??
+      active.find((r) => norm(r.label) === norm(typeLabel)) ??
+      active.find((r) => norm(r.label).includes("glas") || norm(r.label).includes("fenster")) ??
       active.find((r) => norm(r.usage_type).includes("glas") || norm(r.usage_type).includes("fenster")) ??
       active.find((r) => norm(r.floor_covering) === "glas") ?? null;
   }

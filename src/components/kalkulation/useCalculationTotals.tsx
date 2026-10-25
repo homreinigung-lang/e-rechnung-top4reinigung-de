@@ -1,4 +1,5 @@
 import { calculateRooms } from "@/lib/room-calculation";
+import { cleaningHoursPerVisit } from "@/lib/cleaning-hours";
 import { useEffect, useMemo } from "react";
 
 import { parseGermanNumber, taxNoteForTaxMode, vatRateForTaxMode } from "@/lib/format";
@@ -274,18 +275,19 @@ export function useCalculationTotals(input: {
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
     if (roomCalculation.enabled) return roomSummary.monthlyHours;
-    if (mode === "hours") return num(hours) * visitsPerMonth;
-    const rate = num(hourlyRate);
-    if (rate <= 0) return 0;
-    return (num(area) * num(pricePerSqm) * visitsPerMonth) / rate;
+    return cleaningHoursPerVisit({
+      mode, typeValue: selected.value, area: num(area), glassArea: num(glassArea),
+      hours: num(hours), sqmPerHour: Number(selectedPerformanceRate?.sqm_per_hour ?? 0),
+    }) * visitsPerMonth;
   }, [
     roomCalculation.enabled,
     roomSummary.monthlyHours,
     mode,
     hours,
     area,
-    pricePerSqm,
-    hourlyRate,
+    glassArea,
+    selected.value,
+    selectedPerformanceRate?.sqm_per_hour,
     visitsPerMonth,
   ]);
 
