@@ -8,6 +8,7 @@ export type PerformanceRate = {
   usage_type: string;
   floor_covering: string;
   sqm_per_hour: number;
+  minutes_per_floor?: number | null;
   active: boolean;
 };
 
