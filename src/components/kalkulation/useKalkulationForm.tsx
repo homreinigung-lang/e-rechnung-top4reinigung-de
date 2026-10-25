@@ -59,7 +59,7 @@ export function useKalkulationForm() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("performance_rates")
-        .select("id,label,usage_type,floor_covering,sqm_per_hour,active")
+        .select("id,label,usage_type,floor_covering,sqm_per_hour,minutes_per_floor,active")
         .order("label");
       if (error) throw error;
       return (data ?? []) as PerformanceRate[];
