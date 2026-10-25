@@ -1,22 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
-import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { toast } from "sonner";
-
 import { supabase } from "@/integrations/supabase/client";
-import { DEFAULT_PERFORMANCE_RATES, type PerformanceRate } from "@/lib/leistungswerte";
-import { Button } from "@/components/ui/button";
+import type { PerformanceRate } from "@/lib/leistungswerte";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-/**
- * Pflege der raumtypbezogenen Leistungswerte (m² pro Stunde).
- * Ohne eigene Einträge gelten die Standardwerte aus DEFAULT_PERFORMANCE_RATES.
- */
+const SERVICES = [
+  { key: "Unterhaltsreinigung", label: "Unterhaltsreinigung" },
+  { key: "Grundreinigung", label: "Grundreinigung" },
+  { key: "Glasreinigung", label: "Glasreinigung" },
+  { key: "Treppenhaus", label: "Treppenhausreinigung" },
+] as const;
+
+/** Vier zentrale Leistungswerte bearbeiten; Raum- und Bodenwerte bleiben in der DB erhalten. */
 export function Leistungswerte({ embedded = false }: { embedded?: boolean } = {}) {
   const queryClient = useQueryClient();
-
-  const { data: rates = [], isLoading } = useQuery({
+  const { data: rates = [], isLoading, isError } = useQuery({
     queryKey: ["performance_rates"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -27,199 +26,69 @@ export function Leistungswerte({ embedded = false }: { embedded?: boolean } = {}
       return (data ?? []) as PerformanceRate[];
     },
   });
-
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["performance_rates"] });
-  };
-
-  async function currentUserId() {
-    const { data } = await supabase.auth.getUser();
-    const id = data.user?.id;
-    if (!id) throw new Error("Nicht angemeldet");
-    return id;
-  }
-
-  const seed = useMutation({
-    mutationFn: async () => {
-      const userId = await currentUserId();
-      // Duplikate vermeiden: bereits vorhandene Kombinationen überspringen.
-      const existing = new Set(
-        rates.map((r) => `${r.usage_type.trim().toLowerCase()}|${r.floor_covering.trim().toLowerCase()}`),
-      );
-      const rows = DEFAULT_PERFORMANCE_RATES.filter(
-        (r) => !existing.has(`${r.usage_type.trim().toLowerCase()}|${r.floor_covering.trim().toLowerCase()}`),
-      ).map((r) => ({ ...r, user_id: userId }));
-      if (rows.length === 0) return 0;
-      const { error } = await supabase.from("performance_rates").insert(rows);
-      if (error) throw error;
-      return rows.length;
-    },
-    onSuccess: (inserted) => {
-      invalidate();
-      if (inserted === 0) {
-        toast.info("Alle Standardwerte sind bereits vorhanden – keine Duplikate eingefügt.");
-      } else {
-        toast.success(`${inserted} Standard-Leistungswerte eingefügt`);
-      }
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const add = useMutation({
-    mutationFn: async () => {
-      const userId = await currentUserId();
-      const { error } = await supabase.from("performance_rates").insert({
-        user_id: userId,
-        label: "Neuer Leistungswert",
-        usage_type: "",
-        floor_covering: "",
-        sqm_per_hour: 200,
-      });
-      if (error) throw error;
-    },
-    onSuccess: invalidate,
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const patch = useMutation({
     mutationFn: async ({ id, values }: { id: string; values: Partial<PerformanceRate> }) => {
       const { error } = await supabase.from("performance_rates").update(values).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: invalidate,
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("performance_rates").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: invalidate,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["performance_rates"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
   return (
     <div className={embedded ? "space-y-4 border-t pt-5" : "surface space-y-4 p-6"}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-lg font-semibold">Leistungswerte (m² pro Stunde)</h2>
-          <p className="text-sm text-muted-foreground">
-            Richtwerte je Nutzungstyp und Bodenbelag. Sie werden in der Kalkulation genutzt, um den
-            Stundenbedarf aus den erfassten Räumen zu berechnen.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {rates.length === 0 && (
-            <Button variant="outline" onClick={() => seed.mutate()} disabled={seed.isPending}>
-              <RotateCcw className="mr-2 size-4" /> Standardwerte einfügen
-            </Button>
-          )}
-          <Button onClick={() => add.mutate()} disabled={add.isPending}>
-            <Plus className="mr-2 size-4" /> Wert hinzufügen
-          </Button>
-        </div>
+      <div>
+        <h2 className="font-display text-lg font-semibold">Leistungswerte</h2>
+        <p className="text-sm text-muted-foreground">Vier Reinigungsarten – gespeicherte Werte werden für neue Kalkulationen verwendet.</p>
       </div>
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Wird geladen…</p>
-      ) : rates.length === 0 ? (
-        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-          Noch keine eigenen Werte hinterlegt – es gelten die branchenüblichen Standardwerte (z. B.
-          Büro/Teppich 250 m²/h, WC/Fliesen 60 m²/h). Über „Standardwerte einfügen“ können Sie diese
-          übernehmen und anpassen.
-        </p>
+      {isLoading ? <p>Wird geladen…</p> : isError ? (
+        <p className="text-sm text-destructive">Leistungswerte konnten nicht geladen werden.</p>
       ) : (
-        <div className="space-y-2">
-          <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1.4fr_1fr_1fr_120px_40px]">
-            <span>Bezeichnung</span>
-            <span>Nutzungstyp</span>
-            <span>Bodenbelag</span>
-            <span>m² / Stunde</span>
-            <span />
-          </div>
-          {rates.map((r) => (
-            <div
-              key={r.id}
-              className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1.4fr_1fr_1fr_120px_40px] sm:items-center sm:border-0 sm:p-1"
-            >
-              <div className="space-y-1">
-                <Label className="sm:hidden">Bezeichnung</Label>
-                <Input
-                  defaultValue={r.label}
-                  onBlur={(e) =>
-                    e.target.value !== r.label &&
-                    patch.mutate({ id: r.id, values: { label: e.target.value } })
-                  }
-                />
+        <div className="space-y-3">
+          {SERVICES.map(service => {
+            const rate = rates.find(r => r.label.trim().toLowerCase() === service.key.toLowerCase());
+            return (
+              <div key={service.key} className="grid gap-3 rounded-md border p-3 sm:grid-cols-3 sm:items-end">
+                <div className="font-medium">{service.label}</div>
+                {rate ? (
+                  <>
+                    <div className="space-y-1">
+                      <Label>Leistung (m²/Std.)</Label>
+                      <Input key={rate.id + "-sqm"} type="number" min={0.01} step="any" defaultValue={rate.sqm_per_hour}
+                        onBlur={e => {
+                          const value = Number(e.target.value);
+                          if (!Number.isFinite(value) || value <= 0) {
+                            toast.error("Leistung muss größer als 0 sein.");
+                            e.target.value = String(rate.sqm_per_hour);
+                          } else if (value !== Number(rate.sqm_per_hour)) {
+                            patch.mutate({ id: rate.id, values: { sqm_per_hour: value } });
+                          }
+                        }} />
+                    </div>
+                    {service.key === "Treppenhaus" && (
+                      <div className="space-y-1">
+                        <Label>Minuten pro Etage</Label>
+                        <Input key={rate.id + "-floor"} type="number" min={0.1} step="any" placeholder="Optional"
+                          defaultValue={rate.minutes_per_floor ?? ""}
+                          onBlur={e => {
+                            const raw = e.target.value.trim();
+                            const value = raw ? Number(raw) : null;
+                            if (value !== null && (!Number.isFinite(value) || value <= 0)) {
+                              toast.error("Minuten pro Etage müssen größer als 0 sein.");
+                              e.target.value = String(rate.minutes_per_floor ?? "");
+                            } else if (value !== (rate.minutes_per_floor ?? null)) {
+                              patch.mutate({ id: rate.id, values: { minutes_per_floor: value } });
+                            }
+                          }} />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-destructive sm:col-span-2">Kein gespeicherter Wert für {service.label} vorhanden.</p>
+                )}
               </div>
-              <div className="space-y-1">
-                <Label className="sm:hidden">Nutzungstyp</Label>
-                <Input
-                  defaultValue={r.usage_type}
-                  placeholder="z. B. Büro"
-                  onBlur={(e) =>
-                    e.target.value !== r.usage_type &&
-                    patch.mutate({ id: r.id, values: { usage_type: e.target.value } })
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="sm:hidden">Bodenbelag</Label>
-                <Input
-                  defaultValue={r.floor_covering}
-                  placeholder="z. B. Teppich"
-                  onBlur={(e) =>
-                    e.target.value !== r.floor_covering &&
-                    patch.mutate({ id: r.id, values: { floor_covering: e.target.value } })
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="sm:hidden">m² / Stunde</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  step="1"
-                  defaultValue={r.sqm_per_hour}
-                  onBlur={(e) => {
-                    const value = Number(e.target.value) || 0;
-                    if (value <= 0) {
-                      toast.error("Der Leistungswert muss größer als 0 m²/h sein – Wert wurde nicht gespeichert.");
-                      e.target.value = String(r.sqm_per_hour);
-                      return;
-                    }
-                    if (value !== Number(r.sqm_per_hour)) {
-                      patch.mutate({ id: r.id, values: { sqm_per_hour: value } });
-                    }
-                  }}
-                />
-              </div>
-              {(r.label.toLowerCase().includes("treppen") || r.usage_type.toLowerCase().includes("treppen")) && (
-                <div className="space-y-1">
-                  <Label>Minuten pro Etage (optional)</Label>
-                  <Input type="number" min={0.1} step={0.5} defaultValue={r.minutes_per_floor ?? ""}
-                    onBlur={e => {
-                      const raw = e.target.value.trim();
-                      const value = raw ? Number(raw) : null;
-                      if (value !== null && (!Number.isFinite(value) || value <= 0)) {
-                        toast.error("Minuten pro Etage müssen größer als 0 sein.");
-                        e.target.value = String(r.minutes_per_floor ?? "");
-                        return;
-                      }
-                      if (value !== (r.minutes_per_floor ?? null)) patch.mutate({ id: r.id, values: { minutes_per_floor: value } });
-                    }} />
-                </div>
-              )}
-              <ConfirmDeleteButton
-                ariaLabel="Leistungswert löschen"
-                iconClassName="size-4"
-                title="Leistungswert wirklich löschen?"
-                description={`Der Leistungswert „${r.label || "ohne Bezeichnung"}" wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
-                onConfirm={() => remove.mutate(r.id)}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
