@@ -147,6 +147,21 @@ export function findCleaningTypeRate(rates: PerformanceRate[], typeValue: string
       active.find((r) => norm(r.usage_type).includes("glas") || norm(r.usage_type).includes("fenster")) ??
       active.find((r) => norm(r.floor_covering) === "glas") ?? null;
   }
+  // Vier zentrale Leistungswerte gelten auch für abweichende Anzeigenamen.
+  const serviceLabels: Record<string, string> = {
+    unterhalt: "Unterhaltsreinigung",
+    grund: "Grundreinigung",
+    glas: "Glasreinigung",
+    treppenhaus: "Treppenhaus",
+    buero: "Unterhaltsreinigung",
+    wohn: "Unterhaltsreinigung",
+    praxis: "Unterhaltsreinigung",
+  };
+  const mapped = serviceLabels[typeValue];
+  if (mapped) {
+    const saved = active.find(r => norm(r.label) === norm(mapped));
+    if (saved) return saved;
+  }
   // Benutzerdefinierte Einträge haben Vorrang vor allgemeinen Raumwerten.
   const exact = active.find((r) => norm(r.label) === norm(typeLabel));
   if (exact) return exact;
