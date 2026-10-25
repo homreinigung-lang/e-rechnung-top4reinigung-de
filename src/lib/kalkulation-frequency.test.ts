@@ -46,6 +46,7 @@ it("verteilt jährliche Glasreinigung korrekt auf zwölf Monate", () => {
   const positions = buildConsolidatedPositions({
     ...base,
     typeValue: "glas",
+    performanceSqmPerHour: 40,
     mode: "area",
     areaSqm: 120,
     visitsPerMonth: visitsPerMonth(1, "year"),
