@@ -194,6 +194,10 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
             minimum={monthlySelfCost}
             recommended={targetMonthlyRevenue}
             customer={suggested}
+            onSelectRecommended={targetSellingRate > 0 ? () => {
+              setHourlyRate(String(targetSellingRate).replace(".", ","));
+              setConfirmed(false);
+            } : undefined}
           />
         )}
         <div className="space-y-1 text-sm">
