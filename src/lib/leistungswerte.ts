@@ -137,3 +137,19 @@ export function hoursPerVisit(
 
   return { hours, matched, unmatched };
 }
+
+/** Passenden gespeicherten Leistungswert zum Reinigungstyp wählen. */
+export function findCleaningTypeRate(rates: PerformanceRate[], typeValue: string, typeLabel: string): PerformanceRate | null {
+  const active = rates.filter((r) => r.active !== false && Number(r.sqm_per_hour) > 0);
+  if (typeValue === "glas") {
+    return active.find((r) => norm(r.label).includes("glas") || norm(r.label).includes("fenster")) ??
+      active.find((r) => norm(r.usage_type).includes("glas") || norm(r.usage_type).includes("fenster")) ??
+      active.find((r) => norm(r.floor_covering) === "glas") ?? null;
+  }
+  // Benutzerdefinierte Einträge haben Vorrang vor allgemeinen Raumwerten.
+  const exact = active.find((r) => norm(r.label) === norm(typeLabel));
+  if (exact) return exact;
+  const byType = active.find((r) => norm(r.usage_type) === norm(typeLabel));
+  if (byType) return byType;
+  return active.find((r) => matches(typeLabel, r.label) || matches(typeLabel, r.usage_type)) ?? null;
+}
