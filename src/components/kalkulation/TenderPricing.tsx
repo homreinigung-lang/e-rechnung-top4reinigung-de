@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CLEANING_TYPES, num } from "./shared";
+import { cleaningHoursPerVisit } from "@/lib/cleaning-hours";
 import { NonproductiveTimePanel } from "./NonproductiveTimePanel";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
@@ -125,8 +126,9 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
   const estimatedLaborHours = productivity > 0 ? num(area) / productivity : 0;
   const estimatedElapsedHours = workers > 0 ? estimatedLaborHours / workers : 0;
   const validEstimate = num(area) > 0 && productivity > 0 && Number.isInteger(workers) && workers >= 1 && workers <= 100;
+  const currentHours = cleaningHoursPerVisit({ mode, typeValue: type, area: num(area), glassArea: num(state.glassArea), hours: num(hours), sqmPerHour: savedProductivity });
   const previewCleaningHours = mode === "hours" ? num(hours) : estimatedLaborHours;
-  const previewAvailable = mode === "hours" && !roomCalculation.enabled && lvPositions.length === 0 && previewCleaningHours > 0;
+  const previewAvailable = !roomCalculation.enabled && lvPositions.length === 0 && currentHours > 0;
   return (
     <Card>
       <CardHeader>
@@ -145,10 +147,10 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
                 </Button>
               ))}
             </div>
-            <p>{isStaircase ? "Treppenhaus: Berechnung nach Etagen und Arbeitszeit (ohne Pflichtfläche)." : `Fläche: ${formatNumber(num(area))} m²`} · Reinigungszeit: {formatNumber(num(hours))} Std.</p>
+            <p>{isGlass ? `Glasfläche: ${formatNumber(num(state.glassArea))} m²` : `Fläche: ${formatNumber(num(area))} m²`} · Reinigungszeit: {formatNumber(currentHours)} Std. je Einsatz</p>
             <p>Selbstkosten: {formatMoney(selfCostPerHour)} / Std. · Zielpreis: {formatMoney(targetSellingRate)} / Std.</p>
             {!isStaircase && <div className="flex gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => setMode("hours")}>Nach Stunden</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => { if (mode === "area" && savedProductivity > 0) setHours(String(currentHours).replace(".", ",")); setMode("hours"); }}>Nach Stunden</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setMode("area")}>Nach Fläche</Button>
             </div>}
             {!isStaircase && !isGlass && <div className="grid gap-3 sm:grid-cols-2">

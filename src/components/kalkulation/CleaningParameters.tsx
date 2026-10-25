@@ -17,6 +17,7 @@ import {
 import { Mode, CLEANING_TYPES, EXTRAS, num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
 import { FloorplanAttachments } from "./FloorplanAttachments";
+import { WorkloadSummary } from "./WorkloadSummary";
 import { cleaningHoursPerVisit } from "@/lib/cleaning-hours";
 
 export function CleaningParameters({
@@ -132,11 +133,11 @@ export function CleaningParameters({
           </div>
         </div>
 
-        {!state.roomCalculation.enabled && mode === "area" ? (
+        {!state.roomCalculation.enabled && mode === "area" && selected.value !== "glas" ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Fläche (m²)</Label>
-              <Input inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} />
+              <Input aria-label="Fläche (m²)" placeholder="Fläche eingeben" inputMode="decimal" value={area} onChange={(e) => setArea(e.target.value)} />
               {!state.roomCalculation.enabled && raumbuchApplied && raumbuch ? (
                 <p className="text-xs text-sky-700 dark:text-sky-400">
                   Aus Raumbuch übernommen – {raumbuch.roomCount} Räume aus dem Grundriss-Scan
@@ -169,7 +170,7 @@ export function CleaningParameters({
             <Label>Glasfläche (m²) – getrennt von der Bodenfläche</Label>
             <Input
               inputMode="decimal"
-              value={glassArea}
+              aria-label="Glasfläche (m²)" placeholder="Glasfläche eingeben" value={glassArea}
               onChange={(e) => setGlassArea(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
@@ -189,7 +190,7 @@ export function CleaningParameters({
                   : mode === "area" ? "Stunden je Einsatz aus Leistungswert" : "Stunden"}
               </Label>
               <Input
-                disabled={state.roomCalculation.enabled || mode === "area"}
+                disabled={state.roomCalculation.enabled}
                 inputMode="decimal"
                 value={
                   state.roomCalculation.enabled
@@ -200,8 +201,13 @@ export function CleaningParameters({
                           sqmPerHour: Number(selectedPerformanceRate?.sqm_per_hour ?? 0) }))
                       : hours
                 }
-                onChange={(e) => setHours(e.target.value)}
+                aria-label="Arbeitszeit je Einsatz (Std.)"
+                onChange={(e) => { setHours(e.target.value); setMode("hours"); }}
               />
+              {!state.roomCalculation.enabled && <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">{mode === "area" ? "Automatisch aus Fläche und gespeichertem Leistungswert. Zum Korrigieren die Stunden direkt ändern." : "Manuell korrigierte Arbeitszeit je Einsatz."}</p>
+                <Button type="button" size="sm" variant="outline" disabled={!selectedPerformanceRate || num(selected.value === "glas" ? glassArea : area) <= 0} onClick={() => setMode("area")}>Zeit aus Leistungswert neu berechnen</Button>
+              </div>}
               {state.roomCalculation.enabled && (
                 <a href="#raumkalkulation" className="text-xs text-primary underline">
                   Räume, Leistungswerte und Turnusse bearbeiten
@@ -220,10 +226,12 @@ export function CleaningParameters({
               <Label>Stundensatz (netto)</Label>
               <Input
                 inputMode="decimal"
+                aria-label="Stundensatz (netto)"
                 value={hourlyRate}
                 onChange={(e) => setHourlyRate(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Stundensatz bitte selbst eingeben. Keine festen Preisvorschläge.</p>
+              <p className="text-xs text-muted-foreground">Stundensatz frei eingeben oder korrigieren. Kalkulierter Ziel-Stundensatz: {formatMoney(state.targetSellingRate)}.</p>
+              <Button type="button" size="sm" variant="outline" onClick={() => setHourlyRate(String(state.targetSellingRate).replace(".", ","))}>Kalkulierten Stundensatz übernehmen</Button>
             </div>
           </div>
         )}
@@ -293,6 +301,8 @@ export function CleaningParameters({
             </>
           )}
         </p>
+
+        {!state.roomCalculation.enabled && <WorkloadSummary state={state} />}
 
         {search.area ? (
           <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
