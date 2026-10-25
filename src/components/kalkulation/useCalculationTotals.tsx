@@ -51,6 +51,7 @@ export function useCalculationTotals(input: {
   profitMarkup: ReturnType<typeof useKalkulationForm>["profitMarkup"];
   raumbuch: ReturnType<typeof useKalkulationForm>["raumbuch"];
   selected: ReturnType<typeof useKalkulationForm>["selected"];
+  selectedPerformanceRate: ReturnType<typeof useKalkulationForm>["selectedPerformanceRate"];
   setConfirmed: ReturnType<typeof useKalkulationForm>["setConfirmed"];
   stairRate: ReturnType<typeof useKalkulationForm>["stairRate"];
   stairVisitsPerMonth: ReturnType<typeof useKalkulationSuggestions>["stairVisitsPerMonth"];
@@ -96,6 +97,7 @@ export function useCalculationTotals(input: {
     profitMarkup,
     raumbuch,
     selected,
+    selectedPerformanceRate,
     setConfirmed,
     stairRate,
     stairVisitsPerMonth,
@@ -115,6 +117,7 @@ export function useCalculationTotals(input: {
       oneTime: frequencyUnit === "once",
       typeValue: selected.value,
       typeLabel: selected.label,
+      performanceSqmPerHour: selectedPerformanceRate?.sqm_per_hour ?? 0,
       mode,
       // Glasreinigung rechnet mit der separat erfassten Glasfläche.
       areaSqm: roomCalculation.enabled ? 0 : selected.value === "glas" ? num(glassArea) : num(area),
@@ -143,6 +146,7 @@ export function useCalculationTotals(input: {
     roomSummary,
     selected.value,
     selected.label,
+    selectedPerformanceRate?.sqm_per_hour,
     mode,
     area,
     glassArea,
