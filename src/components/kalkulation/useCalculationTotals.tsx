@@ -51,7 +51,7 @@ export function useCalculationTotals(input: {
   profitMarkup: ReturnType<typeof useKalkulationForm>["profitMarkup"];
   raumbuch: ReturnType<typeof useKalkulationForm>["raumbuch"];
   selected: ReturnType<typeof useKalkulationForm>["selected"];
-  selectedPerformanceRate: ReturnType<typeof useKalkulationForm>["selectedPerformanceRate"];
+  selectedPerformanceRate?: ReturnType<typeof useKalkulationForm>["selectedPerformanceRate"];
   setConfirmed: ReturnType<typeof useKalkulationForm>["setConfirmed"];
   stairRate: ReturnType<typeof useKalkulationForm>["stairRate"];
   stairVisitsPerMonth: ReturnType<typeof useKalkulationSuggestions>["stairVisitsPerMonth"];
