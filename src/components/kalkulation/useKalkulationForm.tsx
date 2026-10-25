@@ -11,7 +11,7 @@ import { STAIR_RATE_PER_FLOOR, type RecurrenceUnit } from "@/lib/constants";
 
 import { emptyRoomCalculation, type RoomCalculation } from "@/lib/room-calculation";
 import { useRaumbuch } from "@/lib/raumbuch";
-import { DEFAULT_PERFORMANCE_RATES, findCleaningTypeRate, type PerformanceRate } from "@/lib/leistungswerte";
+import { findCleaningTypeRate, type PerformanceRate } from "@/lib/leistungswerte";
 
 import { type Mode, CLEANING_TYPES, type Attachment, type AiItem } from "./shared";
 import { getRouteApi } from "@tanstack/react-router";
@@ -24,9 +24,9 @@ export function useKalkulationForm() {
   const [type, setType] = useState(CLEANING_TYPES[0]!.value);
   const [mode, setMode] = useState<Mode>("area");
   const [area, setArea] = useState(search.area ? String(search.area).replace(".", ",") : "150");
-  const [pricePerSqm, setPricePerSqm] = useState(String(CLEANING_TYPES[0]!.area));
+  const [pricePerSqm, setPricePerSqm] = useState("");
   const [hours, setHours] = useState("1");
-  const [hourlyRate, setHourlyRate] = useState(String(CLEANING_TYPES[0]!.hourly));
+  const [hourlyRate, setHourlyRate] = useState("");
   const [frequency, setFrequency] = useState("1");
   const [frequencyUnit, setFrequencyUnit] = useState<RecurrenceUnit>("month");
   const [travel, setTravel] = useState("0");
@@ -65,14 +65,7 @@ export function useKalkulationForm() {
       return (data ?? []) as PerformanceRate[];
     },
   });
-  const visiblePerformanceRates =
-    performanceRates.length > 0
-      ? performanceRates.filter((rate) => rate.active !== false)
-      : DEFAULT_PERFORMANCE_RATES.map((rate, index) => ({
-          ...rate,
-          id: `default-${index}`,
-          active: true,
-        }));
+  const visiblePerformanceRates = performanceRates.filter(rate => rate.active !== false);
 
   // Steuerart und interne Kostenbasis einmalig aus den Firmeneinstellungen vorbelegen.
   useEffect(() => {
@@ -115,16 +108,17 @@ export function useKalkulationForm() {
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
   const selectedPerformanceRate = findCleaningTypeRate(visiblePerformanceRates, selected.value, selected.label);
-  // Für neue Flächenkalkulationen: Preis/m² = Stundenpreis / gespeicherte m²/Std.
-  // Nur bei Typwechsel oder Aktualisierung des Leistungswerts vorbelegen;
-  // spätere manuelle Preiseingaben werden nicht überschrieben.
+  // Keine erfundenen Produktivitätswerte oder festen Preisvorgaben verwenden.
+  // Der Nutzer bestimmt seinen Stundenpreis; der m²-Preis folgt dem gespeicherten Leistungswert.
   useEffect(() => {
-    const productivity = Number(selectedPerformanceRate?.sqm_per_hour ?? 0);
-    if (productivity > 0 && selected.value !== "glas") {
-      setPricePerSqm(String(Math.round((selected.hourly / productivity) * 10000) / 10000).replace(".", ","));
+    const sqmPerHour = Number(selectedPerformanceRate?.sqm_per_hour ?? 0);
+    const hourly = Number(hourlyRate.replace(",", "."));
+    if (sqmPerHour > 0 && hourly > 0) {
+      setPricePerSqm(String(Math.round(hourly / sqmPerHour * 10000) / 10000).replace(".", ","));
+    } else {
+      setPricePerSqm("");
     }
-  }, [selected.value, selected.hourly, selectedPerformanceRate?.sqm_per_hour]);
-
+  }, [selected.value, selectedPerformanceRate?.sqm_per_hour, hourlyRate]);
 
   /**
    * Raumbuch des verknüpften Projekts. Liegen erfasste Räume vor, kommen
