@@ -115,6 +115,16 @@ export function useKalkulationForm() {
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
   const selectedPerformanceRate = findCleaningTypeRate(visiblePerformanceRates, selected.value, selected.label);
+  // Für neue Flächenkalkulationen: Preis/m² = Stundenpreis / gespeicherte m²/Std.
+  // Nur bei Typwechsel oder Aktualisierung des Leistungswerts vorbelegen;
+  // spätere manuelle Preiseingaben werden nicht überschrieben.
+  useEffect(() => {
+    const productivity = Number(selectedPerformanceRate?.sqm_per_hour ?? 0);
+    if (productivity > 0 && selected.value !== "glas") {
+      setPricePerSqm(String(Math.round((selected.hourly / productivity) * 10000) / 10000).replace(".", ","));
+    }
+  }, [selected.value, selected.hourly, selectedPerformanceRate?.sqm_per_hour]);
+
 
   /**
    * Raumbuch des verknüpften Projekts. Liegen erfasste Räume vor, kommen
