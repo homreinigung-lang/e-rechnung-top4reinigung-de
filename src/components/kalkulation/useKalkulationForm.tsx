@@ -23,9 +23,9 @@ export function useKalkulationForm() {
   const search = routeApi.useSearch();
   const [type, setType] = useState(CLEANING_TYPES[0]!.value);
   const [mode, setMode] = useState<Mode>("area");
-  const [area, setArea] = useState(search.area ? String(search.area).replace(".", ",") : "150");
+  const [area, setArea] = useState(search.area ? String(search.area).replace(".", ",") : "");
   const [pricePerSqm, setPricePerSqm] = useState("");
-  const [hours, setHours] = useState("1");
+  const [hours, setHours] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
   const [frequency, setFrequency] = useState("1");
   const [frequencyUnit, setFrequencyUnit] = useState<RecurrenceUnit>("month");
@@ -41,7 +41,7 @@ export function useKalkulationForm() {
   const [discountPercent, setDiscountPercent] = useState("0");
   const [discountAmountInput, setDiscountAmountInput] = useState("0");
   const [discountReason, setDiscountReason] = useState("");
-  const [glassArea, setGlassArea] = useState("0");
+  const [glassArea, setGlassArea] = useState("");
   const [taxMode, setTaxMode] = useState("domestic");
   // Interne Kostenkalkulation: Standardwerte kommen aus den Firmeneinstellungen.
   const [laborWage, setLaborWage] = useState("15");

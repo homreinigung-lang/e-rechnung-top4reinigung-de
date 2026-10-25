@@ -12,14 +12,14 @@ export function StaircaseCalculationPanel({ state }: { state: KalkulationStateCo
   const { selfCostPerHour, targetSellingRate, roomCalculation, lvPositions,
     setMode, setHours, setConfirmed } = state;
   const savedStairRate = findCleaningTypeRate(state.visiblePerformanceRates, "treppenhaus", "Treppenhausreinigung");
-  const [stairArea, setStairArea] = useState("");
-  const [stairMethod, setStairMethod] = useState<"area" | "floors">("floors");
+  const stairArea = state.area;
+  const [stairMethod, setStairMethod] = useState<"area" | "floors">("area");
   const [stairEntrances, setStairEntrances] = useState("1");
-  const [stairFloors, setStairFloors] = useState("3");
-  const [stairMinutesPerFloor, setStairMinutesPerFloor] = useState("8");
+  const [stairFloors, setStairFloors] = useState("");
+  const [stairMinutesPerFloor, setStairMinutesPerFloor] = useState("");
   useEffect(() => { if (savedStairRate?.minutes_per_floor && savedStairRate.minutes_per_floor > 0) setStairMinutesPerFloor(String(savedStairRate.minutes_per_floor)); }, [savedStairRate?.minutes_per_floor]);
   const [stairEntranceSize, setStairEntranceSize] = useState("normal");
-  const [stairEntranceMinutes, setStairEntranceMinutes] = useState("10");
+  const [stairEntranceMinutes, setStairEntranceMinutes] = useState("0");
   const [stairManualMinutes, setStairManualMinutes] = useState("");
   const entranceFactor = stairEntranceSize === "small" ? 0.75 : stairEntranceSize === "large" ? 1.5 : 1;
   const stairSuggestedMinutes = num(stairEntrances) * (num(stairFloors) * num(stairMinutesPerFloor) + num(stairEntranceMinutes) * entranceFactor);
@@ -29,13 +29,22 @@ export function StaircaseCalculationPanel({ state }: { state: KalkulationStateCo
     Number.isInteger(num(stairFloors)) && num(stairFloors) >= 1 && num(stairFloors) <= 100 &&
     num(stairMinutesPerFloor) > 0 && num(stairEntranceMinutes) >= 0)) && stairTotalMinutes > 0;
   const stairLaborHours = stairTotalMinutes / 60;
+  useEffect(() => {
+    if (state.type !== "treppenhaus" || stairMethod !== "floors" || roomCalculation.enabled || lvPositions.length > 0) return;
+    setMode("hours");
+    setHours(stairValid ? String(stairLaborHours).replace(".", ",") : "");
+    setConfirmed(false);
+  }, [state.type, stairMethod, roomCalculation.enabled, lvPositions.length, stairValid, stairLaborHours, setMode, setHours, setConfirmed]);
   return (
             <div className="space-y-3 rounded-md border p-3">
               <p className="font-medium">Treppenhaus: Zeitkalkulation je Einsatz</p>
-              <p className="text-xs text-muted-foreground">Die Minuten sind editierbare Beispiele, keine geprüften Leistungswerte. Alle Etagenangaben gelten pro Eingang.</p>
+              <p className="text-xs text-muted-foreground">Fläche ÷ gespeicherter Leistungswert berechnet die Arbeitszeit automatisch. Alternativ Etagen und gespeicherte Minuten je Etage verwenden.</p>
               <p className="text-xs text-muted-foreground">Leistungswert: {savedStairRate ? `${formatNumber(savedStairRate.sqm_per_hour)} m²/Std.` : "Nicht hinterlegt; Etagenberechnung weiterhin verfügbar."}</p>
-              <div><Label>Berechnungsart</Label><Select value={stairMethod} onValueChange={value => setStairMethod(value as "area" | "floors")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="area">Nach Fläche (m²)</SelectItem><SelectItem value="floors">Nach Etagen</SelectItem></SelectContent></Select></div>
-              {stairMethod === "area" && <div><Label htmlFor="stair-area">Treppenhausfläche (m²)</Label><Input id="stair-area" inputMode="decimal" value={stairArea} onChange={e => setStairArea(e.target.value)} /></div>}
+              <div><Label htmlFor="stair-method">Zeitberechnung Treppenhaus</Label><Select value={stairMethod} onValueChange={value => {
+                setStairMethod(value as "area" | "floors");
+                if (value === "area" && !roomCalculation.enabled && lvPositions.length === 0) setMode("area");
+              }}><SelectTrigger id="stair-method"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="area">Nach Fläche (m²)</SelectItem><SelectItem value="floors">Nach Etagen</SelectItem></SelectContent></Select></div>
+              {stairMethod === "area" && <div><Label htmlFor="stair-area">Treppenhausfläche (m²)</Label><Input id="stair-area" inputMode="decimal" placeholder="Treppenhausfläche eingeben" value={stairArea} disabled={roomCalculation.enabled || lvPositions.length > 0} onChange={e => { state.setArea(e.target.value); setMode("area"); }} /></div>}
               {stairMethod === "floors" && <div className="grid gap-3 sm:grid-cols-2">
                 <div><Label htmlFor="stair-entrances">Anzahl Hauseingänge</Label><Input id="stair-entrances" inputMode="numeric" value={stairEntrances} onChange={(e) => setStairEntrances(e.target.value)} /></div>
                 <div><Label htmlFor="stair-floors">Etagen pro Eingang</Label><Input id="stair-floors" inputMode="numeric" value={stairFloors} onChange={(e) => setStairFloors(e.target.value)} /></div>
@@ -44,8 +53,8 @@ export function StaircaseCalculationPanel({ state }: { state: KalkulationStateCo
                 <div><Label htmlFor="stair-entrance-min">Minuten je Eingang (normal)</Label><Input id="stair-entrance-min" inputMode="decimal" value={stairEntranceMinutes} onChange={(e) => setStairEntranceMinutes(e.target.value)} /></div>
                 <div><Label htmlFor="stair-manual-min">Gesamtminuten manuell (optional)</Label><Input id="stair-manual-min" inputMode="decimal" placeholder="Leer = Vorschlag" value={stairManualMinutes} onChange={(e) => setStairManualMinutes(e.target.value)} /></div>
               </div>}
-              {stairMethod === "floors" && <p className="text-xs text-muted-foreground">Bei Auswahl Nach Etagen werden gespeicherte Minuten je Etage vorbelegt und können angepasst werden.</p>}
-              {stairValid ? <><p>Vorschlag: {formatNumber(stairMethod === "area" ? (areaMinutes ?? 0) : stairSuggestedMinutes)} Min. · Arbeitszeit: <strong>{formatNumber(stairLaborHours)} Std. je Einsatz</strong></p><p>Geschätzte Kosten: {formatMoney(stairLaborHours * selfCostPerHour)} · Zielpreis: {formatMoney(stairLaborHours * targetSellingRate)}</p><Button type="button" size="sm" variant="outline" disabled={roomCalculation.enabled || lvPositions.length > 0} onClick={() => { setMode("hours"); setHours(String(Math.round(stairLaborHours * 100) / 100).replace(".", ",")); setConfirmed(false); }}>Arbeitszeit übernehmen (Nach Stunden)</Button>{(roomCalculation.enabled || lvPositions.length > 0) && <p className="text-xs text-muted-foreground">Übernahme gesperrt, solange Raumkalkulation oder LV-Positionen aktiv sind.</p>}</> : <p className="text-destructive">Bitte gültige Eingänge, Etagen und Minuten eingeben.</p>}
+              {stairMethod === "floors" && <p className="text-xs text-muted-foreground">Gespeicherte Minuten je Etage werden vorbelegt. Änderungen berechnen die Arbeitszeit automatisch neu.</p>}
+              {stairValid ? <><p>Vorschlag: {formatNumber(stairMethod === "area" ? (areaMinutes ?? 0) : stairSuggestedMinutes)} Min. · Arbeitszeit: <strong>{formatNumber(stairLaborHours)} Std. je Einsatz</strong></p><p>Geschätzte Kosten: {formatMoney(stairLaborHours * selfCostPerHour)} · Zielpreis: {formatMoney(stairLaborHours * targetSellingRate)}</p>{(roomCalculation.enabled || lvPositions.length > 0) && <p className="text-xs text-muted-foreground">Übernahme gesperrt, solange Raumkalkulation oder LV-Positionen aktiv sind.</p>}</> : <p className="text-destructive">Bitte gültige Eingänge, Etagen und Minuten eingeben.</p>}
             </div>
   );
 }
