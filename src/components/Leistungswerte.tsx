@@ -21,7 +21,7 @@ export function Leistungswerte({ embedded = false }: { embedded?: boolean } = {}
     queryFn: async () => {
       const { data, error } = await supabase
         .from("performance_rates")
-        .select("id,label,usage_type,floor_covering,sqm_per_hour,active")
+        .select("id,label,usage_type,floor_covering,sqm_per_hour,minutes_per_floor,active")
         .order("label");
       if (error) throw error;
       return (data ?? []) as PerformanceRate[];
@@ -195,6 +195,22 @@ export function Leistungswerte({ embedded = false }: { embedded?: boolean } = {}
                   }}
                 />
               </div>
+              {(r.label.toLowerCase().includes("treppen") || r.usage_type.toLowerCase().includes("treppen")) && (
+                <div className="space-y-1">
+                  <Label>Minuten pro Etage (optional)</Label>
+                  <Input type="number" min={0.1} step={0.5} defaultValue={r.minutes_per_floor ?? ""}
+                    onBlur={e => {
+                      const raw = e.target.value.trim();
+                      const value = raw ? Number(raw) : null;
+                      if (value !== null && (!Number.isFinite(value) || value <= 0)) {
+                        toast.error("Minuten pro Etage müssen größer als 0 sein.");
+                        e.target.value = String(r.minutes_per_floor ?? "");
+                        return;
+                      }
+                      if (value !== (r.minutes_per_floor ?? null)) patch.mutate({ id: r.id, values: { minutes_per_floor: value } });
+                    }} />
+                </div>
+              )}
               <ConfirmDeleteButton
                 ariaLabel="Leistungswert löschen"
                 iconClassName="size-4"
