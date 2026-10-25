@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleaningHoursPerVisit } from "./cleaning-hours";
+import { cleaningHoursPerVisit, pricePerSqmFromHourly } from "./cleaning-hours";
 import { findCleaningTypeRate, type PerformanceRate } from "./leistungswerte";
 
 const rates: PerformanceRate[] = [
@@ -37,5 +37,17 @@ describe("workload from saved productivity, independent of prices", () => {
     const rate = findCleaningTypeRate(rates.map(r => ({ ...r, active: false })), "grund", "Grundreinigung");
     expect(rate).toBeNull();
     expect(cleaningHoursPerVisit({ ...base, sqmPerHour: rate?.sqm_per_hour ?? 0 })).toBe(0);
+  });
+});
+
+describe("derived area prices retain precision", () => {
+  it("does not lose a cent for two hours of staircase cleaning", () => {
+    expect(Math.round(240 * pricePerSqmFromHourly(40, 120) * 100) / 100).toBe(80);
+  });
+  it("rounds deep-cleaning totals only after multiplying the full derived price", () => {
+    expect(Math.round(340 * pricePerSqmFromHourly(40, 120) * 100) / 100).toBe(113.33);
+  });
+  it.each([0, -1, NaN, Infinity])("rejects invalid productivity %s", rate => {
+    expect(pricePerSqmFromHourly(40, rate)).toBe(0);
   });
 });
