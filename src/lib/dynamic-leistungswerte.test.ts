@@ -13,6 +13,11 @@ describe("gespeicherte Leistungswerte in der Kalkulation", () => {
     expect(findCleaningTypeRate(rates, "glas", "Glasreinigung")?.sqm_per_hour).toBe(80);
   });
 
+  it("verwendet zentrale Werte auch für verkürzte und abweichende Bezeichnungen", () => {
+    expect(findCleaningTypeRate(rates, "buero", "Büroreinigung")?.sqm_per_hour).toBe(150);
+    expect(findCleaningTypeRate(rates, "grund", "Grundreinigung (Tiefenreinigung)")).toBeNull();
+  });
+
   it("berücksichtigt eine geänderte Einstellung", () => {
     const updated = rates.map(rate => rate.id === "g" ? { ...rate, sqm_per_hour: 70 } : rate);
     expect(findCleaningTypeRate(updated, "glas", "Glasreinigung")?.sqm_per_hour).toBe(70);
