@@ -11,7 +11,7 @@ import { STAIR_RATE_PER_FLOOR, type RecurrenceUnit } from "@/lib/constants";
 
 import { emptyRoomCalculation, type RoomCalculation } from "@/lib/room-calculation";
 import { useRaumbuch } from "@/lib/raumbuch";
-import { DEFAULT_PERFORMANCE_RATES, type PerformanceRate } from "@/lib/leistungswerte";
+import { DEFAULT_PERFORMANCE_RATES, findCleaningTypeRate, type PerformanceRate } from "@/lib/leistungswerte";
 
 import { type Mode, CLEANING_TYPES, type Attachment, type AiItem } from "./shared";
 import { getRouteApi } from "@tanstack/react-router";
@@ -114,6 +114,7 @@ export function useKalkulationForm() {
   const [confirmed, setConfirmed] = useState(false);
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
+  const selectedPerformanceRate = findCleaningTypeRate(visiblePerformanceRates, selected.value, selected.label);
 
   /**
    * Raumbuch des verknüpften Projekts. Liegen erfasste Räume vor, kommen
@@ -225,6 +226,7 @@ export function useKalkulationForm() {
     setRoomCalculation,
     search,
     selected,
+    selectedPerformanceRate,
     setAiPrompt,
     setAiReviewNotes,
     setAiReviewQuestions,
