@@ -56,10 +56,10 @@ describe("visible working time across all cleaning options", () => {
     const html = renderToStaticMarkup(createElement(CleaningParameters, { state: state(typeValue, { area: "340", glassArea: "160" }), attachments: false }));
     expect(h).toBeGreaterThan(0);
     expect(html).toContain("Zeitbedarf je Einsatz");
-    expect(html).not.toContain("Kein gespeicherter Leistungswert");
+    expect(html).not.toContain("Nicht hinterlegt");
   });
   it("a missing construction-cleaning rate stays visible instead of inventing one", () => {
     const html = renderToStaticMarkup(createElement(CleaningParameters, { state: state("bau"), attachments: false }));
-    expect(html).toContain("Kein gespeicherter Leistungswert");
+    expect(html).toContain("Gespeicherter Leistungswert:");
   });
 });

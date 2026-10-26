@@ -1,4 +1,4 @@
-import { PriceOverview } from "./PriceOverview";
+import { PriceOverview, type PriceChoice } from "./PriceOverview";
 import { DiscountPanel } from "./DiscountPanel";
 import { TaxModePanel } from "./TaxModePanel";
 import { LvTotalsPanel } from "./LvTotalsPanel";
@@ -129,6 +129,11 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
   const currentHours = cleaningHoursPerVisit({ mode, typeValue: type, area: num(area), glassArea: num(state.glassArea), hours: num(hours), sqmPerHour: savedProductivity });
   const previewCleaningHours = mode === "hours" ? num(hours) : estimatedLaborHours;
   const previewAvailable = !roomCalculation.enabled && lvPositions.length === 0 && currentHours > 0;
+  const applyPriceChoice = (choice: PriceChoice) => {
+    const rate = choice === "minimum" ? selfCostPerHour : choice === "recommended" ? targetSellingRate : num(hourlyRate);
+    if (rate > 0) setHourlyRate(String(rate).replace(".", ","));
+    setConfirmed(false);
+  };
   return (
     <Card>
       <CardHeader>
@@ -194,10 +199,7 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
             minimum={monthlySelfCost}
             recommended={targetMonthlyRevenue}
             customer={suggested}
-            onSelectRecommended={targetSellingRate > 0 ? () => {
-              setHourlyRate(String(targetSellingRate).replace(".", ","));
-              setConfirmed(false);
-            } : undefined}
+            onConfirmChoice={targetSellingRate > 0 ? applyPriceChoice : undefined}
           />
         )}
         <div className="space-y-1 text-sm">
