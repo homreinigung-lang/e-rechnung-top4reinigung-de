@@ -237,9 +237,9 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
 
   if (input.travel > 0) {
     positions.push({
-      description: "Anfahrtspauschale",
-      quantity: 1,
-      unit: "Pauschal",
+      description: "Anfahrtspauschale je Einsatz",
+      quantity: visits,
+      unit: "Einsatz",
       unit_price: round2(input.travel),
     });
   }

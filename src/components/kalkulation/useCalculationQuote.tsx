@@ -4,13 +4,9 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
-import { formatNumber } from "@/lib/format";
-import { recurrenceUnitLabel } from "@/lib/constants";
 
 import { computeDocumentTotals } from "@/lib/document-totals";
 import type { CalcPosition } from "@/lib/kalkulation-engine";
-
-import { num } from "./shared";
 
 import type { useCalculationApply } from "./useCalculationApply";
 import type { useKalkulationSuggestions } from "./useKalkulationSuggestions";
@@ -42,10 +38,8 @@ export function useCalculationQuote(input: {
   const {
     roomCalculation,
     calcOutOfSync,
-    annualVisits,
     discountReason,
     floorplanSummary,
-    frequency,
     frequencyUnit,
     lvPositions,
     monthlyHours,
@@ -80,18 +74,8 @@ export function useCalculationQuote(input: {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
 
-      // Prices, quantities, service names and discounts already appear in the
-      // item table. Only additional scope and billing information belongs here.
-      const parts: string[] = [];
-      parts.push(
-        frequencyUnit === "once"
-          ? "Einmalige Reinigung: Gesamtpreis für einen Einsatz, keine monatliche Abrechnung."
-          : roomCalculation.enabled
-            ? "Turnus je Raum gemäß Positionen; Abrechnung als Monatsdurchschnitt."
-            : `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(visitsPerMonth)} pro Monat`,
-      );
-      if (note.trim()) parts.push(note.trim());
-
+      // Die Leistungsbeschreibung enthält nur ergänzende Angaben zum Arbeitsumfang.
+      // Mengen, Turnus und Preise stehen bereits in den Angebotspositionen.
       const { error: itemError } = await supabase.from("document_items").insert(
         positions.map((i, n) => ({
           document_id: quoteId,
@@ -108,7 +92,7 @@ export function useCalculationQuote(input: {
       const description = [
         proposalTitle.trim() ? `Ausschreibung: ${proposalTitle.trim()}` : "",
         floorplanSummary.trim(),
-        parts.join("\n"),
+        note.trim(),
       ]
         .filter(Boolean)
         .join("\n");

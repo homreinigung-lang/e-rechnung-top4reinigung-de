@@ -97,3 +97,23 @@ it("übernimmt einmalige Flächenreinigung als vollständigen Einsatzpreis", () 
   expect(positions[0]?.quantity).toBe(1);
   expect(positions[0]?.description).toContain("einmalige Reinigung");
 });
+
+
+it.each([
+  [26 / 12, 32.5],
+  [52 / 12, 65],
+  [1 / 12, 1.25],
+])("berechnet 15 EUR Anfahrt je Einsatz bei %s Einsätzen pro Monat", (visits, total) => {
+  const positions = buildConsolidatedPositions({ ...base, hours: 0, travel: 15, visitsPerMonth: visits });
+  expect(positions).toEqual([
+    { description: "Anfahrtspauschale je Einsatz", quantity: visits, unit: "Einsatz", unit_price: 15 },
+  ]);
+  expect(positionsTotal(positions)).toBe(total);
+});
+
+it("berechnet Anfahrt und Reinigung mit demselben ungerundeten Monatsdurchschnitt", () => {
+  const positions = buildConsolidatedPositions({
+    ...base, hours: 4, hourlyRate: 35, travel: 15, visitsPerMonth: 26 / 12,
+  });
+  expect(positionsTotal(positions)).toBe(335.83);
+});

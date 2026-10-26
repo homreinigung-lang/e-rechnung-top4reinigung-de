@@ -77,7 +77,7 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
     targetSellingRate,
     taxMode,
     taxNote,
-    travel,
+    travelTotal,
     vatAmount,
     vatRate,
     warnings,
@@ -219,7 +219,7 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
           )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Anfahrt</span>
-            <span>{formatMoney(num(travel))}</span>
+            <span>{formatMoney(travelTotal)}</span>
           </div>
           <div className="flex justify-between border-t pt-1 font-medium">
             <span>Zwischensumme (netto)</span>

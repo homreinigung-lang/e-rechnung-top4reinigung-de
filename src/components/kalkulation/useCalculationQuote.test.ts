@@ -92,10 +92,28 @@ it("übernimmt den vollen Einmalpreis ohne wiederkehrende Monatsplanung ins Ange
     }),
   );
   const description = update.mock.calls[0]![0].service_description;
-  expect(description).toContain("Einmalige Reinigung: Gesamtpreis für einen Einsatz");
+  expect(description).toBe("");
   expect(description).not.toContain("Einsätze/Jahr");
   expect(description).not.toContain("Unterhaltsreinigung");
   expect(description).not.toContain("Anfahrt");
   expect(description).not.toContain("×");
   expect(description).not.toContain("€");
+});
+
+
+it.each(["fortnight", "once"] as const)("übernimmt nur den Arbeitsumfang ohne Rechenerklärung (%s)", async (frequencyUnit) => {
+  const insert = vi.fn().mockResolvedValue({ error: null });
+  const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+  mocks.from.mockImplementation((table: string) =>
+    table === "document_items" ? { insert } : { update },
+  );
+  await quote({
+    frequencyUnit,
+    annualVisits: 26,
+    visitsPerMonth: 26 / 12,
+    note: "  Böden saugen und wischen; Sanitäranlagen reinigen.  ",
+  }).mutationFn();
+  expect(update.mock.calls[0]![0].service_description).toBe(
+    "Böden saugen und wischen; Sanitäranlagen reinigen.",
+  );
 });
