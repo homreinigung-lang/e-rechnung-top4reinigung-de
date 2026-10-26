@@ -158,12 +158,11 @@ export function CleaningParameters({
         ) : null}
 
         {!state.roomCalculation.enabled && (
-          <p className="text-xs text-muted-foreground">
-            Leistungswert {selected.label}: {selectedPerformanceRate
-              ? `${formatNumber(selectedPerformanceRate.sqm_per_hour)} m²/Std. (${selectedPerformanceRate.label})`
-              : "Kein gespeicherter Leistungswert – bitte in den Einstellungen hinterlegen."}
-            {selectedPerformanceRate && mode === "area" ? ` · Zeitbedarf je Einsatz: ${formatNumber(num(selected.value === "glas" ? glassArea : area) / selectedPerformanceRate.sqm_per_hour)} Std.` : ""}
-          </p>
+          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1" aria-label="Gespeicherte Kalkulationswerte">
+            <p><span className="text-muted-foreground">Stundensatz der Kalkulation:</span> <strong>{num(hourlyRate) > 0 ? formatMoney(num(hourlyRate)) : "Noch nicht eingetragen"}</strong></p>
+            <p><span className="text-muted-foreground">Gespeicherter Leistungswert:</span> <strong>{selectedPerformanceRate ? `${formatNumber(selectedPerformanceRate.sqm_per_hour)} m²/Std. (${selectedPerformanceRate.label})` : "Nicht hinterlegt"}</strong></p>
+            {selectedPerformanceRate && mode === "area" ? <p><span className="text-muted-foreground">Zeitbedarf je Einsatz:</span> <strong>{formatNumber(num(selected.value === "glas" ? glassArea : area) / selectedPerformanceRate.sqm_per_hour)} Std.</strong></p> : null}
+          </div>
         )}
         {selected.value === "glas" && (
           <div className="space-y-2 rounded-md border p-3">
