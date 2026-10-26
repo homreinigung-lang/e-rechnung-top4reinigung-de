@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDocument } from "@/lib/create-document";
 import { computeDocumentTotals } from "@/lib/document-totals";
 import { formatMoney, formatNumber, parsePositiveNumber, taxNoteForTaxMode, vatRateForTaxMode } from "@/lib/format";
-import { STAIR_RATE_PER_FLOOR, recurrenceUnitLabel, visitsPerMonth, visitsPerYear, type RecurrenceUnit } from "@/lib/constants";
+import { STAIR_RATE_PER_FLOOR, visitsPerMonth, visitsPerYear, type RecurrenceUnit } from "@/lib/constants";
 import { buildConsolidatedPositions, buildDiscountPosition, positionsTotal, round2 } from "@/lib/kalkulation-engine";
 
 import { Button } from "@/components/ui/button";
@@ -163,11 +163,7 @@ function KalkulationAngebotPage() {
       if (itemsError) throw itemsError;
 
       const totals = computeDocumentTotals(positions, 0, vatRate);
-      const description = [
-        selected.label,
-        `Turnus: ${formatNumber(num(frequency))} ${recurrenceUnitLabel(frequencyUnit)} · ${formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = ${formatNumber(monthlyVisits)} Einsätze/Monat`,
-        note.trim(),
-      ].filter(Boolean).join("\n");
+      const description = note.trim();
 
       const { error: docError } = await supabase
         .from("documents")
@@ -274,7 +270,7 @@ function KalkulationAngebotPage() {
                     <SelectContent><SelectItem value="week">Pro Woche</SelectItem><SelectItem value="fortnight">Alle 2 Wochen (14-tägig)</SelectItem><SelectItem value="month">Pro Monat</SelectItem><SelectItem value="quarter">Pro Quartal</SelectItem><SelectItem value="year">Pro Jahr</SelectItem></SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2"><Label>Anfahrt netto</Label><Input inputMode="decimal" value={travel} onChange={(e) => { setTravel(e.target.value); setConfirmed(false); }} /></div>
+                <div className="space-y-2"><Label>Anfahrt je Einsatz (netto)</Label><Input inputMode="decimal" value={travel} onChange={(e) => { setTravel(e.target.value); setConfirmed(false); }} /></div>
               </div>
               <p className="text-xs text-muted-foreground">
                 Jahresbasis: {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = {formatNumber(monthlyVisits)} Einsätze pro Monat.
@@ -305,7 +301,7 @@ function KalkulationAngebotPage() {
                 </div> : null}
               </div>
 
-              <div className="space-y-2"><Label>Bemerkung</Label><Textarea rows={3} value={note} onChange={(e) => { setNote(e.target.value); setConfirmed(false); }} placeholder="z. B. Reinigung montags und donnerstags, Zutritt nach Absprache" /></div>
+              <div className="space-y-2"><Label>Leistungsbeschreibung</Label><Textarea rows={3} value={note} onChange={(e) => { setNote(e.target.value); setConfirmed(false); }} placeholder="z. B. Böden saugen und wischen, Sanitäranlagen reinigen, Abfallbehälter leeren" /></div>
             </CardContent>
           </Card>
         </div>

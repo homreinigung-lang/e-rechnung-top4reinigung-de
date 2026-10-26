@@ -188,8 +188,11 @@ export function useCalculationTotals(input: {
         : stagedPositionsBeforeDiscount,
     [stagedPositionsBeforeDiscount, stagedDiscountPosition],
   );
+  const travelTotal = positionsTotal(
+    stagedPositionsBeforeDiscount.filter((item) => item.description === "Anfahrtspauschale je Einsatz"),
+  );
   const base = round2(
-    subtotal - extrasTotal - (roomCalculation.enabled ? 0 : stairsTotal) - round2(num(travel)),
+    subtotal - extrasTotal - (roomCalculation.enabled ? 0 : stairsTotal) - travelTotal,
   );
   const suggested = useMemo(() => positionsTotal(stagedPositions), [stagedPositions]);
 
@@ -391,6 +394,7 @@ export function useCalculationTotals(input: {
     suggested,
     targetMonthlyRevenue,
     targetSellingRate,
+    travelTotal,
     taxNote,
     vatAmount,
     vatRate,

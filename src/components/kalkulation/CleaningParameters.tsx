@@ -282,7 +282,7 @@ export function CleaningParameters({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Anfahrtspauschale (netto)</Label>
+            <Label>Anfahrtspauschale je Einsatz (netto)</Label>
             <Input inputMode="decimal" value={travel} onChange={(e) => setTravel(e.target.value)} />
           </div>
         </div>
@@ -429,12 +429,12 @@ export function CleaningParameters({
         </div>
 
         <div className="space-y-2">
-          <Label>Bemerkung zur Leistung</Label>
+          <Label>Leistungsbeschreibung</Label>
           <Textarea
             rows={3}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="z. B. Reinigung wöchentlich, Zutritt nach Absprache"
+            placeholder="z. B. Böden saugen und wischen, Sanitäranlagen reinigen, Abfallbehälter leeren"
           />
         </div>
 
