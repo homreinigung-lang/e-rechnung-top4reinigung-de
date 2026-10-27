@@ -6,11 +6,13 @@ import { round2 } from "@/lib/kalkulation-engine";
 export type PriceChoice = "minimum" | "recommended" | "customer";
 
 /** All amounts use the proposal's billing period and include its discounts. */
-export function PriceOverview({ oneTime, minimum, recommended, customer, onConfirmChoice }: {
+export function PriceOverview({ oneTime, minimum, recommended, customer, cleaning, hourlyRate, onConfirmChoice }: {
   oneTime: boolean;
   minimum: number;
   recommended: number;
   customer: number;
+  cleaning?: number;
+  hourlyRate?: number;
   onConfirmChoice?: (choice: PriceChoice) => void;
 }) {
   const [selected, setSelected] = useState<PriceChoice | null>(null);
@@ -24,6 +26,8 @@ export function PriceOverview({ oneTime, minimum, recommended, customer, onConfi
   return (
     <div className="rounded-md border p-3 space-y-2 text-sm">
       <p className="font-medium">{oneTime ? "Preisübersicht je Auftrag (netto)" : "Preisübersicht im Monatsdurchschnitt (netto)"}</p>
+      {cleaning !== undefined && <p>Aktueller Reinigungspreis: <strong>{formatMoney(cleaning)}</strong>{hourlyRate !== undefined && ` · Gewählter Stundensatz: ${formatMoney(hourlyRate)}/Std.`}</p>}
+      <p className="text-xs text-muted-foreground">Kosten und Empfehlung beziehen sich nur auf die Reinigung. Der Kundenpreis enthält zusätzlich Anfahrt, Zusatzleistungen und Rabatt.</p>
       <div className="grid gap-2 sm:grid-cols-3" role="group" aria-label="Preis auswählen">
         {choices.map((choice) => (
           <button key={choice.key} type="button" aria-pressed={selected === choice.key} disabled={!onConfirmChoice}

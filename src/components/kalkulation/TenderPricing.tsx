@@ -1,3 +1,5 @@
+import { WorkloadSummary } from "./WorkloadSummary";
+import { CleaningPriceSummary } from "./CleaningPriceSummary";
 import { PriceOverview, type PriceChoice } from "./PriceOverview";
 import { DiscountPanel } from "./DiscountPanel";
 import { TaxModePanel } from "./TaxModePanel";
@@ -141,6 +143,7 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
         <CardDescription>Automatische Vorab-Berechnung und freier Endpreis</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <WorkloadSummary state={state} />
         <details open className="rounded-md border p-3">
           <summary className="cursor-pointer text-sm font-medium">Schnellkalkulation nach Reinigungsart</summary>
           <div className="mt-3 space-y-2 text-sm">
@@ -153,7 +156,9 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
               ))}
             </div>
             <p>{isGlass ? `Glasfläche: ${formatNumber(num(state.glassArea))} m²` : `Fläche: ${formatNumber(num(area))} m²`} · Reinigungszeit: {formatNumber(currentHours)} Std. je Einsatz</p>
-            <p>Selbstkosten: {formatMoney(selfCostPerHour)} / Std. · Zielpreis: {formatMoney(targetSellingRate)} / Std.</p>
+            <p>Gewählter Stundensatz (netto): <strong>{formatMoney(num(hourlyRate))} / Std.</strong></p>
+            <p className="text-xs text-muted-foreground">Selbstkosten: {formatMoney(selfCostPerHour)} / Std. · Unverbindliche Stundensatzempfehlung: {formatMoney(targetSellingRate)} / Std.</p>
+            {!isStaircase && !isGlass && currentHours > 0 && <CleaningPriceSummary hours={currentHours} state={state} />}
             {!isStaircase && <div className="flex gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => { if (mode === "area" && savedProductivity > 0) setHours(String(currentHours).replace(".", ",")); setMode("hours"); }}>Nach Stunden</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setMode("area")}>Nach Fläche</Button>
@@ -199,6 +204,8 @@ export function TenderPricing({ state, showLvTotals = true }: { state: Kalkulati
             minimum={monthlySelfCost}
             recommended={targetMonthlyRevenue}
             customer={suggested}
+            cleaning={base}
+            hourlyRate={mode === "hours" || isGlass ? num(hourlyRate) : undefined}
             onConfirmChoice={targetSellingRate > 0 ? applyPriceChoice : undefined}
           />
         )}
