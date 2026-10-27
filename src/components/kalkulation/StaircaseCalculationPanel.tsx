@@ -22,7 +22,7 @@ export function StaircaseCalculationPanel({ state }: { state: KalkulationStateCo
   const [stairEntranceMinutes, setStairEntranceMinutes] = useState("0");
   const [stairManualMinutes, setStairManualMinutes] = useState("");
   const entranceFactor = stairEntranceSize === "small" ? 0.75 : stairEntranceSize === "large" ? 1.5 : 1;
-  const stairSuggestedMinutes = num(stairEntrances) * (num(stairFloors) * num(stairMinutesPerFloor) + num(stairEntranceMinutes) * entranceFactor);
+  const stairSuggestedMinutes = num(stairFloors) * num(stairMinutesPerFloor) + num(stairEntrances) * num(stairEntranceMinutes) * entranceFactor;
   const areaMinutes = savedStairRate && num(stairArea) > 0 ? num(stairArea) / savedStairRate.sqm_per_hour * 60 : null;
   const stairTotalMinutes = stairMethod === "area" ? (areaMinutes ?? 0) : (stairManualMinutes.trim() ? num(stairManualMinutes) : stairSuggestedMinutes);
   const stairValid = (stairMethod === "area" ? areaMinutes !== null && areaMinutes > 0 : true) && (stairMethod === "area" || (Number.isInteger(num(stairEntrances)) && num(stairEntrances) >= 1 && num(stairEntrances) <= 100 &&
@@ -47,7 +47,7 @@ export function StaircaseCalculationPanel({ state }: { state: KalkulationStateCo
               {stairMethod === "area" && <div><Label htmlFor="stair-area">Treppenhausfläche (m²)</Label><Input id="stair-area" inputMode="decimal" placeholder="Treppenhausfläche eingeben" value={stairArea} disabled={roomCalculation.enabled || lvPositions.length > 0} onChange={e => { state.setArea(e.target.value); setMode("area"); }} /></div>}
               {stairMethod === "floors" && <div className="grid gap-3 sm:grid-cols-2">
                 <div><Label htmlFor="stair-entrances">Anzahl Hauseingänge</Label><Input id="stair-entrances" inputMode="numeric" value={stairEntrances} onChange={(e) => setStairEntrances(e.target.value)} /></div>
-                <div><Label htmlFor="stair-floors">Etagen pro Eingang</Label><Input id="stair-floors" inputMode="numeric" value={stairFloors} onChange={(e) => setStairFloors(e.target.value)} /></div>
+                <div><Label htmlFor="stair-floors">Anzahl Etagen im Gebäude</Label><Input id="stair-floors" inputMode="numeric" aria-describedby="stair-floors-help" value={stairFloors} onChange={(e) => setStairFloors(e.target.value)} /><p id="stair-floors-help" className="text-xs text-muted-foreground">Zu reinigende Etagen insgesamt angeben. Die Zeit für Eingangsbereiche wird separat addiert.</p></div>
                 <div><Label htmlFor="stair-min-floor">Minuten pro Etage</Label><Input id="stair-min-floor" inputMode="decimal" value={stairMinutesPerFloor} onChange={(e) => setStairMinutesPerFloor(e.target.value)} /></div>
                 <div><Label htmlFor="stair-entrance-size">Größe Eingangsbereich</Label><Select value={stairEntranceSize} onValueChange={setStairEntranceSize}><SelectTrigger id="stair-entrance-size"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="small">Klein</SelectItem><SelectItem value="normal">Normal</SelectItem><SelectItem value="large">Groß</SelectItem></SelectContent></Select></div>
                 <div><Label htmlFor="stair-entrance-min">Minuten je Eingang (normal)</Label><Input id="stair-entrance-min" inputMode="decimal" value={stairEntranceMinutes} onChange={(e) => setStairEntranceMinutes(e.target.value)} /></div>
