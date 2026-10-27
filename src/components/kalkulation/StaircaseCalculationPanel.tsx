@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { formatMoney, formatNumber } from "@/lib/format";
-import { Button } from "@/components/ui/button";
+import { formatNumber } from "@/lib/format";
+import { CleaningPriceSummary } from "./CleaningPriceSummary";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,7 +9,7 @@ import { findCleaningTypeRate } from "@/lib/leistungswerte";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
 export function StaircaseCalculationPanel({ state }: { state: KalkulationStateContext }) {
-  const { selfCostPerHour, targetSellingRate, roomCalculation, lvPositions,
+  const { roomCalculation, lvPositions,
     setMode, setHours, setConfirmed } = state;
   const savedStairRate = findCleaningTypeRate(state.visiblePerformanceRates, "treppenhaus", "Treppenhausreinigung");
   const stairArea = state.area;
@@ -54,7 +54,7 @@ export function StaircaseCalculationPanel({ state }: { state: KalkulationStateCo
                 <div><Label htmlFor="stair-manual-min">Gesamtminuten manuell (optional)</Label><Input id="stair-manual-min" inputMode="decimal" placeholder="Leer = Vorschlag" value={stairManualMinutes} onChange={(e) => setStairManualMinutes(e.target.value)} /></div>
               </div>}
               {stairMethod === "floors" && <p className="text-xs text-muted-foreground">Gespeicherte Minuten je Etage werden vorbelegt. Änderungen berechnen die Arbeitszeit automatisch neu.</p>}
-              {stairValid ? <><p>Vorschlag: {formatNumber(stairMethod === "area" ? (areaMinutes ?? 0) : stairSuggestedMinutes)} Min. · Arbeitszeit: <strong>{formatNumber(stairLaborHours)} Std. je Einsatz</strong></p><p>Geschätzte Kosten: {formatMoney(stairLaborHours * selfCostPerHour)} · Zielpreis: {formatMoney(stairLaborHours * targetSellingRate)}</p>{(roomCalculation.enabled || lvPositions.length > 0) && <p className="text-xs text-muted-foreground">Übernahme gesperrt, solange Raumkalkulation oder LV-Positionen aktiv sind.</p>}</> : <p className="text-destructive">Bitte gültige Eingänge, Etagen und Minuten eingeben.</p>}
+              {stairValid ? <><p>Vorschlag: {formatNumber(stairMethod === "area" ? (areaMinutes ?? 0) : stairSuggestedMinutes)} Min. · Arbeitszeit: <strong>{formatNumber(stairLaborHours)} Std. je Einsatz</strong></p><CleaningPriceSummary hours={stairLaborHours} state={state} />{(roomCalculation.enabled || lvPositions.length > 0) && <p className="text-xs text-muted-foreground">Übernahme gesperrt, solange Raumkalkulation oder LV-Positionen aktiv sind.</p>}</> : <p className="text-destructive">Bitte gültige Eingänge, Etagen und Minuten eingeben.</p>}
             </div>
   );
 }

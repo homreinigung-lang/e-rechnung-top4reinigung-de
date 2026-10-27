@@ -302,8 +302,8 @@ export function useCalculationTotals(input: {
   const costingMonthlyHours = roomCalculation.enabled
     ? roomSummary.monthlyHours
     : raumbuch && raumbuch.hoursPerVisit > 0
-      ? round2(raumbuch.hoursPerVisit * visitsPerMonth)
-      : round2(monthlyHours);
+      ? raumbuch.hoursPerVisit * visitsPerMonth
+      : monthlyHours;
   const effectiveLaborWage = type === "glas" ? num(glassGrossWage ?? "18") : num(laborWage);
   const laborBurdenPerHour = round2(
     effectiveLaborWage * (Math.min(200, num(laborBurdenPercent)) / 100),
