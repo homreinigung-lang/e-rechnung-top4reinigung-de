@@ -34,9 +34,13 @@ export function DocumentTaxEditor({
           <SelectItem value="eu_reverse_charge" disabled={!reverseChargeAllowed}>
             EU-Ausland – Reverse-Charge (0 % MwSt.){reverseChargeAllowed ? "" : " – ab Pro"}
           </SelectItem>
+          <SelectItem value="domestic_reverse_charge">Inland – § 13b Gebäudereinigung (0 % MwSt.)</SelectItem>
           <SelectItem value="kleinunternehmer">Kleinunternehmer § 19 UStG (0 % MwSt.)</SelectItem>
         </SelectContent>
       </Select>
+      {taxMode === "domestic_reverse_charge" && (
+        <p className="text-xs text-muted-foreground">Nur für Gebäudereinigungsleistungen, wenn die Voraussetzungen des § 13b Abs. 2 Nr. 8 UStG nachweislich erfüllt sind (z. B. USt 1 TG des Auftraggebers).</p>
+      )}
       {!reverseChargeAllowed && (
         <p className="flex flex-wrap items-center gap-1 rounded-md border border-dashed bg-background/60 px-3 py-2 text-xs text-muted-foreground">
           <Sparkles className="size-3.5 text-primary" />
