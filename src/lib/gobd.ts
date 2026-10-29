@@ -178,7 +178,7 @@ export async function buildGobdExport(from: string, to: string): Promise<Blob> {
       Kunde: d.customer_company || d.customer_name,
       "USt-IdNr": String(r["customer_vat_id"] ?? ""),
       Bestellnummer: String(r["order_number"] ?? ""),
-      Steuerart: r["tax_mode"] === "domestic" ? "19% Inland" : "Reverse-Charge § 13b UStG",
+      Steuerart: r["tax_mode"] === "domestic" ? "19% Inland" : r["tax_mode"] === "kleinunternehmer" ? "Kleinunternehmer § 19 UStG" : r["tax_mode"] === "domestic_reverse_charge" ? "§ 13b Inland Gebäudereinigung" : "Reverse-Charge EU",
       Netto: de(r["net_total"] ?? d.total),
       Umsatzsteuer: de(r["vat_amount"]),
       Brutto: de(d.total),
