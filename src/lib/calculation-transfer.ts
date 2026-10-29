@@ -1,7 +1,9 @@
 import { positionsTotal, type CalcPosition } from "./kalkulation-engine";
 
-export const CALCULATION_WORKFLOWS = ["schnell", "raum", "ki", "ausschreibung"] as const;
-export type CalculationWorkflow = (typeof CALCULATION_WORKFLOWS)[number];
+export type CalculationWorkflow = "schnell" | "raum" | "ki" | "ausschreibung";
+
+/** Workflows shown in Kalkulation. Tender document analysis remains a separate workspace. */
+export const CALCULATION_WORKFLOWS = ["schnell", "raum", "ki"] as const satisfies readonly CalculationWorkflow[];
 
 export const WORKFLOW_LABELS: Record<CalculationWorkflow, string> = {
   schnell: "Schnellkalkulation",
