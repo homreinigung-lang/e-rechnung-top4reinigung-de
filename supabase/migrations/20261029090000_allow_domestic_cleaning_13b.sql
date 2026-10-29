@@ -11,9 +11,11 @@ DECLARE
   is_eu_rc boolean;
   was_eu_rc boolean;
 BEGIN
-  is_eu_rc := COALESCE(NEW.tax_mode, '') = 'eu_reverse_charge';
+  is_eu_rc := (COALESCE(NEW.tax_mode, '') = 'eu_reverse_charge')
+    OR (COALESCE(NEW.reverse_charge, false) AND COALESCE(NEW.tax_mode, '') <> 'domestic_reverse_charge');
   IF TG_OP = 'UPDATE' THEN
-    was_eu_rc := COALESCE(OLD.tax_mode, '') = 'eu_reverse_charge';
+    was_eu_rc := (COALESCE(OLD.tax_mode, '') = 'eu_reverse_charge')
+      OR (COALESCE(OLD.reverse_charge, false) AND COALESCE(OLD.tax_mode, '') <> 'domestic_reverse_charge');
     IF was_eu_rc THEN
       RETURN NEW; -- Preserve existing EU reverse-charge documents.
     END IF;
