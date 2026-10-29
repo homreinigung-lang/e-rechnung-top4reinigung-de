@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KalkulationSearch } from "@/components/kalkulation/shared";
 import { useKalkulationState } from "@/components/kalkulation/useKalkulationState";
 import { ApplyCalculationDialog } from "@/components/kalkulation/ApplyCalculationDialog";
-import { TenderSection } from "@/components/kalkulation/TenderSection";
 import { FloorplanSection } from "@/components/kalkulation/FloorplanSection";
 import { CalculationAnalysis } from "@/components/kalkulation/CalculationAnalysis";
 import { TenderPricing } from "@/components/kalkulation/TenderPricing";
@@ -55,8 +54,8 @@ function KalkulationPage() {
       <div>
         <h1 className="font-display text-2xl font-semibold">Kalkulation</h1>
         <p className="text-sm text-muted-foreground">
-          Jeden Bereich unabhängig berechnen, Positionen prüfen und direkt als Angebot übernehmen.
-          Ihre Eingaben bleiben beim Wechsel zwischen den Bereichen erhalten. Alle Bereiche verwenden dieselben hinterlegten Kalkulationsgrundlagen.
+          Aufträge unabhängig berechnen, Positionen prüfen und direkt als Angebot übernehmen.
+          Ausschreibungsunterlagen und deren Analyse bleiben im getrennten Bereich „LV-Analyse“.
         </p>
       </div>
       <Tabs value={active} onValueChange={(value) => {
@@ -64,7 +63,7 @@ function KalkulationPage() {
         setActive(next);
         setVisited((current) => current.includes(next) ? current : [...current, next]);
       }} className="space-y-6">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3">
           {CALCULATION_WORKFLOWS.map((workflow) => (
             <TabsTrigger key={workflow} className="h-auto min-h-11 whitespace-normal text-center" value={workflow}>
               {WORKFLOW_LABELS[workflow]}
@@ -93,7 +92,6 @@ function CalculationWorkflowPanel({ workflow }: { workflow: CalculationWorkflow 
       </>}
       {workflow === "raum" && <FloorplanSection state={state} mode="room" />}
       {workflow === "ki" && <FloorplanSection state={state} mode="ki" />}
-      {workflow === "ausschreibung" && <TenderSection state={state} />}
       {workflow === "raum" && <DiscountPanel state={state} />}
       {(workflow === "raum" || workflow === "ki") && <TaxModePanel state={state} />}
       <CalculationTransfer state={state} workflow={workflow} />

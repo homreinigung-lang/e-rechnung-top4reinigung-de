@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculationTransfer, type CalculationWorkflow } from "./calculation-transfer";
+import { CALCULATION_WORKFLOWS, calculationTransfer, type CalculationWorkflow } from "./calculation-transfer";
 import { buildDiscountPosition, type CalcPosition } from "./kalkulation-engine";
 import { computeDocumentTotals } from "./document-totals";
 
@@ -9,6 +9,11 @@ const calculated: CalcPosition[] = [
 ];
 const ai = [{ description: "KI-Leistung", quantity: 1, unit: "Monat", unit_price: 350 }];
 const lv = [{ description: "Manuelle Position", quantity: 2, unit: "Std.", unit_price: 40 }];
+it("keeps tender analysis outside the normal calculation workflows", () => {
+  expect(CALCULATION_WORKFLOWS).toEqual(["schnell", "raum", "ki"]);
+  expect(CALCULATION_WORKFLOWS).not.toContain("ausschreibung");
+});
+
 const input = {
   workflow: "schnell" as CalculationWorkflow, calculated, ai, lv,
   roomEnabled: true, aiStale: false, aiQuestions: [] as string[], warnings: [] as string[], frequency: 1,

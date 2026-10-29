@@ -37,6 +37,14 @@ function LvAnalysePage() {
           sowie fehlende Angaben.
         </p>
       </header>
+      <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+        <p className="font-medium">Getrennter Arbeitsbereich für Ausschreibungen</p>
+        <p className="text-muted-foreground">
+          Upload, erkannte Positionen, Prüfung, Stunden, Kosten und Preisempfehlung gehören nur zu
+          dieser LV-Analyse. Ergebnisse verändern weder die normale Kalkulation noch ein Angebot
+          automatisch.
+        </p>
+      </div>
       <ClientOnly fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
         <Suspense fallback={<Loader2 className="size-5 animate-spin text-muted-foreground" />}>
           <LvAnalyse />
