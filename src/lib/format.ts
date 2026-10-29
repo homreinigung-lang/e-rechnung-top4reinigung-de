@@ -144,6 +144,9 @@ export function nextNumber(type: DocKind, existing: string[]): string {
 export const REVERSE_CHARGE_NOTE =
   "Steuerschuldnerschaft des Leistungsempfängers (Reverse-Charge-Verfahren gemäß § 13b UStG / Art. 196 MwStSystRL). Die Steuerschuld geht auf den Leistungsempfänger über.";
 
+export const DOMESTIC_REVERSE_CHARGE_NOTE =
+  "Steuerschuldnerschaft des Leistungsempfängers gemäß § 13b Abs. 2 Nr. 8 UStG (Gebäudereinigungsleistungen).";
+
 export const NO_VAT_NOTE =
   "Es wird keine Umsatzsteuer ausgewiesen (innergemeinschaftliche Leistung, Reverse-Charge-Verfahren).";
 
@@ -159,5 +162,6 @@ export function taxNoteForTaxMode(taxMode: string): string {
   taxMode = normalizeTaxMode(taxMode);
   if (taxMode === "kleinunternehmer") return KLEINUNTERNEHMER_NOTE;
   if (taxMode === "domestic") return "";
+  if (taxMode === "domestic_reverse_charge") return DOMESTIC_REVERSE_CHARGE_NOTE;
   return REVERSE_CHARGE_NOTE;
 }
