@@ -14,6 +14,18 @@ beforeEach(() => {
   mocks.getUser.mockResolvedValue({ data: { user: { id: "isolated-user" } } });
 });
 
+it.each([
+  ["domestic", 19, false, 39.9, 249.9],
+  ["domestic_reverse_charge", 0, true, 0, 210],
+  ["eu_reverse_charge", 0, true, 0, 210],
+  ["kleinunternehmer", 0, false, 0, 210],
+] as const)("persists %s with consistent tax fields", async (taxMode, vatRate, reverse, vat, total) => {
+  const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+  mocks.from.mockImplementation((table: string) => table === "document_items" ? { insert: vi.fn().mockResolvedValue({ error: null }) } : { update });
+  await quote({ taxMode, vatRate }).mutationFn();
+  expect(update).toHaveBeenCalledWith(expect.objectContaining({ tax_mode: taxMode, vat_rate: vatRate, reverse_charge: reverse, net_total: 210, vat_amount: vat, total }));
+});
+
 function quote(overrides: Partial<Parameters<typeof useCalculationQuote>[0]> = {}) {
   const result = useCalculationQuote({
     confirmed: true,

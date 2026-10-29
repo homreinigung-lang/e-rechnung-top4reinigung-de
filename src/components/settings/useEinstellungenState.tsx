@@ -1,4 +1,5 @@
 import { fetchAllRows } from "@/lib/fetch-all-rows";
+import { taxModeLabel } from "@/lib/tax-mode";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -152,10 +153,7 @@ export function useEinstellungenState() {
           .toFixed(2)
           .replace(".", ","),
         Brutto: Number(d.total).toFixed(2).replace(".", ","),
-        Steuerart:
-          (d as Record<string, unknown>)["tax_mode"] === "domestic"
-            ? "19% Inland"
-            : "Reverse-Charge",
+        Steuerart: taxModeLabel((d as Record<string, unknown>)["tax_mode"]),
         Status: d.status,
       })),
       { from, to },

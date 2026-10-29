@@ -166,7 +166,9 @@ export function useDocumentViewData(input: {
       tax_mode:
         String(f["tax_mode"] ?? "") === "kleinunternehmer"
           ? "kleinunternehmer"
-          : String(f["tax_mode"] ?? "") === "domestic_reverse_charge" && !euReverseCharge && c.company?.trim()
+          : String(f["tax_mode"] ?? "") === "domestic_reverse_charge" &&
+              (!f["customer_id"] || f["customer_id"] === c.id) &&
+              !euReverseCharge && c.company?.trim()
             ? "domestic_reverse_charge"
           : euReverseCharge && reverseChargeAllowed
             ? "eu_reverse_charge"

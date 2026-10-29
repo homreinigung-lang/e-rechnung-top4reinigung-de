@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FILES_BUCKET } from "@/lib/storage";
 import { formatDate, formatMoney } from "@/lib/format";
 import { buildXRechnungXml } from "@/lib/erechnung";
+import { taxModeLabel } from "@/lib/tax-mode";
 
 /** SHA-256-Prüfsumme der unveränderten PDF-Bytes. */
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
@@ -178,7 +179,7 @@ export async function buildGobdExport(from: string, to: string): Promise<Blob> {
       Kunde: d.customer_company || d.customer_name,
       "USt-IdNr": String(r["customer_vat_id"] ?? ""),
       Bestellnummer: String(r["order_number"] ?? ""),
-      Steuerart: r["tax_mode"] === "domestic" ? "19% Inland" : r["tax_mode"] === "kleinunternehmer" ? "Kleinunternehmer § 19 UStG" : r["tax_mode"] === "domestic_reverse_charge" ? "§ 13b Inland Gebäudereinigung" : "Reverse-Charge EU",
+      Steuerart: taxModeLabel(r["tax_mode"]),
       Netto: de(r["net_total"] ?? d.total),
       Umsatzsteuer: de(r["vat_amount"]),
       Brutto: de(d.total),
