@@ -174,7 +174,7 @@ function KalkulationAngebotPage() {
           discount_reason: discountReason,
           tax_mode: taxMode,
           vat_rate: vatRate,
-          reverse_charge: taxMode === "eu_reverse_charge",
+          reverse_charge: taxMode === "eu_reverse_charge" || taxMode === "domestic_reverse_charge",
           net_total: totals.netTotal,
           vat_amount: totals.vatAmount,
           total: totals.grossTotal,
@@ -327,6 +327,7 @@ function KalkulationAngebotPage() {
                 <SelectContent>
                   <SelectItem value="domestic">Inland – 19 % USt.</SelectItem>
                   <SelectItem value="eu_reverse_charge">EU-Ausland – Reverse-Charge</SelectItem>
+                  <SelectItem value="domestic_reverse_charge">Inland – § 13b Gebäudereinigung</SelectItem>
                   <SelectItem value="kleinunternehmer">Kleinunternehmer § 19 UStG</SelectItem>
                 </SelectContent>
               </Select>
