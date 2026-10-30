@@ -1,3 +1,4 @@
+import { EmployeeDeliveryNotes } from "./EmployeeDeliveryNotes";
 import { AssistantPanel } from "@/components/AssistantPanel";
 import { Link } from "@tanstack/react-router";
 
@@ -279,6 +280,15 @@ export function ProjectDetailDialog({
               </div>
             </details>
           ) : null}
+          {task?.projectId && project && (
+            <EmployeeDeliveryNotes
+              key={`${task.projectId}-${task.date.slice(0, 7)}`}
+              projectId={task.projectId}
+              ownerId={employee.user_id}
+              address={address || task.address || project.name}
+              date={task.date}
+            />
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-md border p-3">
               <div className="text-xs text-muted-foreground">Kunde</div>
