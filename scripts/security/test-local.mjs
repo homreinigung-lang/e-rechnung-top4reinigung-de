@@ -19,3 +19,5 @@ await import('./tax-migration-upgrade.mjs');
 
 console.log(sql(readFileSync('scripts/security/delivery-notes.sql', 'utf8')).split('\n').at(-1));
 console.log(sql(readFileSync('scripts/security/project-delivery-notes.sql', 'utf8')).split('\n').at(-1));
+
+console.log(sql(readFileSync('scripts/security/employee-delivery-notes.sql', 'utf8')).split('\n').at(-1));
