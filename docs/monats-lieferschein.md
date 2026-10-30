@@ -10,7 +10,11 @@ folgen die Lieferscheinseiten nach allen Rechnungsseiten in derselben Datei.
 1. Objekt öffnen, **Lieferschein erstellen** wählen und Monat, Nummer, Bestellung und Lieferadresse prüfen.
 2. Pro Woche Datum und Mengen eintragen: Toilettenpapier in Rollen, Handtuchpapier in Packungen,
    Flüssigseife in Litern. Dezimalmengen wie `1,5` Liter werden unterstützt. Zum Monatsende werden die
-   fünf Wochen je Material automatisch addiert, ohne zusätzliche Umrechnungsfelder.
+   fünf Wochen automatisch addiert und umgerechnet: **32 Rollen = 1 Karton Toilettenpapier,
+   15 Packungen = 1 Karton Handtuchpapier, 5 Liter = 1 Kanister**. Die Monatszeile zeigt ausschließlich
+   Kartons bzw. Kanister, einschließlich Teilmengen. Beispiel: 64 Rollen / 30 Packungen / 7,5 Liter
+   ergeben **2 Kartons / 2 Kartons / 1,5 Kanister**. Die bestätigten Gebindegrößen werden bei neuen
+   Nachweisen mitgespeichert; es sind keine zusätzlichen wöchentlichen Eingaben nötig.
 3. Im Objekt speichern. Die Monatssummen werden je Material berechnet; der Lieferschein enthält keine Preise.
 4. Wochen- und Monatsbestätigungen am Handy erfassen (Name, Datum, transparente Unterschrift) oder
    ausdrucken, auf Papier unterschreiben und als PDF/JPG/PNG hochladen. Der Scan ersetzt die erzeugte

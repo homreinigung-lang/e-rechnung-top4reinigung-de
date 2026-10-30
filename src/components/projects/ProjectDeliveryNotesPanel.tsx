@@ -100,8 +100,8 @@ export function ProjectDeliveryNotesPanel({ state }: { state: ProjektDetailState
           <h2 className="text-lg font-semibold">Lieferscheine · Verbrauchsmaterial</h2>
           <p className="text-sm text-muted-foreground">
             Jede Woche Rollen Toilettenpapier, Packungen Handtuchpapier und Liter Seife eintragen.
-            Die Monatssummen werden automatisch gebildet. Anschließend unterschreiben und mit der
-            passenden Rechnung als eine PDF verbinden.
+            Die Monatssummen erscheinen in Kartons und Kanistern. Anschließend unterschreiben und
+            mit der passenden Rechnung als eine PDF verbinden.
           </p>
         </div>
         <Button

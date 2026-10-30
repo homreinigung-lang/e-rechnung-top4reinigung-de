@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { PDFDocument, PDFArray, PDFRawStream, StandardFonts } from "pdf-lib";
+import { PDFDocument, PDFArray, PDFRawStream, StandardFonts, decodePDFRawStream } from "pdf-lib";
 import { writeFileSync } from "node:fs";
 import { buildDocumentPdfBytes, type PdfDocData } from "./invoice-pdf";
 import { blankDeliveryNote, type DeliverySignature } from "./delivery-note";
@@ -32,6 +32,41 @@ const note = blankDeliveryNote(
   "20012640",
   "Gaswerkstraße (Torhaus 11), 66333 Völklingen",
 );
+
+it("prints weekly individual units and monthly cartons/canisters in the actual PDF", async () => {
+  const example = blankDeliveryNote("paper", "2026-10-30", "20012640", "Objekt");
+  [
+    ["16", "9", "2,5"],
+    ["16", "6", "2"],
+    ["16", "8", "1,5"],
+    ["16", "7", "1,5"],
+  ].forEach(([t, h, l], i) => {
+    example.rows[i] = {
+      date: `2026-10-${String(i + 1).padStart(2, "0")}`,
+      toiletPaper: t!,
+      handTowels: h!,
+      soap: l!,
+      signature: null,
+    };
+  });
+  const pdf = await PDFDocument.load(
+    await buildDocumentPdfBytes({ ...invoice, deliveryNote: { data: example } }),
+  );
+  const contents = pdf.getPages().at(-1)!.node.Contents() as PDFArray;
+  const decoded = contents
+    .asArray()
+    .map((ref) =>
+      new TextDecoder().decode(
+        decodePDFRawStream(pdf.context.lookup(ref) as PDFRawStream).decode(),
+      ),
+    )
+    .join("\n");
+  const encoded = (s: string) => Buffer.from(s, "latin1").toString("hex").toUpperCase();
+  for (const s of ["3-lagig (Rollen)", "Z-Falz (Packungen)", "Liter", "2 Kartons", "1,5 Kanister"])
+    expect(decoded).toContain(encoded(s));
+  for (const s of ["64 Rollen", "30 Packungen", "7,5 Liter"])
+    expect(decoded).not.toContain(encoded(s));
+});
 note.rows[0] = {
   date: "2026-10-01",
   toiletPaper: "2",

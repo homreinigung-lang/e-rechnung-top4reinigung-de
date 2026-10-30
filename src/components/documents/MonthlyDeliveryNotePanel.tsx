@@ -17,7 +17,8 @@ import { DeliverySignatureDialog } from "./DeliverySignatureDialog";
 import {
   blankDeliveryNote,
   deliveryNoteSchema,
-  deliveryTotals,
+  deliveryMonthlyTotals,
+  deliveryConversionLabel,
   deliveryNumber,
   MATERIALS,
   materialUnit,
@@ -394,7 +395,7 @@ export function DeliveryNoteEditor({
   const headerLocked =
     state.locked || Boolean(scanPath) || monthSigned || note.rows.some((r) => r.signature);
   const fieldsLocked = state.locked || Boolean(scanPath) || monthSigned;
-  const totals = deliveryTotals(note);
+  const totals = deliveryMonthlyTotals(note);
   const change = (next: DeliveryNote) => {
     setNote(next);
     setDirty(true);
@@ -653,7 +654,7 @@ export function DeliveryNoteEditor({
                     {Number.isFinite(totals[m.key])
                       ? deliveryNumber(totals[m.key])
                       : "Eingabe prüfen"}{" "}
-                    {materialUnit(note, m.key)}
+                    {m.unit}
                   </td>
                 ))}
                 <td className="hidden p-3 md:table-cell">Monatssumme</td>
@@ -661,6 +662,12 @@ export function DeliveryNoteEditor({
             </tfoot>
           </table>
         </div>
+        {note.quantityMode && (
+          <p className="text-xs text-muted-foreground">
+            {deliveryConversionLabel(note)}. Wochenmengen werden zum Monatsende in Kartons bzw.
+            Kanister umgerechnet.
+          </p>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           {(["supplierSignature", "customerSignature"] as const).map((target) => (
             <div key={target} className="space-y-2 rounded border p-3">
