@@ -37,36 +37,50 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
   } = state;
   const [bulkFrequency, setBulkFrequency] = useState("");
   const [bulkUnit, setBulkUnit] = useState<RecurrenceUnit>("week");
+  const [expandedRoomId, setExpandedRoomId] = useState<string | null>(null);
   function addRoom() {
     setRoomCalculation((current) => ({
       ...current,
-      rooms: [...current.rooms, {
-        id: crypto.randomUUID(),
-        source: "manual",
-        name: "Neuer Raum",
-        floor: "",
-        usage_type: "",
-        floor_covering: "",
-        area: "",
-        sqmPerHour: "",
-        rateLabel: "Bitte Leistungswert festlegen",
-        frequency: "",
-        frequencyUnit: "week",
-        included: true,
-        calculationMode: "minutes",
-        minutesPerVisit: "",
-        tasks: "",
-      }],
+      rooms: [
+        ...current.rooms,
+        {
+          id: crypto.randomUUID(),
+          source: "manual",
+          name: "Neuer Raum",
+          floor: "",
+          usage_type: "",
+          floor_covering: "",
+          area: "",
+          sqmPerHour: "",
+          rateLabel: "Bitte Leistungswert festlegen",
+          frequency: "",
+          frequencyUnit: "week",
+          included: true,
+          calculationMode: "minutes",
+          minutesPerVisit: "",
+          tasks: "",
+        },
+      ],
     }));
   }
 
-  if (!roomCalculation.rooms.length) return (
-    <section id="raumkalkulation" className="space-y-3 rounded-lg border p-3 sm:p-4" aria-label="Raumweise Stundenberechnung">
-      <h3 className="font-semibold">Räume & Stundenberechnung</h3>
-      <p className="text-sm text-muted-foreground">Ersten Raum direkt erfassen oder Räume aus einem Grundriss analysieren. Danach Minuten, Turnus und Stundensatz prüfen und die Raumkalkulation aktivieren.</p>
-      <Button type="button" variant="outline" onClick={addRoom}>Ersten Raum hinzufügen</Button>
-    </section>
-  );
+  if (!roomCalculation.rooms.length)
+    return (
+      <section
+        id="raumkalkulation"
+        className="space-y-3 rounded-lg border p-3 sm:p-4"
+        aria-label="Raumweise Stundenberechnung"
+      >
+        <h3 className="font-semibold">Räume & Stundenberechnung</h3>
+        <p className="text-sm text-muted-foreground">
+          Ersten Raum direkt erfassen oder Räume aus einem Grundriss analysieren. Danach Minuten,
+          Turnus und Stundensatz prüfen und die Raumkalkulation aktivieren.
+        </p>
+        <Button type="button" variant="outline" onClick={addRoom}>
+          Ersten Raum hinzufügen
+        </Button>
+      </section>
+    );
 
   function patch(id: string, values: Partial<CalculationRoom>) {
     setRoomCalculation((current) => ({
@@ -213,194 +227,262 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
           </Button>
         </div>
       </div>
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="overflow-hidden rounded-md border">
+        <div className="hidden grid-cols-[minmax(11rem,2fr)_5rem_6rem_8rem_8rem_9rem_auto] gap-3 bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground lg:grid">
+          <span>Raum</span>
+          <span>Etage</span>
+          <span>Fläche</span>
+          <span>Berechnung</span>
+          <span>Turnus</span>
+          <span>Ergebnis</span>
+          <span className="sr-only">Aktionen</span>
+        </div>
         {roomCalculation.rooms.map((room, index) => {
           const result = roomSummary.rows.find((row) => row.room.id === room.id);
+          const expanded = expandedRoomId === room.id;
+          const calculationLabel =
+            room.calculationMode === "minutes"
+              ? `${room.minutesPerVisit || "–"} Min.`
+              : `${room.sqmPerHour || "–"} m²/Std.`;
+          const frequencyLabel =
+            state.frequencyUnit === "once"
+              ? "Einmalig"
+              : room.frequency
+                ? `${room.frequency} × ${recurrenceUnitLabel(room.frequencyUnit)}`
+                : "Offen";
           return (
-            <div key={room.id} className="space-y-3 rounded-md border p-3">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <Checkbox
-                  checked={room.included}
-                  onCheckedChange={(checked) => patch(room.id, { included: Boolean(checked) })}
-                />
-                Raum {index + 1} reinigen
-              </label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(
-                  [
-                    ["name", "Raumname"],
-                    ["floor", "Etage"],
-                    ["usage_type", "Raumart"],
-                    ["floor_covering", "Bodenbelag"],
-                    ["area", "Fläche (m²)"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <div key={key} className="space-y-1">
-                    <Label htmlFor={`room-${index}-${key}`}>{label}</Label>
-                    <Input
-                      id={`room-${index}-${key}`}
-                      disabled={!room.included}
-                      inputMode={key === "area" ? "decimal" : "text"}
-                      value={room[key]}
-                      onChange={(event) =>
-                        patch(room.id, {
-                          [key]: event.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                ))}
-                <div className="space-y-1">
-                  <Label>Berechnung je Besuch</Label>
-                  <Select
-                    disabled={!room.included}
-                    value={room.calculationMode ?? "area"}
-                    onValueChange={(value) =>
-                      patch(room.id, { calculationMode: value as "area" | "minutes" })
-                    }
-                  >
-                    <SelectTrigger aria-label={`Berechnung ${room.name || index + 1}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="minutes">Minuten je Besuch (alle Aufgaben)</SelectItem>
-                      <SelectItem value="area">Fläche ÷ m²/Std.</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <div key={room.id} className="border-t first:border-t-0">
+              <div className="grid items-center gap-2 px-3 py-2 lg:grid-cols-[minmax(11rem,2fr)_5rem_6rem_8rem_8rem_9rem_auto] lg:gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Checkbox
+                    aria-label={`Raum ${index + 1} reinigen`}
+                    checked={room.included}
+                    onCheckedChange={(checked) => patch(room.id, { included: Boolean(checked) })}
+                  />
+                  <span className="truncate text-sm font-medium">
+                    {room.name || `Raum ${index + 1}`}
+                  </span>
+                  {room.usage_type && (
+                    <span className="hidden truncate text-xs text-muted-foreground sm:inline">
+                      {room.usage_type}
+                    </span>
+                  )}
                 </div>
-                {room.calculationMode === "minutes" ? (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm sm:grid-cols-5 lg:contents">
+                  <span>
+                    <span className="text-xs text-muted-foreground lg:hidden">Etage: </span>
+                    {room.floor || "–"}
+                  </span>
+                  <span>
+                    <span className="text-xs text-muted-foreground lg:hidden">Fläche: </span>
+                    {room.area ? `${room.area} m²` : "–"}
+                  </span>
+                  <span>
+                    <span className="text-xs text-muted-foreground lg:hidden">Ansatz: </span>
+                    {calculationLabel}
+                  </span>
+                  <span>
+                    <span className="text-xs text-muted-foreground lg:hidden">Turnus: </span>
+                    {frequencyLabel}
+                  </span>
+                  <span className="font-medium">
+                    {result
+                      ? `${formatNumber(result.hoursPerVisit * 60)} Min. · ${formatNumber(result.monthlyHours)} ${state.frequencyUnit === "once" ? "Std./Auftrag" : "Std./Monat"}`
+                      : "Noch offen"}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-expanded={expanded}
+                  aria-controls={`room-${room.id}-details`}
+                  onClick={() => setExpandedRoomId(expanded ? null : room.id)}
+                >
+                  {expanded ? "Schließen" : "Bearbeiten"}
+                </Button>
+              </div>
+              {expanded && (
+                <div id={`room-${room.id}-details`} className="space-y-3 border-t bg-muted/20 p-3">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {(
+                      [
+                        ["name", "Raumname"],
+                        ["floor", "Etage"],
+                        ["usage_type", "Raumart"],
+                        ["floor_covering", "Bodenbelag"],
+                        ["area", "Fläche (m²)"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={`room-${index}-${key}`}>{label}</Label>
+                        <Input
+                          id={`room-${index}-${key}`}
+                          disabled={!room.included}
+                          inputMode={key === "area" ? "decimal" : "text"}
+                          value={room[key]}
+                          onChange={(event) =>
+                            patch(room.id, {
+                              [key]: event.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    ))}
+                    <div className="space-y-1">
+                      <Label>Berechnung je Besuch</Label>
+                      <Select
+                        disabled={!room.included}
+                        value={room.calculationMode ?? "area"}
+                        onValueChange={(value) =>
+                          patch(room.id, { calculationMode: value as "area" | "minutes" })
+                        }
+                      >
+                        <SelectTrigger aria-label={`Berechnung ${room.name || index + 1}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="minutes">Minuten je Besuch (alle Aufgaben)</SelectItem>
+                          <SelectItem value="area">Fläche ÷ m²/Std.</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {room.calculationMode === "minutes" ? (
+                      <div className="space-y-1">
+                        <Label htmlFor={`room-${index}-minutes`}>Personalminuten je Besuch</Label>
+                        <Input
+                          id={`room-${index}-minutes`}
+                          inputMode="decimal"
+                          disabled={!room.included}
+                          value={room.minutesPerVisit ?? ""}
+                          placeholder="Zeit selbst einschätzen"
+                          onChange={(event) =>
+                            patch(room.id, {
+                              minutesPerVisit: event.target.value,
+                              minutesOrigin: undefined,
+                            })
+                          }
+                        />
+                        {room.minutesOrigin && (
+                          <p className="text-xs text-muted-foreground">
+                            {room.minutesOrigin === "estimate"
+                              ? `Zeitvorschlag aus Fläche und Leistungswert (${room.rateLabel}) – Aufgaben und Aufwand prüfen.`
+                              : "Minuten aus dem Dokument übernommen – bitte prüfen."}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Label htmlFor={`room-${index}-performance`}>Leistungswert (m²/Std.)</Label>
+                        <Input
+                          id={`room-${index}-performance`}
+                          inputMode="decimal"
+                          disabled={!room.included}
+                          value={room.sqmPerHour}
+                          onChange={(event) =>
+                            patch(room.id, {
+                              sqmPerHour: event.target.value,
+                              rateLabel: "Eigener Leistungswert",
+                            })
+                          }
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <Label htmlFor={`room-${index}-frequency`}>Reinigungen</Label>
+                      <Input
+                        id={`room-${index}-frequency`}
+                        disabled={!room.included || state.frequencyUnit === "once"}
+                        inputMode="decimal"
+                        value={state.frequencyUnit === "once" ? "1" : room.frequency}
+                        placeholder="Bitte festlegen"
+                        onChange={(event) => patch(room.id, { frequency: event.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Zeitraum</Label>
+                      <Select
+                        disabled={!room.included || state.frequencyUnit === "once"}
+                        value={state.frequencyUnit === "once" ? "once" : room.frequencyUnit}
+                        onValueChange={(value) =>
+                          patch(room.id, { frequencyUnit: value as RecurrenceUnit })
+                        }
+                      >
+                        <SelectTrigger aria-label={`Zeitraum ${room.name || index + 1}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {state.frequencyUnit === "once" && (
+                            <SelectItem value="once">Einmalig</SelectItem>
+                          )}
+                          {units.map((unit) => (
+                            <SelectItem key={unit} value={unit}>
+                              {recurrenceUnitLabel(unit)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   <div className="space-y-1">
-                    <Label htmlFor={`room-${index}-minutes`}>Personalminuten je Besuch</Label>
-                    <Input
-                      id={`room-${index}-minutes`}
-                      inputMode="decimal"
+                    <Label htmlFor={`room-${index}-tasks`}>Enthaltene Aufgaben</Label>
+                    <Textarea
+                      id={`room-${index}-tasks`}
                       disabled={!room.included}
-                      value={room.minutesPerVisit ?? ""}
-                      placeholder="Zeit selbst einschätzen"
+                      value={room.tasks ?? ""}
+                      placeholder="z. B. Boden, Oberflächen, Abfall, WC und Waschbecken"
                       onChange={(event) =>
-                        patch(room.id, {
-                          minutesPerVisit: event.target.value,
-                          minutesOrigin: undefined,
-                        })
+                        patch(room.id, { tasks: event.target.value, tasksOrigin: undefined })
                       }
                     />
-                    {room.minutesOrigin && (
+                    {room.tasksOrigin === "estimate" && (
                       <p className="text-xs text-muted-foreground">
-                        {room.minutesOrigin === "estimate"
-                          ? `Zeitvorschlag aus Fläche und Leistungswert (${room.rateLabel}) – Aufgaben und Aufwand prüfen.`
-                          : "Minuten aus dem Dokument übernommen – bitte prüfen."}
+                        Aufgabenvorschlag nach Raumart – tatsächlichen Leistungsumfang prüfen.
                       </p>
                     )}
                   </div>
-                ) : (
-                  <div className="space-y-1">
-                    <Label htmlFor={`room-${index}-performance`}>Leistungswert (m²/Std.)</Label>
-                    <Input
-                      id={`room-${index}-performance`}
-                      inputMode="decimal"
-                      disabled={!room.included}
-                      value={room.sqmPerHour}
-                      onChange={(event) =>
-                        patch(room.id, {
-                          sqmPerHour: event.target.value,
-                          rateLabel: "Eigener Leistungswert",
-                        })
-                      }
-                    />
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <Label htmlFor={`room-${index}-frequency`}>Reinigungen</Label>
-                  <Input
-                    id={`room-${index}-frequency`}
-                    disabled={!room.included || state.frequencyUnit === "once"}
-                    inputMode="decimal"
-                    value={state.frequencyUnit === "once" ? "1" : room.frequency}
-                    placeholder="Bitte festlegen"
-                    onChange={(event) => patch(room.id, { frequency: event.target.value })}
-                  />
+                  {room.calculationMode !== "minutes" && (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        Ansatz: {room.rateLabel}. Nur die damit abgedeckten Aufgaben sind enthalten.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!room.included}
+                        onClick={() => {
+                          const rate = findRate(visiblePerformanceRates, room);
+                          if (!rate) {
+                            toast.error(
+                              "Kein passender Leistungswert – bitte m²/Std. selbst angeben.",
+                            );
+                            return;
+                          }
+                          patch(room.id, {
+                            sqmPerHour: String(rate.sqm_per_hour).replace(".", ","),
+                            rateLabel: rate.label,
+                          });
+                        }}
+                      >
+                        Leistungswert neu vorschlagen
+                      </Button>
+                    </>
+                  )}
+                  {result && (
+                    <p className="text-sm">
+                      <strong>{formatNumber(result.hoursPerVisit * 60)} Min./Reinigung</strong> ·{" "}
+                      {formatNumber(result.monthlyHours)}{" "}
+                      {state.frequencyUnit === "once" ? "Std./Auftrag" : "Std./Monat"}
+                    </p>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <Label>Zeitraum</Label>
-                  <Select
-                    disabled={!room.included || state.frequencyUnit === "once"}
-                    value={state.frequencyUnit === "once" ? "once" : room.frequencyUnit}
-                    onValueChange={(value) =>
-                      patch(room.id, { frequencyUnit: value as RecurrenceUnit })
-                    }
-                  >
-                    <SelectTrigger aria-label={`Zeitraum ${room.name || index + 1}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {state.frequencyUnit === "once" && <SelectItem value="once">Einmalig</SelectItem>}
-                      {units.map((unit) => (
-                        <SelectItem key={unit} value={unit}>
-                          {recurrenceUnitLabel(unit)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor={`room-${index}-tasks`}>Enthaltene Aufgaben</Label>
-                <Textarea
-                  id={`room-${index}-tasks`}
-                  disabled={!room.included}
-                  value={room.tasks ?? ""}
-                  placeholder="z. B. Boden, Oberflächen, Abfall, WC und Waschbecken"
-                  onChange={(event) =>
-                    patch(room.id, { tasks: event.target.value, tasksOrigin: undefined })
-                  }
-                />
-                {room.tasksOrigin === "estimate" && (
-                  <p className="text-xs text-muted-foreground">
-                    Aufgabenvorschlag nach Raumart – tatsächlichen Leistungsumfang prüfen.
-                  </p>
-                )}
-              </div>
-              {room.calculationMode !== "minutes" && (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    Ansatz: {room.rateLabel}. Nur die damit abgedeckten Aufgaben sind enthalten.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={!room.included}
-                    onClick={() => {
-                      const rate = findRate(visiblePerformanceRates, room);
-                      if (!rate) {
-                        toast.error("Kein passender Leistungswert – bitte m²/Std. selbst angeben.");
-                        return;
-                      }
-                      patch(room.id, {
-                        sqmPerHour: String(rate.sqm_per_hour).replace(".", ","),
-                        rateLabel: rate.label,
-                      });
-                    }}
-                  >
-                    Leistungswert neu vorschlagen
-                  </Button>
-                </>
-              )}
-              {result && (
-                <p className="text-sm">
-                  <strong>{formatNumber(result.hoursPerVisit * 60)} Min./Reinigung</strong> ·{" "}
-                  {formatNumber(result.monthlyHours)} {state.frequencyUnit === "once" ? "Std./Auftrag" : "Std./Monat"}
-                </p>
               )}
             </div>
           );
         })}
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={addRoom}
-      >
+      <Button type="button" variant="outline" onClick={addRoom}>
         Raum / Rüst- oder Wegezeit ergänzen
       </Button>
       {roomSummary.errors.length > 0 && (
@@ -418,14 +500,19 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
           {roomSummary.rows.length} Räume · {formatNumber(roomSummary.area)} m²
         </p>
         <p className="font-semibold">
-          {formatNumber(roomSummary.monthlyHours)} {state.frequencyUnit === "once" ? "Std./Auftrag" : "Std./Monat"} ·{" "}
-          {formatMoney(positionsTotal(roomSummary.positions))} {state.frequencyUnit === "once" ? "netto je Auftrag" : "netto/Monat"} vor Zusatzleistungen und
-          Rabatt
+          {formatNumber(roomSummary.monthlyHours)}{" "}
+          {state.frequencyUnit === "once" ? "Std./Auftrag" : "Std./Monat"} ·{" "}
+          {formatMoney(positionsTotal(roomSummary.positions))}{" "}
+          {state.frequencyUnit === "once" ? "netto je Auftrag" : "netto/Monat"} vor Zusatzleistungen
+          und Rabatt
         </p>
         <p className="text-xs text-muted-foreground">
-          {state.frequencyUnit === "once" ? "Ein Einsatz je ausgewähltem Raum. " : "Wochenbasierte Turnusse: 52 Wochen ÷ 12 Monate. "}Abrechenbare Stunden je Raum auf zwei
-          Nachkommastellen gerundet. Rüst-, Wege- und Nebenzeiten in den Minuten berücksichtigen
-          oder als eigene Zeitposition ergänzen; gemeinsame Zeiten nur einmal pro Besuch ansetzen.
+          {state.frequencyUnit === "once"
+            ? "Ein Einsatz je ausgewähltem Raum. "
+            : "Wochenbasierte Turnusse: 52 Wochen ÷ 12 Monate. "}
+          Abrechenbare Stunden je Raum auf zwei Nachkommastellen gerundet. Rüst-, Wege- und
+          Nebenzeiten in den Minuten berücksichtigen oder als eigene Zeitposition ergänzen;
+          gemeinsame Zeiten nur einmal pro Besuch ansetzen.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -453,3 +540,4 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
     </section>
   );
 }
+
