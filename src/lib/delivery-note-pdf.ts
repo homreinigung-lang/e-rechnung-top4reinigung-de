@@ -12,7 +12,8 @@ export async function readDeliveryNoteVersion(bytes: Uint8Array): Promise<number
 }
 import { clean, wrap, type PdfDocData } from "./invoice-pdf/shared";
 import {
-  deliveryTotals,
+  deliveryMonthlyTotals,
+  deliveryConversionLabel,
   deliveryNumber,
   MATERIALS,
   materialUnit,
@@ -220,12 +221,12 @@ export async function appendDeliveryNote(
     );
     await stamp(row.signature, 570, top + 2, 242, 32);
   }
-  const totals = deliveryTotals(note);
+  const totals = deliveryMonthlyTotals(note);
   rect(30, 448, 782, 28, true);
   text("GESAMT (Monat)", 38, 456, 110, 9, true, 1);
   MATERIALS.forEach((m, i) =>
     text(
-      `${deliveryNumber(totals[m.key])} ${materialUnit(note, m.key)}`,
+      `${deliveryNumber(totals[m.key])} ${m.unit}`,
       xs[i + 1]! + 8,
       456,
       xs[i + 2]! - xs[i + 1]! - 16,
@@ -237,7 +238,9 @@ export async function appendDeliveryNote(
 
   text("Monatssumme", 635, 456, 160, 9, false, 1);
   text(
-    "Bitte die wöchentlichen Mengen abzeichnen. Nachweis zur Abrechnung gemäß Bestellung.",
+    note.quantityMode
+      ? `${deliveryConversionLabel(note)}. Wochenmengen bitte abzeichnen.`
+      : "Bitte die wöchentlichen Mengen abzeichnen. Nachweis zur Abrechnung gemäß Bestellung.",
     30,
     483,
     780,

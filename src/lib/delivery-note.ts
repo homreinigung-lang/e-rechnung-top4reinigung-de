@@ -23,6 +23,13 @@ export const deliveryNoteSchema = z
     orderNumber: z.string().max(100),
     deliveryAddress: z.string().trim().min(1).max(450),
     quantityMode: z.literal("individual").optional(),
+    packaging: z
+      .object({
+        toiletPaper: z.number().int().positive().max(1_000_000),
+        handTowels: z.number().int().positive().max(1_000_000),
+        soap: z.number().positive().max(1_000_000),
+      })
+      .optional(),
     rows: z
       .array(
         z.object({
@@ -90,6 +97,8 @@ export const MATERIALS = [
   },
   { key: "soap", label: "Flüssigseife", detail: "5-Liter-Kanister", unit: "Kanister" },
 ] as const;
+/** Confirmed carton/canister contents; weekly entries remain rolls, packs and liters. */
+export const DEFAULT_DELIVERY_PACKAGING = { toiletPaper: 32, handTowels: 15, soap: 5 } as const;
 export function materialUnit(note: DeliveryNote, key: (typeof MATERIALS)[number]["key"]) {
   return note.quantityMode
     ? { toiletPaper: "Rollen", handTowels: "Packungen", soap: "Liter" }[key]
@@ -107,6 +116,22 @@ export function deliveryTotals(note: DeliveryNote) {
     ) / 1000;
   return { toiletPaper: sum("toiletPaper"), handTowels: sum("handTowels"), soap: sum("soap") };
 }
+export function deliveryMonthlyTotals(note: DeliveryNote) {
+  const totals = deliveryTotals(note);
+  if (!note.quantityMode) return totals;
+  const contents = note.packaging ?? DEFAULT_DELIVERY_PACKAGING;
+  const packages = (key: (typeof MATERIALS)[number]["key"]) =>
+    Math.round((totals[key] / contents[key]) * 1000) / 1000;
+  return {
+    toiletPaper: packages("toiletPaper"),
+    handTowels: packages("handTowels"),
+    soap: packages("soap"),
+  };
+}
+export function deliveryConversionLabel(note: DeliveryNote) {
+  const p = note.packaging ?? DEFAULT_DELIVERY_PACKAGING;
+  return `Umrechnung: ${deliveryNumber(p.toiletPaper)} Rollen/Karton · ${deliveryNumber(p.handTowels)} Packungen/Karton · ${deliveryNumber(p.soap)} Liter/Kanister`;
+}
 export function deliveryNumber(value: number) {
   return value.toLocaleString("de-DE", { maximumFractionDigits: 3 });
 }
@@ -123,6 +148,7 @@ export function blankDeliveryNote(
     orderNumber,
     deliveryAddress: address,
     quantityMode: "individual",
+    packaging: { ...DEFAULT_DELIVERY_PACKAGING },
     rows: Array.from({ length: 5 }, () => ({
       date: "",
       toiletPaper: "",
