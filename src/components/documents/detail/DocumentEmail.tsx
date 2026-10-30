@@ -5,6 +5,8 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { logAudit } from "@/lib/gobd";
 import { ensureOfficialNumber } from "@/lib/doc-number";
 import type { DocumentDetailStateContext } from "./useDocumentDetailState";
+import { assertSavedDeliveryNoteComplete } from "@/lib/delivery-note-store";
+import { readDeliveryNoteVersion } from "@/lib/delivery-note-pdf";
 
 export function DocumentEmail({ state }: { state: DocumentDetailStateContext }) {
   const {
@@ -39,8 +41,14 @@ export function DocumentEmail({ state }: { state: DocumentDetailStateContext }) 
       buildPdfBytes={makePdfBytes}
       beforeSend={async (generatedBytes) => {
         if (!isInvoice) return generatedBytes;
+        const deliveryVersion = await readDeliveryNoteVersion(generatedBytes);
+        if (!locked && (await assertSavedDeliveryNoteComplete(id)) !== deliveryVersion) {
+          throw new Error(
+            "Lieferschein wurde während der PDF-Erstellung geändert. Bitte erneut senden.",
+          );
+        }
         const { prepareInvoiceForEmail } = await import("@/lib/invoice-send");
-        const bytes = await prepareInvoiceForEmail(id, docNumber, generatedBytes);
+        const bytes = await prepareInvoiceForEmail(id, docNumber, generatedBytes, deliveryVersion);
         await queryClient.invalidateQueries({ queryKey: ["document", id] });
         await queryClient.invalidateQueries({ queryKey: ["documents"] });
         return bytes;

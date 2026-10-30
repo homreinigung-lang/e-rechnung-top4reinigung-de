@@ -32,6 +32,12 @@ export type PdfItem = {
 };
 
 export type PdfDocData = {
+  /** Separate pages appended after the unchanged invoice. No prices on the delivery note. */
+  deliveryNote?: {
+    data: import("../delivery-note").DeliveryNote;
+    scan?: Uint8Array;
+    version?: number;
+  };
   isInvoice: boolean;
   title: string; // z. B. "Rechnung RE-2026-0001"
   /** Zentrierte Hauptüberschrift (nur Angebote); ersetzt die Titelzeile. */

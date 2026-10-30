@@ -11,6 +11,7 @@ import { DocumentPreview } from "@/components/documents/detail/DocumentPreview";
 import { DocumentEditor } from "@/components/documents/detail/DocumentEditor";
 import { DocumentWorkflow } from "@/components/documents/detail/DocumentWorkflow";
 import { DocumentHeader } from "@/components/documents/detail/DocumentHeader";
+import { MonthlyDeliveryNotePanel } from "@/components/documents/MonthlyDeliveryNotePanel";
 
 export const Route = createFileRoute("/_authenticated/dokumente/$id")({
   validateSearch: (search: Record<string, unknown>): { bearbeiten?: boolean } =>
@@ -98,6 +99,7 @@ function DokumentDetail() {
       />
 
       <DocumentEditor state={state} />
+      <MonthlyDeliveryNotePanel state={state} />
       <DocumentPreview state={state} />
 
       <DocumentEmail state={state} />

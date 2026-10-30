@@ -55,5 +55,10 @@ export async function buildDocumentPdfBytes(d: PdfDocData): Promise<Uint8Array> 
     taxNoteLines,
   });
 
+  if (d.isInvoice && d.deliveryNote) {
+    const { appendDeliveryNote, markDeliveryNoteVersion } = await import("../delivery-note-pdf");
+    await appendDeliveryNote(pdf, d, d.deliveryNote.data, d.deliveryNote.scan);
+    if (d.deliveryNote.version) markDeliveryNoteVersion(pdf, d.deliveryNote.version);
+  }
   return pdf.save();
 }

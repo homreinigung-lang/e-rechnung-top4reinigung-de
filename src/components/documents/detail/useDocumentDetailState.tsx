@@ -6,6 +6,7 @@ import { useDocumentDetailWorkflow } from "./useDocumentDetailWorkflow";
 import { useDocumentViewData } from "./useDocumentViewData";
 import { useDocumentPdfData } from "./useDocumentPdfData";
 import { useDocumentOutput } from "./useDocumentOutput";
+import { assertSavedDeliveryNoteComplete } from "@/lib/delivery-note-store";
 
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -92,7 +93,12 @@ export function useDocumentDetailState() {
   const finalize = useMutation({
     mutationFn: async () => {
       await save.mutateAsync();
-      const finalized = await finalizeDocument(id);
+      const deliveryVersion =
+        data?.doc.type === "invoice" ? await assertSavedDeliveryNoteComplete(id) : undefined;
+      const finalized =
+        deliveryVersion === undefined
+          ? await finalizeDocument(id)
+          : await finalizeDocument(id, deliveryVersion);
       await queryClient.invalidateQueries({ queryKey: ["document", id] });
       // Kurz warten, damit die Druckansicht die neue Nummer zeigt.
       await new Promise((r) => setTimeout(r, 400));
