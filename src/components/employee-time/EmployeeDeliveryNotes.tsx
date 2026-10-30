@@ -250,7 +250,7 @@ export function EmployeeDeliveryNotes({
               disabled={
                 busy ||
                 draft.version === null ||
-                Boolean(draft.data.supplierSignature) ||
+                draft.data.quantityMode !== "individual" ||
                 !totals ||
                 !Object.values(totals).some((v) => v > 0)
               }
