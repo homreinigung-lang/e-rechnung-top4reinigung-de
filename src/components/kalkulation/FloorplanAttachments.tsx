@@ -42,19 +42,18 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
         onUploaded={(path, file) => {
           void (async () => {
             const url = await fileUrl(path);
-            setAttachments((prev) => [
-              ...prev,
-              {
-                path,
-                name: file.name,
-                url,
-                isImage: file.type.startsWith("image/"),
-                sqm: "",
-                rooms: "",
-                floors: "",
-                note: "",
-              },
-            ]);
+            const attachment = {
+              path,
+              name: file.name,
+              url,
+              isImage: file.type.startsWith("image/"),
+              sqm: "",
+              rooms: "",
+              floors: "",
+              note: "",
+            };
+            setAttachments((prev) => [...prev, attachment]);
+            scanFile.mutate(attachment);
           })();
         }}
       />
@@ -150,6 +149,32 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
                 </div>
 
                 {scanningPath === a.path && <AnalysisProgress />}
+                {a.analysisStatus === "completed" && (
+                  <div className="rounded-md border border-emerald-500/50 bg-emerald-50 p-2 text-sm text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100">
+                    <p className="font-medium">Analyseergebnis</p>
+                    <p>
+                      {formatNumber(a.analysisRooms ?? 0)} Räume ·{" "}
+                      {formatNumber(a.analysisItems ?? 0)} Vorschlagspositionen
+                    </p>
+                    {a.analysisSummary && (
+                      <p className="mt-1 text-xs opacity-80">{a.analysisSummary}</p>
+                    )}
+                    {(a.analysisRooms ?? 0) === 0 && (
+                      <p className="mt-1 text-xs">
+                        Keine Räume erkannt. Bitte Datei prüfen oder die Raumdaten manuell ergänzen.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {a.analysisStatus === "error" && (
+                  <div
+                    role="alert"
+                    className="rounded-md border border-destructive/50 p-2 text-sm text-destructive"
+                  >
+                    <p className="font-medium">Analyse fehlgeschlagen</p>
+                    <p className="text-xs">{a.analysisError || "Bitte Analyse erneut starten."}</p>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
@@ -243,3 +268,4 @@ export function FloorplanAttachments({ state }: { state: KalkulationStateContext
     </div>
   );
 }
+

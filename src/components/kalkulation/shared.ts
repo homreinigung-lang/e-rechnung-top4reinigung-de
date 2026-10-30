@@ -57,7 +57,20 @@ export type Attachment = {
   rooms: string;
   floors: string;
   note: string;
+  analysisStatus?: "analyzing" | "completed" | "error";
+  analysisRooms?: number;
+  analysisItems?: number;
+  analysisSummary?: string;
+  analysisError?: string;
 };
+
+export function floorplanScanInput(a: Attachment, url: string) {
+  return {
+    fileUrl: url,
+    mimeType: a.isImage ? "image/jpeg" : "application/pdf",
+    mode: "floorplan" as const,
+  };
+}
 
 export type AiItem = {
   id: string;
@@ -74,3 +87,4 @@ export type AiItem = {
 export const KALK_SECTION = "Kalkulation";
 
 export const KI_SECTION = "KI-Analyse";
+

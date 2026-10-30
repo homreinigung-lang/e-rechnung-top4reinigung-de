@@ -15,7 +15,15 @@ import { fileUrl } from "@/lib/storage";
 
 import { detectStairs, normalizeItems, round2 } from "@/lib/kalkulation-engine";
 
-import { CLEANING_TYPES, EXTRAS, num, type Attachment, type AiItem, KI_SECTION } from "./shared";
+import {
+  CLEANING_TYPES,
+  EXTRAS,
+  floorplanScanInput,
+  num,
+  type Attachment,
+  type AiItem,
+  KI_SECTION,
+} from "./shared";
 
 import type { useKalkulationForm } from "./useKalkulationForm";
 
@@ -110,7 +118,8 @@ export function useKalkulationSuggestions(input: {
       analyze({
         data: {
           prompt: aiPrompt,
-          recurrence: recurrence ?? (frequencyUnit === "once" ? { value: 1, unit: "once" } : undefined),
+          recurrence:
+            recurrence ?? (frequencyUnit === "once" ? { value: 1, unit: "once" } : undefined),
         },
       }),
     onMutate: () => {
@@ -222,16 +231,18 @@ export function useKalkulationSuggestions(input: {
   const [scanningPath, setScanningPath] = useState<string | null>(null);
   const scanFile = useMutation({
     mutationFn: async (a: Attachment) => {
-      setScanningPath(a.path);
       const url = a.url || (await fileUrl(a.path));
       const scan = await runProjectScan({
-        data: {
-          fileUrl: url,
-          mimeType: a.isImage ? "image/jpeg" : "application/pdf",
-          mode: a.isImage ? "floorplan" : "tender",
-        },
+        data: floorplanScanInput(a, url),
       });
       return { a, scan };
+    },
+    onMutate: (a) => {
+      setScanningPath(a.path);
+      updateAttachment(a.path, {
+        analysisStatus: "analyzing",
+        analysisError: "",
+      });
     },
     onSuccess: ({ a, scan }) => {
       setRoomCalculation((current) =>
@@ -250,6 +261,11 @@ export function useKalkulationSuggestions(input: {
         note: [a.note.trim(), scan.executive_summary.trim(), ...scan.highlights]
           .filter(Boolean)
           .join(" · "),
+        analysisStatus: "completed",
+        analysisRooms: scan.rooms.length,
+        analysisItems: scan.items.length,
+        analysisSummary: scan.executive_summary.trim(),
+        analysisError: "",
       });
 
       if (sqm > 0 && !raumbuch) {
@@ -282,7 +298,13 @@ export function useKalkulationSuggestions(input: {
         `Analyse fertig – ${scan.rooms.length} Räume, ${posFromItems.length} Vorschlagspositionen`,
       );
     },
-    onError: (e: Error) => toast.error(e.message, { duration: 8000 }),
+    onError: (e: Error, a) => {
+      updateAttachment(a.path, {
+        analysisStatus: "error",
+        analysisError: e.message,
+      });
+      toast.error(e.message, { duration: 8000 });
+    },
     onSettled: () => setScanningPath(null),
   });
 
@@ -358,3 +380,4 @@ export function useKalkulationSuggestions(input: {
     visitsPerMonth,
   };
 }
+
