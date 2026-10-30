@@ -14,9 +14,16 @@ export type Database = {
   }
   public: {
     Tables: {
+      project_delivery_notes: {
+        Row: { id: string; project_id: string; user_id: string; data: Json; scan_path: string | null; version: number; created_at: string; updated_at: string }
+        Insert: { id?: string; project_id: string; user_id: string; data: Json; scan_path?: string | null }
+        Update: { data?: Json; scan_path?: string | null }
+        Relationships: []
+      }
       document_delivery_notes: {
         Row: {
           document_id: string;
+          source_note_id: string | null;
           user_id: string;
           data: Json;
           scan_path: string | null;
@@ -814,6 +821,7 @@ export type Database = {
       }
       documents: {
         Row: {
+          project_id: string | null
           parent_order_id: string | null
           approval_note: string
           approved_at: string | null
@@ -876,6 +884,7 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          project_id?: string | null
           parent_order_id?: string | null
           approval_note?: string
           approved_at?: string | null
@@ -938,6 +947,7 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          project_id?: string | null
           parent_order_id?: string | null
           approval_note?: string
           approved_at?: string | null
@@ -2520,6 +2530,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      attach_project_delivery_note: { Args: { _note_id: string; _document_id: string; _version: number }; Returns: undefined }
       finalize_invoice_package: { Args: { _id: string; _delivery_version: number }; Returns: Database["public"]["Tables"]["documents"]["Row"] }
       create_supplement: { Args: { _order_id: string }; Returns: string }
       approve_supplement: { Args: { _id: string; _note: string }; Returns: undefined }

@@ -4,10 +4,11 @@ import {
   deliveryNoteSchema,
   deliveryTotals,
   assertDeliveryNoteComplete,
+  materialUnit,
 } from "./delivery-note";
 
 describe("monthly material delivery note", () => {
-  it("totals cartons and fractional canisters separately", () => {
+  it("totals weekly rolls, packs and fractional liters separately", () => {
     const note = blankDeliveryNote("abc", "2026-10-30", "20012640", "Objekt");
     ["2,5", "2", "1,5", "1.5"].forEach((v, i) => {
       note.rows[i] = {
@@ -23,6 +24,20 @@ describe("monthly material delivery note", () => {
       handTowels: 10,
       soap: 7.5,
     });
+  });
+  it("uses individual weekly units while preserving the units of older packaging-based notes", () => {
+    const note = blankDeliveryNote("abc", "2026-10-30", "", "Objekt");
+    expect([
+      materialUnit(note, "toiletPaper"),
+      materialUnit(note, "handTowels"),
+      materialUnit(note, "soap"),
+    ]).toEqual(["Rollen", "Packungen", "Liter"]);
+    delete note.quantityMode;
+    expect([
+      materialUnit(note, "toiletPaper"),
+      materialUnit(note, "handTowels"),
+      materialUnit(note, "soap"),
+    ]).toEqual(["Kartons", "Kartons", "Kanister"]);
   });
   it("rejects negative, malformed, nonfinite and exponential quantities", () => {
     for (const input of ["-1", "NaN", "Infinity", "1e3", "1,2,3", "1abc", "9999999", "1.2345"]) {

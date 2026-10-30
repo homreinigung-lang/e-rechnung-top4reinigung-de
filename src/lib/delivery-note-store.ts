@@ -6,6 +6,7 @@ import {
   deliveryNoteSchema,
   type DeliveryNote,
   type DeliveryNoteRecord,
+  type ProjectDeliveryNoteRecord,
 } from "./delivery-note";
 
 export async function fetchDeliveryNote(
@@ -14,7 +15,7 @@ export async function fetchDeliveryNote(
 ): Promise<DeliveryNoteRecord | null> {
   const { data, error } = await supabase
     .from("document_delivery_notes")
-    .select("document_id,data,scan_path,version")
+    .select("document_id,data,scan_path,version,source_note_id")
     .eq("document_id", documentId)
     .maybeSingle();
   // Existing invoices continue to work while the additive migration is being deployed.
@@ -22,6 +23,88 @@ export async function fetchDeliveryNote(
   if (error) throw new Error(`Lieferschein konnte nicht geladen werden: ${error.message}`);
   if (!data) return null;
   return { ...data, data: deliveryNoteSchema.parse(data.data) };
+}
+
+export async function fetchProjectDeliveryNotes(
+  projectId: string,
+): Promise<ProjectDeliveryNoteRecord[]> {
+  const { data, error } = await supabase
+    .from("project_delivery_notes")
+    .select("id,project_id,data,scan_path,version")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Objekt-Lieferscheine konnten nicht geladen werden: ${error.message}`);
+  if (!data?.length) return [];
+  const { data: links, error: linkError } = await supabase
+    .from("document_delivery_notes")
+    .select("source_note_id,document_id")
+    .in(
+      "source_note_id",
+      data.map((n) => n.id),
+    );
+  if (linkError) throw linkError;
+  const ids = (links ?? []).map((n) => n.document_id);
+  const invoices = ids.length
+    ? await supabase.from("documents").select("id,number").in("id", ids)
+    : { data: [], error: null };
+  if (invoices.error) throw invoices.error;
+  return data.map((n) => {
+    const link = links?.find((l) => l.source_note_id === n.id);
+    return {
+      ...n,
+      data: deliveryNoteSchema.parse(n.data),
+      document_id: link?.document_id ?? "",
+      invoice_number: invoices.data?.find((d) => d.id === link?.document_id)?.number,
+    };
+  });
+}
+
+export async function saveProjectDeliveryNote(
+  id: string,
+  projectId: string,
+  note: DeliveryNote,
+  scanPath: string | null,
+  version: number | null,
+) {
+  const payload = {
+    data: deliveryNoteSchema.parse(note) as unknown as import("@/integrations/supabase/types").Json,
+    scan_path: scanPath,
+  };
+  const q =
+    version === null
+      ? supabase
+          .from("project_delivery_notes")
+          .insert({ ...payload, id, project_id: projectId, user_id: await requireUserId() })
+      : supabase.from("project_delivery_notes").update(payload).eq("id", id).eq("version", version);
+  const { data, error } = await q.select("version").maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Lieferschein wurde zwischenzeitlich geändert. Bitte neu öffnen.");
+  return data.version;
+}
+
+export async function removeProjectDeliveryNote(id: string, version: number) {
+  const { data, error } = await supabase
+    .from("project_delivery_notes")
+    .delete()
+    .eq("id", id)
+    .eq("version", version)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Lieferschein wurde geändert. Bitte neu öffnen.");
+}
+
+export async function attachProjectDeliveryNote(
+  note: ProjectDeliveryNoteRecord,
+  invoiceId: string,
+) {
+  assertDeliveryNoteComplete(note.data, Boolean(note.scan_path));
+  const { error } = await supabase.rpc("attach_project_delivery_note", {
+    _note_id: note.id,
+    _document_id: invoiceId,
+    _version: note.version,
+  });
+  if (error) throw error;
 }
 
 export async function saveDeliveryNote(

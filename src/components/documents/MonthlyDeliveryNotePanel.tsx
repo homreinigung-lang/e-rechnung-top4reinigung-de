@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { FileDown, FileSignature, Paperclip, Printer } from "lucide-react";
 import {
@@ -19,6 +20,8 @@ import {
   deliveryTotals,
   deliveryNumber,
   MATERIALS,
+  materialUnit,
+  materialDetail,
   type DeliveryNote,
   type DeliveryNoteRecord,
   type DeliverySignature,
@@ -29,6 +32,8 @@ import {
   removeDeliveryNote,
   uploadDeliveryScan,
   deliveryScanBytes,
+  fetchProjectDeliveryNotes,
+  attachProjectDeliveryNote,
 } from "@/lib/delivery-note-store";
 import { buildDeliveryNotePdf } from "@/lib/delivery-note-pdf";
 import { downloadBytes } from "@/lib/pdf";
@@ -85,10 +90,18 @@ export function MonthlyDeliveryNotePanel({ state }: { state: DocumentDetailState
   const [editorBusy, setEditorBusy] = useState(false);
   const [preview, setPreview] = useState("");
   const [previewBusy, setPreviewBusy] = useState(false);
+  const [selectedNoteId, setSelectedNoteId] = useState("");
+  const [attachBusy, setAttachBusy] = useState(false);
+  const projectId = String(state.form["project_id"] ?? "");
   const query = useQuery({
     queryKey: ["delivery-note", state.id],
     queryFn: () => fetchDeliveryNote(state.id),
     enabled: state.isInvoice && !state.isStorno,
+  });
+  const sources = useQuery({
+    queryKey: ["project-delivery-notes", projectId],
+    queryFn: () => fetchProjectDeliveryNotes(projectId),
+    enabled: state.isInvoice && !state.isStorno && Boolean(projectId),
   });
   useEffect(
     () => () => {
@@ -123,17 +136,19 @@ export function MonthlyDeliveryNotePanel({ state }: { state: DocumentDetailState
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            disabled={query.isPending || Boolean(query.error)}
-            onClick={() => {
-              void query.refetch();
-              setOpen(true);
-            }}
-          >
-            <Paperclip className="size-4" />
-            {query.data ? "Lieferschein öffnen" : "Lieferschein erstellen"}
-          </Button>
+          {query.data && (
+            <Button
+              variant="outline"
+              disabled={query.isPending || Boolean(query.error)}
+              onClick={() => {
+                void query.refetch();
+                setOpen(true);
+              }}
+            >
+              <Paperclip className="size-4" />
+              Lieferschein ansehen
+            </Button>
+          )}
           {query.data && (
             <Button variant="outline" disabled={previewBusy} onClick={() => void viewCombined()}>
               Gesamt-PDF ansehen
@@ -141,6 +156,94 @@ export function MonthlyDeliveryNotePanel({ state }: { state: DocumentDetailState
           )}
         </div>
       </div>
+      <p className="text-sm text-muted-foreground">
+        Lieferscheine werden unter Objekte erstellt und unterschrieben. Hier wählen Sie den fertigen
+        Nachweis für diese Rechnung.
+      </p>
+      {projectId ? (
+        <Button asChild variant="link" className="px-0">
+          <Link to="/projekte/$id" params={{ id: projectId }}>
+            Lieferscheine im Objekt öffnen
+          </Link>
+        </Button>
+      ) : (
+        <p className="text-sm">
+          Bitte oben zuerst das zugehörige Objekt auswählen und die Rechnung speichern.
+        </p>
+      )}
+      {!query.data && !state.locked && projectId && (
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-0 flex-1 space-y-1">
+            <Label htmlFor="invoice-object-delivery-note">Lieferschein vom Objekt</Label>
+            <select
+              id="invoice-object-delivery-note"
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={selectedNoteId}
+              onChange={(e) => setSelectedNoteId(e.target.value)}
+              disabled={sources.isPending || attachBusy}
+            >
+              <option value="">Lieferschein auswählen …</option>
+              {sources.data
+                ?.filter((n) => !n.document_id)
+                .map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.data.month} · {n.data.number}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <Button
+            disabled={!selectedNoteId || attachBusy}
+            onClick={() => {
+              const note = sources.data?.find((n) => n.id === selectedNoteId);
+              if (!note) return;
+              setAttachBusy(true);
+              void (async () => {
+                if (!(await state.persistBeforeOutput())) return;
+                await attachProjectDeliveryNote(note, state.id);
+                await query.refetch();
+                await sources.refetch();
+                toast.success(
+                  "Objekt-Lieferschein zugeordnet – Rechnung und Lieferschein werden als eine PDF ausgegeben.",
+                );
+              })()
+                .catch((e: Error) => toast.error(e.message))
+                .finally(() => setAttachBusy(false));
+            }}
+          >
+            Mit Rechnung verbinden
+          </Button>
+        </div>
+      )}
+      {sources.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {sources.error.message}
+        </p>
+      )}
+      {query.data?.source_note_id && !state.locked && (
+        <Button
+          variant="outline"
+          disabled={attachBusy}
+          onClick={() => {
+            if (
+              !window.confirm(
+                "Zuordnung entfernen? Der ursprüngliche Lieferschein bleibt im Objekt erhalten.",
+              )
+            )
+              return;
+            setAttachBusy(true);
+            void removeDeliveryNote(state.id, query.data!.version)
+              .then(async () => {
+                await query.refetch();
+                await sources.refetch();
+              })
+              .catch((e: Error) => toast.error(e.message))
+              .finally(() => setAttachBusy(false));
+          }}
+        >
+          Zuordnung entfernen
+        </Button>
+      )}
       {query.error && (
         <p role="alert" className="text-sm text-destructive">
           {query.error.message}{" "}
@@ -169,13 +272,13 @@ export function MonthlyDeliveryNotePanel({ state }: { state: DocumentDetailState
         }}
       >
         <DialogContent
-          className="max-h-[95dvh] overflow-y-auto sm:max-w-6xl"
+          className="max-h-[95dvh] grid-cols-[minmax(0,1fr)] overflow-x-hidden overflow-y-auto sm:max-w-6xl"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>Monats-Lieferschein</DialogTitle>
             <DialogDescription>
-              Wie Ihre Papierfassung: fünf Wochen, Kartons und 5-Liter-Kanister, Wochen- und
+              Wie Ihre Papierfassung: fünf Wochen, automatische Monatssummen sowie Wochen- und
               Monatsunterschriften. Ohne Preise.
             </DialogDescription>
           </DialogHeader>
@@ -187,7 +290,7 @@ export function MonthlyDeliveryNotePanel({ state }: { state: DocumentDetailState
             <DeliveryNoteEditor
               key={`${state.id}-${query.data?.version ?? "new"}`}
               record={query.data ?? null}
-              state={state}
+              state={query.data?.source_note_id ? { ...state, locked: true } : state}
               onSaved={() => query.refetch()}
               onClose={() => setOpen(false)}
               onDirtyChange={setEditorDirty}
@@ -219,20 +322,33 @@ export function MonthlyDeliveryNotePanel({ state }: { state: DocumentDetailState
   );
 }
 
-function DeliveryNoteEditor({
+export type DeliveryNoteEditorContext = Pick<
+  DocumentDetailStateContext,
+  "id" | "form" | "locked" | "persistBeforeOutput"
+> & { settings: Record<string, unknown> | null };
+
+export function DeliveryNoteEditor({
   record,
   state,
   onSaved,
   onClose,
   onDirtyChange,
   onBusyChange,
+  onSave,
+  onRemove,
 }: {
   record: DeliveryNoteRecord | null;
-  state: DocumentDetailStateContext;
+  state: DeliveryNoteEditorContext;
   onSaved: () => unknown;
   onClose: () => void;
   onDirtyChange: (value: boolean) => void;
   onBusyChange: (value: boolean) => void;
+  onSave?: (
+    note: DeliveryNote,
+    scanPath: string | null,
+    version: number | null,
+  ) => Promise<unknown>;
+  onRemove?: () => Promise<unknown>;
 }) {
   const form = state.form;
   const defaultAddress = [
@@ -292,10 +408,11 @@ function DeliveryNoteEditor({
       if (!parsed.success)
         throw new Error(parsed.error.issues[0]?.message ?? "Bitte Eingaben prüfen.");
       if (!(await state.persistBeforeOutput())) return false;
-      await saveDeliveryNote(state.id, parsed.data, path, record?.version ?? null);
+      if (onSave) await onSave(parsed.data, path, record?.version ?? null);
+      else await saveDeliveryNote(state.id, parsed.data, path, record?.version ?? null);
       setDirty(false);
       setSignatureTarget(null);
-      toast.success("Lieferschein gespeichert – wird an die Rechnung angefügt.");
+      toast.success(onSave ? "Lieferschein im Objekt gespeichert." : "Lieferschein gespeichert.");
       await onSaved();
       return true;
     } catch (e) {
@@ -391,13 +508,14 @@ function DeliveryNoteEditor({
     }
   };
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 max-w-full space-y-5">
       {state.locked && (
         <p className="rounded border p-3 text-sm">
-          Rechnung festgeschrieben: Lieferschein ist schreibgeschützt.
+          Zugeordneter oder festgeschriebener Lieferschein: nur Ansicht. Zum Bearbeiten zuerst die
+          Zuordnung in der offenen Rechnung entfernen.
         </p>
       )}
-      <fieldset disabled={busy} className="space-y-5">
+      <fieldset disabled={busy} className="min-w-0 space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <Label htmlFor="delivery-month">Monat / Jahr</Label>
@@ -446,15 +564,15 @@ function DeliveryNoteEditor({
             Papierfassung zuerst zurücksetzen.
           </p>
         )}
-        <div className="overflow-x-auto rounded border">
-          <table className="w-full min-w-[850px] text-sm">
-            <thead className="bg-blue-800 text-white">
+        <div className="min-w-0 max-w-full overflow-x-auto rounded border">
+          <table className="w-full text-sm md:min-w-[850px]">
+            <thead className="hidden bg-blue-800 text-white md:table-header-group">
               <tr>
                 <th className="p-3 text-left">Woche / Datum</th>
                 {MATERIALS.map((m) => (
                   <th key={m.key} className="p-3 text-left">
                     {m.label}
-                    <div className="text-xs font-normal">{m.detail}</div>
+                    <div className="text-xs font-normal">{materialDetail(note, m.key)}</div>
                   </th>
                 ))}
                 <th className="p-3 text-left">Wöchentliche Abzeichnung</th>
@@ -462,8 +580,11 @@ function DeliveryNoteEditor({
             </thead>
             <tbody>
               {note.rows.map((row, i) => (
-                <tr key={i} className="border-t align-top even:bg-muted/30">
-                  <td className="space-y-1 p-2">
+                <tr
+                  key={i}
+                  className="grid grid-cols-3 gap-2 border-t p-2 align-top even:bg-muted/30 md:table-row md:p-0"
+                >
+                  <td className="col-span-3 block min-w-0 space-y-1 p-2 md:table-cell">
                     <Label htmlFor={`delivery-date-${i}`}>Woche {i + 1}</Label>
                     <Input
                       id={`delivery-date-${i}`}
@@ -481,12 +602,17 @@ function DeliveryNoteEditor({
                     />
                   </td>
                   {MATERIALS.map((m) => (
-                    <td key={m.key} className="p-2">
+                    <td key={m.key} className="block min-w-0 space-y-1 p-1 md:table-cell md:p-2">
+                      <span className="block text-[11px] leading-tight md:hidden">
+                        {m.label}
+                        <br />
+                        {materialUnit(note, m.key)}
+                      </span>
                       <Input
-                        aria-label={`${m.label} Woche ${i + 1} (${m.unit})`}
+                        aria-label={`${m.label} Woche ${i + 1} (${materialUnit(note, m.key)})`}
                         inputMode="decimal"
                         maxLength={12}
-                        className="min-w-24"
+                        className="min-w-0 md:min-w-24"
                         placeholder="0"
                         value={row[m.key]}
                         disabled={fieldsLocked || Boolean(row.signature)}
@@ -501,7 +627,10 @@ function DeliveryNoteEditor({
                       />
                     </td>
                   ))}
-                  <td className="p-2">
+                  <td className="col-span-3 block min-w-0 p-2 md:table-cell">
+                    <p className="mb-1 text-xs text-muted-foreground md:hidden">
+                      Wöchentliche Abzeichnung
+                    </p>
                     <SignatureView
                       title={`Woche ${i + 1}`}
                       signature={row.signature}
@@ -514,17 +643,20 @@ function DeliveryNoteEditor({
               ))}
             </tbody>
             <tfoot className="border-t bg-muted font-semibold">
-              <tr>
-                <td className="p-3">GESAMT (Monat)</td>
+              <tr className="grid grid-cols-3 md:table-row">
+                <td className="col-span-3 block p-3 md:table-cell">GESAMT (Monat)</td>
                 {MATERIALS.map((m) => (
-                  <td key={m.key} className="p-3">
+                  <td key={m.key} className="block min-w-0 p-2 md:table-cell md:p-3">
+                    <span className="mb-1 block text-[11px] leading-tight md:hidden">
+                      {m.label}
+                    </span>
                     {Number.isFinite(totals[m.key])
                       ? deliveryNumber(totals[m.key])
                       : "Eingabe prüfen"}{" "}
-                    {m.unit}
+                    {materialUnit(note, m.key)}
                   </td>
                 ))}
-                <td className="p-3">Monatssumme</td>
+                <td className="hidden p-3 md:table-cell">Monatssumme</td>
               </tr>
             </tfoot>
           </table>
@@ -593,12 +725,14 @@ function DeliveryNoteEditor({
               onClick={() => {
                 if (
                   !window.confirm(
-                    "Lieferschein von dieser Rechnung entfernen? Die Rechnung selbst bleibt unverändert.",
+                    onRemove
+                      ? "Lieferschein aus dem Objekt löschen?"
+                      : "Lieferschein von dieser Rechnung entfernen? Die Rechnung selbst bleibt unverändert.",
                   )
                 )
                   return;
                 setBusy(true);
-                void removeDeliveryNote(state.id, record.version)
+                void (onRemove ? onRemove() : removeDeliveryNote(state.id, record.version))
                   .then(async () => {
                     setDirty(false);
                     await onSaved();

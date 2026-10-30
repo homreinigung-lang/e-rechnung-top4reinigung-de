@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ProjectScanReview } from "@/components/ProjectScanReview";
 import { LvPositionen } from "@/components/LvPositionen";
 import { Objektmappe } from "@/components/Objektmappe";
+import { ProjectDeliveryNotesPanel } from "@/components/projects/ProjectDeliveryNotesPanel";
 import { LeistungsnachweisDialog } from "@/components/LeistungsnachweisDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,8 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
       </Link>
 
       <ProjektStammdatenForm state={state} />
+
+      <ProjectDeliveryNotesPanel state={state} />
 
       <Objektmappe projectId={id} />
 
