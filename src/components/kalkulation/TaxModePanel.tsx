@@ -17,6 +17,7 @@ export function TaxModePanel({ state }: { state: KalkulationStateContext }) {
             <SelectContent>
               <SelectItem value="domestic">Inland – 19 % USt.</SelectItem>
               <SelectItem value="eu_reverse_charge">EU-Ausland – Reverse-Charge (0 %)</SelectItem>
+              <SelectItem value="domestic_reverse_charge">Inland – § 13b Gebäudereinigung (0 %)</SelectItem>
               <SelectItem value="kleinunternehmer">Kleinunternehmer § 19 UStG (0 %)</SelectItem>
             </SelectContent>
           </Select>

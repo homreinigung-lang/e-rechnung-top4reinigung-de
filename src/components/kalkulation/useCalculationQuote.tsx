@@ -115,7 +115,7 @@ export function useCalculationQuote(input: {
           // Steuerart der Kalkulation wird verbindlich übernommen.
           tax_mode: taxMode,
           vat_rate: vatRate,
-          reverse_charge: taxMode === "eu_reverse_charge",
+          reverse_charge: taxMode === "eu_reverse_charge" || taxMode === "domestic_reverse_charge",
           net_total: net,
           vat_amount: vat,
           total: grossTotal,

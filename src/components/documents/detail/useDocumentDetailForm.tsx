@@ -190,7 +190,7 @@ export function useDocumentDetailForm() {
       customer_id: form["customer_id"] || null,
       tax_mode: taxMode,
       vat_rate: vatRate,
-      reverse_charge: taxMode === "eu_reverse_charge",
+      reverse_charge: taxMode === "eu_reverse_charge" || taxMode === "domestic_reverse_charge",
       discount_percent: discountPercent,
       discount_amount: discountAmount,
       discount_reason: discountReason,

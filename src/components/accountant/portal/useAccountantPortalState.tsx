@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { taxModeLabel } from "@/lib/tax-mode";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -161,7 +162,7 @@ export function useAccountantPortalState() {
     Netto: de(num(d["net_total"] ?? d["total"])),
     Umsatzsteuer: de(num(d["vat_amount"])),
     Brutto: de(num(d["total"])),
-    Steuerart: d["tax_mode"] === "domestic" ? "19% Inland" : "Reverse-Charge (§ 13b UStG)",
+    Steuerart: taxModeLabel(d["tax_mode"]),
     Status: String(d["status"] ?? ""),
   }));
 

@@ -1,4 +1,5 @@
 import { fahrtenbuchClient } from "@/lib/fahrtenbuch-client";
+import { taxModeLabel } from "@/lib/tax-mode";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -190,10 +191,7 @@ export function useSteuerberaterState() {
     Netto: de(num((d as Record<string, unknown>)["net_total"] ?? d.total)),
     Umsatzsteuer: de(num((d as Record<string, unknown>)["vat_amount"])),
     Brutto: de(num(d.total)),
-    Steuerart:
-      (d as Record<string, unknown>)["tax_mode"] === "domestic"
-        ? "19% Inland"
-        : "Reverse-Charge (§ 13b UStG)",
+    Steuerart: taxModeLabel((d as Record<string, unknown>)["tax_mode"]),
     Status: String(d.status),
   }));
 

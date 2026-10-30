@@ -457,16 +457,22 @@ ${
 `;
 }
 
-function xmpMetadata(number: string, title: string): string {
+function xmpMetadata(number: string, title: string, created: Date, modified: Date): string {
   return `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-  <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aipm.org/pdfa/ns/id/">
+  <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
    <pdfaid:part>3</pdfaid:part>
    <pdfaid:conformance>B</pdfaid:conformance>
   </rdf:Description>
+  <rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:pdf="http://ns.adobe.com/pdf/1.3/">
+   <xmp:CreatorTool>GebCalc</xmp:CreatorTool><pdf:Producer>GebCalc</pdf:Producer>
+   <xmp:CreateDate>${created.toISOString()}</xmp:CreateDate><xmp:ModifyDate>${modified.toISOString()}</xmp:ModifyDate>
+   <pdf:Keywords>ZUGFeRD Factur-X XRechnung EN16931 E-Rechnung</pdf:Keywords>
+  </rdf:Description>
   <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/">
    <dc:title><rdf:Alt><rdf:li xml:lang="x-default">${esc(title)} ${esc(number)}</rdf:li></rdf:Alt></dc:title>
+   <dc:description><rdf:Alt><rdf:li xml:lang="x-default">ZUGFeRD 2.3 / Factur-X (EN 16931) – hybride E-Rechnung</rdf:li></rdf:Alt></dc:description>
   </rdf:Description>
   <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/"
     xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
@@ -504,6 +510,8 @@ export async function embedZugferdXml(
 ): Promise<Uint8Array> {
   const { PDFDocument, PDFName, PDFHexString, AFRelationship } = await import("pdf-lib");
   const pdfDoc = await PDFDocument.load(pdfBytes.slice().buffer as ArrayBuffer);
+  const { preparePdfA3 } = await import("./pdfa");
+  preparePdfA3(pdfDoc);
   const xmlBytes = new TextEncoder().encode(xml);
 
   pdfDoc.setTitle(`${meta.title} ${meta.number}`);
@@ -520,8 +528,10 @@ export async function embedZugferdXml(
     afRelationship: AFRelationship.Alternative,
   });
 
-  const xmp = xmpMetadata(meta.number, meta.title);
-  const stream = pdfDoc.context.stream(xmp, {
+  const modified = new Date();
+  pdfDoc.setModificationDate(modified);
+  const xmp = xmpMetadata(meta.number, meta.title, pdfDoc.getCreationDate() ?? modified, modified);
+  const stream = pdfDoc.context.stream(new TextEncoder().encode(xmp), {
     Type: "Metadata",
     Subtype: "XML",
   });

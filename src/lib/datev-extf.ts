@@ -219,7 +219,7 @@ export function buildDatevExtf(documents: DatevDocument[], expenses: DatevExpens
     const gross = Math.abs(signedGross), vat = Math.abs(signedVat), net = Math.abs(signedNet);
     const taxMode = normalizeTaxMode(doc.tax_mode);
     const smallBusiness = taxMode === "kleinunternehmer";
-    const reverse = taxMode === "reverse_charge" || taxMode === "eu_reverse_charge";
+    const reverse = taxMode === "reverse_charge" || taxMode === "eu_reverse_charge" || taxMode === "domestic_reverse_charge";
     const rate = reverse ? 0 : taxRate(net,vat);
     if (reverse && vat !== 0) throw new Error("DATEV: Reverse-Charge-Rechnung mit Umsatzsteuer: " + doc.number);
     if (smallBusiness && vat !== 0) throw new Error("DATEV: Kleinunternehmer-Rechnung mit Umsatzsteuer: " + doc.number);
