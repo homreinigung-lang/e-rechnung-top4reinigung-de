@@ -6,6 +6,7 @@ export async function prepareInvoiceForEmail(
   id: string,
   docNumber: string,
   generatedBytes: Uint8Array,
+  deliveryVersion?: number,
 ): Promise<Uint8Array> {
   const { data: live, error: readError } = await supabase
     .from("documents")
@@ -46,7 +47,10 @@ export async function prepareInvoiceForEmail(
     );
   }
   // Preserve the PDF bytes produced from the final draft; lock, then archive and verify.
-  const finalized = await finalizeDocument(id);
+  const finalized =
+    deliveryVersion === undefined
+      ? await finalizeDocument(id)
+      : await finalizeDocument(id, deliveryVersion);
   if (finalized.number !== docNumber) {
     throw new Error("GoBD: Rechnungsnummer bei Festschreibung geändert. Kein E-Mail-Versand.");
   }

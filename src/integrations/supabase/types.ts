@@ -14,6 +14,28 @@ export type Database = {
   }
   public: {
     Tables: {
+      document_delivery_notes: {
+        Row: {
+          document_id: string;
+          user_id: string;
+          data: Json;
+          scan_path: string | null;
+          version: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { document_id: string; user_id: string; data: Json; scan_path?: string | null };
+        Update: { data?: Json; scan_path?: string | null };
+        Relationships: [
+          {
+            foreignKeyName: "document_delivery_notes_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: true;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       ki_training_experiences: {
         Row: {
           id: string
@@ -2498,6 +2520,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finalize_invoice_package: { Args: { _id: string; _delivery_version: number }; Returns: Database["public"]["Tables"]["documents"]["Row"] }
       create_supplement: { Args: { _order_id: string }; Returns: string }
       approve_supplement: { Args: { _id: string; _note: string }; Returns: undefined }
       complete_supplement: { Args: { _id: string }; Returns: undefined }

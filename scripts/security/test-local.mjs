@@ -16,3 +16,5 @@ console.log(sql(readFileSync('scripts/security/work-photos.sql', 'utf8')).split(
 
 console.log(sql(readFileSync('scripts/security/stripe-checkout.sql', 'utf8')).split('\n').at(-1));
 await import('./tax-migration-upgrade.mjs');
+
+console.log(sql(readFileSync('scripts/security/delivery-notes.sql', 'utf8')).split('\n').at(-1));

@@ -17,6 +17,7 @@ import { loadDocumentLogo } from "@/lib/document-logo";
 import { type PdfDocData } from "@/lib/invoice-pdf";
 
 import { OPTIONAL_NOTE } from "./shared";
+import { fetchDeliveryNote, deliveryScanBytes } from "@/lib/delivery-note-store";
 
 import type { useDocumentViewData } from "./useDocumentViewData";
 import type { useDocumentDetailForm } from "./useDocumentDetailForm";
@@ -93,6 +94,7 @@ export function useDocumentPdfData(input: {
   async function buildPdfData(numberOverride?: string): Promise<PdfDocData> {
     const number = numberOverride ?? docNumber;
     const companyName = String(settings?.["company_name"] ?? "");
+    const delivery = isInvoice && !isStorno ? await fetchDeliveryNote(doc.id, true) : null;
 
     const meta: Array<{ label: string; value: string }> = [];
     if (form["customer_number"])
@@ -155,6 +157,15 @@ export function useDocumentPdfData(input: {
 
     return {
       isInvoice,
+      ...(delivery
+        ? {
+            deliveryNote: {
+              data: delivery.data,
+              version: delivery.version,
+              scan: delivery.scan_path ? await deliveryScanBytes(delivery.scan_path) : undefined,
+            },
+          }
+        : {}),
       // Auch bei Rechnungen ersetzt ein frei eingetragener Titel die
       // automatische Überschrift; die Nummer bleibt im Belegkopf sichtbar.
       title: isInvoice && customTitle ? customTitle : autoTitle,

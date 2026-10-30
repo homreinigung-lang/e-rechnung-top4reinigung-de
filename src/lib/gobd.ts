@@ -38,7 +38,13 @@ export async function logAudit(
 }
 
 /** Vergibt eine fortlaufende Nummer und sperrt den Beleg. */
-export async function finalizeDocument(id: string) {
+export async function finalizeDocument(id: string, deliveryVersion?: number) {
+  if (deliveryVersion !== undefined) {
+    const result = await supabase.rpc("finalize_invoice_package", { _id: id, _delivery_version: deliveryVersion });
+    if (!result.error) return result.data as unknown as { id: string; number: string };
+    // Keep existing invoices operational before the additive migration is installed.
+    if (!(deliveryVersion === 0 && ["PGRST202", "42883"].includes(result.error.code))) throw result.error;
+  }
   const { data, error } = await supabase.rpc("finalize_document", { _id: id });
   if (error) throw error;
   return data as unknown as { id: string; number: string };
