@@ -13,6 +13,10 @@ create table public.document_delivery_notes (
 );
 create index document_delivery_notes_owner_idx on public.document_delivery_notes(user_id);
 alter table public.document_delivery_notes enable row level security;
+create policy "Gesperrte Konten ausgeschlossen" on public.document_delivery_notes
+as restrictive for all to authenticated
+using ((select app_private.is_account_active()))
+with check ((select app_private.is_account_active()));
 create policy delivery_notes_select on public.document_delivery_notes for select to authenticated
 using (user_id = (select auth.uid()) and (select app_private.is_account_active()) and
   exists (select 1 from public.documents d where d.id = document_id and d.user_id = (select auth.uid())));
