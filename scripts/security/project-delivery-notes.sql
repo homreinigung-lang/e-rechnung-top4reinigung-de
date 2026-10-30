@@ -1,0 +1,43 @@
+begin;
+insert into auth.users(id,email) values ('d2300000-0000-4000-8000-000000000001','object-note-owner@example.invalid'),('d2300000-0000-4000-8000-000000000002','object-note-other@example.invalid');
+create function pg_temp.project_delivery_denied(statement text) returns void language plpgsql as $$
+declare denied boolean:=false;
+begin begin execute statement; exception when insufficient_privilege or raise_exception or check_violation then denied:=true; end; assert denied,'Expected object delivery-note rejection'; end $$;
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"d2300000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+insert into public.projects(id,user_id,name) values ('d2310000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','Objekt A'),('d2310000-0000-4000-8000-000000000002','d2300000-0000-4000-8000-000000000001','Objekt B');
+insert into public.project_delivery_notes(id,project_id,user_id,data)
+select 'd2320000-0000-4000-8000-000000000001','d2310000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001',jsonb_build_object('quantityMode','individual','number','LS-OBJECT-1','month','2026-10','orderNumber','20012640','deliveryAddress','Objekt A','supplierSignature',null,'customerSignature',null,'rows',jsonb_agg(jsonb_build_object('date',case when i=1 then '2026-10-01' else '' end,'toiletPaper',case when i=1 then '2' else '' end,'handTowels',case when i=1 then '3' else '' end,'soap',case when i=1 then '1,5' else '' end,'signature',null) order by i)) from generate_series(1,5) i;
+do $$ begin assert (select count(*) from public.project_delivery_notes)=1,'note exists before an invoice'; assert (select count(*) from public.document_delivery_notes)=0,'no snapshot yet'; end $$;
+insert into public.documents(id,user_id,type,number,project_id,tax_mode,reverse_charge,vat_rate) values ('d2330000-0000-4000-8000-000000000001','d2300000-0000-4000-8000-000000000001','invoice','RE-OBJECT-1','d2310000-0000-4000-8000-000000000001','domestic',false,19),('d2330000-0000-4000-8000-000000000002','d2300000-0000-4000-8000-000000000001','invoice','RE-OBJECT-2','d2310000-0000-4000-8000-000000000002','domestic',false,19);
+select pg_temp.project_delivery_denied($q$select public.attach_project_delivery_note('d2320000-0000-4000-8000-000000000001','d2330000-0000-4000-8000-000000000001',1)$q$);
+update public.project_delivery_notes set scan_path='d2300000-0000-4000-8000-000000000001/delivery-notes/d2320000-0000-4000-8000-000000000001/signed.pdf';
+select pg_temp.project_delivery_denied($q$select public.attach_project_delivery_note('d2320000-0000-4000-8000-000000000001','d2330000-0000-4000-8000-000000000002',2)$q$);
+select pg_temp.project_delivery_denied($q$select public.attach_project_delivery_note('d2320000-0000-4000-8000-000000000001','d2330000-0000-4000-8000-000000000001',1)$q$);
+select public.attach_project_delivery_note('d2320000-0000-4000-8000-000000000001','d2330000-0000-4000-8000-000000000001',2);
+do $$ begin
+ assert (select count(*) from public.project_delivery_notes)=1,'original remains in object';
+ assert (select n.data=p.data and n.scan_path=p.scan_path from public.document_delivery_notes n join public.project_delivery_notes p on n.source_note_id=p.id),'exact source snapshot';
+ assert (select number='RE-OBJECT-1' and total=0 and locked_at is null from public.documents where id='d2330000-0000-4000-8000-000000000001'),'invoice fields unchanged';
+end $$;
+select pg_temp.project_delivery_denied($q$update public.documents set project_id='d2310000-0000-4000-8000-000000000002' where id='d2330000-0000-4000-8000-000000000001'$q$);
+select set_config('test.first_snapshot_version',(select version::text from public.document_delivery_notes),true);
+select pg_temp.project_delivery_denied('update public.project_delivery_notes set scan_path=null');
+select pg_temp.project_delivery_denied('delete from public.project_delivery_notes');
+select pg_temp.project_delivery_denied('update public.document_delivery_notes set source_note_id=null');
+select pg_temp.project_delivery_denied('update public.document_delivery_notes set scan_path=null');
+select set_config('request.jwt.claims','{"sub":"d2300000-0000-4000-8000-000000000002","role":"authenticated"}',true);
+do $$ begin assert (select count(*) from public.project_delivery_notes)=0,'tenant privacy'; end $$;
+select pg_temp.project_delivery_denied($q$select public.attach_project_delivery_note('d2320000-0000-4000-8000-000000000001','d2330000-0000-4000-8000-000000000001',2)$q$);
+select set_config('request.jwt.claims','{"sub":"d2300000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+delete from public.document_delivery_notes where document_id='d2330000-0000-4000-8000-000000000001';
+update public.project_delivery_notes set data=data;
+select public.attach_project_delivery_note('d2320000-0000-4000-8000-000000000001','d2330000-0000-4000-8000-000000000001',3);
+do $$ begin assert (select version from public.document_delivery_notes) > current_setting('test.first_snapshot_version')::integer,'detach and reattach never reuse a rendered snapshot version'; end $$;
+reset role;
+update public.documents set locked_at=now() where id='d2330000-0000-4000-8000-000000000001';
+set local role authenticated;
+select pg_temp.project_delivery_denied('delete from public.document_delivery_notes');
+select pg_temp.project_delivery_denied('delete from public.project_delivery_notes');
+rollback;
+select 'object-first delivery notes, isolation, invoice snapshots and locks passed';

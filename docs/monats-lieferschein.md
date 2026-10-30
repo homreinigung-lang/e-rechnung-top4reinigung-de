@@ -1,21 +1,31 @@
 # Monats-Lieferschein für Verbrauchsmaterial
 
-In der Detailansicht einer Rechnung steht ein eigener Bereich **Monats-Lieferschein**.
-Die bestehende Rechnung, ihre Positionen, Berechnungen und Seitenvorlagen bleiben unverändert.
-Beim PDF-Export und E-Mail-Versand folgen die Lieferscheinseiten nach allen Rechnungsseiten
-in derselben Datei. Angebote und Stornorechnungen erhalten keinen Material-Lieferschein.
+Der Monats-Lieferschein wird unter **Objekte → Objekt öffnen → Lieferscheine**
+unabhängig von einer Rechnung erstellt und gespeichert. Die bestehende Rechnung, ihre Positionen,
+Berechnungen und Seitenvorlagen bleiben unverändert. Beim späteren PDF-Export und E-Mail-Versand
+folgen die Lieferscheinseiten nach allen Rechnungsseiten in derselben Datei.
 
 ## Bedienung
 
-1. Rechnung öffnen, **Lieferschein erstellen** wählen und Monat, Nummer, Bestellung und tatsächliche Lieferadresse prüfen.
-2. Die fünf Wochen mit Lieferdatum und Mengen erfassen: Toilettenpapier und Handtuchpapier in Kartons,
-   Flüssigseife in 5-Liter-Kanistern. Dezimalmengen wie `1,5` werden unterstützt.
-3. Speichern. Die Monatssummen werden je Material berechnet; Preise stehen nur auf der Rechnung.
-4. Entweder Wochen- und Monatsbestätigungen am Handy erfassen (Name, Datum und transparente Unterschrift)
-   oder den Lieferschein über die Druckansicht ausdrucken, unterschreiben und als PDF/JPG/PNG hochladen.
-   Eine hochgeladene Papierfassung ersetzt die erzeugte Lieferscheinseite, damit es keine doppelte Fassung gibt.
-5. Über **Gesamt-PDF ansehen** prüfen. Download und E-Mail verwenden denselben PDF-Generator.
-   Zum Versand werden beide Monatsunterschriften oder eine hochgeladene unterschriebene Papierfassung benötigt.
+1. Objekt öffnen, **Lieferschein erstellen** wählen und Monat, Nummer, Bestellung und Lieferadresse prüfen.
+2. Pro Woche Datum und Mengen eintragen: Toilettenpapier in Rollen, Handtuchpapier in Packungen,
+   Flüssigseife in Litern. Dezimalmengen wie `1,5` Liter werden unterstützt. Zum Monatsende werden die
+   fünf Wochen je Material automatisch addiert, ohne zusätzliche Umrechnungsfelder.
+3. Im Objekt speichern. Die Monatssummen werden je Material berechnet; der Lieferschein enthält keine Preise.
+4. Wochen- und Monatsbestätigungen am Handy erfassen (Name, Datum, transparente Unterschrift) oder
+   ausdrucken, auf Papier unterschreiben und als PDF/JPG/PNG hochladen. Der Scan ersetzt die erzeugte
+   Lieferscheinseite im Gesamt-PDF.
+5. Im Objekt eine offene Rechnung desselben Objekts und Kunden auswählen und **Mit Rechnung verbinden**
+   wählen. Alternativ lässt sich der fertige Objekt-Nachweis in der Rechnung auswählen.
+6. In der Rechnung **Gesamt-PDF ansehen**, herunterladen oder senden. Erst kommen sämtliche
+   Rechnungsseiten, anschließend der unterschriebene Monatsnachweis. Das Original bleibt im Objekt sichtbar.
+
+Die Verbindung benötigt Mengen und beide Monatsunterschriften oder eine unterschriebene Papierfassung.
+Ein zugeordneter Nachweis ist schreibgeschützt. Zum Bearbeiten zuerst die Zuordnung in der offenen
+Rechnung entfernen; dabei bleibt das Objekt-Original erhalten. Ein Nachweis kann nur einer Rechnung
+zugeordnet werden. Kunde und Objekt der verbundenen Rechnung können erst nach Entfernen der Zuordnung
+geändert werden. Auf dem Handy erscheinen die Wochen als Karten; das gedruckte PDF bleibt die
+landschaftliche Monatsübersicht entsprechend der Papierfassung.
 
 Signierte Zeilen und Kopfdaten sind geschützt. Vor Änderungen müssen die betreffenden Signaturen
 zurückgesetzt und danach neu eingeholt werden. Eine hinterlegte Papierfassung muss vor Änderungen entfernt
@@ -24,8 +34,10 @@ Lieferschein kann vor Festschreibung wieder entfernt werden.
 
 ## Bereitstellung
 
-Vor Aktivierung die additive Migration `20261030153753_monthly_delivery_notes.sql` anwenden.
-Sie legt eine separate, mandantengeschützte Tabelle und eine versionsgeprüfte Finalisierungsfunktion an.
+Vor Aktivierung die additiven Migrationen `20261030153753_monthly_delivery_notes.sql` und
+`20261030202703_object_delivery_notes.sql` anwenden.
+Sie ergänzen getrennte, mandantengeschützte Tabellen für Objekt-Originale und Rechnungskopien sowie
+eine versionsgeprüfte Zuordnung und Finalisierung.
 Bestehende Rechnungsfelder und Nummernkreise werden nicht verändert. Der vorhandene private Datei-Bucket
 wird wiederverwendet. Es werden keine externen Signaturdienste oder zusätzlichen Pakete benötigt.
 Fehlt die neue Tabelle während einer gestaffelten Bereitstellung, funktionieren bisherige Rechnungen weiter;

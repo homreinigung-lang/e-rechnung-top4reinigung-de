@@ -22,6 +22,7 @@ export const deliveryNoteSchema = z
     month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     orderNumber: z.string().max(100),
     deliveryAddress: z.string().trim().min(1).max(450),
+    quantityMode: z.literal("individual").optional(),
     rows: z
       .array(
         z.object({
@@ -69,9 +70,15 @@ export const deliveryNoteSchema = z
 export type DeliveryNote = z.infer<typeof deliveryNoteSchema>;
 export type DeliveryNoteRecord = {
   document_id: string;
+  source_note_id?: string | null;
   data: DeliveryNote;
   scan_path: string | null;
   version: number;
+};
+export type ProjectDeliveryNoteRecord = DeliveryNoteRecord & {
+  id: string;
+  project_id: string;
+  invoice_number?: string;
 };
 export const MATERIALS = [
   { key: "toiletPaper", label: "Toilettenpapier", detail: "3-lagig (Karton)", unit: "Kartons" },
@@ -83,6 +90,16 @@ export const MATERIALS = [
   },
   { key: "soap", label: "Flüssigseife", detail: "5-Liter-Kanister", unit: "Kanister" },
 ] as const;
+export function materialUnit(note: DeliveryNote, key: (typeof MATERIALS)[number]["key"]) {
+  return note.quantityMode
+    ? { toiletPaper: "Rollen", handTowels: "Packungen", soap: "Liter" }[key]
+    : MATERIALS.find((m) => m.key === key)!.unit;
+}
+export function materialDetail(note: DeliveryNote, key: (typeof MATERIALS)[number]["key"]) {
+  return note.quantityMode
+    ? { toiletPaper: "3-lagig (Rollen)", handTowels: "Z-Falz (Packungen)", soap: "Liter" }[key]
+    : MATERIALS.find((m) => m.key === key)!.detail;
+}
 export function deliveryTotals(note: DeliveryNote) {
   const sum = (key: (typeof MATERIALS)[number]["key"]) =>
     Math.round(
@@ -105,6 +122,7 @@ export function blankDeliveryNote(
     month,
     orderNumber,
     deliveryAddress: address,
+    quantityMode: "individual",
     rows: Array.from({ length: 5 }, () => ({
       date: "",
       toiletPaper: "",
@@ -118,6 +136,7 @@ export function blankDeliveryNote(
 }
 export function assertDeliveryNoteComplete(note: DeliveryNote, hasScan: boolean) {
   deliveryNoteSchema.parse(note);
+
   if (
     !note.rows.some((r) =>
       [r.toiletPaper, r.handTowels, r.soap].some((v) => Number(v.replace(",", ".")) > 0),

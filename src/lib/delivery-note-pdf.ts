@@ -15,6 +15,8 @@ import {
   deliveryTotals,
   deliveryNumber,
   MATERIALS,
+  materialUnit,
+  materialDetail,
   type DeliveryNote,
   type DeliverySignature,
 } from "./delivery-note";
@@ -180,13 +182,16 @@ export async function appendDeliveryNote(
       color: rgb(1, 1, 1),
     });
     if (c > 0)
-      page.drawText(c === 4 ? "Unterschrift Auftraggeber" : MATERIALS[c - 1]!.detail, {
-        x: x + 8,
-        y: page.getHeight() - 263,
-        size: 8,
-        font: regular,
-        color: rgb(1, 1, 1),
-      });
+      page.drawText(
+        c === 4 ? "Unterschrift Auftraggeber" : materialDetail(note, MATERIALS[c - 1]!.key),
+        {
+          x: x + 8,
+          y: page.getHeight() - 263,
+          size: 8,
+          font: regular,
+          color: rgb(1, 1, 1),
+        },
+      );
   }
   for (let i = 0; i < 5; i++) {
     const row = note.rows[i]!,
@@ -220,7 +225,7 @@ export async function appendDeliveryNote(
   text("GESAMT (Monat)", 38, 456, 110, 9, true, 1);
   MATERIALS.forEach((m, i) =>
     text(
-      `${deliveryNumber(totals[m.key])} ${m.unit}`,
+      `${deliveryNumber(totals[m.key])} ${materialUnit(note, m.key)}`,
       xs[i + 1]! + 8,
       456,
       xs[i + 2]! - xs[i + 1]! - 16,
@@ -229,6 +234,7 @@ export async function appendDeliveryNote(
       1,
     ),
   );
+
   text("Monatssumme", 635, 456, 160, 9, false, 1);
   text(
     "Bitte die wöchentlichen Mengen abzeichnen. Nachweis zur Abrechnung gemäß Bestellung.",

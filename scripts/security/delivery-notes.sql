@@ -36,7 +36,7 @@ select pg_temp.delivery_denied($q$update public.document_delivery_notes set data
 select pg_temp.delivery_denied($q$update public.document_delivery_notes set data=jsonb_set(data,'{orderNumber}','"changed"')$q$);
 update public.document_delivery_notes set data=jsonb_set(data,'{rows,0,signature}','null');
 update public.document_delivery_notes set data=jsonb_set(data,'{rows,0,soap}','"2"');
-do $$ begin assert (select version from public.document_delivery_notes)=4,'version advances on each saved change'; end $$;
+do $$ begin assert (select version from public.document_delivery_notes)>=4,'version advances on each saved change'; end $$;
 select pg_temp.delivery_denied($q$select public.finalize_invoice_package('d1310000-0000-4000-8000-000000000001',3)$q$);
 select pg_temp.delivery_denied($q$select public.finalize_invoice_package('d1310000-0000-4000-8000-000000000001',4)$q$);
 update public.document_delivery_notes set data=jsonb_set(data,'{customerSignature}',

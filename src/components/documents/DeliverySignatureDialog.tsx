@@ -102,7 +102,7 @@ export function DeliverySignatureDialog({
         if (!open && !busy) onClose();
       }}
     >
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="grid-cols-[minmax(0,1fr)] overflow-x-hidden sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
