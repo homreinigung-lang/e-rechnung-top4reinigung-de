@@ -40,8 +40,12 @@ begin
        raise exception 'Monatsfreigabe erfolgt durch die Verwaltung.';
      end if;
    else
-     if (new.data - 'rows') is distinct from (old.data - 'rows') or old.scan_path is not null then
+     if (new.data - array['rows','customerSignature']) is distinct from (old.data - array['rows','customerSignature']) or old.scan_path is not null then
        raise exception 'Kopfdaten und Monatsfreigabe bleiben unverändert.';
+     end if;
+     if old.data->'customerSignature' is distinct from 'null'::jsonb and
+       new.data->'customerSignature' is distinct from old.data->'customerSignature' then
+       raise exception 'Monatsunterschrift kann nur die Verwaltung zurücksetzen.';
      end if;
      for i in 0..4 loop
        if old.data->'rows'->i->'signature' is distinct from 'null'::jsonb and

@@ -28,11 +28,15 @@ update public.project_delivery_notes set data=jsonb_set(data,'{rows,0,signature}
 select pg_temp.denied($q$update public.project_delivery_notes set data=jsonb_set(data,'{rows,0,signature}','null')$q$);
 select pg_temp.denied($q$update public.project_delivery_notes set data=jsonb_set(data,'{rows,0,soap}','"5"')$q$);
 select pg_temp.denied($q$update public.project_delivery_notes set data=jsonb_set(data,'{supplierSignature}','{"name":"Fake","image":"data:image/png;base64,YWJj","signedAt":"2026-10-30T12:00:00Z"}')$q$);
+update public.project_delivery_notes set data=jsonb_set(data,'{customerSignature}','{"name":"Bauleiter Monat","image":"data:image/png;base64,YWJj","signedAt":"2026-10-30T12:00:00Z"}');
+select pg_temp.denied($q$update public.project_delivery_notes set data=jsonb_set(data,'{customerSignature}','null')$q$);
+select pg_temp.denied($q$update public.project_delivery_notes set data=jsonb_set(data,'{rows,1,soap}','"2"')$q$);
 do $$ begin delete from public.project_delivery_notes; assert not found; end $$;
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
 do $$ begin assert (select count(*) from public.project_delivery_notes)=0; end $$;
 select set_config('request.jwt.claims','{"sub":"81000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 do $$ begin assert (select data->'rows'->0->'signature'->>'name' from public.project_delivery_notes)='Bauleiter Test'; end $$;
+update public.project_delivery_notes set data=jsonb_set(data,'{customerSignature}','null');
 update public.project_delivery_notes set data=jsonb_set(data,'{rows,0,signature}','null');
 update public.project_delivery_notes set scan_path='81000000-0000-4000-8000-000000000001/delivery-notes/85000000-0000-4000-8000-000000000001/signed.pdf';
 insert into public.documents(id,user_id,type,number,project_id,tax_mode,reverse_charge,vat_rate) values ('86000000-0000-4000-8000-000000000001','81000000-0000-4000-8000-000000000001','invoice','RE-WORKER','83000000-0000-4000-8000-000000000001','domestic',false,19);

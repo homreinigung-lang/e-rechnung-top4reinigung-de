@@ -49,7 +49,7 @@ export function EmployeeDeliveryNotes({
     version: number | null;
   } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [target, setTarget] = useState<number | null>(null);
+  const [target, setTarget] = useState<number | "customerSignature" | null>(null);
   const [dirty, setDirty] = useState(false);
   const start = () => {
     const id = crypto.randomUUID();
@@ -101,7 +101,9 @@ export function EmployeeDeliveryNotes({
     if (!draft || target === null) return;
     void save({
       ...draft.data,
-      rows: draft.data.rows.map((r, i) => (i === target ? { ...r, signature } : r)),
+      ...(target === "customerSignature"
+        ? { customerSignature: signature }
+        : { rows: draft.data.rows.map((r, i) => (i === target ? { ...r, signature } : r)) }),
     });
   };
   const totals = draft ? deliveryMonthlyTotals(draft.data) : null;
@@ -232,6 +234,31 @@ export function EmployeeDeliveryNotes({
               Kartons Handtuchpapier · {totals.soap} Kanister Seife
             </p>
           )}
+          {draft.data.customerSignature ? (
+            <div className="rounded border p-3">
+              <p className="font-medium">Bauleiter · Monatsende</p>
+              <img
+                src={draft.data.customerSignature.image}
+                alt="Monatsunterschrift Bauleiter"
+                className="h-16 max-w-full object-contain"
+              />
+              <p className="text-xs">Bestätigt: {draft.data.customerSignature.name}</p>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              disabled={
+                busy ||
+                draft.version === null ||
+                Boolean(draft.data.supplierSignature) ||
+                !totals ||
+                !Object.values(totals).some((v) => v > 0)
+              }
+              onClick={() => setTarget("customerSignature")}
+            >
+              Bauleiter: Monatsabschluss unterschreiben
+            </Button>
+          )}
           {dirty && (
             <p role="status" className="text-sm text-amber-700">
               Änderungen noch nicht gespeichert.
@@ -259,7 +286,11 @@ export function EmployeeDeliveryNotes({
       )}
       {target !== null && (
         <DeliverySignatureDialog
-          title={`Bauleiter · Woche ${target + 1} bestätigen`}
+          title={
+            target === "customerSignature"
+              ? "Bauleiter · Monatsabschluss bestätigen"
+              : `Bauleiter · Woche ${target + 1} bestätigen`
+          }
           busy={busy}
           onSign={sign}
           onClose={() => {
