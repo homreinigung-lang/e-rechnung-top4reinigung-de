@@ -84,7 +84,7 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
     const effective = monthly / hoursPerMonth;
     if (effective < MIN_EFFECTIVE_HOURLY_RATE) {
       warnings.push(
-        `Rechnerischer Stundenerlös nur ${round2(effective)} €/Std. – unterhalb des allgemeinen Richtwerts von ${MIN_EFFECTIVE_HOURLY_RATE} €/Std. Bitte individuelle Kosten prüfen.`,
+        `Rechnerischer Stundenerlös nur ${round2(effective)} €/Std. – unterhalb des allgemeinen Richtwerts von ${formatNumber(MIN_EFFECTIVE_HOURLY_RATE)} €/Std. Bitte individuelle Kosten prüfen.`,
       );
     }
   }
@@ -93,12 +93,12 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
 
   if (rooms > 0 && area / rooms < 6) {
     warnings.push(
-      `Nur ${round2(area / rooms)} m² je Raum bei ${rooms} Räumen – bitte die Flächenangabe prüfen (Tippfehler, z. B. 18 statt 180 m²?).`,
+      `Nur ${formatNumber(round2(area / rooms))} m² je Raum bei ${rooms} Räumen – bitte die Flächenangabe prüfen (Tippfehler, z. B. 18 statt 180 m²?).`,
     );
   }
   if (floors > 1 && area / floors < 25) {
     warnings.push(
-      `${floors} Etagen auf nur ${round2(area)} m² Gesamtfläche – bitte Fläche oder Etagenanzahl prüfen.`,
+      `${floors} Etagen auf nur ${formatNumber(round2(area))} m² Gesamtfläche – bitte Fläche oder Etagenanzahl prüfen.`,
     );
   }
   if (toilets > 0 && area < toilets * 15) {
@@ -115,7 +115,7 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
     const perSqm = monthly / area;
     if (perSqm > MAX_MONTHLY_EUR_PER_SQM) {
       warnings.push(
-        `Der Monatspreis entspricht ${round2(perSqm)} €/m² – marktüblich sind bis ca. ${MAX_MONTHLY_EUR_PER_SQM.toFixed(2).replace(".", ",")} €/m² pro Monat. Bitte m²-Preis oder Turnus prüfen.`,
+        `Der Monatspreis entspricht ${formatNumber(round2(perSqm))} €/m² – marktüblich sind bis ca. ${MAX_MONTHLY_EUR_PER_SQM.toFixed(2).replace(".", ",")} €/m² pro Monat. Bitte m²-Preis oder Turnus prüfen.`,
       );
     }
   }
@@ -286,7 +286,7 @@ export function buildDiscountPosition(
 
   const parts: string[] = [];
   if (pct > 0) parts.push(`${formatNumber(pct)} %`);
-  if (fixedCents > 0) parts.push(`Festbetrag ${formatMoney(fromCents(fixedCents))} €`);
+  if (fixedCents > 0) parts.push(`Festbetrag ${formatMoney(fromCents(fixedCents))}`);
   const reason = discount.reason.trim();
 
   return {
