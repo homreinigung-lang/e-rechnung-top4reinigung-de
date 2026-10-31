@@ -189,7 +189,7 @@ export function useCalculationTotals(input: {
     [stagedPositionsBeforeDiscount, stagedDiscountPosition],
   );
   const travelTotal = positionsTotal(
-    stagedPositionsBeforeDiscount.filter((item) => item.description === "Anfahrtspauschale je Einsatz"),
+    stagedPositionsBeforeDiscount.filter((item) => item.kind === "travel"),
   );
   const base = round2(
     subtotal - extrasTotal - (roomCalculation.enabled ? 0 : stairsTotal) - travelTotal,
