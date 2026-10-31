@@ -1,16 +1,15 @@
+import { serviceKeysFromTexts } from "@/lib/quote-templates";
 import { Fragment } from "react";
 import { GiroCode } from "@/components/GiroCode";
-import { DOC_TYPE_LABEL, formatDate, formatMoney, formatNumber } from "@/lib/format";
+import { DOC_TYPE_LABEL, formatDate, formatMoney, formatNumber, roundCents } from "@/lib/format";
 import {
   CANCELLATION_TERMS,
-  INVOICE_INTRO,
-  QUOTE_DISCLAIMER,
-  QUOTE_INTRO_PRIVAT,
-  defaultQuoteIntro,
   deriveServiceName,
   orderHeadline,
   quoteHeadline,
-  quoteIntro,
+  resolveIntroText,
+  resolveQuoteNotes,
+  paymentTermsLine,
 } from "@/lib/document-texts";
 
 type PreviewItem = {
@@ -145,12 +144,9 @@ export function DocumentPrintPreview({
             <h2 className="mt-7 text-center font-display text-lg font-bold text-balance">
               {String(form["title"] ?? "").trim() ? String(form["title"]).trim() : (isOrder ? orderHeadline : quoteHeadline)(deriveServiceName(form["service_description"] ? String(form["service_description"]) : "", items[0]?.description ?? ""))}
             </h2>
-            {!isQuote && <p className="mt-3 text-justify text-sm leading-relaxed">{isPrivat ? QUOTE_INTRO_PRIVAT : quoteIntro(String(settings?.["company_name"] ?? ""))}</p>}
           </>
         )}
-        {isInvoice && !introText && <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{INVOICE_INTRO}</p>}
-        {isQuote && !introText && <p className="mt-3 whitespace-pre-line text-justify text-sm leading-relaxed">{defaultQuoteIntro(isPrivat, String(settings?.["company_name"] ?? ""))}</p>}
-        {introText && <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{introText}</p>}
+        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{resolveIntroText(docType, { introText, isPrivat, companyName: String(settings?.["company_name"] ?? ""), serviceKeys: serviceKeysFromTexts(items.map((i) => i.description)) })}</p>
 
         <div className="invoice-table-wrap mt-4 overflow-x-auto">
           <table className="invoice-table w-full border-collapse text-left text-sm">
@@ -167,7 +163,7 @@ export function DocumentPrintPreview({
                     </>
                   )}
                   <tr className="border-b border-border align-top">
-                    <td className="px-2 py-2 tabular-nums">{index + 1}</td><td className="px-2 py-2 break-words whitespace-pre-line">{item.description}</td><td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{formatNumber(item.quantity)}</td><td className="px-2 py-2">{item.unit}</td><td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{formatMoney(item.unit_price)}</td><td className="px-2 py-2 text-right font-medium tabular-nums whitespace-nowrap">{formatMoney(item.quantity * item.unit_price)}</td>
+                    <td className="px-2 py-2 tabular-nums">{index + 1}</td><td className="px-2 py-2 break-words whitespace-pre-line">{item.description}</td><td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{formatNumber(item.quantity)}</td><td className="px-2 py-2">{item.unit}</td><td className="px-2 py-2 text-right tabular-nums whitespace-nowrap">{formatMoney(item.unit_price)}</td><td className="px-2 py-2 text-right font-medium tabular-nums whitespace-nowrap">{formatMoney(roundCents(item.quantity * item.unit_price))}</td>
                   </tr>
                   {hasOptionalItems && !item.is_optional && index === orderedItems.length - 1 && <tr className="border-b border-border"><td colSpan={5} className="px-2 py-2 text-sm font-semibold">Monatlicher Festpreis (netto)</td><td className="px-2 py-2 text-right text-sm font-semibold tabular-nums whitespace-nowrap">{formatMoney(regularTotal)}</td></tr>}
                 </Fragment>
@@ -207,11 +203,11 @@ export function DocumentPrintPreview({
             </div>
           </div>
           {taxNote && <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{taxNote}</p>}
-          {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
+          {(isQuote ? resolveQuoteNotes(form["notes"] ? String(form["notes"]) : "", serviceKeysFromTexts(items.map((i) => i.description))) : form["notes"] ? String(form["notes"]) : "") && <p className="mt-3 whitespace-pre-line text-sm">{isQuote ? resolveQuoteNotes(form["notes"] ? String(form["notes"]) : "", serviceKeysFromTexts(items.map((i) => i.description))) : String(form["notes"])}</p>}
           {isInvoice ? (
-            <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="space-y-0.5 text-sm"><p>Zahlüberweisung in {paymentTermsDays} Tagen</p><p>Vielen Dank für die gute Zusammenarbeit.</p></div><GiroCode payload={epc} size={84} /></div>
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="space-y-0.5 text-sm"><p>{paymentTermsLine(docType, paymentTermsDays)}</p><p>Vielen Dank für die gute Zusammenarbeit.</p></div><GiroCode payload={epc} size={84} /></div>
           ) : (
-            <div className="mt-4 space-y-2 text-sm"><p>Zahlüberweisung in {paymentTermsDays} Tagen</p>{!isOrder && <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>}{isOrder && <p className="text-justify text-xs leading-relaxed text-muted-foreground">{CANCELLATION_TERMS}</p>}</div>
+            <div className="mt-4 space-y-2 text-sm"><p>{paymentTermsLine(docType, paymentTermsDays)}</p>{isOrder && <p className="text-justify text-xs leading-relaxed text-muted-foreground">{CANCELLATION_TERMS}</p>}</div>
           )}
         </div>
         <footer className="mt-8 grid gap-4 border-t pt-3 text-[11px] text-muted-foreground sm:grid-cols-3">
