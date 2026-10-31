@@ -129,6 +129,7 @@ export function DocumentEditor({ state }: { state: DocumentDetailStateContext })
         introText: String(form["intro_text"] ?? ""),
         notes: String(form["notes"] ?? ""),
         serviceDescription: String(form["service_description"] ?? ""),
+        serviceTexts: items.map((item) => item.description),
         defaultQuoteIntro: (privat, company) => defaultQuoteIntro(privat, company, serviceKeysFromTexts(items.map((item) => item.description))),
         onIntroChange: (value) => setField("intro_text", value),
         onNotesChange: (value) => setField("notes", value),
