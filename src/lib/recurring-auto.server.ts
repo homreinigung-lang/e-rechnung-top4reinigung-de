@@ -187,7 +187,7 @@ function makePdfData(
     taxNote: taxNoteForTaxMode(asText(doc["tax_mode"]) || "domestic") || undefined,
     notes: asText(doc["notes"]) || undefined,
     paymentLines: [
-      `Zahlung per Überweisung innerhalb von ${Number(settings["payment_terms_days"] ?? 14)} Tagen`,
+      `Zahlüberweisung in ${Number(settings["payment_terms_days"] ?? 14)} Tagen`,
       "Vielen Dank für die gute Zusammenarbeit.",
     ],
     qrPayload: buildEpcPayload({
