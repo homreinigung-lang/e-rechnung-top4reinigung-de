@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CLEANING_TYPES } from "@/components/kalkulation/shared";
 import { buildConsolidatedPositions, isGlassText, normalizeItems, positionsTotal } from "./kalkulation-engine";
 import { quoteClosingFor, quoteIntroFor, serviceKeysFromTexts } from "./quote-templates";
 import { resolveIntroText, ORDER_INTRO } from "./document-texts";
@@ -37,6 +38,9 @@ describe("monatliche Kalkulation", () => {
   });
 });
 describe("Angebotstexte", () => {
+  it.each(CLEANING_TYPES)("erkennt das echte Label $label", ({ value, label }) => {
+    expect(serviceKeysFromTexts([`${label} – 100 m² Reinigung`])).toEqual([value]);
+  });
   it("erkennt nur die Leistungsart, nicht beiläufige Fenster", () => {
     expect(serviceKeysFromTexts(["Büroreinigung – Fensterbänke abwischen"])).toEqual(["buero"]);
   });
