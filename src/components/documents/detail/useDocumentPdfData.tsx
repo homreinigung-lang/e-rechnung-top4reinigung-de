@@ -228,7 +228,7 @@ export function useDocumentPdfData(input: {
       customerVatId:
         !isPrivat && form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
-      introText: resolveIntroText(docType, { introText, isPrivat, companyName, serviceKeys: serviceKeysFromTexts(items.map((i) => i.description)) }),
+      introText: resolveIntroText(isInvoice ? "invoice" : isOrder ? "order" : "quote", { introText, isPrivat, companyName, serviceKeys: serviceKeysFromTexts(items.map((i) => i.description)) }),
 
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
@@ -260,10 +260,10 @@ export function useDocumentPdfData(input: {
       // Bankdaten stehen bereits im Fußbereich – hier nicht wiederholen.
       paymentLines: isInvoice
         ? [
-            paymentTermsLine(docType, paymentTermsDays),
+            paymentTermsLine(isInvoice ? "invoice" : isOrder ? "order" : "quote", paymentTermsDays),
             "Vielen Dank für die gute Zusammenarbeit.",
           ]
-        : [paymentTermsLine(docType, paymentTermsDays)],
+        : [paymentTermsLine(isInvoice ? "invoice" : isOrder ? "order" : "quote", paymentTermsDays)],
 
       qrPayload: epc,
       footer: [
