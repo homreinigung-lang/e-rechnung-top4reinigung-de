@@ -206,9 +206,9 @@ export function DocumentPrintPreview({
           {taxNote && <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{taxNote}</p>}
           {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
           {isInvoice ? (
-            <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="space-y-0.5 text-sm"><p>Zahlüberweisung in {paymentTermsDays} Tagen</p><p>Vielen Dank für die gute Zusammenarbeit.</p></div><GiroCode payload={epc} size={84} /></div>
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="space-y-0.5 text-sm"><p>Zahlung per Überweisung innerhalb von {paymentTermsDays} Tagen</p><p>Vielen Dank für die gute Zusammenarbeit.</p></div><GiroCode payload={epc} size={84} /></div>
           ) : (
-            <div className="mt-4 space-y-2 text-sm"><p>Zahlüberweisung in {paymentTermsDays} Tagen</p>{!isOrder && <p className="text-justify leading-relaxed">{quoteClosing(serviceKeys)}</p>}{isOrder && <p className="text-justify text-xs leading-relaxed text-muted-foreground">{CANCELLATION_TERMS}</p>}</div>
+            <div className="mt-4 space-y-2 text-sm"><p>Zahlungsziel nach Rechnungsstellung: {paymentTermsDays} Tage</p>{!isOrder && <p className="text-justify leading-relaxed">{quoteClosing(serviceKeys)}</p>}{isOrder && <p className="text-justify text-xs leading-relaxed text-muted-foreground">{CANCELLATION_TERMS}</p>}</div>
           )}
         </div>
         <footer className="mt-8 grid gap-4 border-t pt-3 text-[11px] text-muted-foreground sm:grid-cols-3">
