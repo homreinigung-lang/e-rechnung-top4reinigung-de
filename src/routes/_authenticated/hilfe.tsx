@@ -97,7 +97,7 @@ function HilfePage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Beschreiben Sie kurz Ihr Anliegen – wir melden uns werktags innerhalb von 24 Stunden.
+              Beschreiben Sie kurz Ihr Anliegen – wir melden uns so schnell wie möglich.
             </p>
             <Button asChild size="sm">
               <a
