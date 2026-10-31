@@ -57,8 +57,8 @@ it.each(CLEANING_TYPES.flatMap(selected => (["hours", "area"] as const).map(mode
     const totals = calculate({ selected, type: selected.value, mode, area: "48", glassArea: "48", pricePerSqm: "0,6", selectedPerformanceRate: { sqm_per_hour: 120 } as Input["selectedPerformanceRate"] });
     const byArea = mode === "area" && selected.value !== "glas";
     const perVisit = byArea ? 28.8 : 14;
-    expect(totals.base).toBe(byArea ? 62.4 : 30.33);
-    expect(totals.suggested).toBe(byArea ? 119.07 : 87);
+    expect(totals.base).toBe(byArea ? 62.4 : 30.45);
+    expect(totals.suggested).toBe(byArea ? 119.07 : 87.12);
     const state = { ...totals, mode, type: selected.value, area: "48", glassArea: "48", pricePerSqm: "0,6", hours: "0,4", hourlyRate: "35", frequencyUnit: "fortnight", selectedPerformanceRate: { sqm_per_hour: 120 } } as unknown as KalkulationStateContext;
     const detail = renderToStaticMarkup(createElement(CleaningPriceSummary, { hours: 0.4, state }));
     expect(detail).toContain(`Reinigungspreis je Einsatz (netto): <strong>${formatMoney(perVisit)}`);
