@@ -316,7 +316,13 @@ export function useCalculationTotals(input: {
   const targetMonthlyRevenue = round2(targetSellingRate * costingMonthlyHours);
   // LV is the source of truth once positions are present; otherwise preview the proposal.
   // Both revenue and costingMonthlyHours must describe the same billing period.
-  const profitabilityRevenue = lvPositions.length > 0 ? lvTotal : suggested;
+  const activePositions = lvPositions.length > 0 ? lvPositions : stagedPositions;
+  // Stundenkennzahl ohne separat berechnete Pauschalen, Anfahrt und Rabatt.
+  const profitabilityRevenue = positionsTotal(activePositions.filter((position) =>
+    !("kind" in position && ["travel", "extra", "stairs", "lift", "discount"].includes(String(position.kind))) &&
+    !/^(Anfahrtspauschale|Aufzugkabine reinigen|Treppenhausreinigung|Rabatt)/i.test(position.description) &&
+    !EXTRAS.some((extra) => extra.label === position.description)
+  ));
   const effectiveSellingRate =
     costingMonthlyHours > 0 ? round2(profitabilityRevenue / costingMonthlyHours) : 0;
   const contribution = round2(profitabilityRevenue - monthlySelfCost);
@@ -357,10 +363,10 @@ export function useCalculationTotals(input: {
         rooms: 0,
         floors: 0,
         oneTime: frequencyUnit === "once",
-        monthlyNet: suggested,
+        monthlyNet: frequencyUnit === "once" ? 0 : positionsTotal(stagedPositionsBeforeDiscount.filter((position) => position.kind !== "extra" && position.kind !== "travel")),
         hoursPerMonth: costingMonthlyHours,
       }),
-    [mode, area, analysisTotals, suggested, costingMonthlyHours, frequencyUnit],
+    [mode, area, analysisTotals, stagedPositionsBeforeDiscount, costingMonthlyHours, frequencyUnit],
   );
 
   /** Herkunftsbereich einer LV-Zeile (Fallback: „Kalkulation"). */
