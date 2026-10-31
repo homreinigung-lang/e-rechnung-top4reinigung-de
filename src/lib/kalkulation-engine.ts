@@ -184,7 +184,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const perVisit = round2(input.areaSqm * input.pricePerSqm);
     if (perVisit > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${formatNumber(round2(input.areaSqm))} m² × ${formatMoney(round2(input.pricePerSqm))} €/m² je Einsatz${input.oneTime ? " – einmalige Reinigung" : ""}`,
+        description: `${input.typeLabel} – ${formatNumber(round2(input.areaSqm))} m² × ${formatMoney(round2(input.pricePerSqm))} €/m² je Einsatz${input.oneTime ? " – einmalige Reinigung" : !Number.isInteger(visits) ? `, durchschnittlich ${formatNumber(visits)} Einsätze/Monat` : ""}`,
         quantity: !input.oneTime && !Number.isInteger(visits) ? 1 : visits,
         unit: !input.oneTime && !Number.isInteger(visits) ? "Monat" : "Einsatz",
         unit_price: !input.oneTime && !Number.isInteger(visits) ? round2(perVisit * visits) : perVisit,
