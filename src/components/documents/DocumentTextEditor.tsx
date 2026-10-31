@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { quoteClosing } from "@/lib/document-texts";
+import { serviceKeysFromTexts } from "@/lib/quote-templates";
 
 type DocumentTextEditorProps = {
   isQuote: boolean;
@@ -10,6 +12,7 @@ type DocumentTextEditorProps = {
   introText: string;
   notes: string;
   serviceDescription: string;
+  serviceTexts?: string[];
   defaultQuoteIntro: (isPrivat: boolean, companyName: string) => string;
   onIntroChange: (value: string) => void;
   onNotesChange: (value: string) => void;
@@ -24,6 +27,7 @@ export function DocumentTextEditor({
   introText,
   notes,
   serviceDescription,
+  serviceTexts = [],
   defaultQuoteIntro,
   onIntroChange,
   onNotesChange,
@@ -50,7 +54,7 @@ export function DocumentTextEditor({
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="notes">Schlussbemerkung</Label>
+          <div className="flex items-center justify-between gap-2"><Label htmlFor="notes">Schlussbemerkung</Label>{isQuote && <Button type="button" variant="ghost" size="sm" onClick={() => onNotesChange(quoteClosing(serviceKeysFromTexts(serviceTexts)))}>Standardtext einsetzen</Button>}</div>
           <Textarea id="notes" value={notes} onChange={(event) => onNotesChange(event.target.value)} />
         </div>
       </div>
