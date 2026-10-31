@@ -76,3 +76,7 @@ export function orderHeadline(serviceName?: string | null): string {
   const service = (serviceName ?? "").trim() || "Gebäudereinigung";
   return `Auftragsbestätigung – ${service}`;
 }
+
+export function paymentTermsLine(docType: string, days: number): string {
+  return docType === "invoice" ? `Zahlung per Überweisung innerhalb von ${days} Tagen` : `Zahlungsziel nach Rechnungsstellung: ${days} Tage`;
+}
