@@ -252,7 +252,7 @@ export function useDocumentPdfData(input: {
           ? String(form["notes"])
           : undefined
         : [
-            isOrder ? (form["notes"] ? String(form["notes"]) : "") : resolveQuoteNotes(form["notes"] ? String(form["notes"]) : "", serviceKeysFromTexts(items.map((i) => i.description)),
+            isOrder ? (form["notes"] ? String(form["notes"]) : "") : resolveQuoteNotes(form["notes"] ? String(form["notes"]) : "", serviceKeysFromTexts(items.map((i) => i.description))),
             isOrder ? CANCELLATION_TERMS : "",
           ]
             .filter(Boolean)
