@@ -84,7 +84,7 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
     const effective = monthly / hoursPerMonth;
     if (effective < MIN_EFFECTIVE_HOURLY_RATE) {
       warnings.push(
-        `Rechnerischer Stundenerlös nur ${round2(effective)} €/Std. – unterhalb des allgemeinen Richtwerts von ${formatNumber(MIN_EFFECTIVE_HOURLY_RATE)} €/Std. Bitte individuelle Kosten prüfen.`,
+        `Rechnerischer Stundenerlös nur ${formatMoney(round2(effective))} €/Std. – unterhalb des allgemeinen Richtwerts von ${formatNumber(MIN_EFFECTIVE_HOURLY_RATE)} €/Std. Bitte individuelle Kosten prüfen.`,
       );
     }
   }
@@ -103,7 +103,7 @@ export function checkPlausibility(input: PlausibilityInput): string[] {
   }
   if (toilets > 0 && area < toilets * 15) {
     warnings.push(
-      `${toilets} Sanitärbereiche bei ${round2(area)} m² – die Fläche wirkt zu klein, bitte prüfen.`,
+      `${toilets} Sanitärbereiche bei ${formatNumber(round2(area))} m² – die Fläche wirkt zu klein, bitte prüfen.`,
     );
   }
   if (area < 20 && (rooms > 2 || floors > 1)) {
@@ -174,7 +174,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const qty = round2(hoursPerVisit * visits);
     if (qty > 0 && input.hourlyRate > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² Glasfläche, ${input.oneTime ? "einmalige Reinigung" : `${formatNumber(visits)} Einsätze/Monat`}`,
+        description: `${input.typeLabel} – ${formatNumber(round2(input.areaSqm))} m² Glasfläche, ${input.oneTime ? "einmalige Reinigung" : `${formatNumber(visits)} Einsätze/Monat`}`,
         quantity: qty,
         unit: "Std.",
         unit_price: round2(input.hourlyRate),
@@ -184,7 +184,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const perVisit = round2(input.areaSqm * input.pricePerSqm);
     if (perVisit > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² × ${round2(input.pricePerSqm)} €/m² je Einsatz${input.oneTime ? " – einmalige Reinigung" : ""}`,
+        description: `${input.typeLabel} – ${formatNumber(round2(input.areaSqm))} m² × ${formatMoney(round2(input.pricePerSqm))} €/m² je Einsatz${input.oneTime ? " – einmalige Reinigung" : ""}`,
         quantity: !input.oneTime && !Number.isInteger(visits) ? 1 : visits,
         unit: !input.oneTime && !Number.isInteger(visits) ? "Monat" : "Einsatz",
         unit_price: !input.oneTime && !Number.isInteger(visits) ? round2(perVisit * visits) : perVisit,
@@ -194,7 +194,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     const qty = round2(input.hours * visits);
     if (qty > 0 && input.hourlyRate > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.hours)} Std. je Einsatz, ${input.oneTime ? "einmalige Reinigung" : `${round2(visits)} Einsätze/Monat`}`,
+        description: `${input.typeLabel} – ${formatNumber(round2(input.hours))} Std. je Einsatz, ${input.oneTime ? "einmalige Reinigung" : `${formatNumber(visits)} Einsätze/Monat`}`,
         quantity: qty,
         unit: "Std.",
         unit_price: round2(input.hourlyRate),
