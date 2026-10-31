@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CLEANING_TYPES } from "@/components/kalkulation/shared";
 import { buildConsolidatedPositions, isGlassText, normalizeItems, positionsTotal } from "./kalkulation-engine";
 import { quoteClosingFor, quoteIntroFor, serviceKeysFromTexts } from "./quote-templates";
-import { resolveIntroText, ORDER_INTRO } from "./document-texts";
+import { resolveIntroText, resolveQuoteNotes, paymentTermsLine, ORDER_INTRO } from "./document-texts";
 
 const base = {
   typeValue: "unterhalt", typeLabel: "Unterhaltsreinigung",
@@ -38,6 +38,15 @@ describe("monatliche Kalkulation", () => {
   });
 });
 describe("Angebotstexte", () => {
+  it("fügt den Standard-Schlusstext nur einmal hinzu", () => {
+    const first = resolveQuoteNotes("Individuelle Bemerkung", ["glas"]);
+    expect(resolveQuoteNotes(first, ["glas"])).toBe(first);
+    expect(first).toContain("Individuelle Bemerkung");
+  });
+  it("unterscheidet Zahlungsziel von Rechnung und Angebot", () => {
+    expect(paymentTermsLine("invoice", 14)).toContain("Überweisung");
+    expect(paymentTermsLine("quote", 14)).toContain("nach Rechnungsstellung");
+  });
   it.each(CLEANING_TYPES)("erkennt das echte Label $label", ({ value, label }) => {
     expect(serviceKeysFromTexts([`${label} – 100 m² Reinigung`])).toEqual([value]);
   });
