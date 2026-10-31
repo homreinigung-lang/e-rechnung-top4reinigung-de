@@ -309,7 +309,7 @@ export function normalizeItems(
   return items
     .map((item) => {
       const description = item.description.trim();
-      let quantity = round2(item.quantity);
+      const quantity = round2(item.quantity);
       let price = round2(item.unit_price);
       const unit = item.unit.trim() || "Std.";
 
