@@ -64,8 +64,8 @@ it("beachtet einen separaten vierteljährlichen Treppen- und Aufzugsturnus", () 
     hasLift: true,
     stairVisitsPerMonth: visitsPerMonth(1, "quarter"),
   });
-  expect(positions[0]?.quantity).toBeCloseTo(2 / 3);
-  expect(positions[1]?.quantity).toBeCloseTo(1 / 3);
+  expect(positions[0]).toMatchObject({ quantity: 1, unit: "Monat", unit_price: 6.67, kind: "stairs" });
+  expect(positions[1]).toMatchObject({ quantity: 1, unit: "Monat", unit_price: 1.67, kind: "lift" });
   expect(positionsTotal(positions)).toBe(8.34);
 });
 
@@ -106,7 +106,7 @@ it.each([
 ])("berechnet 15 EUR Anfahrt je Einsatz bei %s Einsätzen pro Monat", (visits, total) => {
   const positions = buildConsolidatedPositions({ ...base, hours: 0, travel: 15, visitsPerMonth: visits });
   expect(positions).toEqual([
-    { description: "Anfahrtspauschale je Einsatz", quantity: visits, unit: "Einsatz", unit_price: 15 },
+    { description: `Anfahrtspauschale – durchschnittlich ${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 }).format(visits)} Einsätze/Monat`, kind: "travel", quantity: 1, unit: "Monat", unit_price: total },
   ]);
   expect(positionsTotal(positions)).toBe(total);
 });
@@ -115,5 +115,5 @@ it("berechnet Anfahrt und Reinigung mit demselben ungerundeten Monatsdurchschnit
   const positions = buildConsolidatedPositions({
     ...base, hours: 4, hourlyRate: 35, travel: 15, visitsPerMonth: 26 / 12,
   });
-  expect(positionsTotal(positions)).toBe(335.83);
+  expect(positionsTotal(positions)).toBe(335.95);
 });
