@@ -320,7 +320,7 @@ export function useCalculationTotals(input: {
   // Stundenkennzahl ohne separat berechnete Pauschalen, Anfahrt und Rabatt.
   const profitabilityRevenue = positionsTotal(activePositions.filter((position) =>
     !("kind" in position && ["travel", "extra", "stairs", "lift", "discount"].includes(String(position.kind))) &&
-    !/^(Anfahrtspauschale|Aufzugkabine reinigen|Treppenhausreinigung|Rabatt)/i.test(position.description) &&
+    !/^(Anfahrtspauschale|Aufzugkabine reinigen|Treppenhausreinigung\s*[–-]\s*\d+\s+Etagen|Rabatt\s*\()/i.test(position.description) &&
     !EXTRAS.some((extra) => extra.label === position.description)
   ));
   const effectiveSellingRate =
