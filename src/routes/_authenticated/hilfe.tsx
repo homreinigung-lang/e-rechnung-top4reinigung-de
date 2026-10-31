@@ -34,12 +34,36 @@ export const Route = createFileRoute("/_authenticated/hilfe")({
 
 const faqs: readonly { q: string; a: string }[] = [
   {
+    q: "Wie übernehme ich eine Kalkulation in ein Angebot?",
+    a: "Erstellen Sie in „Kalkulation“ die Leistungen und den Turnus, prüfen Sie die Plausibilität und übernehmen Sie die Positionen ins Leistungsverzeichnis. Anschließend können Sie aus der Kalkulation ein Angebot erstellen.",
+  },
+  {
+    q: "Wie funktioniert die Raum- und Grundrisskalkulation?",
+    a: "Erfassen oder analysieren Sie Räume mit Fläche, Leistungswert beziehungsweise Minuten je Besuch und Reinigungsintervall. Prüfen Sie die Hinweise auf unvollständige oder unplausible Angaben, bevor Sie die Positionen übernehmen.",
+  },
+  {
+    q: "Wie füge ich einen Rabatt hinzu?",
+    a: "In der Kalkulation können Sie einen prozentualen oder festen Rabatt und einen Grund eingeben. Beim Übernehmen wird er als eigene negative Rabattposition im Leistungsverzeichnis ausgewiesen.",
+  },
+  {
+    q: "Welche Steuerarten gibt es?",
+    a: "Neben der regulären deutschen Umsatzsteuer gibt es Einstellungen für Kleinunternehmer sowie Reverse-Charge im Inland und für EU-Sachverhalte. Die verfügbaren Optionen und Pflichtangaben richten sich nach der gewählten Steuerart und der Freischaltung.",
+  },
+  {
+    q: "Welche E-Rechnungsformate werden erstellt?",
+    a: "Die Anwendung unterstützt XRechnung als UBL-XML und ZUGFeRD beziehungsweise Factur-X mit eingebetteter XML im PDF.",
+  },
+  {
+    q: "Wie bearbeite ich Einleitung und Schlusstext?",
+    a: "Öffnen Sie das Dokument zur Bearbeitung. Unter Einleitungstext und Schlussbemerkung können Sie eigene Texte eingeben. Bei Angeboten setzt „Standardtext einsetzen“ den passenden Vorschlag für die erkannten Reinigungsleistungen ein.",
+  },
+  {
     q: "Wie erstelle ich eine Rechnung oder ein Angebot?",
     a: "Unter „Dokumente“ wählen Sie „Neue Rechnung“ oder „Neues Angebot“, wählen den Kunden, ergänzen Positionen und speichern. Aus einem Angebot lässt sich per Workflow eine Auftragsbestätigung und daraus eine Rechnung erzeugen.",
   },
   {
     q: "Warum kann ich Reverse-Charge nicht auswählen?",
-    a: "Rechnungen ohne deutsche MwSt. für EU-Geschäftskunden sind ab dem Pro-Paket verfügbar. Ihr aktuelles Paket sehen Sie unter „Mein Paket“.",
+    a: "Die verfügbaren Steuerarten hängen von den Einstellungen und gegebenenfalls Ihrem Paket ab. Prüfen Sie unter „Mein Paket“ Ihre Freischaltungen.",
   },
   {
     q: "Wie versende ich ein Dokument per E-Mail?",
