@@ -1,5 +1,6 @@
 import { STATUS_LABEL } from "@/lib/format";
 import { defaultQuoteIntro } from "@/lib/document-texts";
+import { serviceKeysFromTexts } from "@/lib/quote-templates";
 import { DocumentEditorPanel } from "@/components/documents/DocumentEditorPanel";
 import { isDraftPlaceholder } from "@/lib/doc-number";
 import { DEFAULT_NET_RATE, UNIT_OPTIONS } from "./shared";
@@ -128,7 +129,7 @@ export function DocumentEditor({ state }: { state: DocumentDetailStateContext })
         introText: String(form["intro_text"] ?? ""),
         notes: String(form["notes"] ?? ""),
         serviceDescription: String(form["service_description"] ?? ""),
-        defaultQuoteIntro,
+        defaultQuoteIntro: (privat, company) => defaultQuoteIntro(privat, company, serviceKeysFromTexts(items.map((item) => item.description))),
         onIntroChange: (value) => setField("intro_text", value),
         onNotesChange: (value) => setField("notes", value),
         onServiceDescriptionChange: (value) => setField("service_description", value),
