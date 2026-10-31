@@ -42,7 +42,7 @@ export function ProjekteIndexView({ state }: { state: ProjekteIndexState }) {
                   </div>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {formatDate(p.created_at.slice(0, 10))}
+                  {p.created_at ? formatDate(p.created_at.slice(0, 10)) : "–"}
                 </span>
                 <ConfirmDeleteButton
                   title="Projekt wirklich löschen?"
