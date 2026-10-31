@@ -6,12 +6,14 @@
  * ein Zwischenschritt, der Positionen erzeugt – sie wird nie zusätzlich addiert.
  */
 import { STAIR_RATE_PER_FLOOR } from "@/lib/constants";
+import { formatMoney, formatNumber } from "@/lib/format";
 
 export type CalcPosition = {
   description: string;
   quantity: number;
   unit: string;
   unit_price: number;
+  kind?: "travel" | "extra" | "stairs" | "lift" | "discount";
 };
 
 /** Fester, höherer Satz für Glas- und Fensterreinigung (netto, pro Stunde). */
@@ -30,7 +32,7 @@ export { toCents, fromCents, round2 };
 
 /** Erkennt Glas-/Fensterleistungen anhand des Positionstextes. */
 export function isGlassText(text: string): boolean {
-  return /glas|fenster|verglas|scheib/i.test(text);
+  return /glas|verglas|scheib|fenster(?!bank|bänke|brett|rahmen)/i.test(text);
 }
 
 /** Erkennt Treppen-/Treppenhausleistungen anhand des Textes. */
@@ -169,10 +171,10 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
             ? input.areaSqm / input.performanceSqmPerHour
             : 0
           : 0;
-    const qty = hoursPerVisit * visits;
+    const qty = round2(hoursPerVisit * visits);
     if (qty > 0 && input.hourlyRate > 0) {
       positions.push({
-        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² Glasfläche, ${input.oneTime ? "einmalige Reinigung" : `${round2(visits)} Einsätze/Monat`}`,
+        description: `${input.typeLabel} – ${round2(input.areaSqm)} m² Glasfläche, ${input.oneTime ? "einmalige Reinigung" : `${formatNumber(visits)} Einsätze/Monat`}`,
         quantity: qty,
         unit: "Std.",
         unit_price: round2(input.hourlyRate),
@@ -183,13 +185,13 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     if (perVisit > 0) {
       positions.push({
         description: `${input.typeLabel} – ${round2(input.areaSqm)} m² × ${round2(input.pricePerSqm)} €/m² je Einsatz${input.oneTime ? " – einmalige Reinigung" : ""}`,
-        quantity: visits,
-        unit: "Einsatz",
-        unit_price: perVisit,
+        quantity: !input.oneTime && !Number.isInteger(visits) ? 1 : visits,
+        unit: !input.oneTime && !Number.isInteger(visits) ? "Monat" : "Einsatz",
+        unit_price: !input.oneTime && !Number.isInteger(visits) ? round2(perVisit * visits) : perVisit,
       });
     }
   } else {
-    const qty = input.hours * visits;
+    const qty = round2(input.hours * visits);
     if (qty > 0 && input.hourlyRate > 0) {
       positions.push({
         description: `${input.typeLabel} – ${round2(input.hours)} Std. je Einsatz, ${input.oneTime ? "einmalige Reinigung" : `${round2(visits)} Einsätze/Monat`}`,
@@ -209,17 +211,19 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
         ? Number(input.stairVisitsPerMonth)
         : visits;
     positions.push({
-      description: `Treppenhausreinigung – ${floors} Etagen, ${input.oneTime ? "einmalige Reinigung" : `${round2(stairVisits)} Einsätze/Monat`}`,
-      quantity: floors * stairVisits,
-      unit: "Etage",
-      unit_price: rate,
+      description: `Treppenhausreinigung – ${floors} Etagen, ${input.oneTime ? "einmalige Reinigung" : `${formatNumber(stairVisits)} Einsätze/Monat`}`,
+      quantity: !input.oneTime && !Number.isInteger(stairVisits) ? 1 : floors * stairVisits,
+      unit: !input.oneTime && !Number.isInteger(stairVisits) ? "Monat" : "Etage",
+      unit_price: !input.oneTime && !Number.isInteger(stairVisits) ? round2(floors * stairVisits * rate) : rate,
+      kind: "stairs",
     });
     if (input.hasLift && input.liftRate > 0) {
       positions.push({
-        description: "Aufzugkabine reinigen",
-        quantity: stairVisits,
-        unit: "Einsatz",
-        unit_price: round2(input.liftRate),
+        description: !input.oneTime && !Number.isInteger(stairVisits) ? `Aufzugkabine reinigen – durchschnittlich ${formatNumber(stairVisits)} Einsätze/Monat` : "Aufzugkabine reinigen",
+        quantity: !input.oneTime && !Number.isInteger(stairVisits) ? 1 : stairVisits,
+        unit: !input.oneTime && !Number.isInteger(stairVisits) ? "Monat" : "Einsatz",
+        unit_price: !input.oneTime && !Number.isInteger(stairVisits) ? round2(input.liftRate * stairVisits) : round2(input.liftRate),
+        kind: "lift",
       });
     }
   }
@@ -228,6 +232,7 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
     if (extra.price > 0) {
       positions.push({
         description: extra.label,
+        kind: "extra",
         quantity: 1,
         unit: "Pauschal",
         unit_price: round2(extra.price),
@@ -237,10 +242,11 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
 
   if (input.travel > 0) {
     positions.push({
-      description: "Anfahrtspauschale je Einsatz",
-      quantity: visits,
-      unit: "Einsatz",
-      unit_price: round2(input.travel),
+      description: !input.oneTime && !Number.isInteger(visits) ? `Anfahrtspauschale – durchschnittlich ${formatNumber(visits)} Einsätze/Monat` : "Anfahrtspauschale je Einsatz",
+      quantity: !input.oneTime && !Number.isInteger(visits) ? 1 : visits,
+      unit: !input.oneTime && !Number.isInteger(visits) ? "Monat" : "Einsatz",
+      unit_price: !input.oneTime && !Number.isInteger(visits) ? round2(input.travel * visits) : round2(input.travel),
+      kind: "travel",
     });
   }
 
@@ -279,8 +285,8 @@ export function buildDiscountPosition(
   const total = fromCents(totalCents);
 
   const parts: string[] = [];
-  if (pct > 0) parts.push(`${round2(pct)} %`);
-  if (fixedCents > 0) parts.push(`Festbetrag ${fromCents(fixedCents)} €`);
+  if (pct > 0) parts.push(`${formatNumber(pct)} %`);
+  if (fixedCents > 0) parts.push(`Festbetrag ${formatMoney(fromCents(fixedCents))} €`);
   const reason = discount.reason.trim();
 
   return {
@@ -288,6 +294,7 @@ export function buildDiscountPosition(
     quantity: 1,
     unit: "Pauschal",
     unit_price: -total,
+    kind: "discount",
   };
 }
 
@@ -306,9 +313,9 @@ export function normalizeItems(
       let price = round2(item.unit_price);
       const unit = item.unit.trim() || "Std.";
 
-      if (quantity <= 0) quantity = 1;
+      // Ungültige Mengen nicht stillschweigend zu einer Leistung machen.
 
-      if (price <= 0) {
+      if (price === 0) {
         if (isGlassText(description)) price = GLASS_HOURLY_RATE;
         else if (isStairText(description))
           price = round2(fallback.stairRate > 0 ? fallback.stairRate : MIN_STAIR_RATE);
@@ -317,9 +324,9 @@ export function normalizeItems(
         price = round2(Math.max(price, GLASS_HOURLY_RATE));
       }
 
-      return { description, quantity, unit, unit_price: price };
+      return { ...item, description, quantity, unit, unit_price: price };
     })
-    .filter((i) => i.description.length > 0 && Math.abs(i.quantity * i.unit_price) >= 0.01);
+    .filter((i) => i.description.length > 0 && i.quantity > 0 && Math.abs(i.quantity * i.unit_price) >= 0.01);
 }
 
 /** Netto-Summe der Positionen – die einzige gültige Gesamtsumme. */
