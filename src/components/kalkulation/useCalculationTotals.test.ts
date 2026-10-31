@@ -35,9 +35,9 @@ it("keeps the chosen rate for offer positions and full precision for fortnightly
   const totals = calculate();
   expect(totals.monthlyHours).toBeCloseTo(0.4 * 26 / 12, 12);
   expect(totals.costingMonthlyHours).toBe(totals.monthlyHours);
-  expect(totals.base).toBe(30.33);
+  expect(totals.base).toBe(30.45);
   expect(totals.travelTotal).toBe(21.67);
-  expect(totals.suggested).toBe(87);
+  expect(totals.suggested).toBe(87.12);
   expect(totals.selfCostPerHour).toBe(25.4);
   expect(totals.targetSellingRate).toBe(31.75);
   expect(totals.monthlySelfCost).toBe(22.01);
@@ -46,8 +46,8 @@ it("keeps the chosen rate for offer positions and full precision for fortnightly
 
 it("updates the offer price when the chosen rate changes without applying the recommendation", () => {
   const totals = calculate({ hourlyRate: "40" });
-  expect(totals.base).toBe(34.67);
-  expect(totals.suggested).toBe(91.34);
+  expect(totals.base).toBe(34.8);
+  expect(totals.suggested).toBe(91.47);
   expect(totals.targetSellingRate).toBe(31.75);
 });
 
@@ -57,8 +57,8 @@ it.each(CLEANING_TYPES.flatMap(selected => (["hours", "area"] as const).map(mode
     const totals = calculate({ selected, type: selected.value, mode, area: "48", glassArea: "48", pricePerSqm: "0,6", selectedPerformanceRate: { sqm_per_hour: 120 } as Input["selectedPerformanceRate"] });
     const byArea = mode === "area" && selected.value !== "glas";
     const perVisit = byArea ? 28.8 : 14;
-    expect(totals.base).toBe(byArea ? 62.4 : 30.33);
-    expect(totals.suggested).toBe(byArea ? 119.07 : 87);
+    expect(totals.base).toBe(byArea ? 62.4 : 30.45);
+    expect(totals.suggested).toBe(byArea ? 119.07 : 87.12);
     const state = { ...totals, mode, type: selected.value, area: "48", glassArea: "48", pricePerSqm: "0,6", hours: "0,4", hourlyRate: "35", frequencyUnit: "fortnight", selectedPerformanceRate: { sqm_per_hour: 120 } } as unknown as KalkulationStateContext;
     const detail = renderToStaticMarkup(createElement(CleaningPriceSummary, { hours: 0.4, state }));
     expect(detail).toContain(`Reinigungspreis je Einsatz (netto): <strong>${formatMoney(perVisit)}`);

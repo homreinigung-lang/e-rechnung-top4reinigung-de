@@ -1,3 +1,5 @@
+import { quoteIntroFor, quoteClosingFor } from "@/lib/quote-templates";
+
 /** Zentrale Textbausteine für Angebote (Rechnungen bleiben bewusst nüchtern). */
 
 /** Standard-Einleitungstext für Rechnungen. */
@@ -42,11 +44,26 @@ export const QUOTE_DISCLAIMER =
  * Standard-Einleitung für Angebote je nach Kundentyp. Wird als Vorbelegung im
  * Dokumenteneditor genutzt und greift beim PDF-Export, wenn das Feld leer ist.
  */
-export function defaultQuoteIntro(isPrivat: boolean, companyName?: string | null): string {
-  return isPrivat ? QUOTE_INTRO_PRIVAT : quoteIntro(companyName);
+export function defaultQuoteIntro(isPrivat: boolean, companyName?: string | null, serviceKeys: string[] = []): string {
+  return quoteIntroFor(serviceKeys, { isPrivat, companyName }) ?? (isPrivat ? QUOTE_INTRO_PRIVAT : quoteIntro(companyName));
 }
 
-/** Storno- und Terminbedingungen (Angebot und Auftragsbestätigung). */
+export function quoteClosing(serviceKeys: string[] = []): string {
+  return quoteClosingFor(serviceKeys) ?? QUOTE_DISCLAIMER;
+}
+
+export function resolveIntroText(
+  docType: string,
+  input: { introText?: string | null; isPrivat: boolean; companyName?: string | null; serviceKeys?: string[] },
+): string {
+  const custom = input.introText ?? "";
+  if (docType === "order") return `${ORDER_INTRO}${custom ? `\n\n${custom}` : ""}`;
+  if (docType === "quote") return custom || defaultQuoteIntro(input.isPrivat, input.companyName, input.serviceKeys);
+  return custom || INVOICE_INTRO;
+}
+
+/** Storno- und Terminbedingungen (nur Auftragsbestätigung). */
+// TODO: Rechtliche Prüfung der Ausfallpauschale von 50 % gegenüber Privatkunden (§ 309 Nr. 5 BGB) durch einen Anwalt, ggf. in den Einstellungen konfigurierbar machen.
 export const CANCELLATION_TERMS =
   "Terminverschiebungen oder -änderungen müssen bis spätestens 24 Stunden vor dem vereinbarten Termin mitgeteilt werden. Eine komplette Stornierung des Auftrags oder Vertrages muss schriftlich erfolgen und bis spätestens 14 Tage vor dem vereinbarten Leistungstermin eingehen. Bei einer späteren Stornierung des gesamten Auftrags behalten wir uns das Recht vor, eine Ausfallpauschale in Höhe von 50% des Auftragswertes zu berechnen.";
 
