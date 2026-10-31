@@ -2,14 +2,15 @@ import { toast } from "sonner";
 import { DOC_TYPE_LABEL, formatDate, formatMoney, formatNumber } from "@/lib/format";
 
 import {
-  quoteClosing,
-  resolveIntroText,
+  QUOTE_DISCLAIMER,
   CANCELLATION_TERMS,
+  ORDER_INTRO,
+  INVOICE_INTRO,
+  defaultQuoteIntro,
   orderHeadline,
   deriveServiceName,
   quoteHeadline,
 } from "@/lib/document-texts";
-import { serviceKeysFromTexts } from "@/lib/quote-templates";
 
 import { loadDocumentLogo } from "@/lib/document-logo";
 
@@ -93,7 +94,6 @@ export function useDocumentPdfData(input: {
   async function buildPdfData(numberOverride?: string): Promise<PdfDocData> {
     const number = numberOverride ?? docNumber;
     const companyName = String(settings?.["company_name"] ?? "");
-    const serviceKeys = serviceKeysFromTexts(items.map((item) => item.description));
     const delivery = isInvoice && !isStorno ? await fetchDeliveryNote(doc.id, true) : null;
 
     const meta: Array<{ label: string; value: string }> = [];
@@ -228,7 +228,11 @@ export function useDocumentPdfData(input: {
       customerVatId:
         !isPrivat && form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
-      introText: resolveIntroText(isInvoice ? "invoice" : isOrder ? "order" : "quote", { introText, isPrivat, companyName, serviceKeys }),
+      introText: isInvoice
+        ? introText || INVOICE_INTRO
+        : isQuote
+          ? introText || defaultQuoteIntro(isPrivat, companyName)
+          : `${ORDER_INTRO}${introText ? `\n\n${introText}` : ""}`,
 
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
@@ -253,7 +257,7 @@ export function useDocumentPdfData(input: {
           : undefined
         : [
             form["notes"] ? String(form["notes"]) : "",
-            isOrder ? "" : quoteClosing(serviceKeys),
+            isOrder ? "" : QUOTE_DISCLAIMER,
             isOrder ? CANCELLATION_TERMS : "",
           ]
             .filter(Boolean)
@@ -261,10 +265,10 @@ export function useDocumentPdfData(input: {
       // Bankdaten stehen bereits im Fußbereich – hier nicht wiederholen.
       paymentLines: isInvoice
         ? [
-            isInvoice ? `Zahlung per Überweisung innerhalb von ${paymentTermsDays} Tagen` : `Zahlungsziel nach Rechnungsstellung: ${paymentTermsDays} Tage`,
+            `Zahlüberweisung in ${paymentTermsDays} Tagen`,
             "Vielen Dank für die gute Zusammenarbeit.",
           ]
-        : [isInvoice ? `Zahlung per Überweisung innerhalb von ${paymentTermsDays} Tagen` : `Zahlungsziel nach Rechnungsstellung: ${paymentTermsDays} Tage`],
+        : [`Zahlüberweisung in ${paymentTermsDays} Tagen`],
 
       qrPayload: epc,
       footer: [
