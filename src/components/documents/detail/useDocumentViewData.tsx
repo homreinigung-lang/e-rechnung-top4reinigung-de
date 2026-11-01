@@ -1,4 +1,5 @@
 import { DOC_TYPE_LABEL, today } from "@/lib/format";
+import { quoteValidUntil } from "@/lib/quote-validity";
 
 import { buildEpcPayload } from "@/lib/epc";
 
@@ -105,6 +106,10 @@ export function useDocumentViewData(input: {
   function setField(key: string, value: string | boolean | null) {
     setForm((f) => {
       const next = { ...f, [key]: value };
+      if (key === "issue_date" && typeof value === "string" && isQuote) {
+        const previousDefault = quoteValidUntil(String(f["issue_date"] ?? ""));
+        if (!next["due_date"] || next["due_date"] === previousDefault) next["due_date"] = quoteValidUntil(value);
+      }
       // Status "Bezahlt" und Zahlungsdatum bleiben automatisch synchron.
       if (key === "status") {
         if (value === "paid" && !next["paid_at"]) next["paid_at"] = today();
