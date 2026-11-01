@@ -146,7 +146,7 @@ export function DocumentPrintPreview({
             </h2>
           </>
         )}
-        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{resolveIntroText(docType, { introText, isPrivat, companyName: String(settings?.["company_name"] ?? ""), serviceKeys: serviceKeysFromTexts(items.map((i) => i.description)) })}</p>
+        <p className={`mt-3 whitespace-pre-line text-sm leading-relaxed${isQuote && !introText ? " text-justify" : ""}`}>{resolveIntroText(docType, { introText, isPrivat, companyName: String(settings?.["company_name"] ?? ""), serviceKeys: serviceKeysFromTexts(items.map((i) => i.description)) })}</p>
 
         <div className="invoice-table-wrap mt-4 overflow-x-auto">
           <table className="invoice-table w-full border-collapse text-left text-sm">
