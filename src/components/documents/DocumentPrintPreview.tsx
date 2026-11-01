@@ -1,10 +1,11 @@
 import { Fragment } from "react";
+import { serviceKeysFromTexts } from "@/lib/quote-templates";
 import { GiroCode } from "@/components/GiroCode";
 import { DOC_TYPE_LABEL, formatDate, formatMoney, formatNumber } from "@/lib/format";
 import {
   CANCELLATION_TERMS,
   INVOICE_INTRO,
-  QUOTE_DISCLAIMER,
+  quoteClosing,
   QUOTE_INTRO_PRIVAT,
   defaultQuoteIntro,
   deriveServiceName,
@@ -83,6 +84,7 @@ export function DocumentPrintPreview({
   paymentTermsDays,
   epc,
 }: DocumentPrintPreviewProps) {
+  const serviceKeys = serviceKeysFromTexts([String(form["service_description"] ?? ""), ...items.map(i => i.description)]);
   return (
     <article className="paper print-area relative mx-auto text-sm">
       {(cancelledBy || isStorno) && (
@@ -149,7 +151,7 @@ export function DocumentPrintPreview({
           </>
         )}
         {isInvoice && !introText && <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{INVOICE_INTRO}</p>}
-        {isQuote && !introText && <p className="mt-3 whitespace-pre-line text-justify text-sm leading-relaxed">{defaultQuoteIntro(isPrivat, String(settings?.["company_name"] ?? ""))}</p>}
+        {isQuote && !introText && <p className="mt-3 whitespace-pre-line text-justify text-sm leading-relaxed">{defaultQuoteIntro(isPrivat, String(settings?.["company_name"] ?? ""), serviceKeys)}</p>}
         {introText && <p className="mt-3 whitespace-pre-line text-sm leading-relaxed">{introText}</p>}
 
         <div className="invoice-table-wrap mt-4 overflow-x-auto">
@@ -209,9 +211,9 @@ export function DocumentPrintPreview({
           {taxNote && <p className="mt-4 rounded-md bg-muted p-2.5 text-xs">{taxNote}</p>}
           {form["notes"] && <p className="mt-3 text-sm">{String(form["notes"])}</p>}
           {isInvoice ? (
-            <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="space-y-0.5 text-sm"><p>Zahlüberweisung in {paymentTermsDays} Tagen</p><p>Vielen Dank für die gute Zusammenarbeit.</p></div><GiroCode payload={epc} size={84} /></div>
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-4"><div className="space-y-0.5 text-sm"><p>Zahlung per Überweisung innerhalb von {paymentTermsDays} Tagen nach Rechnungserhalt</p><p>Vielen Dank für die gute Zusammenarbeit.</p></div><GiroCode payload={epc} size={84} /></div>
           ) : (
-            <div className="mt-4 space-y-2 text-sm"><p>Zahlüberweisung in {paymentTermsDays} Tagen</p>{!isOrder && <p className="text-justify leading-relaxed">{QUOTE_DISCLAIMER}</p>}{isOrder && <p className="text-justify text-xs leading-relaxed text-muted-foreground">{CANCELLATION_TERMS}</p>}</div>
+            <div className="mt-4 space-y-2 text-sm"><p>Zahlüberweisung in {paymentTermsDays} Tagen</p>{!isOrder && <p className="text-justify leading-relaxed">{quoteClosing(serviceKeys)}</p>}{isOrder && <p className="text-justify text-xs leading-relaxed text-muted-foreground">{CANCELLATION_TERMS}</p>}</div>
           )}
         </div>
         <footer className="mt-8 grid gap-4 border-t pt-3 text-[11px] text-muted-foreground sm:grid-cols-3">
