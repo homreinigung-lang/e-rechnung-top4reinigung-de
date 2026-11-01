@@ -161,6 +161,13 @@ export function useAusgabenState() {
   const add = useMutation({
     mutationFn: async () => {
       if (!form.expense_date) throw new Error("Bitte das Belegdatum auf dem Original prüfen und eingeben.");
+      const expenseYear = Number(form.expense_date.slice(0, 4));
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(form.expense_date) || !Number.isFinite(Date.parse(`${form.expense_date}T12:00:00Z`))) {
+        throw new Error("Ungültiges Belegdatum. Bitte das Datum auf dem Originalbeleg prüfen.");
+      }
+      if (expenseYear < 2025 || expenseYear > new Date().getFullYear() + 1) {
+        throw new Error("Auffälliges Belegdatum: Bitte das Jahr mit dem Originalbeleg vergleichen (ab 2025). Die Ausgabe wurde nicht gespeichert.");
+      }
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
