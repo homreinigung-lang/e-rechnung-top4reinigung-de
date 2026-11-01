@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { calculateRooms, type RoomCalculation } from "./room-calculation";
 import { CLEANING_TYPES } from "@/components/kalkulation/shared";
 import { buildConsolidatedPositions, isGlassText, normalizeItems, positionsTotal, profitabilityPositions } from "./kalkulation-engine";
 import { quoteClosingFor, quoteIntroFor, serviceKeysFromTexts } from "./quote-templates";
@@ -12,6 +13,12 @@ const base = {
   extras: [], travel: 0, discountPercent: 0, discountReason: "",
 };
 describe("monatliche Kalkulation", () => {
+  it.each(["week", "fortnight", "month", "quarter", "year"] as const)("Raumkalkulation %s bleibt centgenau", (frequencyUnit) => {
+    const room: RoomCalculation = { version: 1, enabled: true, rooms: [{ id: "1", source: "test", name: "Büro", floor: "EG", usage_type: "Büro", floor_covering: "PVC", area: "100", sqmPerHour: "100", rateLabel: "Test", frequency: "1", frequencyUnit, included: true }] };
+    const result = calculateRooms(room, 35);
+    expect(result.errors).toEqual([]);
+    expect(positionsTotal(result.positions)).toBe(positionsTotal(result.positions.map((p) => ({ quantity: Number(p.quantity.toFixed(2)), unit_price: Number(p.unit_price.toFixed(2)) }))));
+  });
   it.each(["area", "hours"] as const)("bewertet Treppenhaus als Hauptleistung im %s-Modus", (mode) => {
     const positions = buildConsolidatedPositions({ ...base, typeValue: "treppenhaus", typeLabel: "Treppenhausreinigung", mode, hours: 4, visitsPerMonth: 4 });
     expect(positionsTotal(profitabilityPositions(positions))).toBeGreaterThan(0);
