@@ -86,7 +86,7 @@ export function FinanzDashboard({ docs, expenses }: { docs: DocLite[]; expenses:
       const year = Number(String(expense.expense_date).slice(0, 4));
       if (Number.isFinite(year)) years.add(year);
     });
-    return Array.from(years).sort((a, b) => b - a);
+    return Array.from(years).filter((year) => year >= 2025).sort((a, b) => b - a);
   }, [currentYear, docs, expenses]);
 
   const [year, setYear] = useState(currentYear);
