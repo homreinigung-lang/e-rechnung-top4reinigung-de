@@ -115,5 +115,5 @@ it("berechnet Anfahrt und Reinigung mit demselben ungerundeten Monatsdurchschnit
   const positions = buildConsolidatedPositions({
     ...base, hours: 4, hourlyRate: 35, travel: 15, visitsPerMonth: 26 / 12,
   });
-  expect(positionsTotal(positions)).toBe(335.95);
+  expect(positionsTotal(positions)).toBe(335.83);
 });
