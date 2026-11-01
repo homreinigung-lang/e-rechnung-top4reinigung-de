@@ -28,9 +28,9 @@ describe("monatliche Kalkulation", () => {
     expect(profitabilityPositions(positions)).toHaveLength(1);
     expect(profitabilityPositions(positions)[0]?.description).toContain("Büroreinigung");
   });
-  it.each([["wöchentlich", 52 / 12], ["14-tägig", 26 / 12], ["monatlich", 1], ["vierteljährlich", 1 / 3], ["jährlich", 1 / 12]])(
+  it.each([["wöchentlich", 52 / 12], ["14-tägig", 26 / 12], ["monatlich", 1], ["vierteljährlich", 1 / 3], ["jährlich", 1 / 12], ["einmalig", 1]])(
     "%s bleibt nach Übernahme centgenau", (_, visits) => {
-      const positions = buildConsolidatedPositions({ ...base, visitsPerMonth: visits });
+      const positions = buildConsolidatedPositions({ ...base, visitsPerMonth: visits, oneTime: _ === "einmalig" });
       const copied = positions.map((p) => ({ quantity: Number(p.quantity.toFixed(2)), unit_price: Number(p.unit_price.toFixed(2)) }));
       expect(positionsTotal(copied)).toBe(positionsTotal(positions));
     },
