@@ -319,7 +319,7 @@ export function useCalculationTotals(input: {
   // Both revenue and costingMonthlyHours must describe the same billing period.
   const activePositions = lvPositions.length > 0 ? lvPositions : stagedPositions;
   // Stundenkennzahl ohne separat berechnete Pauschalen, Anfahrt und Rabatt.
-  const profitabilityRevenue = positionsTotal(profitabilityPositions(activePositions));
+  const profitabilityRevenue = positionsTotal(profitabilityPositions(activePositions, EXTRAS.map((extra) => extra.label)));
   const effectiveSellingRate =
     costingMonthlyHours > 0 ? round2(profitabilityRevenue / costingMonthlyHours) : 0;
   const contribution = round2(profitabilityRevenue - monthlySelfCost);
