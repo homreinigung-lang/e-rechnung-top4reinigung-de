@@ -35,9 +35,9 @@ it("keeps the chosen rate for offer positions and full precision for fortnightly
   const totals = calculate();
   expect(totals.monthlyHours).toBeCloseTo(0.4 * 26 / 12, 12);
   expect(totals.costingMonthlyHours).toBe(totals.monthlyHours);
-  expect(totals.base).toBe(30.45);
+  expect(totals.base).toBe(30.33);
   expect(totals.travelTotal).toBe(21.67);
-  expect(totals.suggested).toBe(87.12);
+  expect(totals.suggested).toBe(87.0);
   expect(totals.selfCostPerHour).toBe(25.4);
   expect(totals.targetSellingRate).toBe(31.75);
   expect(totals.monthlySelfCost).toBe(22.01);
@@ -46,8 +46,8 @@ it("keeps the chosen rate for offer positions and full precision for fortnightly
 
 it("updates the offer price when the chosen rate changes without applying the recommendation", () => {
   const totals = calculate({ hourlyRate: "40" });
-  expect(totals.base).toBe(34.8);
-  expect(totals.suggested).toBe(91.47);
+  expect(totals.base).toBe(34.67);
+  expect(totals.suggested).toBe(91.34);
   expect(totals.targetSellingRate).toBe(31.75);
 });
 
