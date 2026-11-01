@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLEANING_TYPES } from "@/components/kalkulation/shared";
-import { buildConsolidatedPositions, isGlassText, normalizeItems, positionsTotal } from "./kalkulation-engine";
+import { buildConsolidatedPositions, isGlassText, normalizeItems, positionsTotal, profitabilityPositions } from "./kalkulation-engine";
 import { quoteClosingFor, quoteIntroFor, serviceKeysFromTexts } from "./quote-templates";
 import { resolveIntroText, resolveQuoteNotes, paymentTermsLine, ORDER_INTRO } from "./document-texts";
 
@@ -12,6 +12,15 @@ const base = {
   extras: [], travel: 0, discountPercent: 0, discountReason: "",
 };
 describe("monatliche Kalkulation", () => {
+  it.each(["area", "hours"] as const)("bewertet Treppenhaus als Hauptleistung im %s-Modus", (mode) => {
+    const positions = buildConsolidatedPositions({ ...base, typeValue: "treppenhaus", typeLabel: "Treppenhausreinigung", mode, hours: 4, visitsPerMonth: 4 });
+    expect(positionsTotal(profitabilityPositions(positions))).toBeGreaterThan(0);
+  });
+  it("schließt nur die zusätzliche Treppenhausposition aus", () => {
+    const positions = buildConsolidatedPositions({ ...base, typeValue: "buero", typeLabel: "Büroreinigung", stairs: true, floors: 3, stairRate: 8, visitsPerMonth: 4 });
+    expect(profitabilityPositions(positions)).toHaveLength(1);
+    expect(profitabilityPositions(positions)[0]?.description).toContain("Büroreinigung");
+  });
   it.each([["wöchentlich", 52 / 12], ["14-tägig", 26 / 12], ["monatlich", 1], ["vierteljährlich", 1 / 3], ["jährlich", 1 / 12]])(
     "%s bleibt nach Übernahme centgenau", (_, visits) => {
       const positions = buildConsolidatedPositions({ ...base, visitsPerMonth: visits });
