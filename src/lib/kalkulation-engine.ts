@@ -191,13 +191,14 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
       });
     }
   } else {
-    const qty = round2(input.hours * visits);
-    if (qty > 0 && input.hourlyRate > 0) {
+    const exactHours = input.hours * visits;
+    if (exactHours > 0 && input.hourlyRate > 0) {
+      const fractionalMonthlyHours = !input.oneTime && !Number.isInteger(exactHours * 100);
       positions.push({
         description: `${input.typeLabel} – ${formatNumber(round2(input.hours))} Std. je Einsatz, ${input.oneTime ? "einmalige Reinigung" : `${formatNumber(visits)} Einsätze/Monat`}`,
-        quantity: qty,
-        unit: "Std.",
-        unit_price: round2(input.hourlyRate),
+        quantity: fractionalMonthlyHours ? 1 : round2(exactHours),
+        unit: fractionalMonthlyHours ? "Monat" : "Std.",
+        unit_price: fractionalMonthlyHours ? round2(exactHours * input.hourlyRate) : round2(input.hourlyRate),
       });
     }
   }
