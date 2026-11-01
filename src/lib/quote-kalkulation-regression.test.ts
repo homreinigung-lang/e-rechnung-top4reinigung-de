@@ -13,6 +13,11 @@ const base = {
   extras: [], travel: 0, discountPercent: 0, discountReason: "",
 };
 describe("monatliche Kalkulation", () => {
+  it("berechnet 3,5 Stunden wöchentlich ohne Zwischenrundung", () => {
+    const positions = buildConsolidatedPositions({ ...base, mode: "hours", hours: 3.5, hourlyRate: 35, visitsPerMonth: 52 / 12, travel: 9 });
+    expect(positions[0]).toMatchObject({ quantity: 1, unit: "Monat", unit_price: 530.83 });
+    expect(positionsTotal(positions)).toBe(569.83);
+  });
   it.each(["week", "fortnight", "month", "quarter", "year"] as const)("Raumkalkulation %s bleibt centgenau", (frequencyUnit) => {
     const room: RoomCalculation = { version: 1, enabled: true, rooms: [{ id: "1", source: "test", name: "Büro", floor: "EG", usage_type: "Büro", floor_covering: "PVC", area: "100", sqmPerHour: "100", rateLabel: "Test", frequency: "1", frequencyUnit, included: true }] };
     const result = calculateRooms(room, 35);
