@@ -339,10 +339,10 @@ export function positionsTotal(items: { quantity: number; unit_price: number }[]
 }
 
 /** Umsatz ohne separat berechnete Nebenleistungen für die Rentabilitätsprüfung. */
-export function profitabilityPositions<T extends CalcPosition>(positions: T[]): T[] {
+export function profitabilityPositions<T extends CalcPosition>(positions: T[], extraLabels: readonly string[] = []): T[] {
   return positions.filter((position) =>
     !["travel", "extra", "stairs", "lift", "discount"].includes(position.kind ?? "") &&
     !/^(Anfahrtspauschale|Aufzugkabine reinigen|Treppenhausreinigung\s*[–-]\s*\d+\s+Etagen|Rabatt\s*\()/i.test(position.description) &&
-    !["Fensterreinigung innen/außen", "Müllentsorgung"].includes(position.description)
+    !extraLabels.includes(position.description)
   );
 }
