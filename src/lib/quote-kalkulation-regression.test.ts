@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateRooms, type RoomCalculation } from "./room-calculation";
-import { CLEANING_TYPES } from "@/components/kalkulation/shared";
+import { CLEANING_TYPES, EXTRAS } from "@/components/kalkulation/shared";
 import { buildConsolidatedPositions, isGlassText, normalizeItems, positionsTotal, profitabilityPositions } from "./kalkulation-engine";
 import { quoteClosingFor, quoteIntroFor, serviceKeysFromTexts } from "./quote-templates";
 import { resolveIntroText, resolveQuoteNotes, paymentTermsLine, ORDER_INTRO } from "./document-texts";
@@ -22,6 +22,13 @@ describe("monatliche Kalkulation", () => {
   it.each(["area", "hours"] as const)("bewertet Treppenhaus als Hauptleistung im %s-Modus", (mode) => {
     const positions = buildConsolidatedPositions({ ...base, typeValue: "treppenhaus", typeLabel: "Treppenhausreinigung", mode, hours: 4, visitsPerMonth: 4 });
     expect(positionsTotal(profitabilityPositions(positions))).toBeGreaterThan(0);
+  });
+  it("schließt konfigurierte Zusatzleistungen aus", () => {
+    const positions = [
+      { description: "Büroreinigung – 100 m²", quantity: 1, unit: "Monat", unit_price: 200 },
+      ...EXTRAS.map((extra) => ({ description: extra.label, quantity: 1, unit: "Pauschal", unit_price: extra.price })),
+    ];
+    expect(positionsTotal(profitabilityPositions(positions, EXTRAS.map((extra) => extra.label)))).toBe(200);
   });
   it("schließt nur die zusätzliche Treppenhausposition aus", () => {
     const positions = buildConsolidatedPositions({ ...base, typeValue: "buero", typeLabel: "Büroreinigung", stairs: true, floors: 3, stairRate: 8, visitsPerMonth: 4 });
