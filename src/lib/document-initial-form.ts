@@ -1,4 +1,6 @@
 import { defaultQuoteIntro } from "@/lib/document-texts";
+import { serviceKeysFromTexts } from "@/lib/quote-templates";
+import { quoteValidUntil } from "@/lib/quote-validity";
 import { normalizeTaxMode } from "@/lib/tax-mode";
 
 type DocumentDetailData = {
@@ -8,12 +10,14 @@ type DocumentDetailData = {
 
 export function buildInitialDocumentForm(data: DocumentDetailData) {
   const d = data.doc as Record<string, unknown>;
+  const isQuote = d["type"] === "quote";
+  const serviceKeys = serviceKeysFromTexts([String(d["service_description"] ?? ""), ...((data as DocumentDetailData & { items?: { description: string }[] }).items ?? []).map(i => i.description)]);
   const form: Record<string, string | boolean | null> = {
     number: String(d["number"] ?? ""),
     order_number: String(d["order_number"] ?? ""),
     status: String(d["status"] ?? "draft"),
     issue_date: String(d["issue_date"] ?? ""),
-    due_date: (d["due_date"] as string) ?? "",
+    due_date: String(d["due_date"] ?? "") || (isQuote ? quoteValidUntil(String(d["issue_date"] ?? "")) : ""),
     service_period: String(d["service_period"] ?? ""),
     tax_mode: normalizeTaxMode(d["tax_mode"]),
     customer_id: (d["customer_id"] as string) ?? null,
@@ -35,6 +39,7 @@ export function buildInitialDocumentForm(data: DocumentDetailData) {
         ? defaultQuoteIntro(
             String(d["customer_type"] ?? "firma") === "privat",
             String((data.settings as Record<string, unknown> | null)?.["company_name"] ?? ""),
+            serviceKeys,
           )
         : ""),
     title: String(d["title"] ?? ""),
