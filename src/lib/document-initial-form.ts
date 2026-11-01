@@ -1,4 +1,4 @@
-import { defaultQuoteIntro } from "@/lib/document-texts";
+import { defaultQuoteIntro, quoteIntro } from "@/lib/document-texts";
 import { serviceKeysFromTexts } from "@/lib/quote-templates";
 import { quoteValidUntil } from "@/lib/quote-validity";
 import { normalizeTaxMode } from "@/lib/tax-mode";
@@ -12,6 +12,9 @@ export function buildInitialDocumentForm(data: DocumentDetailData) {
   const d = data.doc as Record<string, unknown>;
   const isQuote = d["type"] === "quote";
   const serviceKeys = serviceKeysFromTexts([String(d["service_description"] ?? ""), ...((data as DocumentDetailData & { items?: { description: string }[] }).items ?? []).map(i => i.description)]);
+  const storedIntro = String(d["intro_text"] ?? "");
+  const companyName = String((data.settings as Record<string, unknown> | null)?.["company_name"] ?? "");
+  const introIsGeneric = !storedIntro || storedIntro === quoteIntro(companyName) || storedIntro === defaultQuoteIntro(String(d["customer_type"] ?? "firma") === "privat", companyName);
   const form: Record<string, string | boolean | null> = {
     number: String(d["number"] ?? ""),
     order_number: String(d["order_number"] ?? ""),
@@ -33,15 +36,9 @@ export function buildInitialDocumentForm(data: DocumentDetailData) {
     customer_city: String(d["customer_city"] ?? ""),
     customer_country: String(d["customer_country"] ?? ""),
     customer_vat_id: String(d["customer_vat_id"] ?? ""),
-    intro_text:
-      String(d["intro_text"] ?? "") ||
-      (String(d["type"] ?? "") === "quote"
-        ? defaultQuoteIntro(
-            String(d["customer_type"] ?? "firma") === "privat",
-            String((data.settings as Record<string, unknown> | null)?.["company_name"] ?? ""),
-            serviceKeys,
-          )
-        : ""),
+    intro_text: isQuote && introIsGeneric
+      ? defaultQuoteIntro(String(d["customer_type"] ?? "firma") === "privat", companyName, serviceKeys)
+      : storedIntro,
     title: String(d["title"] ?? ""),
     service_description: String(d["service_description"] ?? ""),
     discount_percent: String(d["discount_percent"] ?? "0"),
