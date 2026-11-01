@@ -2,16 +2,17 @@ import { toast } from "sonner";
 import { DOC_TYPE_LABEL, formatDate, formatMoney, formatNumber } from "@/lib/format";
 
 import {
-  QUOTE_DISCLAIMER,
+  defaultQuoteIntro,
+  quoteClosing,
   CANCELLATION_TERMS,
   ORDER_INTRO,
   INVOICE_INTRO,
-  defaultQuoteIntro,
   orderHeadline,
   deriveServiceName,
   quoteHeadline,
 } from "@/lib/document-texts";
 
+import { serviceKeysFromTexts } from "@/lib/quote-templates";
 import { loadDocumentLogo } from "@/lib/document-logo";
 
 import { type PdfDocData } from "@/lib/invoice-pdf";
@@ -94,6 +95,7 @@ export function useDocumentPdfData(input: {
   async function buildPdfData(numberOverride?: string): Promise<PdfDocData> {
     const number = numberOverride ?? docNumber;
     const companyName = String(settings?.["company_name"] ?? "");
+    const serviceKeys = serviceKeysFromTexts([String(form["service_description"] ?? ""), ...items.map(i => i.description)]);
     const delivery = isInvoice && !isStorno ? await fetchDeliveryNote(doc.id, true) : null;
 
     const meta: Array<{ label: string; value: string }> = [];
@@ -231,7 +233,7 @@ export function useDocumentPdfData(input: {
       introText: isInvoice
         ? introText || INVOICE_INTRO
         : isQuote
-          ? introText || defaultQuoteIntro(isPrivat, companyName)
+          ? introText || defaultQuoteIntro(isPrivat, companyName, serviceKeys)
           : `${ORDER_INTRO}${introText ? `\n\n${introText}` : ""}`,
 
       items: (hasOptionalItems
@@ -257,7 +259,7 @@ export function useDocumentPdfData(input: {
           : undefined
         : [
             form["notes"] ? String(form["notes"]) : "",
-            isOrder ? "" : QUOTE_DISCLAIMER,
+            isOrder ? "" : quoteClosing(serviceKeys),
             isOrder ? CANCELLATION_TERMS : "",
           ]
             .filter(Boolean)
@@ -265,10 +267,10 @@ export function useDocumentPdfData(input: {
       // Bankdaten stehen bereits im Fußbereich – hier nicht wiederholen.
       paymentLines: isInvoice
         ? [
-            `Zahlüberweisung in ${paymentTermsDays} Tagen`,
+            `Zahlung per Überweisung innerhalb von ${paymentTermsDays} Tagen nach Rechnungserhalt`,
             "Vielen Dank für die gute Zusammenarbeit.",
           ]
-        : [`Zahlüberweisung in ${paymentTermsDays} Tagen`],
+        : [`Zahlungsziel nach Rechnungsstellung: ${paymentTermsDays} Tage`],
 
       qrPayload: epc,
       footer: [
