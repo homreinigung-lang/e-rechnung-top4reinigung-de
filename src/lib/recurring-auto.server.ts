@@ -2,8 +2,9 @@ import "@tanstack/react-start/server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import { buildDocumentPdfBytes, type PdfDocData } from "@/lib/invoice-pdf";
+import { paymentTermsLine } from "@/lib/document-texts";
 import { buildEpcPayload } from "@/lib/epc";
-import { formatDate, formatMoney, formatNumber, taxNoteForTaxMode } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber, roundCents, taxNoteForTaxMode } from "@/lib/format";
 import { sendVerifiedEmail } from "@/lib/resend-email.server";
 import { nextRecurringDate } from "@/lib/recurring-date";
 
@@ -171,7 +172,7 @@ function makePdfData(
       quantity: formatNumber(Number(item["quantity"] ?? 0)),
       unit: asText(item["unit"]),
       unitPrice: formatMoney(Number(item["unit_price"] ?? 0)),
-      total: formatMoney(Number(item["quantity"] ?? 0) * Number(item["unit_price"] ?? 0)),
+      total: formatMoney(roundCents(Number(item["quantity"] ?? 0) * Number(item["unit_price"] ?? 0))),
       optional: Boolean(item["is_optional"]),
     })),
     summary: [
@@ -187,7 +188,7 @@ function makePdfData(
     taxNote: taxNoteForTaxMode(asText(doc["tax_mode"]) || "domestic") || undefined,
     notes: asText(doc["notes"]) || undefined,
     paymentLines: [
-      `Zahlüberweisung in ${Number(settings["payment_terms_days"] ?? 14)} Tagen`,
+      paymentTermsLine("invoice", Number(settings["payment_terms_days"] ?? 14)),
       "Vielen Dank für die gute Zusammenarbeit.",
     ],
     qrPayload: buildEpcPayload({

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildConsolidatedPositions, isGlassText, normalizeItems, positionsTotal } from "./kalkulation-engine";
+import { calculateRooms, type RoomCalculation } from "./room-calculation";
+import { CLEANING_TYPES, EXTRAS } from "@/components/kalkulation/shared";
+import { buildConsolidatedPositions, isGlassText, normalizeItems, positionsTotal, profitabilityPositions } from "./kalkulation-engine";
 import { quoteClosingFor, quoteIntroFor, serviceKeysFromTexts } from "./quote-templates";
-import { resolveIntroText, ORDER_INTRO } from "./document-texts";
+import { resolveIntroText, resolveQuoteNotes, paymentTermsLine, ORDER_INTRO } from "./document-texts";
 
 const base = {
   typeValue: "unterhalt", typeLabel: "Unterhaltsreinigung",
@@ -11,9 +13,31 @@ const base = {
   extras: [], travel: 0, discountPercent: 0, discountReason: "",
 };
 describe("monatliche Kalkulation", () => {
-  it.each([["wöchentlich", 52 / 12], ["14-tägig", 26 / 12], ["monatlich", 1], ["vierteljährlich", 1 / 3], ["jährlich", 1 / 12]])(
+  it.each(["week", "fortnight", "month", "quarter", "year"] as const)("Raumkalkulation %s bleibt centgenau", (frequencyUnit) => {
+    const room: RoomCalculation = { version: 1, enabled: true, rooms: [{ id: "1", source: "test", name: "Büro", floor: "EG", usage_type: "Büro", floor_covering: "PVC", area: "100", sqmPerHour: "100", rateLabel: "Test", frequency: "1", frequencyUnit, included: true }] };
+    const result = calculateRooms(room, 35);
+    expect(result.errors).toEqual([]);
+    expect(positionsTotal(result.positions)).toBe(positionsTotal(result.positions.map((p) => ({ quantity: Number(p.quantity.toFixed(2)), unit_price: Number(p.unit_price.toFixed(2)) }))));
+  });
+  it.each(["area", "hours"] as const)("bewertet Treppenhaus als Hauptleistung im %s-Modus", (mode) => {
+    const positions = buildConsolidatedPositions({ ...base, typeValue: "treppenhaus", typeLabel: "Treppenhausreinigung", mode, hours: 4, visitsPerMonth: 4 });
+    expect(positionsTotal(profitabilityPositions(positions))).toBeGreaterThan(0);
+  });
+  it("schließt konfigurierte Zusatzleistungen aus", () => {
+    const positions = [
+      { description: "Büroreinigung – 100 m²", quantity: 1, unit: "Monat", unit_price: 200 },
+      ...EXTRAS.map((extra) => ({ description: extra.label, quantity: 1, unit: "Pauschal", unit_price: extra.price })),
+    ];
+    expect(positionsTotal(profitabilityPositions(positions, EXTRAS.map((extra) => extra.label)))).toBe(200);
+  });
+  it("schließt nur die zusätzliche Treppenhausposition aus", () => {
+    const positions = buildConsolidatedPositions({ ...base, typeValue: "buero", typeLabel: "Büroreinigung", stairs: true, floors: 3, stairRate: 8, visitsPerMonth: 4 });
+    expect(profitabilityPositions(positions)).toHaveLength(1);
+    expect(profitabilityPositions(positions)[0]?.description).toContain("Büroreinigung");
+  });
+  it.each([["wöchentlich", 52 / 12], ["14-tägig", 26 / 12], ["monatlich", 1], ["vierteljährlich", 1 / 3], ["jährlich", 1 / 12], ["einmalig", 1]])(
     "%s bleibt nach Übernahme centgenau", (_, visits) => {
-      const positions = buildConsolidatedPositions({ ...base, visitsPerMonth: visits });
+      const positions = buildConsolidatedPositions({ ...base, visitsPerMonth: visits, oneTime: _ === "einmalig" });
       const copied = positions.map((p) => ({ quantity: Number(p.quantity.toFixed(2)), unit_price: Number(p.unit_price.toFixed(2)) }));
       expect(positionsTotal(copied)).toBe(positionsTotal(positions));
     },
@@ -37,6 +61,18 @@ describe("monatliche Kalkulation", () => {
   });
 });
 describe("Angebotstexte", () => {
+  it("fügt den Standard-Schlusstext nur einmal hinzu", () => {
+    const first = resolveQuoteNotes("Individuelle Bemerkung", ["glas"]);
+    expect(resolveQuoteNotes(first, ["glas"])).toBe(first);
+    expect(first).toContain("Individuelle Bemerkung");
+  });
+  it("unterscheidet Zahlungsziel von Rechnung und Angebot", () => {
+    expect(paymentTermsLine("invoice", 14)).toContain("Überweisung");
+    expect(paymentTermsLine("quote", 14)).toContain("nach Rechnungsstellung");
+  });
+  it.each(CLEANING_TYPES)("erkennt das echte Label $label", ({ value, label }) => {
+    expect(serviceKeysFromTexts([`${label} – 100 m² Reinigung`])).toEqual([value]);
+  });
   it("erkennt nur die Leistungsart, nicht beiläufige Fenster", () => {
     expect(serviceKeysFromTexts(["Büroreinigung – Fensterbänke abwischen"])).toEqual(["buero"]);
   });

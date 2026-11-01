@@ -36,7 +36,7 @@ export function quoteClosingFor(serviceKeys: string[]): string | null {
 const SERVICE_PATTERNS: [string, RegExp][] = [
   ["bau", /^(?:bauendreinigung|baureinigung)\b/i],
   ["grund", /^grundreinigung\b/i],
-  ["glas", /^(?:glas(?:-|\s|reinigung)|fensterreinigung)\b/i],
+  ["glas", /^(?:glas-\s|glasreinigung\b|fensterreinigung\b)/i],
   ["treppenhaus", /^treppenhausreinigung\b/i],
   ["praxis", /^praxisreinigung\b/i],
   ["buero", /^(?:büroreinigung|bueroreinigung)\b/i],
