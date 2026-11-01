@@ -9,6 +9,7 @@ import {
   buildDiscountPosition,
   checkPlausibility,
   positionsTotal,
+  profitabilityPositions,
   round2,
 } from "@/lib/kalkulation-engine";
 
@@ -318,11 +319,7 @@ export function useCalculationTotals(input: {
   // Both revenue and costingMonthlyHours must describe the same billing period.
   const activePositions = lvPositions.length > 0 ? lvPositions : stagedPositions;
   // Stundenkennzahl ohne separat berechnete Pauschalen, Anfahrt und Rabatt.
-  const profitabilityRevenue = positionsTotal(activePositions.filter((position) =>
-    !("kind" in position && ["travel", "extra", "stairs", "lift", "discount"].includes(String(position.kind))) &&
-    !/^(Anfahrtspauschale|Aufzugkabine reinigen|Treppenhausreinigung\s*[–-]\s*\d+\s+Etagen|Rabatt\s*\()/i.test(position.description) &&
-    !EXTRAS.some((extra) => extra.label === position.description)
-  ));
+  const profitabilityRevenue = positionsTotal(profitabilityPositions(activePositions));
   const effectiveSellingRate =
     costingMonthlyHours > 0 ? round2(profitabilityRevenue / costingMonthlyHours) : 0;
   const contribution = round2(profitabilityRevenue - monthlySelfCost);
