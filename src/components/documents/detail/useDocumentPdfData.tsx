@@ -1,17 +1,17 @@
 import { toast } from "sonner";
-import { DOC_TYPE_LABEL, formatDate, formatMoney, formatNumber, roundCents } from "@/lib/format";
+import { DOC_TYPE_LABEL, formatDate, formatMoney, formatNumber } from "@/lib/format";
 
 import {
+  QUOTE_DISCLAIMER,
   CANCELLATION_TERMS,
+  ORDER_INTRO,
+  INVOICE_INTRO,
+  defaultQuoteIntro,
   orderHeadline,
   deriveServiceName,
   quoteHeadline,
-  resolveIntroText,
-  resolveQuoteNotes,
-  paymentTermsLine,
 } from "@/lib/document-texts";
 
-import { serviceKeysFromTexts } from "@/lib/quote-templates";
 import { loadDocumentLogo } from "@/lib/document-logo";
 
 import { type PdfDocData } from "@/lib/invoice-pdf";
@@ -228,7 +228,11 @@ export function useDocumentPdfData(input: {
       customerVatId:
         !isPrivat && form["customer_vat_id"] ? String(form["customer_vat_id"]) : undefined,
       meta,
-      introText: resolveIntroText(isInvoice ? "invoice" : isOrder ? "order" : "quote", { introText, isPrivat, companyName, serviceKeys: serviceKeysFromTexts(items.map((i) => i.description)) }),
+      introText: isInvoice
+        ? introText || INVOICE_INTRO
+        : isQuote
+          ? introText || defaultQuoteIntro(isPrivat, companyName)
+          : `${ORDER_INTRO}${introText ? `\n\n${introText}` : ""}`,
 
       items: (hasOptionalItems
         ? [...items.filter((i) => !i.is_optional), ...items.filter((i) => i.is_optional)]
@@ -238,7 +242,7 @@ export function useDocumentPdfData(input: {
         quantity: formatNumber(i.quantity),
         unit: i.unit,
         unitPrice: formatMoney(i.unit_price),
-        total: formatMoney(roundCents(i.quantity * i.unit_price)),
+        total: formatMoney(i.quantity * i.unit_price),
         optional: Boolean(i.is_optional),
       })),
       regularSubtotal: formatMoney(regularTotal),
@@ -252,7 +256,8 @@ export function useDocumentPdfData(input: {
           ? String(form["notes"])
           : undefined
         : [
-            isOrder ? (form["notes"] ? String(form["notes"]) : "") : resolveQuoteNotes(form["notes"] ? String(form["notes"]) : "", serviceKeysFromTexts(items.map((i) => i.description))),
+            form["notes"] ? String(form["notes"]) : "",
+            isOrder ? "" : QUOTE_DISCLAIMER,
             isOrder ? CANCELLATION_TERMS : "",
           ]
             .filter(Boolean)
@@ -260,10 +265,10 @@ export function useDocumentPdfData(input: {
       // Bankdaten stehen bereits im Fußbereich – hier nicht wiederholen.
       paymentLines: isInvoice
         ? [
-            paymentTermsLine(isInvoice ? "invoice" : isOrder ? "order" : "quote", paymentTermsDays),
+            `Zahlüberweisung in ${paymentTermsDays} Tagen`,
             "Vielen Dank für die gute Zusammenarbeit.",
           ]
-        : [paymentTermsLine(isInvoice ? "invoice" : isOrder ? "order" : "quote", paymentTermsDays)],
+        : [`Zahlüberweisung in ${paymentTermsDays} Tagen`],
 
       qrPayload: epc,
       footer: [
