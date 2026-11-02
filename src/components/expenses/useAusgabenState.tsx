@@ -162,7 +162,7 @@ export function useAusgabenState() {
   function validateExpense() {
     if (!form.expense_date) throw new Error("Bitte das Belegdatum auf dem Original prüfen und eingeben.");
     const year = Number(form.expense_date.slice(0, 4));
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(form.expense_date) || !Number.isFinite(Date.parse(`${form.expense_date}T12:00:00Z`))) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.expense_date) || !Number.isFinite(Date.parse(`${form.expense_date}T12:00:00Z`))) {
       throw new Error("Ungültiges Belegdatum. Bitte das Datum auf dem Originalbeleg prüfen.");
     }
     if (year < 2025 || year > new Date().getFullYear() + 1) {
