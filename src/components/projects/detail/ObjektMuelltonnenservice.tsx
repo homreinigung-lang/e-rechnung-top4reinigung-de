@@ -90,7 +90,7 @@ export function ObjektMuelltonnenservice({ projectId }: { projectId: string }) {
           if(/gelbe tonne|gelber sack|leichtverpackung/.test(label))types.push("gelb");
           if(/papier|pappe|blaue tonne/.test(label))types.push("papier");
           if(/bioabfall|biomüll|biotonne/.test(label))types.push("bio");
-          const date=`${match[3]}-${match[2].padStart(2,"0")}-${match[1].padStart(2,"0")}`;
+          const date=`${match[3]}-${match[2]?.padStart(2,"0")}-${match[1]?.padStart(2,"0")}`;
           if(Number.isNaN(new Date(date+"T12:00:00").getTime()))continue;
           for(const type of types) if(selected.includes(type))found.push({bin_type:type,collection_date:date});
         }
@@ -131,7 +131,7 @@ export function ObjektMuelltonnenservice({ projectId }: { projectId: string }) {
           <div className="flex flex-wrap gap-2 items-center">
             <input aria-label="Abfuhrdatum" className="rounded border bg-background p-2" type="date" value={newDate} onChange={e=>setNewDate(e.target.value)}/>
             <select aria-label="Tonnenart" className="rounded border bg-background p-2" value={selected.includes(newBin)?newBin:selected[0]} onChange={e=>setNewBin(e.target.value as Bin)}>{bins.filter(b=>selected.includes(b.id)).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>
-            <button className="rounded border px-3 py-2" disabled={!newDate||busy} onClick={()=>addDates([{bin_type:selected.includes(newBin)?newBin:selected[0],collection_date:newDate}])}>Termin hinzufügen</button>
+            <button className="rounded border px-3 py-2" disabled={!newDate||busy} onClick={()=>{const bin=selected.includes(newBin)?newBin:selected[0];if(bin)void addDates([{bin_type:bin,collection_date:newDate}]);}}>Termin hinzufügen</button>
           </div>
         </div>
         <div className="space-y-2"><h3 className="font-medium">Nächste Abfuhrtermine</h3>
