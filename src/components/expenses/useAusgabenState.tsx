@@ -222,7 +222,7 @@ export function useAusgabenState() {
         notes: form.notes,
         receipt_url: form.receipt_url,
         project_id: form.project_id || null,
-      }).eq("id", editingId).eq("user_id", auth.user.id).select("id").single();
+      } as never).eq("id", editingId).eq("user_id", auth.user.id).select("id").single();
       if (error) throw error;
       if (!data) throw new Error("Änderung konnte nicht bestätigt werden.");
     },
