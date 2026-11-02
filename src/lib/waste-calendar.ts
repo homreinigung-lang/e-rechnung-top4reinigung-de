@@ -13,6 +13,7 @@ export function parseWasteLines(text: string, selected: readonly WasteBin[]): Wa
     if (matches.length !== 1) continue;
     const match = matches[0];
     if (!match) continue;
+    if (!match) continue;
     const day = Number(match[1]), month = Number(match[2]), year = Number(match[3]);
     const date = new Date(Date.UTC(year, month - 1, day));
     if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) continue;
