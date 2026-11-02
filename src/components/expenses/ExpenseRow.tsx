@@ -18,7 +18,7 @@ import { FileUploadButton } from "@/components/FileUploadButton";
 import { receiptFileToPdf } from "@/lib/receipt-pdf";
 import { downloadStoredFile } from "@/lib/storage";
 
-import { Download, Eye, Trash2 } from "lucide-react";
+import { Download, Eye, Pencil, Trash2 } from "lucide-react";
 import { type ExpenseRowData } from "./shared";
 
 export function ExpenseRow({
@@ -26,11 +26,13 @@ export function ExpenseRow({
   onDelete,
   onPreview,
   onAttach,
+  onEdit,
 }: {
   row: ExpenseRowData;
   onDelete: () => void;
   onPreview: (path: string) => void;
   onAttach: (path: string) => Promise<unknown>;
+  onEdit: () => void;
 }) {
   return (
     <li className="flex items-center gap-3 px-5 py-4">
@@ -89,6 +91,9 @@ export function ExpenseRow({
           </Button>
         </>
       )}
+      <Button variant="outline" size="sm" onClick={onEdit} title="Ausgabe bearbeiten">
+        <Pencil className="size-4" /> Bearbeiten
+      </Button>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button variant="ghost" size="icon">
