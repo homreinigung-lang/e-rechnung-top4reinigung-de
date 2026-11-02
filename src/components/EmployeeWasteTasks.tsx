@@ -10,7 +10,7 @@ const labels: Record<string,string> = {rest:"Restmüll",gelb:"Gelbe Tonne",papie
 type WasteTask = {id:string;project_id:string;bin_type:string;collection_date:string;put_out_done:boolean;return_done:boolean};
 function dayOffset(date:string) {
   const now = new Date(); const today = Date.UTC(now.getFullYear(),now.getMonth(),now.getDate());
-  const [y,m,d] = date.split("-").map(Number);
+  const [y = 1970, m = 1, d = 1] = date.split("-").map(Number);
   return Math.round((Date.UTC(y,m-1,d)-today)/86400000);
 }
 export function EmployeeWasteTasks({employeeId}:{employeeId:string}) {
