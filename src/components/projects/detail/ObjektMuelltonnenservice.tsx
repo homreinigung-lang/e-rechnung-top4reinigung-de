@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 type Bin = "rest" | "gelb" | "papier" | "bio";
-type WasteDate = { id: string; bin_type: Bin; collection_date: string; put_out_done: boolean; return_done: boolean };
+type WasteDate = { id: string; bin_type: Bin; collection_date: string; put_out_done: boolean; return_done: boolean; employee_id: string | null };
 const bins: { id: Bin; name: string }[] = [
   { id: "rest", name: "Restmüll (Schwarz)" },
   { id: "gelb", name: "Gelbe Tonne" },
@@ -18,6 +18,7 @@ export function ObjektMuelltonnenservice({ projectId }: { projectId: string }) {
   const [selected, setSelected] = useState<Bin[]>([]);
   const [days, setDays] = useState(1);
   const [dates, setDates] = useState<WasteDate[]>([]);
+  const [employees, setEmployees] = useState<{id:string;name:string}[]>([]);
   const [newDate, setNewDate] = useState("");
   const [newBin, setNewBin] = useState<Bin>("rest");
   const [busy, setBusy] = useState(false);
@@ -25,11 +26,12 @@ export function ObjektMuelltonnenservice({ projectId }: { projectId: string }) {
   const [preview, setPreview] = useState<{bin_type:Bin;collection_date:string}[]>([]);
 
   async function reload() {
-    const [settings, entries] = await Promise.all([
+    const [settings, entries, assignments] = await Promise.all([
       db.from("project_waste_settings").select("*").eq("project_id", projectId).maybeSingle(),
       db.from("project_waste_dates").select("*").eq("project_id", projectId).order("collection_date"),
+      db.from("project_assignments").select("employee_id,employees(id,name)").eq("project_id",projectId),
     ]);
-    if (settings.error || entries.error) {
+    if (settings.error || entries.error || assignments.error) {
       toast.error("Mülltonnenservice konnte nicht geladen werden. Datenbankmigration prüfen.");
       return;
     }
@@ -37,6 +39,8 @@ export function ObjektMuelltonnenservice({ projectId }: { projectId: string }) {
     setSelected(settings.data?.selected_bins ?? []);
     setDays(settings.data?.reminder_days ?? 1);
     setDates(entries.data ?? []);
+    const people = (assignments.data ?? []).flatMap(a=>{const e=a.employees as unknown as {id:string;name:string}|null;return e?[e]:[];});
+    setEmployees([...new Map(people.map(e=>[e.id,e])).values()]);
     setLoaded(true);
   }
   useEffect(() => { void reload(); }, [projectId]);
@@ -67,6 +71,10 @@ export function ObjektMuelltonnenservice({ projectId }: { projectId: string }) {
   async function mark(item:WasteDate, field:"put_out_done"|"return_done") {
     const {error}=await db.from("project_waste_dates").update({[field]:!item[field]}).eq("id",item.id).eq("project_id",projectId);
     if(error) toast.error(error.message); else await reload();
+  }
+  async function assignEmployee(item:WasteDate,employeeId:string) {
+    const {error}=await db.from("project_waste_dates").update({employee_id:employeeId||null}).eq("id",item.id).eq("project_id",projectId);
+    if(error)toast.error(error.message);else await reload();
   }
   async function readCalendar(file:File) {
     if(!file.name.toLowerCase().endsWith(".pdf")) {toast.error("Bitte PDF hochladen.");return;}
@@ -140,6 +148,7 @@ export function ObjektMuelltonnenservice({ projectId }: { projectId: string }) {
             return <div key={d.id} className="rounded border p-3 text-sm">
               <strong>{d.collection_date} · {bins.find(b=>b.id===d.bin_type)?.name}</strong>
               {diff<=days&&<span className="ml-2 text-amber-600">⚠ Bald fällig</span>}
+              <label className="block mt-2">Zuständiger Mitarbeiter <select className="ml-2 rounded border bg-background p-1" value={d.employee_id??""} onChange={e=>void assignEmployee(d,e.target.value)}><option value="">Nicht zugewiesen</option>{employees.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
               <div className="flex flex-wrap gap-4 mt-2">
                 <label><input type="checkbox" checked={d.put_out_done} onChange={()=>mark(d,"put_out_done")}/> Rausgestellt</label>
                 <label><input type="checkbox" checked={d.return_done} onChange={()=>mark(d,"return_done")}/> Zurückgestellt</label>
