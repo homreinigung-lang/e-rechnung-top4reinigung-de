@@ -16,6 +16,7 @@ import type { AusgabenState } from "./useAusgabenState";
 export function AusgabenView({ state }: { state: AusgabenState }) {
   const {
     attachReceipt,
+    startEdit,
     customFrom,
     customTo,
     exportRows,
@@ -174,6 +175,7 @@ export function AusgabenView({ state }: { state: AusgabenState }) {
                 key={r.id}
                 row={r as never}
                 onDelete={() => remove.mutate(r.id)}
+                onEdit={() => startEdit(r)}
                 onPreview={(path) => setPreview(path)}
                 onAttach={(path) => attachReceipt.mutateAsync({ id: r.id, path })}
               />
