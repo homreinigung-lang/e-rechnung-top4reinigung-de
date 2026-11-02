@@ -230,8 +230,8 @@ export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
               value={searchDate}
               onChange={(event) => setSearchDate(event.target.value)}
             />
-          </div>
-          {searchDate ? (
+          </div>}
+          {openMonth && searchDate ? (
             <Button variant="outline" onClick={() => setSearchDate("")}>
               Alle Fahrten anzeigen
             </Button>
