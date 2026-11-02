@@ -17,13 +17,16 @@ import { FileUploadButton } from "@/components/FileUploadButton";
 import { ReceiptScannerButton } from "@/components/ReceiptScannerButton";
 
 import { readIncomingEInvoice } from "@/lib/e-invoice-import";
-import { Eye, FileCode2, Loader2, Paperclip, Plus, Sparkles } from "lucide-react";
+import { Eye, FileCode2, Loader2, Paperclip, Plus, Sparkles, Save } from "lucide-react";
 import { CATEGORIES } from "./shared";
 
 import type { AusgabenState } from "./useAusgabenState";
 export function AusgabenFormular({ state }: { state: AusgabenState }) {
   const {
     add,
+    editingId,
+    cancelEdit,
+    updateExpense,
     analyze,
     duplicateExpense,
     eInvoice,
@@ -45,6 +48,12 @@ export function AusgabenFormular({ state }: { state: AusgabenState }) {
   } = state;
   return (
     <div className="surface space-y-4 p-6">
+      {editingId && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Gespeicherte Ausgabe bearbeiten</h2>
+          <Button type="button" variant="outline" onClick={cancelEdit} disabled={updateExpense.isPending}>Abbrechen</Button>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="supplier">Lieferant</Label>
@@ -128,7 +137,7 @@ export function AusgabenFormular({ state }: { state: AusgabenState }) {
         <ReceiptScannerButton
           label="Beleg fotografieren/hochladen – wird als PDF gespeichert"
           onProcessed={handleReceipt}
-          disabled={processingReceipt || add.isPending}
+          disabled={processingReceipt || add.isPending || updateExpense.isPending}
           onBusyChange={setProcessingReceipt}
         />
         <FileUploadButton
@@ -140,14 +149,14 @@ export function AusgabenFormular({ state }: { state: AusgabenState }) {
           }}
           onUploaded={handleEInvoice}
           showSuccessToast={false}
-          disabled={processingReceipt || add.isPending}
+          disabled={processingReceipt || add.isPending || updateExpense.isPending}
           onBusyChange={setProcessingReceipt}
         />
         {receiptToRetry && !scanned && !processingReceipt && (
           <Button
             type="button"
             variant="outline"
-            disabled={add.isPending}
+            disabled={add.isPending || updateExpense.isPending}
             onClick={async () => {
               setProcessingReceipt(true);
               try {
@@ -178,7 +187,7 @@ export function AusgabenFormular({ state }: { state: AusgabenState }) {
         )}
         {!scanning && form.receipt_url && (
           <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-            <Paperclip className="size-4" /> Beleg angehängt – Ausgabe noch nicht gespeichert
+            <Paperclip className="size-4" /> {editingId ? "Beleg angehängt – Änderung noch nicht gespeichert" : "Beleg angehängt – Ausgabe noch nicht gespeichert"}
             <Button
               variant="ghost"
               size="sm"
@@ -202,8 +211,9 @@ export function AusgabenFormular({ state }: { state: AusgabenState }) {
           {scanError}
         </p>
       )}
-      <Button onClick={saveWithDuplicateCheck} disabled={add.isPending || processingReceipt}>
-        <Plus className="size-4" /> Ausgabe speichern
+      <Button onClick={saveWithDuplicateCheck} disabled={add.isPending || updateExpense.isPending || processingReceipt}>
+        {editingId ? <Save className="size-4" /> : <Plus className="size-4" />}
+        {editingId ? "Änderungen speichern" : "Ausgabe speichern"}
       </Button>
 
       <AlertDialog
