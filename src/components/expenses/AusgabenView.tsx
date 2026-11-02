@@ -175,7 +175,7 @@ export function AusgabenView({ state }: { state: AusgabenState }) {
                 key={r.id}
                 row={r as never}
                 onDelete={() => remove.mutate(r.id)}
-                onEdit={() => startEdit(r)}
+                onEdit={() => startEdit(r as never)}
                 onPreview={(path) => setPreview(path)}
                 onAttach={(path) => attachReceipt.mutateAsync({ id: r.id, path })}
               />
