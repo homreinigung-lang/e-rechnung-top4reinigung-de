@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +49,9 @@ export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
     vehicles,
     visibleEntries,
   } = state;
+  const [tripMonth, setTripMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
+  const monthEntries = openMonth ? visibleEntries.filter((entry) => entry.trip_date.startsWith(openMonth + "-")) : [];
   return (
     <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4 no-print">
@@ -213,6 +217,12 @@ export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
         </div>
         <div className="flex flex-wrap items-end gap-3 border-b px-5 py-4 no-print">
           <div className="space-y-2">
+            <Label htmlFor="trip-month">Monat auswählen</Label>
+            <Input id="trip-month" type="month" value={tripMonth} onChange={(e) => setTripMonth(e.target.value)} />
+          </div>
+          <Button onClick={() => { setOpenMonth(tripMonth); setSearchDate(""); }} disabled={!tripMonth}>Monat öffnen</Button>
+          {openMonth && <Button variant="outline" onClick={() => setOpenMonth(null)}>Schließen</Button>}
+          {openMonth && <div className="space-y-2">
             <Label htmlFor="fahrtenbuch-search-date">Fahrten nach Datum suchen</Label>
             <Input
               id="fahrtenbuch-search-date"
@@ -227,13 +237,15 @@ export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
             </Button>
           ) : null}
           <p className="text-sm text-muted-foreground">
-            {visibleEntries.length} Fahrten
+            {monthEntries.length} Fahrten
             {searchDate ? ` am ${formatDate(searchDate)}` : " insgesamt"}
           </p>
         </div>
-        {isLoading ? (
+        {!openMonth ? (
+          <div className="p-5 text-sm text-muted-foreground">Bitte Monat auswählen und öffnen.</div>
+        ) : isLoading ? (
           <div className="p-5 text-sm text-muted-foreground">Fahrten werden geladen…</div>
-        ) : visibleEntries.length === 0 ? (
+        ) : monthEntries.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             {searchDate ? "Keine Fahrten an diesem Datum gefunden." : "Noch keine Fahrten erfasst."}
           </div>
@@ -260,7 +272,7 @@ export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {visibleEntries.map((entry) => {
+                {monthEntries.map((entry) => {
                   const vehicle = vehicles.find((item) => item.id === entry.vehicle_id);
                   return (
                     <tr key={entry.id} className="align-top">
