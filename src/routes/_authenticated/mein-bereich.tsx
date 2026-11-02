@@ -1,5 +1,6 @@
 import { FahrtenbuchMitarbeiterErfassung } from "@/components/FahrtenbuchMitarbeiterErfassung";
 import { QmEmployeeTasks } from "@/components/QmEmployeeTasks";
+import { EmployeeWasteTasks } from "@/components/EmployeeWasteTasks";
 import { AssistantPanel } from "@/components/AssistantPanel";
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -251,6 +252,8 @@ function MeinBereich() {
       </section>
 
       <FahrtenbuchMitarbeiterErfassung employeeId={me.id} ownerUserId={me.user_id} />
+
+      <EmployeeWasteTasks employeeId={me.id} />
 
       <QmEmployeeTasks employeeId={me.id} />
 
