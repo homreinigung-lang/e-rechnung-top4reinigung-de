@@ -16,6 +16,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -94,7 +95,14 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
 
       <Objektmappe projectId={id} />
 
-      <section className="surface space-y-4 p-5">
+      <Dialog>
+        <section className="surface flex flex-wrap items-center justify-between gap-3 p-5">
+          <div><h2 className="text-lg font-semibold">Arbeitsscheine / Leistungsnachweise</h2><p className="text-sm text-muted-foreground">Dokumente dieses Objekts · ${timeEntries.filter(entry => entry.performance_status).length} Einträge</p></div>
+          <DialogTrigger asChild><Button variant="outline">Arbeitsscheine öffnen</Button></DialogTrigger>
+        </section>
+        <DialogContent className="flex h-[95dvh] w-[95vw] max-w-none flex-col overflow-hidden sm:max-w-none">
+          <DialogHeader><DialogTitle>Arbeitsscheine / Leistungsnachweise</DialogTitle></DialogHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-2">
         <div>
           <h2 className="text-lg font-semibold">Arbeitsscheine / Leistungsnachweise</h2>
           <p className="text-sm text-muted-foreground">
@@ -145,7 +153,10 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
               ))}
           </div>
         )}
-      </section>
+          </div>
+        </DialogContent>
+
+      </Dialog>
 
       <section className="surface space-y-3 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
