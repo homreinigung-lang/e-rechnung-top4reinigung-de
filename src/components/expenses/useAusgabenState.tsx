@@ -22,6 +22,7 @@ import { CATEGORIES, type Form, empty, fileToDataUrl, type ExpenseRowData } from
 export function useAusgabenState() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Form>(empty);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
@@ -158,6 +159,82 @@ export function useAusgabenState() {
     },
   });
 
+  function validateExpense() {
+    if (!form.expense_date) throw new Error("Bitte das Belegdatum auf dem Original prüfen und eingeben.");
+    const year = Number(form.expense_date.slice(0, 4));
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(form.expense_date) || !Number.isFinite(Date.parse(`${form.expense_date}T12:00:00Z`))) {
+      throw new Error("Ungültiges Belegdatum. Bitte das Datum auf dem Originalbeleg prüfen.");
+    }
+    if (year < 2025 || year > new Date().getFullYear() + 1) {
+      throw new Error("Auffälliges Belegdatum: Bitte das Jahr mit dem Originalbeleg vergleichen (ab 2025).");
+    }
+    const net = Number(form.net_amount || 0);
+    const vat = Number(form.vat_amount || 0);
+    if (!Number.isFinite(net) || !Number.isFinite(vat) || net < 0 || vat < 0) {
+      throw new Error("Bitte gültige, nicht negative Beträge eingeben.");
+    }
+    return { net, vat };
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm({ ...empty, expense_date: today() });
+    setScanned(false);
+    setEInvoice(null);
+    setReceiptToRetry(null);
+    setScanError("");
+  }
+
+  function startEdit(row: ExpenseRowData & { vat_amount?: number; notes?: string | null; project_id?: string | null }) {
+    setEditingId(row.id);
+    setForm({
+      supplier: row.supplier ?? "",
+      expense_date: row.expense_date ?? "",
+      category: row.category ?? "Sonstiges",
+      document_number: row.document_number ?? "",
+      net_amount: String(row.net_amount ?? 0),
+      vat_amount: String(row.vat_amount ?? 0),
+      notes: row.notes ?? "",
+      receipt_url: row.receipt_url ?? "",
+      project_id: row.project_id ?? "",
+    });
+    setScanned(false);
+    setEInvoice(null);
+    setReceiptToRetry(null);
+    setScanError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const updateExpense = useMutation({
+    mutationFn: async () => {
+      if (!editingId) throw new Error("Keine Ausgabe zur Bearbeitung ausgewählt.");
+      const { net, vat } = validateExpense();
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user?.id) throw new Error("Nicht angemeldet");
+      const { data, error } = await supabase.from("expenses").update({
+        supplier: form.supplier,
+        expense_date: form.expense_date,
+        category: form.category,
+        document_number: form.document_number,
+        net_amount: net,
+        vat_amount: vat,
+        gross_amount: net + vat,
+        notes: form.notes,
+        receipt_url: form.receipt_url,
+        project_id: form.project_id || null,
+      }).eq("id", editingId).eq("user_id", auth.user.id).select("id").single();
+      if (error) throw error;
+      if (!data) throw new Error("Änderung konnte nicht bestätigt werden.");
+    },
+    onSuccess: () => {
+      toast.success("Ausgabe aktualisiert");
+      cancelEdit();
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const add = useMutation({
     mutationFn: async () => {
       if (!form.expense_date) throw new Error("Bitte das Belegdatum auf dem Original prüfen und eingeben.");
@@ -290,6 +367,10 @@ export function useAusgabenState() {
   });
 
   function saveWithDuplicateCheck() {
+    if (editingId) {
+      updateExpense.mutate();
+      return;
+    }
     const duplicate = findDuplicateExpense(form, rows as unknown as ExpenseRowData[]);
     if (duplicate) {
       setDuplicateExpense(duplicate);
@@ -305,6 +386,10 @@ export function useAusgabenState() {
   return {
     ready: true as const,
     add,
+    editingId,
+    startEdit,
+    cancelEdit,
+    updateExpense,
     analyze,
     attachReceipt,
     customFrom,
