@@ -32,6 +32,7 @@ import { formatDate, formatNumber } from "@/lib/format";
 import { ProjektDetailRaumBearbeiten } from "./ProjektDetailRaumBearbeiten";
 import { ProjektDetailNachkalkulationObjektControlling } from "./ProjektDetailNachkalkulationObjektControlling";
 import { ProjektStammdatenForm } from "./ProjektStammdatenForm";
+import { ObjektMuelltonnenservice } from "./ObjektMuelltonnenservice";
 import type { ProjektDetailState } from "./useProjektDetailState";
 export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
   const {
@@ -86,6 +87,8 @@ export function ProjektDetailView({ state }: { state: ProjektDetailState }) {
       </Link>
 
       <ProjektStammdatenForm state={state} />
+
+      <ObjektMuelltonnenservice projectId={id} />
 
       <ProjectDeliveryNotesPanel state={state} />
 
