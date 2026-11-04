@@ -241,6 +241,9 @@ export function useFahrtenbuchState() {
       if (end !== null && (!Number.isFinite(end) || end < start)) {
         throw new Error("Monatsend-km muss größer oder gleich Monatsanfang sein.");
       }
+      if (end !== null && Math.round((end - start) * 10) < Math.round(businessKmForMonth * 10)) {
+        throw new Error("Die Monatsstrecke darf nicht kleiner als die erfassten geschäftlichen Kilometer sein. Bitte Kilometerstände und Fahrten prüfen.");
+      }
       const payload = {
         user_id: userId,
         vehicle_id: monthlyVehicleId,
