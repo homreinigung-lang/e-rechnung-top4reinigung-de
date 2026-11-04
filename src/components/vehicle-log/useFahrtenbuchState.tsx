@@ -1,3 +1,5 @@
+import { useServerFn } from "@tanstack/react-start";
+import { getOwnerFahrtenbuchMonth } from "@/lib/accountant/fahrtenbuch.functions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { toast } from "sonner";
 import { saveFile } from "@/lib/download";
-import { monthlyDistance, monthlyMileage, tripsForMonth } from "@/lib/fahrtenbuch-month";
+import { monthlyDistance } from "@/lib/fahrtenbuch-month";
 
 import {
   type FahrtenbuchEntry,
@@ -31,6 +33,7 @@ import {
 
 export function useFahrtenbuchState() {
   const queryClient = useQueryClient();
+  const loadMonthlyReport = useServerFn(getOwnerFahrtenbuchMonth);
   const db = supabase as SupabaseClient;
   const now = localDateTime();
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -482,78 +485,23 @@ export function useFahrtenbuchState() {
   }
 
   async function exportPdf(selectedMonth: string) {
-    const monthEntries = tripsForMonth(entries, selectedMonth);
-    if (monthEntries.length === 0) {
-      toast.error("Für diesen Monat sind keine Fahrten vorhanden.");
-      return;
-    }
     try {
-      const monthLabel = new Intl.DateTimeFormat("de-DE", {
-        month: "long",
-        year: "numeric",
-      }).format(new Date(`${selectedMonth}-01T12:00:00`));
-      // Build a mandatory saved summary for every vehicle included in this month.
-      // The export must not depend on which vehicle the entry form currently selects.
-      const summaries = [...new Set(monthEntries.map((entry) => entry.vehicle_id))].map(
-        (vehicleId) => {
-          const vehicle = vehicles.find((item) => item.id === vehicleId);
-          const reading = monthlyRows.find(
-            (row) => row.vehicle_id === vehicleId && row.month.slice(0, 7) === selectedMonth,
-          );
-          if (!reading)
-            throw new Error(
-              `Bitte Monatsanfang und Monatsende für ${vehicle?.license_plate ?? "das Fahrzeug"} im ausgewählten Monat speichern.`,
-            );
-          const business = monthEntries
-            .filter((entry) => entry.vehicle_id === vehicleId)
-            .reduce((sum, entry) => sum + Number(entry.distance_km || 0), 0);
-          return {
-            month: monthLabel,
-            vehicle: vehicle ? `${vehicle.vehicle_name} · ${vehicle.license_plate}` : "",
-            ...monthlyMileage(
-              Number(reading.start_km),
-              reading.end_km == null ? null : Number(reading.end_km),
-              business,
-            ),
-          };
-        },
-      );
-      // Same PDF renderer and the same row fields as the Steuerberater export.
-      const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
-      const rows = [...monthEntries]
-        .sort((a, b) =>
-          `${a.trip_date} ${a.trip_time ?? ""}`.localeCompare(
-            `${b.trip_date} ${b.trip_time ?? ""}`,
-          ),
-        )
-        .map((entry) => {
-          const vehicle = vehicles.find((item) => item.id === entry.vehicle_id);
-          return {
-            Datum: formatDate(entry.trip_date),
-            Startzeit: String(entry.trip_time ?? "").slice(0, 5),
-            Rückkehrzeit: String(entry.return_time ?? "").slice(0, 5),
-            Fahrtart: tripTypeLabel(entry.trip_type),
-            Fahrzeug: vehicle?.vehicle_name ?? "",
-            Kennzeichen: vehicle?.license_plate ?? "",
-            Von: entry.from_location,
-            "Kunde / Ziel / Zweck": entry.customer_name,
-            Zieladresse: entry.to_location,
-            "Start-km": String(entry.start_km),
-            "End-km": String(entry.end_km),
-            "Geschäftliche km": String(entry.distance_km),
-            Bemerkung: entry.notes ?? "",
-          };
-        });
-      const [year, monthNumber] = selectedMonth.split("-").map(Number);
-      const from = `${selectedMonth}-01`;
-      const to = `${selectedMonth}-${String(new Date(year!, monthNumber!, 0).getDate()).padStart(2, "0")}`;
+      const report = await loadMonthlyReport({ data: { month: selectedMonth } });
+      const { buildFahrtenbuchPdfWithCompany } = await import("@/lib/fahrtenbuch-branded-pdf");
       await saveFile(
-        await buildBrandedFahrtenbuchPdf(rows, from, to, summaries),
-        `Fahrtenbuch_${selectedMonth}.pdf`,
+        await buildFahrtenbuchPdfWithCompany(
+          report.rows,
+          report.from,
+          report.to,
+          report.companyName,
+          report.logoUrl,
+          report.summaries,
+        ),
+        "Fahrtenbuch_" + selectedMonth + ".pdf",
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Fahrtenbuch-PDF konnte nicht erstellt werden.",
+        error instanceof Error ? error.message : "Monats-PDF konnte nicht erstellt werden.",
       );
     }
   }
