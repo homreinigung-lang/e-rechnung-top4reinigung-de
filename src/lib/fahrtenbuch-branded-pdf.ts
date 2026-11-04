@@ -51,6 +51,25 @@ export async function buildBrandedFahrtenbuchPdf(
   if (error) throw new Error(`Firmeneinstellungen konnten nicht geladen werden: ${error.message}`);
   const companyName = data?.company_name?.trim();
   const logoUrl = data?.logo_url?.trim();
+  return buildFahrtenbuchPdfWithCompany(
+    rows,
+    from,
+    to,
+    companyName ?? "",
+    logoUrl ?? "",
+    monthlySummary,
+  );
+}
+
+export async function buildFahrtenbuchPdfWithCompany(
+  rows: TripRow[],
+  from: string,
+  to: string,
+  companyName: string,
+  logoUrl: string,
+  monthlySummary?: FahrtenbuchMonthlySummary | FahrtenbuchMonthlySummary[],
+): Promise<Blob> {
+  assertFahrtenbuchVehicleData(rows);
   if (!companyName || !logoUrl) {
     throw new Error("Bitte Firmenname und Firmenlogo in den Firmeneinstellungen hinterlegen.");
   }
