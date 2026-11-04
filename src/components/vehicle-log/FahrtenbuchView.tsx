@@ -49,7 +49,7 @@ export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
     vehicles,
     visibleEntries,
   } = state;
-  const [tripMonth, setTripMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [tripMonth, setTripMonth] = useState(month);
   const [openMonth, setOpenMonth] = useState<string | null>(null);
   const monthEntries = openMonth ? visibleEntries.filter((entry) => entry.trip_date.startsWith(openMonth + "-")) : [];
   return (
@@ -71,10 +71,10 @@ export function FahrtenbuchView({ state }: { state: FahrtenbuchState }) {
           </Button>
           <Button
             variant="outline"
-            onClick={() => void exportPdf()}
-            disabled={isLoading || entries.length === 0}
+            onClick={() => void exportPdf(openMonth ?? tripMonth)}
+            disabled={isLoading || !entries.some((entry) => entry.trip_date.startsWith(`${openMonth ?? tripMonth}-`))}
           >
-            <FileText className="size-4" /> Fahrtenbuch PDF herunterladen
+            <FileText className="size-4" /> Monats-PDF herunterladen
           </Button>
           <div className="rounded-lg border bg-card px-4 py-3 text-right">
             <p className="text-xs text-muted-foreground">Geschäftlich erfasst</p>
