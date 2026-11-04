@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { assertFahrtenbuchVehicleData, buildAccountantFahrtenbuchPdf } from "./fahrtenbuch-accountant-pdf";
 
+describe("monthly PDF mileage summary", () => {
+  it("renders start/end readings, total, business and private mileage for each vehicle", async () => {
+    const pdf = buildAccountantFahrtenbuchPdf([], "2026-11-01", "2026-11-30", undefined, [
+      { month: "November 2026", vehicle: "Citroen Nemo VK-RH 25", startKm: 87891, endKm: 88000, totalKm: 109, businessKm: 50, privateKm: 59 },
+      { month: "November 2026", vehicle: "SECOND_VEHICLE", startKm: 20000, endKm: 20200, totalKm: 200, businessKm: 150, privateKm: 50 },
+    ]);
+    const content = await pdf.text();
+    for (const text of ["Monatsanfang", "Monatsende", "Gesamt gefahren", "Geschaeftlich laut Fahrtenbuch", "Privat", "87.891 km", "88.000 km", "109 km", "50 km", "59 km", "SECOND_VEHICLE", "20.200 km"]) {
+      expect(content).toContain(text);
+    }
+  });
+});
+
 describe("Fahrtenbuch PDF vehicle data", () => {
   it("accepts complete vehicle identification", () => {
     expect(() => assertFahrtenbuchVehicleData([

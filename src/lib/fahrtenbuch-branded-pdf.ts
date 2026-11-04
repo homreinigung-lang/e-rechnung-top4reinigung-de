@@ -12,13 +12,15 @@ type TripRow = Record<string, string>;
 /** Decode a private or public company logo into an embedded JPEG (no remote image URLs in the PDF). */
 async function logoAsJpeg(pathOrUrl: string): Promise<string> {
   const blob = await fetchStoredBlob(pathOrUrl);
-  if (!blob.type.startsWith("image/")) throw new Error("Das gespeicherte Firmenlogo ist keine Bilddatei.");
+  if (!blob.type.startsWith("image/"))
+    throw new Error("Das gespeicherte Firmenlogo ist keine Bilddatei.");
   const objectUrl = URL.createObjectURL(blob);
   try {
     const image = new Image();
     image.src = objectUrl;
     await image.decode();
-    if (!image.naturalWidth || !image.naturalHeight) throw new Error("Firmenlogo konnte nicht gelesen werden.");
+    if (!image.naturalWidth || !image.naturalHeight)
+      throw new Error("Firmenlogo konnte nicht gelesen werden.");
     const canvas = document.createElement("canvas");
     const scale = Math.min(1, 600 / image.naturalWidth, 300 / image.naturalHeight);
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -39,7 +41,7 @@ export async function buildBrandedFahrtenbuchPdf(
   rows: TripRow[],
   from: string,
   to: string,
-  monthlySummary?: FahrtenbuchMonthlySummary,
+  monthlySummary?: FahrtenbuchMonthlySummary | FahrtenbuchMonthlySummary[],
 ): Promise<Blob> {
   assertFahrtenbuchVehicleData(rows);
   const { data, error } = await supabase
