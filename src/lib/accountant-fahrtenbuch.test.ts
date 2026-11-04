@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
+vi.mock("@/integrations/supabase/auth-middleware", () => ({ requireSupabaseAuth: {} }));
 const state = vi.hoisted(() => ({
   denied: false,
   end: 87891 as number | null,
@@ -8,12 +9,14 @@ vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     let validator: (data: unknown) => unknown;
     const chain = {
+      middleware: () => chain,
       inputValidator: (fn: typeof validator) => {
         validator = fn;
         return chain;
       },
-      handler: (fn: (input: unknown) => unknown) => async (input: { data: unknown }) =>
-        fn({ data: validator(input.data) }),
+      handler:
+        (fn: (input: unknown) => unknown) => async (input: { data: unknown; context?: unknown }) =>
+          fn({ data: validator(input.data), context: input.context }),
     };
     return chain;
   },
@@ -72,7 +75,8 @@ vi.mock("@/integrations/supabase/client.server", () => ({
     },
   },
 }));
-import { getAccountantFahrtenbuchMonth } from "./accountant/fahrtenbuch.functions";
+import { getAccountantFahrtenbuchMonth, getOwnerFahrtenbuchMonth } from "./accountant/fahrtenbuch.functions";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const report = getAccountantFahrtenbuchMonth as unknown as (input: {
   data: { token: string; code: string; month: string };
 }) => Promise<{ summaries: unknown[]; rows: Record<string, string>[]; from: string; to: string }>;
@@ -81,6 +85,14 @@ beforeEach(() => {
   state.denied = false;
   state.end = 87891;
   state.queries = [];
+});
+it("uses the authenticated owner for internal pages and the same report as the portal", async () => {
+  const ownerReport = getOwnerFahrtenbuchMonth as unknown as (input: unknown) => ReturnType<typeof report>;
+  const portal = await report(request);
+  state.queries = [];
+  const internal = await ownerReport({data:{month:"2026-10",userId:"other-tenant"},context:{userId:"owner",supabase:supabaseAdmin}});
+  expect(internal).toEqual(portal);
+  for (const query of state.queries) expect(query.filters).toContainEqual(["user_id","owner"]);
 });
 it("exports a full month with the verified owner's saved readings and private difference", async () => {
   const result = await report(request);
