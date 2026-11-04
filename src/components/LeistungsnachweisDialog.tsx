@@ -227,14 +227,26 @@ export function LeistungsnachweisDialog({
     pdf.save(`Leistungsnachweis_${entry.work_date}_${(entry.employee_name || "Mitarbeiter").replace(/\s+/g, "_")}.pdf`);
   }
 
-  const completed = entry.performance_status === "completed";
+  const completed = entry.performance_status === "completed" || Boolean(entry.performance_completed_at);
+  const hasContent = services.length > 0 || Boolean(note.trim() || employeeSignature || customerSignature);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" size="sm" variant={completed ? "secondary" : "outline"}>
+        <Button
+          type="button"
+          size="sm"
+          className="h-auto min-h-11 whitespace-normal text-left"
+          variant={readOnly ? "outline" : completed ? "secondary" : "default"}
+        >
           {completed ? <CheckCircle2 className="size-4" /> : <FileSignature className="size-4" />}
-          {readOnly ? "Leistungsnachweis prüfen" : completed ? "Leistungsnachweis" : "Leistungsnachweis erstellen"}
+          {readOnly
+            ? completed
+              ? "Leistungsnachweis ansehen"
+              : "Leistungsnachweis offen – ansehen"
+            : completed
+              ? "Leistungsnachweis ansehen"
+              : "Leistungsnachweis erstellen"}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -249,7 +261,7 @@ export function LeistungsnachweisDialog({
           <div className="space-y-5">
             <div className="rounded-md border p-3 text-sm">
               <div className="font-medium">
-                Status: {completed ? "Abgeschlossen" : "Entwurf"}
+                Status: {completed ? "Abgeschlossen" : hasContent ? "Entwurf" : "Noch nicht erstellt"}
               </div>
               {entry.performance_completed_at && (
                 <div className="mt-1 text-muted-foreground">
