@@ -249,6 +249,19 @@ export function ProjectDetailDialog({
                   task={task}
                 />
               </div>
+              {activeEntry ? (
+                <div className="rounded-lg border bg-background p-3">
+                  <p className="mb-2 text-sm font-medium">Leistungsnachweis für diesen Einsatz</p>
+                  <LeistungsnachweisDialog
+                    entry={activeEntry as never}
+                    project={project as never}
+                  />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Für den Leistungsnachweis zuerst die Arbeitszeit erfassen.
+                </p>
+              )}
               {!workTimeDone ? (
                 <p className="text-xs text-muted-foreground">
                   Stimmt die Planzeit nicht, erfassen Sie stattdessen die tatsächliche Arbeitszeit.
