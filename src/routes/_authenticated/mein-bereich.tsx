@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  CalendarDays, Clock, FileSignature, MapPin, MessageSquare, Navigation, UserCircle,
+  CalendarDays, Clock, MapPin, MessageSquare, Navigation, UserCircle,
 } from "lucide-react";
 
 import { LoadError, firstError } from "@/components/LoadError";
@@ -161,12 +161,6 @@ function MeinBereich() {
           })}
         </p>
       </header>
-
-      <Button asChild className="min-h-12 w-full">
-        <Link to="/meine-zeiten" search={{ aktion: "leistungsnachweis" }}>
-          <FileSignature className="size-5" /> Leistungsnachweis
-        </Link>
-      </Button>
 
       <section className="surface space-y-3 p-4 sm:p-5">
         <div className="flex items-center gap-2">
