@@ -25,6 +25,7 @@ export function MeineZeitenArbeitszeiten({ state }: { state: MeineZeitenState })
     entries,
     monthEntries,
     projects,
+    search,
     remove,
     setSelectedProjectId,
     setSelectedTask,
@@ -32,26 +33,29 @@ export function MeineZeitenArbeitszeiten({ state }: { state: MeineZeitenState })
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Arbeitszeiten</h2>
+        <h2 className="text-xl font-semibold">Arbeitszeiten & Leistungsnachweise</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Einsatzplan, erfasste Zeiten und Arbeitsnachweise für den gewählten Monat.
+          Wählen Sie bei einem Zeiteintrag „Leistungsnachweis erstellen“. Ohne Zeiteintrag
+          erfassen Sie zuerst Ihre Arbeitszeit.
         </p>
       </div>
-      <MeinEinsatzkalender
-        assignments={assignments as never}
-        projects={projects}
-        entries={entries as never}
-        onSelectProject={(id) => {
-          setSelectedTask(null);
-          setSelectedProjectId(id);
-        }}
-        onSelectTask={(task) => {
-          setSelectedTask(task);
-          setSelectedProjectId(task.projectId);
-        }}
-        onConfirm={(task) => confirmShift.mutate(task)}
-        confirmingKey={confirmingKey}
-      />
+      {search.aktion !== "leistungsnachweis" && (
+        <MeinEinsatzkalender
+          assignments={assignments as never}
+          projects={projects}
+          entries={entries as never}
+          onSelectProject={(id) => {
+            setSelectedTask(null);
+            setSelectedProjectId(id);
+          }}
+          onSelectTask={(task) => {
+            setSelectedTask(task);
+            setSelectedProjectId(task.projectId);
+          }}
+          onConfirm={(task) => confirmShift.mutate(task)}
+          confirmingKey={confirmingKey}
+        />
+      )}
 
       <div className="surface overflow-hidden">
         {monthEntries.length === 0 ? (
@@ -91,18 +95,18 @@ export function MeineZeitenArbeitszeiten({ state }: { state: MeineZeitenState })
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
                   {!isAbsence(e) && (
                     <>
-                      <ArbeitsnachweisFotos
-                        entryId={e.id as string}
-                        paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
-                        canUpload
-                        invalidateKey="my_time_entries"
-                      />
                       <div className="mt-3">
                         <LeistungsnachweisDialog
                           entry={e as never}
                           project={projects.find((p) => p.id === e.project_id)}
                         />
                       </div>
+                      <ArbeitsnachweisFotos
+                        entryId={e.id as string}
+                        paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
+                        canUpload
+                        invalidateKey="my_time_entries"
+                      />
                     </>
                   )}
                 </div>
