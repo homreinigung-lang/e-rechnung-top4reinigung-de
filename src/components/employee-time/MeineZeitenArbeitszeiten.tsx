@@ -25,7 +25,6 @@ export function MeineZeitenArbeitszeiten({ state }: { state: MeineZeitenState })
     entries,
     monthEntries,
     projects,
-    search,
     remove,
     setSelectedProjectId,
     setSelectedTask,
@@ -39,23 +38,21 @@ export function MeineZeitenArbeitszeiten({ state }: { state: MeineZeitenState })
           erfassen Sie zuerst Ihre Arbeitszeit.
         </p>
       </div>
-      {search.aktion !== "leistungsnachweis" && (
-        <MeinEinsatzkalender
-          assignments={assignments as never}
-          projects={projects}
-          entries={entries as never}
-          onSelectProject={(id) => {
-            setSelectedTask(null);
-            setSelectedProjectId(id);
-          }}
-          onSelectTask={(task) => {
-            setSelectedTask(task);
-            setSelectedProjectId(task.projectId);
-          }}
-          onConfirm={(task) => confirmShift.mutate(task)}
-          confirmingKey={confirmingKey}
-        />
-      )}
+      <MeinEinsatzkalender
+        assignments={assignments as never}
+        projects={projects}
+        entries={entries as never}
+        onSelectProject={(id) => {
+          setSelectedTask(null);
+          setSelectedProjectId(id);
+        }}
+        onSelectTask={(task) => {
+          setSelectedTask(task);
+          setSelectedProjectId(task.projectId);
+        }}
+        onConfirm={(task) => confirmShift.mutate(task)}
+        confirmingKey={confirmingKey}
+      />
 
       <div className="surface overflow-hidden">
         {monthEntries.length === 0 ? (
