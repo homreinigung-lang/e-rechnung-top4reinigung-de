@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { toast } from "sonner";
 import { saveFile } from "@/lib/download";
+import { monthlyDistance, tripsForMonth } from "@/lib/fahrtenbuch-month";
 
 import {
   type FahrtenbuchEntry,
@@ -192,15 +193,13 @@ export function useFahrtenbuchState() {
   }, [entries, monthlyVehicleId, month]);
 
   const monthlyTotalKm = useMemo(() => {
-    if (!monthStartKm.trim() || !monthEndKm.trim()) return null;
-    const start = Number(monthStartKm);
-    const end = Number(monthEndKm);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
-    return Math.round((end - start) * 10) / 10;
+    return monthlyDistance(monthStartKm, monthEndKm);
   }, [monthStartKm, monthEndKm]);
 
   const privateOrUnloggedKm =
-    monthlyTotalKm === null ? null : Math.max(0, monthlyTotalKm - businessKmForMonth);
+    monthlyTotalKm === null || Math.round(monthlyTotalKm * 10) < Math.round(businessKmForMonth * 10)
+      ? null
+      : Math.round((monthlyTotalKm - businessKmForMonth) * 10) / 10;
 
   const latestEntry = entries.at(-1);
 
@@ -472,7 +471,7 @@ export function useFahrtenbuchState() {
   }
 
   async function exportPdf(selectedMonth: string) {
-    const monthEntries = entries.filter((entry) => entry.trip_date.startsWith(`${selectedMonth}-`));
+    const monthEntries = tripsForMonth(entries, selectedMonth);
     if (monthEntries.length === 0) {
       toast.error("Für diesen Monat sind keine Fahrten vorhanden.");
       return;
