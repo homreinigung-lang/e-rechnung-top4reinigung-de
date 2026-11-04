@@ -59,11 +59,11 @@ export function ZeiterfassungSection2({ state }: { state: ZeiterfassungState }) 
                           ? "Arbeitszeit: Abgelehnt"
                           : "Arbeitszeit: Freigegeben"}
                     </span>
-                    <span className="rounded border px-2 py-1">
-                      {e.performance_status === "completed" || e.performance_completed_at
-                        ? "Leistungsnachweis abgeschlossen"
-                        : "Leistungsnachweis offen"}
-                    </span>
+                    <LeistungsnachweisDialog
+                      readOnly
+                      entry={e}
+                      project={projects.find((project) => project.id === e.project_id)}
+                    />
                     <span className="rounded border px-2 py-1">
                       {Array.isArray(e.photo_paths) && e.photo_paths.length > 0
                         ? "Fotos vorhanden"
@@ -77,19 +77,6 @@ export function ZeiterfassungSection2({ state }: { state: ZeiterfassungState }) 
                   paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
                   invalidateKey="time_entries"
                 />
-                {(((e as { performance_services?: string[] }).performance_services ?? []).length >
-                  0 ||
-                  Boolean((e as { performance_note?: string }).performance_note) ||
-                  Boolean((e as { employee_signature?: string }).employee_signature) ||
-                  Boolean((e as { customer_signature?: string }).customer_signature)) && (
-                  <div className="mt-2">
-                    <LeistungsnachweisDialog
-                      readOnly
-                      entry={e}
-                      project={projects.find((project) => project.id === e.project_id)}
-                    />
-                  </div>
-                )}
               </div>
               <div className="text-right text-sm">
                 {formatMoney(approvedWorkAmount(e, employeeRates.get(e.employee_id ?? "") ?? 0))}

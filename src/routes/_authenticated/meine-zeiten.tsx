@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/meine-zeiten")({
     projekt?: string | undefined;
     einsatz?: string | undefined;
     datum?: string | undefined;
-    aktion?: "urlaub" | undefined;
+    aktion?: "urlaub" | "leistungsnachweis" | undefined;
   } => ({
     projekt: typeof search["projekt"] === "string" ? search["projekt"] : undefined,
     einsatz: typeof search["einsatz"] === "string" ? search["einsatz"] : undefined,
@@ -17,7 +17,10 @@ export const Route = createFileRoute("/_authenticated/meine-zeiten")({
       typeof search["datum"] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(search["datum"])
         ? search["datum"]
         : undefined,
-    aktion: search["aktion"] === "urlaub" ? ("urlaub" as const) : undefined,
+    aktion:
+      search["aktion"] === "urlaub" || search["aktion"] === "leistungsnachweis"
+        ? search["aktion"]
+        : undefined,
   }),
   head: () => ({
     meta: [

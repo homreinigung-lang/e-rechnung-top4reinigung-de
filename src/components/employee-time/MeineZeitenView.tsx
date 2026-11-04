@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { LoadError, firstError } from "@/components/LoadError";
 
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,13 @@ export function MeineZeitenView({ state }: { state: MeineZeitenState }) {
     setSelectedProjectId,
     totalHours,
   } = state;
+  const proofSection = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (search.aktion === "leistungsnachweis" && proofSection.current) {
+      proofSection.current.open = true;
+      proofSection.current.scrollIntoView({ block: "start" });
+    }
+  }, [search.aktion]);
   return (
     <div className="space-y-6">
       <LoadError
@@ -87,8 +95,10 @@ export function MeineZeitenView({ state }: { state: MeineZeitenState }) {
         </div>
       </details>
 
-      <details className="surface p-5">
-        <summary className="cursor-pointer font-semibold">Meine Zeiten & Einsatzplan</summary>
+      <details ref={proofSection} className="surface scroll-mt-4 p-5">
+        <summary className="cursor-pointer font-semibold">
+          Leistungsnachweise, Arbeitszeiten & Einsatzplan
+        </summary>
         <div className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="surface p-5">
