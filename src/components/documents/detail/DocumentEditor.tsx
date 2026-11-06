@@ -70,6 +70,8 @@ export function DocumentEditor({ state }: { state: DocumentDetailStateContext })
         isDraftNumber: isDraftPlaceholder(docNumber),
         status: String(form["status"] ?? "draft"),
         orderNumber: String(form["order_number"] ?? ""),
+        buyerReference: String(form["buyer_reference"] ?? ""),
+        requiresLeitwegId: form["requires_leitweg_id"] === true,
         issueDate: String(form["issue_date"] ?? ""),
         dueDate: String(form["due_date"] ?? ""),
         paidAt: String(form["paid_at"] ?? ""),

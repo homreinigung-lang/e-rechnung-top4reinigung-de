@@ -162,6 +162,9 @@ function makePdfData(
         ? [{ label: "Leistungszeitraum", value: asText(doc["service_period"]) }]
         : []),
       ...(dueDate ? [{ label: "Fällig am", value: formatDate(dueDate) }] : []),
+      ...(asText(doc["buyer_reference"])
+        ? [{ label: "Käuferreferenz / Leitweg-ID", value: asText(doc["buyer_reference"]) }]
+        : []),
       ...(asText(doc["order_number"])
         ? [{ label: "Bestellnummer", value: asText(doc["order_number"]) }]
         : []),

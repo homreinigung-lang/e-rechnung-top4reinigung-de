@@ -136,6 +136,7 @@ export function DocumentPrintPreview({
             <div><dt className="inline text-muted-foreground">{isInvoice ? "Rechnungsdatum" : "Datum"}: </dt><dd className="inline">{formatDate(String(form["issue_date"] ?? ""))}</dd></div>
             {form["service_period"] && <div><dt className="inline text-muted-foreground">Leistungszeitraum: </dt><dd className="inline">{String(form["service_period"])}</dd></div>}
             {form["due_date"] && <div><dt className="inline text-muted-foreground">{isInvoice ? "Fällig am" : "Gültig bis"}: </dt><dd className="inline">{formatDate(String(form["due_date"]))}</dd></div>}
+            {form["buyer_reference"] && <div><dt className="inline text-muted-foreground">Käuferreferenz / Leitweg-ID: </dt><dd className="inline font-medium">{String(form["buyer_reference"])}</dd></div>}
             {!isPrivat && form["order_number"] && <div><dt className="inline text-muted-foreground">Bestellnummer: </dt><dd className="inline font-medium">{String(form["order_number"])}</dd></div>}
           </dl>
         </div>

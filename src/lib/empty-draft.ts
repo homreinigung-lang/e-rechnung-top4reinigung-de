@@ -12,6 +12,7 @@ export type EmptyDraftItem = {
 
 const TEXT_FIELDS = [
   "order_number",
+  "buyer_reference",
   "service_period",
   "customer_name",
   "customer_company",
@@ -60,7 +61,7 @@ export function isEmptyDraft(
     }
   }
   if (String(form["status"] ?? "draft") !== "draft") return false;
-  if (form["customer_id"]) return false;
+  if (form["customer_id"] || form["requires_leitweg_id"]) return false;
   if (hasMeaningfulItem(items)) return false;
   if (Number(String(form["discount_percent"] ?? "0").replace(",", ".")) > 0) return false;
   for (const field of TEXT_FIELDS) {

@@ -858,6 +858,8 @@ export type Database = {
           net_total: number
           notes: string
           number: string
+          buyer_reference: string
+          requires_leitweg_id: boolean
           order_number: string
           paid_at: string | null
           planned_hours_month: number
@@ -921,6 +923,8 @@ export type Database = {
           net_total?: number
           notes?: string
           number: string
+          buyer_reference?: string
+          requires_leitweg_id?: boolean
           order_number?: string
           paid_at?: string | null
           planned_hours_month?: number
@@ -984,6 +988,8 @@ export type Database = {
           net_total?: number
           notes?: string
           number?: string
+          buyer_reference?: string
+          requires_leitweg_id?: boolean
           order_number?: string
           paid_at?: string | null
           planned_hours_month?: number

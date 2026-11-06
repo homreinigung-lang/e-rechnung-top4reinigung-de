@@ -262,9 +262,9 @@ export function useDocumentDetailState() {
     try {
       if (!ensureHasItems()) return;
       if (!(await persistBeforeOutput())) return;
+      warnIfIncomplete(eRechnungInput(), "xrechnung");
       const number = await assignOfficialNumberNow();
       const input = eRechnungInput(number);
-      warnIfIncomplete(input, "xrechnung");
       downloadXml(buildXRechnungXml(input), `XRechnung_${number.replace(/\W+/g, "_")}.xml`);
       await logAudit("xrechnung_export", { id, number }, { format: "XRechnung 3.0 (UBL)" });
       toast.success("XRechnung (XML) erstellt");

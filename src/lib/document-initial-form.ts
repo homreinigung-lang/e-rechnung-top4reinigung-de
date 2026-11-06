@@ -18,6 +18,8 @@ export function buildInitialDocumentForm(data: DocumentDetailData) {
   const form: Record<string, string | boolean | null> = {
     number: String(d["number"] ?? ""),
     order_number: String(d["order_number"] ?? ""),
+    buyer_reference: String(d["buyer_reference"] ?? ""),
+    requires_leitweg_id: d["requires_leitweg_id"] === true,
     status: String(d["status"] ?? "draft"),
     issue_date: String(d["issue_date"] ?? ""),
     due_date: String(d["due_date"] ?? "") || (isQuote ? quoteValidUntil(String(d["issue_date"] ?? "")) : ""),

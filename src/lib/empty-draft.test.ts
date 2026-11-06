@@ -34,3 +34,8 @@ describe("isEmptyDraft", () => {
     expect(isEmptyDraft({ ...blank, status: "sent" }, [])).toBe(false);
   });
 });
+
+it("keeps a draft containing an electronic invoice reference", () => {
+  expect(isEmptyDraft({ ...blank, buyer_reference: "ACCOUNTING-42" }, [])).toBe(false);
+  expect(isEmptyDraft({ ...blank, requires_leitweg_id: true }, [])).toBe(false);
+});

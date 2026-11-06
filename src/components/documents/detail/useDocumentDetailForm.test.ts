@@ -126,3 +126,20 @@ it("blocks saving a locked domestic §13b invoice before any database write", as
   await expect(view.persistDocument()).rejects.toThrow("festgeschrieben");
   expect(m.from).not.toHaveBeenCalled();
 });
+
+it("reloads buyer reference separately from the order number", async () => {
+  const form = buildInitialDocumentForm({
+    doc: { order_number: "PO-42", buyer_reference: "04011000-1234512345-06", requires_leitweg_id: true },
+    settings: null,
+  });
+  expect(form["buyer_reference"]).toBe("04011000-1234512345-06");
+  expect(form["requires_leitweg_id"]).toBe(true);
+  expect(form["order_number"]).toBe("PO-42");
+  editor("domestic");
+  m.form = { ...m.form, ...form, issue_date: "2026-11-06" };
+  m.stateIndex = 0;
+  await useDocumentDetailForm().persistDocument();
+  expect(m.update).toHaveBeenCalledWith(expect.objectContaining({
+    buyer_reference: "04011000-1234512345-06", requires_leitweg_id: true, order_number: "PO-42",
+  }));
+});
