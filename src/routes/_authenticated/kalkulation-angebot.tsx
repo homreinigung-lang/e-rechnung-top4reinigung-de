@@ -79,12 +79,12 @@ function KalkulationAngebotPage() {
   const [creating, setCreating] = useState(false);
 
   const monthlyVisits = useMemo(() => {
-    const value = Math.max(1, num(frequency) || 1);
+    const value = num(frequency);
     return visitsPerMonth(value, frequencyUnit);
   }, [frequency, frequencyUnit]);
 
   const annualVisits = useMemo(() => {
-    const value = Math.max(1, num(frequency) || 1);
+    const value = num(frequency);
     return visitsPerYear(value, frequencyUnit);
   }, [frequency, frequencyUnit]);
 
@@ -97,7 +97,9 @@ function KalkulationAngebotPage() {
 
   const basePositions = useMemo(
     () =>
-      buildConsolidatedPositions({
+      frequencyUnit !== "once" && num(frequency) <= 0 ? [] : buildConsolidatedPositions({
+        oneTime: frequencyUnit === "once",
+        recurrence: { frequency: num(frequency), unit: frequencyUnit },
         typeValue: selected.value,
         typeLabel: selected.label,
         mode,
@@ -117,7 +119,7 @@ function KalkulationAngebotPage() {
         discountPercent: 0,
         discountReason: "",
       }),
-    [selected, mode, area, pricePerSqm, hours, hourlyRate, monthlyVisits, stairs, floors, stairRate, extras, travel],
+    [selected, mode, area, pricePerSqm, hours, hourlyRate, monthlyVisits, frequency, frequencyUnit, stairs, floors, stairRate, extras, travel],
   );
 
   const discountPosition = useMemo(
@@ -178,8 +180,8 @@ function KalkulationAngebotPage() {
           net_total: totals.netTotal,
           vat_amount: totals.vatAmount,
           total: totals.grossTotal,
-          planned_hours_month: monthlyHours,
-          planned_visits_month: monthlyVisits,
+          planned_hours_month: frequencyUnit === "once" ? 0 : monthlyHours,
+          planned_visits_month: frequencyUnit === "once" ? 0 : monthlyVisits,
         } as never)
         .eq("id", quoteId);
       if (docError) throw docError;
@@ -262,18 +264,18 @@ function KalkulationAngebotPage() {
               )}
 
               <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2"><Label>Einsätze</Label><Input inputMode="decimal" value={frequency} onChange={(e) => { setFrequency(e.target.value); setConfirmed(false); }} /></div>
+                <div className="space-y-2"><Label>Einsätze</Label><Input inputMode="decimal" disabled={frequencyUnit === "once"} value={frequencyUnit === "once" ? "1" : frequency} onChange={(e) => { setFrequency(e.target.value); setConfirmed(false); }} /></div>
                 <div className="space-y-2">
                   <Label>Zeitraum</Label>
-                  <Select value={frequencyUnit} onValueChange={(value) => { setFrequencyUnit(value as RecurrenceUnit); setConfirmed(false); }}>
+                  <Select value={frequencyUnit} onValueChange={(value) => { setFrequencyUnit(value as RecurrenceUnit); if (value === "once") setFrequency("1"); setConfirmed(false); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="week">Pro Woche</SelectItem><SelectItem value="fortnight">Alle 2 Wochen (14-tägig)</SelectItem><SelectItem value="month">Pro Monat</SelectItem><SelectItem value="quarter">Pro Quartal</SelectItem><SelectItem value="year">Pro Jahr</SelectItem></SelectContent>
+                    <SelectContent><SelectItem value="once">Einmalige Reinigung</SelectItem><SelectItem value="week">Pro Woche</SelectItem><SelectItem value="fortnight">Alle 2 Wochen (14-tägig)</SelectItem><SelectItem value="month">Pro Monat</SelectItem><SelectItem value="quarter">Pro Quartal</SelectItem><SelectItem value="year">Pro Jahr</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2"><Label>Anfahrt je Einsatz (netto)</Label><Input inputMode="decimal" value={travel} onChange={(e) => { setTravel(e.target.value); setConfirmed(false); }} /></div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Jahresbasis: {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = {formatNumber(monthlyVisits)} Einsätze pro Monat.
+                {frequencyUnit === "once" ? "Einmalige Reinigung: ein Einsatz zum Gesamtpreis." : <>Jahresbasis: {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = {formatNumber(monthlyVisits)} Einsätze pro Monat. Die Menge 1 Monat ist die Abrechnungseinheit; der Turnus steht in der Position.</>}
               </p>
 
               <div className="space-y-2">

@@ -117,3 +117,17 @@ it("berechnet Anfahrt und Reinigung mit demselben ungerundeten Monatsdurchschnit
   });
   expect(positionsTotal(positions)).toBe(335.83);
 });
+
+it.each([
+  [1, "week", "1 × pro Woche", 433.33],
+  [2, "week", "2 × pro Woche", 866.67],
+  [1, "fortnight", "1 × alle 2 Wochen (14-tägig)", 216.67],
+  [3, "month", "3 × pro Monat", 300],
+] as const)("erhält den echten Turnus bei monatlicher Abrechnung: %s %s", (frequency, unit, label, total) => {
+  const positions = buildConsolidatedPositions({
+    ...base, mode: "area", visitsPerMonth: visitsPerMonth(frequency, unit),
+    recurrence: { frequency, unit },
+  });
+  expect(positions[0]?.description).toContain("Turnus: " + label);
+  expect(positionsTotal(positions)).toBe(total);
+});
