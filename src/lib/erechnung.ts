@@ -148,7 +148,8 @@ function buildModel(input: ERechnungInput) {
     issueDate: ymd(doc["issue_date"]),
     dueDate: ymd(doc["due_date"]),
     servicePeriod: String(doc["service_period"] ?? ""),
-    buyerReference: String(doc["order_number"] ?? "").trim() || "N/A",
+    buyerReference: String(doc["buyer_reference"] ?? "").trim(),
+    requiresLeitwegId: doc["requires_leitweg_id"] === true,
     orderNumber: String(doc["order_number"] ?? "").trim(),
     notes: [
       String(doc["intro_text"] ?? ""),
@@ -379,7 +380,7 @@ ${m.reverseCharge || m.smallBusiness ? `    <ram:IncludedNote><ram:Content>${esc
   <rsm:SupplyChainTradeTransaction>
 ${lines}
     <ram:ApplicableHeaderTradeAgreement>
-      <ram:BuyerReference>${esc(m.buyerReference)}</ram:BuyerReference>
+${m.buyerReference ? `      <ram:BuyerReference>${esc(m.buyerReference)}</ram:BuyerReference>\n` : ""}
       <ram:SellerTradeParty>
 ${m.seller.taxNumber ? `        <ram:ID>${esc(m.seller.taxNumber)}</ram:ID>\n` : ""}        <ram:Name>${esc(m.seller.name)}</ram:Name>
         <ram:DefinedTradeContact>
@@ -552,7 +553,22 @@ export function downloadXml(xml: string, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-/** Pflichtangaben-Prüfung vor dem Export (EN 16931 / § 14 UStG). */
+/** Format und MOD 97-10 nach KoSIT Leitweg-ID 2.0.2, Abschnitt 2.4.
+ * Prüft keine tatsächliche Vergabe oder Zugehörigkeit zum Auftraggeber.
+ */
+export function isValidLeitwegId(value: string): boolean {
+  if (!/^\d{2,12}(?:-[A-Za-z0-9]{1,30})?-\d{2}$/.test(value)) return false;
+  const parts = value.split("-");
+  const check = parts.pop()!;
+  const digits = (parts.join("").toUpperCase() + "00").replace(/[A-Z]/g, (letter) =>
+    String(letter.charCodeAt(0) - 55),
+  );
+  let remainder = 0;
+  for (const digit of digits) remainder = (remainder * 10 + Number(digit)) % 97;
+  return String(98 - remainder).padStart(2, "0") === check;
+}
+
+/** Lokale Pflichtdatenprüfung; ersetzt keine vollständige Schema-/Schematron-Validierung. */
 export function validateERechnung(
   input: ERechnungInput,
   format: "xrechnung" | "zugferd" = "zugferd",
@@ -573,6 +589,18 @@ export function validateERechnung(
   if (m.reverseCharge && !m.buyer.vatId)
     problems.push("Bei Reverse-Charge ist die USt-IdNr. des Kunden erforderlich.");
   if (m.items.length === 0) problems.push("Es ist keine Position erfasst.");
+  if (m.requiresLeitwegId) {
+    if (!m.buyerReference)
+      problems.push("Leitweg-ID des Auftraggebers fehlt (Käuferreferenz / BT-10).");
+    else if (!isValidLeitwegId(m.buyerReference))
+      problems.push(
+        "Leitweg-ID: Aufbau oder Prüfziffer ungültig. Bitte mit dem Auftraggeber abgleichen.",
+      );
+  } else if (format === "xrechnung" && !m.buyerReference) {
+    problems.push(
+      "Käuferreferenz (BT-10) fehlt. Bitte beim Kunden erfragen; bei Behörden die Leitweg-ID eintragen.",
+    );
+  }
   if (format === "xrechnung") {
     const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.test(m.seller.email))

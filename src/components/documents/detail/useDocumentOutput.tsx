@@ -38,9 +38,9 @@ export function useDocumentOutput(input: {
     if (!(await persistBeforeOutput())) return;
     const toastId = toast.loading("ZUGFeRD-PDF wird erzeugt…");
     try {
+      warnIfIncomplete(eRechnungInput());
       const number = await assignOfficialNumberNow();
       const input = eRechnungInput(number);
-      warnIfIncomplete(input);
       const pdfBytes = await buildDocumentPdfBytes(await buildPdfData(number));
       const hybrid = await embedZugferdXml(pdfBytes, buildZugferdXml(input), {
         number,

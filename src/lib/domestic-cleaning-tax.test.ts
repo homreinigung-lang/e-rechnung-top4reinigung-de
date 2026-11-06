@@ -36,6 +36,7 @@ describe("tax mode round trip and exports", () => {
       doc: {
         ...form,
         issue_date: "2026-10-29",
+        buyer_reference: "ACCOUNTING-42",
         customer_company: "Synthetic customer",
         customer_address_line: "Testweg 2",
         customer_postal_code: "66111",
@@ -104,6 +105,7 @@ describe("tax mode round trip and exports", () => {
       for (const tax_mode of ["domestic_reverse_charge", "eu_reverse_charge"]) {
         const doc = {
           issue_date: "2026-10-29",
+        buyer_reference: "ACCOUNTING-42",
           number: "RE-TEST",
           status: "sent",
           tax_mode,

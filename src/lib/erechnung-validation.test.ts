@@ -3,6 +3,7 @@ import {
   buildXRechnungXml,
   buildZugferdXml,
   validateERechnung,
+  isValidLeitwegId,
   type ERechnungInput,
 } from "@/lib/erechnung";
 
@@ -65,5 +66,84 @@ describe("E-Rechnung Pflichtdaten", () => {
   it("accepts valid invoice dates and seller information", () => {
     expect(validateERechnung(valid)).toEqual([]);
     expect(buildXRechnungXml(valid)).toContain("<cbc:IssueDate>2026-10-08</cbc:IssueDate>");
+  });
+});
+
+const leitwegId = "04011000-1234512345-06"; // KoSIT example, not a real recipient.
+
+describe("Buyer reference BT-10 and order reference BT-13", () => {
+  it.each([buildXRechnungXml, buildZugferdXml])(
+    "keeps references distinct in both formats",
+    (build) => {
+      const xml = build({
+        ...valid,
+        doc: { ...valid.doc, buyer_reference: leitwegId, order_number: "PO-42" },
+      });
+      expect(xml).toContain(`BuyerReference>${leitwegId}</`);
+      expect(xml).not.toContain("BuyerReference>PO-42</");
+      expect(xml).toContain(">PO-42</");
+    },
+  );
+
+  it("requires an explicit buyer reference for XRechnung, even when an order number exists", () => {
+    const input = { ...valid, doc: { ...valid.doc, order_number: "PO-42" } };
+    expect(validateERechnung(input, "xrechnung").join()).toContain("Käuferreferenz (BT-10) fehlt");
+    expect(buildXRechnungXml(input)).not.toContain("N/A");
+  });
+
+  it("omits optional BT-10 for ZUGFeRD instead of inventing a reference", () => {
+    expect(validateERechnung(valid, "zugferd")).toEqual([]);
+    expect(buildZugferdXml(valid)).not.toContain("BuyerReference");
+    expect(buildZugferdXml(valid)).not.toContain("N/A");
+  });
+
+  it.each(["xrechnung", "zugferd"] as const)(
+    "requires Leitweg-ID when requested for %s",
+    (format) => {
+      const input = { ...valid, doc: { ...valid.doc, requires_leitweg_id: true } };
+      expect(validateERechnung(input, format).join()).toContain(
+        "Leitweg-ID des Auftraggebers fehlt",
+      );
+      expect(
+        validateERechnung(
+          { ...input, doc: { ...input.doc, buyer_reference: "PO-42" } },
+          format,
+        ).join(),
+      ).toContain("Prüfziffer ungültig");
+      expect(
+        validateERechnung(
+          { ...input, doc: { ...input.doc, buyer_reference: leitwegId } },
+          format,
+        ).join(),
+      ).not.toContain("Leitweg-ID");
+    },
+  );
+
+  it("escapes customer references in both XML formats", () => {
+    const input = {
+      ...valid,
+      doc: { ...valid.doc, buyer_reference: "TEAM & <A>", order_number: 'PO-"42"' },
+    };
+    for (const build of [buildXRechnungXml, buildZugferdXml]) {
+      expect(build(input)).toContain("TEAM &amp; &lt;A&gt;");
+      expect(build(input)).toContain("PO-&quot;42&quot;");
+    }
+  });
+});
+
+describe("Leitweg-ID format and checksum", () => {
+  it("accepts the official KoSIT example", () => {
+    expect(isValidLeitwegId(leitwegId)).toBe(true);
+  });
+  it.each([
+    "04011000-1234512345-07",
+    "04011000 1234512345 06",
+    "0204:" + leitwegId,
+    "N/A",
+    "PO-42",
+    "991--12",
+    "",
+  ])("rejects invalid ID: %s", (id) => {
+    expect(isValidLeitwegId(id)).toBe(false);
   });
 });

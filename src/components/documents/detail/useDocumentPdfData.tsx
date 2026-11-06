@@ -118,6 +118,8 @@ export function useDocumentPdfData(input: {
       });
     if (!isPrivat && form["order_number"])
       meta.push({ label: "Bestellnummer", value: String(form["order_number"]) });
+    if (form["buyer_reference"])
+      meta.push({ label: "Käuferreferenz / Leitweg-ID", value: String(form["buyer_reference"]) });
     // Referenz auf den Quellbeleg (Angebot bzw. Auftragsbestätigung) – § 14 UStG.
     if (sourceDoc) {
       const refLabel =

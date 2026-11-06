@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DateRangeField } from "@/components/DateRangeField";
 
 type DateCheck = { message?: string | null; level?: string | null };
@@ -21,6 +22,8 @@ type DocumentMetadataEditorProps = {
   isDraftNumber: boolean;
   status: string;
   orderNumber: string;
+  buyerReference: string;
+  requiresLeitwegId: boolean;
   issueDate: string;
   dueDate: string;
   paidAt: string;
@@ -40,6 +43,8 @@ export function DocumentMetadataEditor({
   isDraftNumber,
   status,
   orderNumber,
+  buyerReference,
+  requiresLeitwegId,
   issueDate,
   dueDate,
   paidAt,
@@ -74,6 +79,27 @@ export function DocumentMetadataEditor({
           />
         </div>
       )}
+      <div className="space-y-2">
+        <Label htmlFor="buyer_reference">Käuferreferenz / Leitweg-ID (BT-10)</Label>
+        <Input
+          id="buyer_reference"
+          value={buyerReference}
+          placeholder="Vom Auftraggeber mitgeteilte Referenz"
+          onChange={(event) => onFieldChange("buyer_reference", event.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Bei XRechnung erforderlich. Bei Behörden hier die Leitweg-ID eintragen. Die Bestellnummer
+          wird separat übermittelt.
+        </p>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="requires_leitweg_id"
+            checked={requiresLeitwegId}
+            onCheckedChange={(checked) => onFieldChange("requires_leitweg_id", checked === true)}
+          />
+          <Label htmlFor="requires_leitweg_id">Auftraggeber verlangt eine Leitweg-ID</Label>
+        </div>
+      </div>
       <div className="space-y-2">
         <Label>Status</Label>
         <Select value={status} onValueChange={(value) => onFieldChange("status", value)}>

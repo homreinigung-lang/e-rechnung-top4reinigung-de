@@ -13,6 +13,7 @@ const base: ERechnungInput = {
   vatRate: 19,
   doc: {
     issue_date: "2026-10-08",
+    buyer_reference: "ACCOUNTING-42",
     due_date: "2026-10-22",
     customer_company: "Synthetic buyer",
     customer_address_line: "Test 2",
