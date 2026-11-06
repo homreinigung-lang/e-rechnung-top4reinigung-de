@@ -100,6 +100,7 @@ export function DocumentEditor({ state }: { state: DocumentDetailStateContext })
         onFieldChange: setField,
       }}
       positions={{
+        allowRecurrence: isQuote || isOrder,
         items,
         unitOptions: UNIT_OPTIONS,
         defaultNetRate: DEFAULT_NET_RATE,
