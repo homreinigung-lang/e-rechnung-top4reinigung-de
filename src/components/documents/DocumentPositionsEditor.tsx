@@ -1,3 +1,4 @@
+import { QuoteRecurrenceEditor } from "./QuoteRecurrenceEditor";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,6 +18,7 @@ type PositionItem = {
 };
 
 type DocumentPositionsEditorProps = {
+  allowRecurrence?: boolean;
   items: PositionItem[];
   unitOptions: string[];
   defaultNetRate: number;
@@ -26,6 +28,7 @@ type DocumentPositionsEditorProps = {
 };
 
 export function DocumentPositionsEditor({
+  allowRecurrence = false,
   items,
   unitOptions,
   defaultNetRate,
@@ -98,6 +101,7 @@ export function DocumentPositionsEditor({
               <Trash2 className="size-4 text-destructive" />
             </Button>
           </div>
+          {allowRecurrence && <QuoteRecurrenceEditor description={item.description} onApply={(patch) => onUpdateItem(index, patch)} />}
           <label className="flex cursor-pointer items-center gap-2 text-xs sm:col-span-12">
             <Checkbox checked={Boolean(item.is_optional)} onCheckedChange={(value) => onUpdateItem(index, { is_optional: value === true })} />
             <span>Saisonale / zusätzliche Leistung (nur bei Durchführung berechnet)</span>
