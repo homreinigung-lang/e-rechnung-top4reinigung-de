@@ -33,4 +33,4 @@ Die Referenz wird beim Neuladen, im PDF und in der Vorschau berücksichtigt. Umw
 - KoSIT Validator 1.6.3 mit XRechnung-3.0.2-Konfiguration vom 31.08.2026: vier synthetische UBL-Dateien (Rechnung, Rabatt, Rundung und Storno) in Schema und Schematron akzeptiert; Käuferreferenz und Bestellnummer sind verschieden.
 - Migration in einer isolierten PostgreSQL-Testinstanz ausgeführt: Storno, automatische Wiederholung, Nachtrag und Nachtragsrechnung übernehmen beide Referenzen getrennt.
 
-Diese Ergebnisse gelten für die geprüften Beispiele. ZUGFeRD-PDF/A wurde in dieser Änderung nicht extern validiert. Die produktive Datenbank und Bereitstellung wurden nicht geändert.
+Diese Ergebnisse gelten für die geprüften Beispiele. ZUGFeRD-PDF/A wurde in dieser Änderung nicht extern validiert. Die Migration wurde am 06.11.2026 um 21:43 Uhr (Europe/Berlin) in der produktiven Datenbank angewendet und unter Version `20261106204308` registriert. Die vorhandenen 25 Belege sind laut Inhaltsprüfsumme und Summenvergleich unverändert. RLS und Funktionsberechtigungen sind unverändert, der Sicherheitscheck zeigt keine zusätzlichen Hinweise. Die Frontend-Bereitstellung steht noch aus.
