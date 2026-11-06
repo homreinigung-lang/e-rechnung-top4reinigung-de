@@ -241,7 +241,7 @@ export function CleaningParameters({
             <Input
               inputMode="decimal"
               disabled={state.roomCalculation.enabled || frequencyUnit === "once"}
-              value={state.roomCalculation.enabled || frequencyUnit === "once" ? "1" : frequency}
+              value={frequencyUnit === "once" ? "1" : state.roomCalculation.enabled ? "Je Raum" : frequency}
               onChange={(e) => setFrequency(e.target.value)}
             />
           </div>
@@ -252,11 +252,11 @@ export function CleaningParameters({
                 frequencyUnit === "once"
                   ? "once"
                   : state.roomCalculation.enabled
-                    ? "month"
+                    ? "rooms"
                     : frequencyUnit
               }
               onValueChange={(v) => {
-                setFrequencyUnit(v as RecurrenceUnit);
+                setFrequencyUnit(v === "rooms" ? "month" : v as RecurrenceUnit);
                 if (v === "once") setFrequency("1");
               }}
             >
@@ -264,6 +264,7 @@ export function CleaningParameters({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                {state.roomCalculation.enabled && <SelectItem value="rooms">Turnus je Raum</SelectItem>}
                 <SelectItem value="once">Einmalige Reinigung</SelectItem>
                 <SelectItem disabled={state.roomCalculation.enabled} value="week">
                   Pro Woche

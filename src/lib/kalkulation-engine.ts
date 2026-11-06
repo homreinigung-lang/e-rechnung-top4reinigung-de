@@ -5,7 +5,7 @@
  * aus den Positionen des Leistungsverzeichnisses. Die Grundkalkulation ist nur
  * ein Zwischenschritt, der Positionen erzeugt – sie wird nie zusätzlich addiert.
  */
-import { STAIR_RATE_PER_FLOOR } from "@/lib/constants";
+import { recurrenceUnitLabel, type RecurrenceUnit, STAIR_RATE_PER_FLOOR } from "@/lib/constants";
 import { formatMoney, formatNumber } from "@/lib/format";
 
 export type CalcPosition = {
@@ -134,6 +134,7 @@ export type ConsolidatedInput = {
   hours: number;
   hourlyRate: number;
   visitsPerMonth: number;
+  recurrence?: { frequency: number; unit: RecurrenceUnit };
   stairs: boolean;
   floors: number;
   stairRate: number;
@@ -200,6 +201,13 @@ export function buildConsolidatedPositions(input: ConsolidatedInput): CalcPositi
         unit: fractionalMonthlyHours ? "Monat" : "Std.",
         unit_price: fractionalMonthlyHours ? round2(exactHours * input.hourlyRate) : round2(input.hourlyRate),
       });
+    }
+  }
+
+  // Retain the cleaning rhythm when the quantity is a monthly flat fee.
+  if (!input.oneTime && input.recurrence) {
+    for (const position of positions) {
+      position.description += `; Turnus: ${formatNumber(input.recurrence.frequency)} × ${recurrenceUnitLabel(input.recurrence.unit)}`;
     }
   }
 
