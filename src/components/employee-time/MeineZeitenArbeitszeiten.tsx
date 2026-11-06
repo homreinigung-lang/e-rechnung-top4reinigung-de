@@ -32,9 +32,10 @@ export function MeineZeitenArbeitszeiten({ state }: { state: MeineZeitenState })
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">Arbeitszeiten</h2>
+        <h2 className="text-xl font-semibold">Arbeitszeiten & Leistungsnachweise</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Einsatzplan, erfasste Zeiten und Arbeitsnachweise für den gewählten Monat.
+          Wählen Sie bei einem Zeiteintrag „Leistungsnachweis erstellen“. Ohne Zeiteintrag
+          erfassen Sie zuerst Ihre Arbeitszeit.
         </p>
       </div>
       <MeinEinsatzkalender
@@ -91,18 +92,18 @@ export function MeineZeitenArbeitszeiten({ state }: { state: MeineZeitenState })
                   {e.note && <div className="text-xs text-muted-foreground">{e.note}</div>}
                   {!isAbsence(e) && (
                     <>
-                      <ArbeitsnachweisFotos
-                        entryId={e.id as string}
-                        paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
-                        canUpload
-                        invalidateKey="my_time_entries"
-                      />
                       <div className="mt-3">
                         <LeistungsnachweisDialog
                           entry={e as never}
                           project={projects.find((p) => p.id === e.project_id)}
                         />
                       </div>
+                      <ArbeitsnachweisFotos
+                        entryId={e.id as string}
+                        paths={((e as { photo_paths?: string[] }).photo_paths ?? []) as string[]}
+                        canUpload
+                        invalidateKey="my_time_entries"
+                      />
                     </>
                   )}
                 </div>

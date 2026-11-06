@@ -1,3 +1,5 @@
+import { useServerFn } from "@tanstack/react-start";
+import { getOwnerFahrtenbuchMonth } from "@/lib/accountant/fahrtenbuch.functions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { toast } from "sonner";
 import { saveFile } from "@/lib/download";
+import { monthlyDistance } from "@/lib/fahrtenbuch-month";
 
 import {
   type FahrtenbuchEntry,
@@ -30,6 +33,7 @@ import {
 
 export function useFahrtenbuchState() {
   const queryClient = useQueryClient();
+  const loadMonthlyReport = useServerFn(getOwnerFahrtenbuchMonth);
   const db = supabase as SupabaseClient;
   const now = localDateTime();
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -42,7 +46,11 @@ export function useFahrtenbuchState() {
   const [monthStartKm, setMonthStartKm] = useState("");
   const [monthEndKm, setMonthEndKm] = useState("");
 
-  const { data: entries = [], isLoading, isSuccess: entriesLoaded } = useQuery<FahrtenbuchEntry[]>({
+  const {
+    data: entries = [],
+    isLoading,
+    isSuccess: entriesLoaded,
+  } = useQuery<FahrtenbuchEntry[]>({
     queryKey: ["fahrtenbuch"],
     queryFn: async () => {
       const { data, error } = await db
@@ -62,9 +70,10 @@ export function useFahrtenbuchState() {
     initializedTrip.current = true;
     setForm((current) => {
       if (current.id || current.start_km !== "") return current;
-      const defaults = current.vehicle_id === "none"
-        ? newTripForm(entries)
-        : selectTripVehicle(current, current.vehicle_id, entries);
+      const defaults =
+        current.vehicle_id === "none"
+          ? newTripForm(entries)
+          : selectTripVehicle(current, current.vehicle_id, entries);
       return { ...current, vehicle_id: defaults.vehicle_id, start_km: defaults.start_km };
     });
   }, [entries, entriesLoaded]);
@@ -192,14 +201,13 @@ export function useFahrtenbuchState() {
   }, [entries, monthlyVehicleId, month]);
 
   const monthlyTotalKm = useMemo(() => {
-    const start = Number(monthStartKm);
-    const end = Number(monthEndKm);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
-    return Math.round((end - start) * 10) / 10;
+    return monthlyDistance(monthStartKm, monthEndKm);
   }, [monthStartKm, monthEndKm]);
 
   const privateOrUnloggedKm =
-    monthlyTotalKm === null ? null : Math.max(0, monthlyTotalKm - businessKmForMonth);
+    monthlyTotalKm === null || Math.round(monthlyTotalKm * 10) < Math.round(businessKmForMonth * 10)
+      ? null
+      : Math.round((monthlyTotalKm - businessKmForMonth) * 10) / 10;
 
   const latestEntry = entries.at(-1);
 
@@ -232,12 +240,19 @@ export function useFahrtenbuchState() {
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
       if (monthlyVehicleId === "none") throw new Error("Bitte Fahrzeug auswählen.");
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
+        throw new Error("Bitte gültigen Monat auswählen.");
       const start = Number(monthStartKm);
       const end = monthEndKm.trim() === "" ? null : Number(monthEndKm);
-      if (!Number.isFinite(start) || start < 0)
+      if (!monthStartKm.trim() || !Number.isFinite(start) || start < 0)
         throw new Error("Ungültiger Monatsanfangs-km-Stand.");
       if (end !== null && (!Number.isFinite(end) || end < start)) {
         throw new Error("Monatsend-km muss größer oder gleich Monatsanfang sein.");
+      }
+      if (end !== null && Math.round((end - start) * 10) < Math.round(businessKmForMonth * 10)) {
+        throw new Error(
+          "Die Monatsstrecke darf nicht kleiner als die erfassten geschäftlichen Kilometer sein. Bitte Kilometerstände und Fahrten prüfen.",
+        );
       }
       const payload = {
         user_id: userId,
@@ -247,9 +262,24 @@ export function useFahrtenbuchState() {
         end_km: end,
         updated_at: new Date().toISOString(),
       };
-      const { error } = await db
+      // Older installations may lack the unique constraint required by upsert.
+      const { data: existing, error: findError } = await db
         .from("fahrtenbuch_monthly_odometer")
-        .upsert(payload, { onConflict: "user_id,vehicle_id,month" });
+        .select("id")
+        .eq("user_id", userId)
+        .eq("vehicle_id", monthlyVehicleId)
+        .eq("month", `${month}-01`)
+        .maybeSingle();
+      if (findError) throw findError;
+      const { error } = existing
+        ? await db
+            .from("fahrtenbuch_monthly_odometer")
+            .update(payload)
+            .eq("id", existing.id)
+            .eq("user_id", userId)
+            .select("id")
+            .single()
+        : await db.from("fahrtenbuch_monthly_odometer").insert(payload).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -279,7 +309,8 @@ export function useFahrtenbuchState() {
       if (endKm < startKm) throw new Error("End-km muss größer oder gleich Start-km sein.");
 
       const warning = tripOdometerWarning(values, entries);
-      if (warning) toast.warning("Kilometerstand prüfen", { description: warning, duration: 10000 });
+      if (warning)
+        toast.warning("Kilometerstand prüfen", { description: warning, duration: 10000 });
 
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
@@ -337,7 +368,9 @@ export function useFahrtenbuchState() {
         end_km: Number(values.end_km),
       };
       const updatedEntries = values.id
-        ? entries.map((entry) => entry.id === values.id ? { ...entry, ...saved, created_at: entry.created_at } : entry)
+        ? entries.map((entry) =>
+            entry.id === values.id ? { ...entry, ...saved, created_at: entry.created_at } : entry,
+          )
         : [...entries, saved];
       setForm(newTripForm(updatedEntries));
       queryClient.invalidateQueries({ queryKey: ["fahrtenbuch"] });
@@ -451,65 +484,24 @@ export function useFahrtenbuchState() {
     downloadText(`Fahrtenbuch_${now.date}.csv`, csv, "text/csv;charset=utf-8");
   }
 
-  async function exportPdf() {
-    if (entries.length === 0) {
-      toast.error("Keine Fahrten vorhanden.");
-      return;
-    }
+  async function exportPdf(selectedMonth: string) {
     try {
-      // Same PDF renderer and the same row fields as the Steuerberater export.
-      const { buildBrandedFahrtenbuchPdf } = await import("@/lib/fahrtenbuch-branded-pdf");
-      const rows = [...entries]
-        .sort((a, b) =>
-          `${a.trip_date} ${a.trip_time ?? ""}`.localeCompare(
-            `${b.trip_date} ${b.trip_time ?? ""}`,
-          ),
-        )
-        .map((entry) => {
-          const vehicle = vehicles.find((item) => item.id === entry.vehicle_id);
-          return {
-            Datum: formatDate(entry.trip_date),
-            Startzeit: String(entry.trip_time ?? "").slice(0, 5),
-            Rückkehrzeit: String(entry.return_time ?? "").slice(0, 5),
-            Fahrtart: tripTypeLabel(entry.trip_type),
-            Fahrzeug: vehicle?.vehicle_name ?? "",
-            Kennzeichen: vehicle?.license_plate ?? "",
-            Von: entry.from_location,
-            "Kunde / Ziel / Zweck": entry.customer_name,
-            Zieladresse: entry.to_location,
-            "Start-km": String(entry.start_km),
-            "End-km": String(entry.end_km),
-            "Geschäftliche km": String(entry.distance_km),
-            Bemerkung: entry.notes ?? "",
-          };
-        });
-      const from = rows.length ? [...entries].map((e) => e.trip_date).sort()[0]! : now.date;
-      const to = rows.length
-        ? [...entries]
-            .map((e) => e.trip_date)
-            .sort()
-            .at(-1)!
-        : now.date;
-      const summary =
-        selectedMonthly?.end_km != null && monthlyTotalKm !== null && privateOrUnloggedKm !== null
-          ? {
-              month: new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" }).format(
-                new Date(`${month}-01T12:00:00`),
-              ),
-              startKm: Number(selectedMonthly.start_km),
-              endKm: Number(selectedMonthly.end_km),
-              totalKm: monthlyTotalKm,
-              businessKm: businessKmForMonth,
-              privateKm: privateOrUnloggedKm,
-            }
-          : undefined;
+      const report = await loadMonthlyReport({ data: { month: selectedMonth } });
+      const { buildFahrtenbuchPdfWithCompany } = await import("@/lib/fahrtenbuch-branded-pdf");
       await saveFile(
-        await buildBrandedFahrtenbuchPdf(rows, from, to, summary),
-        `Fahrtenbuch_${from}_${to}.pdf`,
+        await buildFahrtenbuchPdfWithCompany(
+          report.rows,
+          report.from,
+          report.to,
+          report.companyName,
+          report.logoUrl,
+          report.summaries,
+        ),
+        "Fahrtenbuch_" + selectedMonth + ".pdf",
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Fahrtenbuch-PDF konnte nicht erstellt werden.",
+        error instanceof Error ? error.message : "Monats-PDF konnte nicht erstellt werden.",
       );
     }
   }

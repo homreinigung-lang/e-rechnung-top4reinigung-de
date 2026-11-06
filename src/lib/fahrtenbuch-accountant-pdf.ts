@@ -3,6 +3,7 @@ import { jsPDF } from "jspdf";
 type TripRow = Record<string, string>;
 
 export type FahrtenbuchMonthlySummary = {
+  vehicle?: string;
   month: string;
   startKm: number;
   endKm: number;
@@ -19,7 +20,9 @@ export type FahrtenbuchBranding = {
 /** Never export missing vehicle identifiers, regardless of the screen initiating the PDF. */
 export function assertFahrtenbuchVehicleData(rows: TripRow[]): void {
   if (rows.some((row) => !row["Fahrzeug"]?.trim() || !row["Kennzeichen"]?.trim())) {
-    throw new Error("Fahrzeugdaten fehlen oder konnten nicht vollständig geladen werden. Bitte erneut versuchen.");
+    throw new Error(
+      "Fahrzeugdaten fehlen oder konnten nicht vollständig geladen werden. Bitte erneut versuchen.",
+    );
   }
 }
 
@@ -29,14 +32,23 @@ export function buildAccountantFahrtenbuchPdf(
   from: string,
   to: string,
   branding?: FahrtenbuchBranding,
-  monthlySummary?: FahrtenbuchMonthlySummary,
+  monthlySummary?: FahrtenbuchMonthlySummary | FahrtenbuchMonthlySummary[],
 ): Blob {
   assertFahrtenbuchVehicleData(rows);
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageHeight = doc.internal.pageSize.getHeight();
   const left = 11;
   const widths = [23, 23, 30, 26, 30, 35, 45, 26];
-  const headers = ["Datum", "Zeit", "Fahrzeug", "Kennzeichen", "Fahrtart", "Von", "Ziel / Zweck", "km"];
+  const headers = [
+    "Datum",
+    "Zeit",
+    "Fahrzeug",
+    "Kennzeichen",
+    "Fahrtart",
+    "Von",
+    "Ziel / Zweck",
+    "km",
+  ];
   const tableWidth = widths.reduce((sum, w) => sum + w, 0);
   const bottom = pageHeight - 16;
   const lineHeight = 4;
@@ -104,7 +116,10 @@ export function buildAccountantFahrtenbuchPdf(
       const capacity = Math.max(1, Math.floor((bottom - y - 2) / lineHeight));
       const part = lines.slice(start, start + capacity);
       const height = Math.max(5, part.length * lineHeight + 2);
-      if (shade) { doc.setFillColor(248, 250, 252); doc.rect(left, y, tableWidth, height, "F"); }
+      if (shade) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(left, y, tableWidth, height, "F");
+      }
       doc.setDrawColor(207, 216, 225);
       doc.rect(left, y, tableWidth, height);
       doc.setTextColor(30, 40, 52);
@@ -140,7 +155,11 @@ export function buildAccountantFahrtenbuchPdf(
     doc.setDrawColor(207, 216, 225);
     let x = left;
     wrapped.forEach((lines, i) => {
-      doc.setFillColor(index % 2 === 0 ? 255 : 246, index % 2 === 0 ? 255 : 249, index % 2 === 0 ? 255 : 252);
+      doc.setFillColor(
+        index % 2 === 0 ? 255 : 246,
+        index % 2 === 0 ? 255 : 249,
+        index % 2 === 0 ? 255 : 252,
+      );
       doc.rect(x, y, widths[i]!, height, "FD");
       doc.setTextColor(30, 40, 52);
       doc.setFont("helvetica", "normal");
@@ -150,24 +169,35 @@ export function buildAccountantFahrtenbuchPdf(
     });
     y += height;
     detail("Zieladresse", value("Zieladresse"), true);
-    detail("Kilometerstand", `Start: ${value("Start-km")} | Ende: ${value("End-km")} | Geschaeftlich: ${value("Geschäftliche km")} km`, true);
+    detail(
+      "Kilometerstand",
+      `Start: ${value("Start-km")} | Ende: ${value("End-km")} | Geschaeftlich: ${value("Geschäftliche km")} km`,
+      true,
+    );
     if (row["Bemerkung"]?.trim()) detail("Bemerkung", row["Bemerkung"], true);
   });
 
-  if (monthlySummary) {
-    // Keep the monthly summary heading and all five summary rows together.\n    const summaryHeight = 5 + 5 + 5 * 5;\n    if (y + summaryHeight > bottom) newPage();
+  for (const summary of monthlySummary
+    ? Array.isArray(monthlySummary)
+      ? monthlySummary
+      : [monthlySummary]
+    : []) {
+    // Keep the heading, vehicle identification and five summary rows together.
+    const summaryHeight = summary.vehicle ? 45 : 35;
+    if (y + summaryHeight > bottom) newPage();
     y += 5;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(`Monatsübersicht ${monthlySummary.month}`, left, y);
+    doc.text(`Monatsübersicht ${summary.month}`, left, y);
     y += 5;
+    if (summary.vehicle) detail("Fahrzeug / Kennzeichen", summary.vehicle, false);
     const km = (value: number) =>
       `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(value)} km`;
-    detail("Km-Stand Monatsanfang", km(monthlySummary.startKm), false);
-    detail("Km-Stand Monatsende", km(monthlySummary.endKm), true);
-    detail("Gesamt gefahren", km(monthlySummary.totalKm), false);
-    detail("Geschaeftlich laut Fahrtenbuch", km(monthlySummary.businessKm), true);
-    detail("Privat", km(monthlySummary.privateKm), false);
+    detail("Km-Stand Monatsanfang", km(summary.startKm), false);
+    detail("Km-Stand Monatsende", km(summary.endKm), true);
+    detail("Gesamt gefahren", km(summary.totalKm), false);
+    detail("Geschaeftlich laut Fahrtenbuch", km(summary.businessKm), true);
+    detail("Privat", km(summary.privateKm), false);
   }
 
   const totalPages = doc.getNumberOfPages();

@@ -88,7 +88,9 @@ export function MeineZeitenView({ state }: { state: MeineZeitenState }) {
       </details>
 
       <details className="surface p-5">
-        <summary className="cursor-pointer font-semibold">Meine Zeiten & Einsatzplan</summary>
+        <summary className="cursor-pointer font-semibold">
+          Leistungsnachweise, Arbeitszeiten & Einsatzplan
+        </summary>
         <div className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="surface p-5">

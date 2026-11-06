@@ -5,7 +5,9 @@ import { AssistantPanel } from "@/components/AssistantPanel";
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Clock, MapPin, MessageSquare, Navigation, UserCircle } from "lucide-react";
+import {
+  CalendarDays, Clock, MapPin, MessageSquare, Navigation, UserCircle,
+} from "lucide-react";
 
 import { LoadError, firstError } from "@/components/LoadError";
 import { Button } from "@/components/ui/button";

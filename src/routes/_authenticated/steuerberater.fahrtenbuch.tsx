@@ -1,3 +1,4 @@
+import { OwnerFahrtenbuchExport } from "@/components/accountant/portal/AccountantFahrtenbuchExport";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, FileText } from "lucide-react";
+import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { saveFile } from "@/lib/download";
 
@@ -62,107 +63,6 @@ async function downloadCsv(name: string, rows: unknown[][]) {
   await saveFile(blob, name);
 }
 
-async function buildPdf(
-  from: string,
-  to: string,
-  trips: Trip[],
-  vehicles: Vehicle[],
-  monthSummaries: Array<{
-    row: Monthly;
-    vehicle: Vehicle | undefined;
-    business: number;
-    total: number | null;
-    other: number | null;
-  }>,
-) {
-  if (trips.length === 0) {
-    toast.error("Keine Fahrten im gewählten Zeitraum.");
-    return;
-  }
-
-  const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  const margin = 10;
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  let y = 13;
-
-  const addHeader = () => {
-    doc.setFontSize(15);
-    doc.text(`Fahrtenbuch ${deDate(from)} – ${deDate(to)}`, margin, y);
-    y += 7;
-    doc.setFontSize(8);
-    doc.text(
-      "Datum | Zeit | Rückkehr | Fahrzeug | Kennzeichen | Fahrtart | Von | Ziel/Zweck | Nach | Start-km | End-km | km",
-      margin,
-      y,
-    );
-    y += 5;
-  };
-
-  const ensureSpace = (needed = 6) => {
-    if (y + needed > pageHeight - 10) {
-      doc.addPage();
-      y = 13;
-      addHeader();
-    }
-  };
-
-  addHeader();
-  doc.setFontSize(7);
-  trips.forEach((trip) => {
-    ensureSpace(6);
-    const vehicle = vehicles.find((v) => v.id === trip.vehicle_id);
-    const cells = [
-      deDate(trip.trip_date),
-      trip.trip_time?.slice(0, 5) ?? "–",
-      trip.return_time?.slice(0, 5) ?? "–",
-      vehicle?.vehicle_name ?? "–",
-      vehicle?.license_plate ?? "–",
-      trip.trip_type === "round_trip" ? "Hin+Rück" : "Hinfahrt",
-      trip.from_location,
-      trip.customer_name,
-      trip.to_location,
-      deKm(trip.start_km),
-      deKm(trip.end_km),
-      deKm(trip.distance_km),
-    ];
-    const widths = [18, 12, 14, 24, 20, 16, 29, 40, 29, 18, 18, 12];
-    let x = margin;
-    cells.forEach((value, i) => {
-      const text = doc.splitTextToSize(String(value ?? ""), widths[i]! - 1)[0] ?? "";
-      doc.text(text, x, y);
-      x += widths[i]!;
-    });
-    y += 5;
-  });
-
-  ensureSpace(18);
-  y += 3;
-  doc.setFontSize(10);
-  doc.text("Monatsabgleich je Fahrzeug", margin, y);
-  y += 6;
-  doc.setFontSize(7);
-  monthSummaries.forEach(({ row, vehicle, total, business, other }) => {
-    ensureSpace(5);
-    const line = [
-      row.month.slice(0, 7),
-      vehicle?.vehicle_name ?? "–",
-      vehicle?.license_plate ?? "–",
-      `Anfang ${deKm(row.start_km)}`,
-      `Ende ${row.end_km == null ? "–" : deKm(row.end_km)}`,
-      `Gesamt ${total == null ? "–" : `${deKm(total)} km`}`,
-      `Geschäftlich ${deKm(business)} km`,
-      `Privat/sonstig ${other == null ? "–" : `${deKm(other)} km`}`,
-    ].join("   |   ");
-    doc.text(doc.splitTextToSize(line, pageWidth - margin * 2), margin, y);
-    y += 5;
-  });
-
-  const blob = doc.output("blob");
-  await saveFile(blob, `Fahrtenbuch_${from}_${to}.pdf`);
-}
-
 function SteuerberaterFahrtenbuch() {
   const year = new Date().getFullYear();
   const [from, setFrom] = useState(`${year}-01-01`);
@@ -174,7 +74,9 @@ function SteuerberaterFahrtenbuch() {
     queryFn: async () => {
       const { data, error } = await db
         .from("fahrtenbuch_entries")
-        .select("id,user_id,vehicle_id,trip_date,trip_time,return_time,trip_type,from_location,customer_id,customer_name,to_location,start_km,end_km,distance_km,notes,created_at,updated_at")
+        .select(
+          "id,user_id,vehicle_id,trip_date,trip_time,return_time,trip_type,from_location,customer_id,customer_name,to_location,start_km,end_km,distance_km,notes,created_at,updated_at",
+        )
         .gte("trip_date", from)
         .lte("trip_date", to)
         .order("trip_date")
@@ -233,21 +135,23 @@ function SteuerberaterFahrtenbuch() {
   }, [monthly, vehicles, trips, from, to]);
 
   async function tripCsv() {
-    const rows: unknown[][] = [[
-      "Datum",
-      "Startzeit",
-      "Rückkehrzeit",
-      "Fahrtart",
-      "Fahrzeug",
-      "Kennzeichen",
-      "Von",
-      "Kunde / Ziel / Zweck",
-      "Zieladresse",
-      "Start-km",
-      "End-km",
-      "Geschäftliche km",
-      "Bemerkung",
-    ]];
+    const rows: unknown[][] = [
+      [
+        "Datum",
+        "Startzeit",
+        "Rückkehrzeit",
+        "Fahrtart",
+        "Fahrzeug",
+        "Kennzeichen",
+        "Von",
+        "Kunde / Ziel / Zweck",
+        "Zieladresse",
+        "Start-km",
+        "End-km",
+        "Geschäftliche km",
+        "Bemerkung",
+      ],
+    ];
     trips.forEach((trip) => {
       const vehicle = vehicles.find((v) => v.id === trip.vehicle_id);
       rows.push([
@@ -270,16 +174,18 @@ function SteuerberaterFahrtenbuch() {
   }
 
   async function monthlyCsv() {
-    const rows: unknown[][] = [[
-      "Monat",
-      "Fahrzeug",
-      "Kennzeichen",
-      "Km Monatsanfang",
-      "Km Monatsende",
-      "Gesamt gefahren",
-      "Geschäftlich",
-      "Privat / sonstig / nicht erfasst",
-    ]];
+    const rows: unknown[][] = [
+      [
+        "Monat",
+        "Fahrzeug",
+        "Kennzeichen",
+        "Km Monatsanfang",
+        "Km Monatsende",
+        "Gesamt gefahren",
+        "Geschäftlich",
+        "Privat / sonstig / nicht erfasst",
+      ],
+    ];
     monthSummaries.forEach(({ row, vehicle, total, business, other }) =>
       rows.push([
         row.month.slice(0, 7),
@@ -310,7 +216,8 @@ function SteuerberaterFahrtenbuch() {
 
       {loadError ? (
         <div className="no-print rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-          Fahrtenbuch-Daten konnten nicht geladen werden: {loadError instanceof Error ? loadError.message : "Unbekannter Fehler"}
+          Fahrtenbuch-Daten konnten nicht geladen werden:{" "}
+          {loadError instanceof Error ? loadError.message : "Unbekannter Fehler"}
         </div>
       ) : null}
 
@@ -333,12 +240,7 @@ function SteuerberaterFahrtenbuch() {
           <Button variant="outline" onClick={() => void monthlyCsv()}>
             <Download className="size-4" /> Monatsübersicht CSV
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => void buildPdf(from, to, trips, vehicles, monthSummaries)}
-          >
-            <FileText className="size-4" /> Fahrtenbuch PDF herunterladen
-          </Button>
+          <OwnerFahrtenbuchExport />
         </div>
       </section>
 
@@ -382,7 +284,9 @@ function SteuerberaterFahrtenbuch() {
                     <td className="p-2">{trip.return_time?.slice(0, 5) ?? "–"}</td>
                     <td className="p-2">{vehicle?.vehicle_name ?? "–"}</td>
                     <td className="p-2">{vehicle?.license_plate ?? "–"}</td>
-                    <td className="p-2">{trip.trip_type === "round_trip" ? "Hin + Rück" : "Hinfahrt"}</td>
+                    <td className="p-2">
+                      {trip.trip_type === "round_trip" ? "Hin + Rück" : "Hinfahrt"}
+                    </td>
                     <td className="p-2">{trip.from_location}</td>
                     <td className="p-2">{trip.customer_name}</td>
                     <td className="p-2">{trip.to_location}</td>
@@ -400,7 +304,8 @@ function SteuerberaterFahrtenbuch() {
       <section className="print-area rounded-lg border bg-card p-5">
         <h2 className="text-lg font-semibold">Monatsabgleich je Fahrzeug</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Differenz aus Monatsendstand minus Monatsanfangsstand, abgeglichen mit den geschäftlichen Fahrten.
+          Differenz aus Monatsendstand minus Monatsanfangsstand, abgeglichen mit den geschäftlichen
+          Fahrten.
         </p>
         {monthSummaries.length === 0 && !loadError ? (
           <p className="mt-4 rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">

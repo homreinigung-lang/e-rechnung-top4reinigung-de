@@ -12,13 +12,15 @@ type TripRow = Record<string, string>;
 /** Decode a private or public company logo into an embedded JPEG (no remote image URLs in the PDF). */
 async function logoAsJpeg(pathOrUrl: string): Promise<string> {
   const blob = await fetchStoredBlob(pathOrUrl);
-  if (!blob.type.startsWith("image/")) throw new Error("Das gespeicherte Firmenlogo ist keine Bilddatei.");
+  if (!blob.type.startsWith("image/"))
+    throw new Error("Das gespeicherte Firmenlogo ist keine Bilddatei.");
   const objectUrl = URL.createObjectURL(blob);
   try {
     const image = new Image();
     image.src = objectUrl;
     await image.decode();
-    if (!image.naturalWidth || !image.naturalHeight) throw new Error("Firmenlogo konnte nicht gelesen werden.");
+    if (!image.naturalWidth || !image.naturalHeight)
+      throw new Error("Firmenlogo konnte nicht gelesen werden.");
     const canvas = document.createElement("canvas");
     const scale = Math.min(1, 600 / image.naturalWidth, 300 / image.naturalHeight);
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -39,7 +41,7 @@ export async function buildBrandedFahrtenbuchPdf(
   rows: TripRow[],
   from: string,
   to: string,
-  monthlySummary?: FahrtenbuchMonthlySummary,
+  monthlySummary?: FahrtenbuchMonthlySummary | FahrtenbuchMonthlySummary[],
 ): Promise<Blob> {
   assertFahrtenbuchVehicleData(rows);
   const { data, error } = await supabase
@@ -49,6 +51,25 @@ export async function buildBrandedFahrtenbuchPdf(
   if (error) throw new Error(`Firmeneinstellungen konnten nicht geladen werden: ${error.message}`);
   const companyName = data?.company_name?.trim();
   const logoUrl = data?.logo_url?.trim();
+  return buildFahrtenbuchPdfWithCompany(
+    rows,
+    from,
+    to,
+    companyName ?? "",
+    logoUrl ?? "",
+    monthlySummary,
+  );
+}
+
+export async function buildFahrtenbuchPdfWithCompany(
+  rows: TripRow[],
+  from: string,
+  to: string,
+  companyName: string,
+  logoUrl: string,
+  monthlySummary?: FahrtenbuchMonthlySummary | FahrtenbuchMonthlySummary[],
+): Promise<Blob> {
+  assertFahrtenbuchVehicleData(rows);
   if (!companyName || !logoUrl) {
     throw new Error("Bitte Firmenname und Firmenlogo in den Firmeneinstellungen hinterlegen.");
   }

@@ -1,10 +1,8 @@
+import { OwnerFahrtenbuchExport } from "../portal/AccountantFahrtenbuchExport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
-
-import { saveFile } from "@/lib/download";
 
 import {
   Archive,
@@ -155,34 +153,7 @@ export function SteuerberaterView({ state }: { state: SteuerberaterState }) {
       </section>
 
       <section className="no-print flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() =>
-            void (async () => {
-              if (fahrtenbuchRows.length === 0) {
-                toast.error("Keine Fahrten im gewählten Zeitraum.");
-                return;
-              }
-              try {
-                const { buildBrandedFahrtenbuchPdf } =
-                  await import("@/lib/fahrtenbuch-branded-pdf");
-                await saveFile(
-                  await buildBrandedFahrtenbuchPdf(fahrtenbuchRows, from, to),
-                  `Fahrtenbuch_${period}.pdf`,
-                );
-              } catch (error) {
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : "Fahrtenbuch PDF konnte nicht erstellt werden.",
-                );
-              }
-            })()
-          }
-        >
-          <FileText className="size-4" /> Fahrtenbuch PDF
-        </Button>
+        <OwnerFahrtenbuchExport />
         <Button onClick={() => datevExport.mutate()} disabled={datevExport.isPending}>
           <Download className="size-4" /> DATEV-Export (CSV)
         </Button>

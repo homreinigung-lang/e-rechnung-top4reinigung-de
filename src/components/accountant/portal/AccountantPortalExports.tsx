@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { formatDate, formatMoney } from "@/lib/format";
 import {
   Download,
@@ -13,14 +12,13 @@ import {
   Printer,
 } from "lucide-react";
 
-import { saveFile } from "@/lib/download";
-
 import { filterRowsByDateRange } from "@/lib/table-summary";
 import { num, de, parseDe, downloadCsv, downloadExcel, exportHoursPdf } from "./shared";
 
 import { Kpi } from "./Kpi";
 import { DataTable } from "./DataTable";
 import type { AccountantPortalState } from "./useAccountantPortalState";
+import { AccountantFahrtenbuchExport } from "./AccountantFahrtenbuchExport";
 export function AccountantPortalExports({ state }: { state: AccountantPortalState }) {
   const {
     code,
@@ -157,33 +155,7 @@ export function AccountantPortalExports({ state }: { state: AccountantPortalStat
           </section>
 
           <section className="no-print flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                void (async () => {
-                  if (fahrtenbuchRows.length === 0) {
-                    toast.error("Keine Fahrten im gewählten Zeitraum.");
-                    return;
-                  }
-                  try {
-                    const { buildBrandedFahrtenbuchPdf } =
-                      await import("@/lib/fahrtenbuch-branded-pdf");
-                    await saveFile(
-                      await buildBrandedFahrtenbuchPdf(fahrtenbuchRows, from, to),
-                      `Fahrtenbuch_${period}.pdf`,
-                    );
-                  } catch (error) {
-                    toast.error(
-                      error instanceof Error
-                        ? error.message
-                        : "Fahrtenbuch PDF konnte nicht erstellt werden.",
-                    );
-                  }
-                })()
-              }
-            >
-              <FileText className="size-4" /> Fahrtenbuch PDF
-            </Button>
+            <AccountantFahrtenbuchExport code={code} />
             <Button
               variant="outline"
               onClick={() =>
