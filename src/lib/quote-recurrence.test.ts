@@ -45,7 +45,7 @@ it("shows rhythm controls in the editor used by Neues Angebot", () => {
   expect(html).toContain("Reinigungsrhythmus");
   expect(html).toContain("Anzahl Einsätze");
   expect(html).toContain("Nach Stunden");
-  expect(html).toContain("Festpreis je Besuch");
+  expect(html).toContain("Pauschal");
   expect(html).toContain("Reinigungsintervall");
   expect(html).toContain("Preis übernehmen");
   expect(html).toContain("400,00");
