@@ -3,6 +3,7 @@ import { ArrowLeft, Check, FileDown, Mail, Pencil, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button";
 
 type DocumentHeaderActionsProps = {
+  showMarkSent?: boolean;
   status: string;
   locked: boolean;
   editMode: boolean;
@@ -16,6 +17,7 @@ type DocumentHeaderActionsProps = {
 };
 
 export function DocumentHeaderActions({
+  showMarkSent = true,
   status,
   locked,
   editMode,
@@ -44,7 +46,7 @@ export function DocumentHeaderActions({
         <Button variant="outline" onClick={onSendEmail}>
           <Mail className="size-4" /> Per E-Mail senden
         </Button>
-        {status === "draft" && !locked && (
+        {showMarkSent && status === "draft" && !locked && (
           <Button
             variant="outline"
             title="Beleg als versendet kennzeichnen, ohne eine E-Mail zu verschicken"

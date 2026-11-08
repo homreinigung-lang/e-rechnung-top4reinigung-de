@@ -23,6 +23,7 @@ export function DocumentHeader({ state }: { state: DocumentDetailStateContext })
   } = state;
   return (
     <DocumentHeaderActions
+      showMarkSent={!state.isQuote && !state.isInvoice}
       status={doc.status}
       locked={locked}
       editMode={editMode}
