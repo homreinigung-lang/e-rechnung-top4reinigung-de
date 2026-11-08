@@ -29,7 +29,7 @@ export function QuoteRecurrenceEditor({ description, onApply }: {
     <div className="space-y-3 rounded-md bg-muted/40 p-3 sm:col-span-12">
       <p className="text-sm font-medium">Reinigungsrhythmus</p>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Preisberechnung">
-        <Button type="button" size="sm" variant={basis === "visit" ? "default" : "outline"} aria-pressed={basis === "visit"} onClick={() => { if (basis !== "visit") { setBasis("visit"); setPrice(""); } }}>Festpreis je Besuch</Button>
+        <Button type="button" size="sm" variant={basis === "visit" ? "default" : "outline"} aria-pressed={basis === "visit"} onClick={() => { if (basis !== "visit") { setBasis("visit"); setPrice(""); } }}>Pauschal</Button>
         <Button type="button" size="sm" variant={basis === "hour" ? "default" : "outline"} aria-pressed={basis === "hour"} onClick={() => { if (basis !== "hour") { setBasis("hour"); setPrice(""); } }}>Nach Stunden</Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
