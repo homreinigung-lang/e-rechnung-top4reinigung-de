@@ -69,7 +69,7 @@ export function DocumentPositionsEditor({
 
       {items.map((item, index) => (
         <div key={item.id} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-12">
-          <div className="space-y-1 sm:col-span-5">
+          <div className={allowRecurrence ? "space-y-1 sm:col-span-11" : "space-y-1 sm:col-span-5"}>
             <Label className="text-xs text-muted-foreground">Bezeichnung</Label>
             <Input
               placeholder="Bezeichnung (z. B. Unterhaltsreinigung Büro)"
@@ -77,6 +77,7 @@ export function DocumentPositionsEditor({
               onChange={(event) => onUpdateItem(index, { description: event.target.value })}
             />
           </div>
+          {!allowRecurrence && <>
           <div className="space-y-1 sm:col-span-2">
             <Label className="text-xs text-muted-foreground">Menge</Label>
             <Input type="number" step="0.01" value={item.quantity} onChange={(event) => onUpdateItem(index, { quantity: Number(event.target.value) })} />
@@ -96,12 +97,34 @@ export function DocumentPositionsEditor({
             <Label className="text-xs text-muted-foreground">Netto-Preis / Einheit €</Label>
             <Input type="number" step="0.01" value={item.unit_price} onChange={(event) => onUpdateItem(index, { unit_price: Number(event.target.value) })} />
           </div>
+          </>}
           <div className="flex items-end sm:col-span-1">
             <Button variant="ghost" size="icon" onClick={() => onItemsChange((previous) => previous.filter((_, itemIndex) => itemIndex !== index))}>
               <Trash2 className="size-4 text-destructive" />
             </Button>
           </div>
           {allowRecurrence && <QuoteRecurrenceEditor description={item.description} onApply={(patch) => onUpdateItem(index, patch)} />}
+          {allowRecurrence && <details className="sm:col-span-12"><summary className="cursor-pointer text-xs text-muted-foreground">Menge / Einheit / Preis manuell bearbeiten</summary><div className="mt-2 grid gap-2 sm:grid-cols-3">
+          <div className="space-y-1 ">
+            <Label className="text-xs text-muted-foreground">Menge</Label>
+            <Input type="number" step="0.01" value={item.quantity} onChange={(event) => onUpdateItem(index, { quantity: Number(event.target.value) })} />
+          </div>
+          <div className="space-y-1 ">
+            <Label className="text-xs text-muted-foreground">Einheit</Label>
+            <Select value={unitOptions.includes(item.unit) ? item.unit : "__custom"} onValueChange={(value) => onUpdateItem(index, { unit: value === "__custom" ? "" : value })}>
+              <SelectTrigger><SelectValue placeholder="Einheit" /></SelectTrigger>
+              <SelectContent>
+                {unitOptions.map((unit) => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                <SelectItem value="__custom">Andere …</SelectItem>
+              </SelectContent>
+            </Select>
+            {!unitOptions.includes(item.unit) && <Input placeholder="Eigene Einheit" value={item.unit} onChange={(event) => onUpdateItem(index, { unit: event.target.value })} />}
+          </div>
+          <div className="space-y-1 ">
+            <Label className="text-xs text-muted-foreground">Netto-Preis / Einheit €</Label>
+            <Input type="number" step="0.01" value={item.unit_price} onChange={(event) => onUpdateItem(index, { unit_price: Number(event.target.value) })} />
+          </div>
+          </div></details>}
           <label className="flex cursor-pointer items-center gap-2 text-xs sm:col-span-12">
             <Checkbox checked={Boolean(item.is_optional)} onCheckedChange={(value) => onUpdateItem(index, { is_optional: value === true })} />
             <span>Saisonale / zusätzliche Leistung (nur bei Durchführung berechnet)</span>

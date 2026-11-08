@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { quoteRecurrencePosition, readQuoteRecurrence } from "./quote-recurrence";
+import { quoteRecurrencePosition, readQuoteRecurrence, quoteVisitPrice } from "./quote-recurrence";
 import { DocumentPositionsEditor } from "@/components/documents/DocumentPositionsEditor";
 
 it.each([
@@ -44,8 +44,10 @@ it("shows rhythm controls in the editor used by Neues Angebot", () => {
   }));
   expect(html).toContain("Reinigungsrhythmus");
   expect(html).toContain("Anzahl Einsätze");
+  expect(html).toContain("Nach Stunden");
+  expect(html).toContain("Festpreis je Besuch");
   expect(html).toContain("Reinigungsintervall");
-  expect(html).toContain("Turnus und Monatspreis übernehmen");
+  expect(html).toContain("Preis übernehmen");
   expect(html).toContain("400,00");
 });
 
@@ -68,4 +70,20 @@ it("replaces room cadence while retaining the room and its tasks", () => {
   expect(patch.description).not.toContain("pro Woche");
   expect(patch.description).toContain("Leistungen: Wischen");
   expect(readQuoteRecurrence(patch.description)).toEqual({ frequency: "1", unit: "fortnight" });
+});
+
+it("calculates two hours per visit at 30 EUR, twice weekly, without manual multiplication", () => {
+  const price = quoteVisitPrice({ basis: "hour", price: "30", hours: "2" });
+  expect(price).toBe(60);
+  const position = quoteRecurrencePosition({ description: "Büro", frequency: "2", unit: "week", pricePerVisit: String(price) });
+  expect(position.unit_price).toBe(520);
+});
+it("accepts decimal hours and a German hourly rate", () => {
+  expect(quoteVisitPrice({ basis: "hour", price: "32,50", hours: "1,5" })).toBe(48.75);
+});
+it("uses a fixed visit price without multiplying hours", () => {
+  expect(quoteVisitPrice({ basis: "visit", price: "60", hours: "2" })).toBe(60);
+});
+it("requires a duration when billing by hours", () => {
+  expect(quoteVisitPrice({ basis: "hour", price: "30", hours: "" })).toBe(0);
 });
