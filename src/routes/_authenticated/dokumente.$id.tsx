@@ -68,7 +68,7 @@ function DokumentDetail() {
   } = state;
   return (
     <div className="space-y-6">
-      {state.isQuote ? (
+      {state.isQuote || state.isInvoice ? (
         <>
           <div className="no-print flex flex-wrap items-start justify-between gap-3">
             <details className="group w-full sm:max-w-md">
