@@ -1,3 +1,5 @@
+import { ChevronDown, Menu } from "lucide-react";
+import { SupplementPanel } from "@/components/documents/SupplementPanel";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { DocumentConfirmDialog } from "@/components/documents/DocumentConfirmDialog";
@@ -66,9 +68,33 @@ function DokumentDetail() {
   } = state;
   return (
     <div className="space-y-6">
-      <DocumentHeader state={state} />
-
-      <DocumentWorkflow state={state} />
+      {state.isQuote ? (
+        <>
+          <div className="no-print flex flex-wrap items-start justify-between gap-3">
+            <details className="group w-full sm:max-w-md">
+              <summary className="flex w-fit cursor-pointer list-none items-center gap-2 rounded-md border bg-background px-4 py-2 text-sm font-medium hover:bg-accent focus-visible:outline focus-visible:outline-2 [&::-webkit-details-marker]:hidden">
+                <Menu className="size-4" /> Aktionen
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="mt-3 space-y-3 rounded-lg border bg-background p-3 [&_button]:w-full [&_button]:justify-start [&_a]:w-full [&_.flex-wrap]:w-full">
+                <DocumentHeader state={state} />
+                <DocumentWorkflow state={state} showSupplement={false} />
+              </div>
+            </details>
+            {!state.locked && state.editMode && (
+              <p className="text-xs text-muted-foreground" role="status">
+                {state.autoSavedAt ? `Automatisch gespeichert um ${state.autoSavedAt} Uhr` : "Änderungen werden automatisch gespeichert"}
+              </p>
+            )}
+          </div>
+          <SupplementPanel state={state} />
+        </>
+      ) : (
+        <>
+          <DocumentHeader state={state} />
+          <DocumentWorkflow state={state} />
+        </>
+      )}
 
       <DocumentCancellationDialog
         open={stornoOpen}

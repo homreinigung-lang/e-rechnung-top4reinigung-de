@@ -4,7 +4,7 @@ import { SupplementPanel } from "@/components/documents/SupplementPanel";
 import { mahnLabel } from "@/lib/workflow";
 import type { DocumentDetailStateContext } from "./useDocumentDetailState";
 
-export function DocumentWorkflow({ state }: { state: DocumentDetailStateContext }) {
+export function DocumentWorkflow({ state, showSupplement = true }: { state: DocumentDetailStateContext; showSupplement?: boolean }) {
   const {
     autoSavedAt,
     canMahnen,
@@ -41,7 +41,7 @@ export function DocumentWorkflow({ state }: { state: DocumentDetailStateContext 
   } = state;
   return (
     <>
-      <SupplementPanel state={state} />
+      {showSupplement && <SupplementPanel state={state} />}
       <DocumentWorkflowActions
         editMode={editMode}
         isInvoice={isInvoice}
