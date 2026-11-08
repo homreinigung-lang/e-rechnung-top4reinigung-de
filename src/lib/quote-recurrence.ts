@@ -34,3 +34,11 @@ export function quoteRecurrencePosition(input: {
     unit_price: roundCents(price * visits),
   };
 }
+
+/** Price of a single visit; never treat an hourly rate as a visit price. */
+export function quoteVisitPrice(input: { basis: "visit" | "hour"; price: string; hours: string }): number {
+  const price = parsePositiveNumber(input.price);
+  const hours = input.basis === "hour" ? parsePositiveNumber(input.hours) : 1;
+  const result = price * hours;
+  return Number.isFinite(result) && result > 0 ? result : 0;
+}
