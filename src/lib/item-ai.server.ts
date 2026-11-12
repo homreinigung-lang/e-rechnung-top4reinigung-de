@@ -1,3 +1,4 @@
+import { findRate, DEFAULT_PERFORMANCE_RATES } from "./leistungswerte";
 import { savedSellingBasis, type CompanySellingPricing } from "./company-selling-pricing";
 import { generateGeminiJson } from "./gemini-json.server";
 import { analysisAiOptions } from "./analysis-ai";
@@ -148,6 +149,22 @@ function additionalCorridorArea(prompt: string): number {
     )
     ? num(area[1])
     : 0;
+}
+
+/** Explicit room areas are priced by room type, rather than silently discarded. */
+function roomAreaBreakdown(prompt: string) {
+  const text = normalizedText(prompt);
+  const room = "(?:teeküche|teekueche|küche|kueche|wc|toiletten?|sanitär(?:raum)?|sanitaer(?:raum)?|badezimmer|bad|flur)";
+  const amount = "(\\d{1,3}(?:\\.\\d{3})+(?:,\\d+)?|\\d+(?:[.,]\\d+)?)\\s*(?:m2|qm|quadratmeter)\\b";
+  const pattern = new RegExp(`(${room})\\s*(?:(?:mit|von|ca\\.?)\\s*)?[:=]?\\s*${amount}|${amount}\\s*(${room})\\b`, "gi");
+  const rooms = [...text.matchAll(pattern)].map((m) => ({
+    name: m[1] || m[4]!, area: num(m[2] || m[3]), index: m.index!,
+  }));
+  const firstArea = text.search(/\d[\d.,]*\s*(?:m2|qm|quadratmeter)\b/);
+  // The primary office area must precede additional room areas.
+  if (!rooms.length || rooms.some((r) => r.index <= firstArea)) return null;
+  const included = /\b(?:inkl\w*|einschließlich|einschliesslich|enthalten|davon|gesamt\w*|insgesamt)\b/.test(text);
+  return { rooms, included };
 }
 
 function explicitFrequency(prompt: string): { value: number; unit: RecurrenceUnit } | null {
@@ -308,12 +325,13 @@ function deterministicBaseItem(args: {
   )
     return null;
   const monthlyVisits = visitsPerMonth(args.frequency, args.frequencyUnit);
-  const perVisit =
+  const exactPerVisit =
     args.area > 0
-      ? round2(args.area * args.pricePerSqm)
+      ? args.area * args.pricePerSqm
       : args.hours > 0
-        ? round2(args.hours * args.hourlyRate)
-        : round2(args.floors * (args.floorRate ?? STAIR_RATE_PER_FLOOR));
+        ? args.hours * args.hourlyRate
+        : args.floors * (args.floorRate ?? STAIR_RATE_PER_FLOOR);
+  const perVisit = round2(exactPerVisit);
   const turnus =
     args.billingPeriod === "once"
       ? "einmalig"
@@ -328,7 +346,7 @@ function deterministicBaseItem(args: {
     unit: args.billingPeriod === "once" ? "Pauschal" : "Monat",
     // Der monatliche Betrag wird einmal gerundet. 21,67 × 80 € würde bei
     // fünf Einsätzen/Woche andernfalls 27 Cent zu hoch ausfallen.
-    unit_price: args.billingPeriod === "once" ? perVisit : round2(perVisit * monthlyVisits),
+    unit_price: args.billingPeriod === "once" ? perVisit : round2(exactPerVisit * monthlyVisits),
   };
 }
 
@@ -364,7 +382,10 @@ export async function generateCalculation(
     cleaningType === "treppenhaus" && floors > 0 ? additionalCorridorArea(prompt) : 0;
   // The corridor's m² are not the staircase's area. Keep the staircase on
   // its floor basis and add the corridor as its own proposal below.
-  const area = corridorArea > 0 ? 0 : statedArea || inferredArea;
+  const primaryArea = corridorArea > 0 ? 0 : statedArea || inferredArea;
+  const breakdown = ["buero", "praxis", "unterhalt", "wohn"].includes(cleaningType) ? roomAreaBreakdown(prompt) : null;
+  const roomArea = breakdown?.rooms.reduce((sum, r) => sum + r.area, 0) ?? 0;
+  const area = primaryArea + (breakdown && !breakdown.included ? roomArea : 0);
 
   const statedFrequency = recurrence ?? explicitFrequency(prompt);
   const annualFrequency =
@@ -400,11 +421,49 @@ export async function generateCalculation(
     /(\d+(?:[.,]\d+)?)\s*(?:stunden?|std\.?|h)\b(?:\s*(?:pro|je)\s*(?:einsatz|besuch|reinigung))?/i,
   );
   const hours = hoursMatch ? num(hoursMatch[1]) : 0;
-  if (saved && area > 0 && hours > 0 && !statedSqmPrice) pricePerSqm = hours * hourlyRate / area;
-  const pricingBasis = area > 0 ? "area" : hours > 0 ? "hours" : "floor";
-  const calculatedHours = hours || (saved ? (area > 0 && saved.sqmPerHour > 0 ? area / saved.sqmPerHour : floors > 0 && saved.minutesPerFloor > 0 ? floors * saved.minutesPerFloor / 60 : 0) : 0);
+  if (area > 0 && hours > 0 && !statedSqmPrice) pricePerSqm = hours * hourlyRate / area;
+  let pricingBasis: "area" | "hours" | "floor" = area > 0 ? "area" : hours > 0 ? "hours" : "floor";
+  let calculatedHours = hours || (saved ? (area > 0 && saved.sqmPerHour > 0 ? area / saved.sqmPerHour : floors > 0 && saved.minutesPerFloor > 0 ? floors * saved.minutesPerFloor / 60 : 0) : 0);
 
+  if (hours > 0 && !statedSqmPrice) pricingBasis = "hours";
+  const roomNotes: string[] = [];
+  if (breakdown && primaryArea > 0 && hours <= 0) {
+    const baseArea = breakdown.included ? primaryArea - roomArea : primaryArea;
+    const basePerformance = saved?.sqmPerHour || defaults.performance;
+    const rates = companyPricing?.rates ?? [];
+    const fallbackRates = DEFAULT_PERFORMANCE_RATES.map((r) => ({ ...r, id: r.label, active: true }));
+    if (baseArea >= 0 && basePerformance > 0) {
+      calculatedHours = baseArea / basePerformance;
+      roomNotes.push(`Hauptfläche: ${baseArea} m² ÷ ${basePerformance} m²/Std.`);
+      for (const room of breakdown.rooms) {
+        const usage_type = /küche|kueche/.test(room.name) ? "Küche" : /flur/.test(room.name) ? "Flur" : "WC";
+        const rate = findRate(rates, { usage_type }) ?? findRate(fallbackRates, { usage_type })!;
+        calculatedHours += room.area / rate.sqm_per_hour;
+        roomNotes.push(`${room.name}: ${room.area} m² ÷ ${rate.sqm_per_hour} m²/Std.${rates.includes(rate) ? "" : " (Richtwert)"}`);
+      }
+      if (!statedSqmPrice) {
+        pricePerSqm = calculatedHours * hourlyRate / area;
+        pricingBasis = "hours";
+      }
+    }
+  }
   const reviewQuestions: string[] = [];
+  if (["buero", "praxis", "unterhalt", "wohn"].includes(cleaningType) && hours <= 0 && !statedSqmPrice) {
+    const text = normalizedText(prompt);
+    const missingRooms = [
+      { pattern: /\b(?:teeküche|teekueche|küche|kueche)\b/, label: "Küche/Teeküche" },
+      { pattern: /\b(?:wc|toiletten?|sanitär|sanitaer|badezimmer|bad)\b/, label: "WC/Sanitär" },
+    ].filter(({ pattern }) => pattern.test(text) && !breakdown?.rooms.some((room) => pattern.test(room.name)));
+    if (missingRooms.length)
+      reviewQuestions.push(`Bitte die Flächen für ${missingRooms.map((room) => room.label).join(" und ")} in m² ergänzen und angeben, ob sie zusätzlich oder in der Gesamtfläche enthalten sind. Sie werden nicht stillschweigend mit dem Büro-Leistungswert berechnet.`);
+  }
+  if (breakdown && !recurrence) {
+    const frequencies = prompt.split(/[,;!\n]/).map(explicitFrequency).filter((entry) => entry !== null);
+    if (frequencies.some((entry) => entry.value !== frequency || entry.unit !== frequencyUnit))
+      reviewQuestions.push("Bitte die unterschiedlichen Reinigungsturnusse von Hauptfläche und Zusatzräumen getrennt angeben.");
+  }
+  if (breakdown?.included && roomArea > primaryArea)
+    reviewQuestions.push("Die enthaltenen Raumflächen überschreiten die Gesamtfläche. Bitte Flächen prüfen.");
   if (saved && !statedSqmPrice && !statedHourlyRate && saved.hourlyRate <= 0)
     reviewQuestions.push("Welcher Netto-Verkaufspreis pro Stunde gilt für diesen Auftrag? Bitte oben eingeben oder im Auftragstext nennen.");
   if (saved && (area > 0 || corridorArea > 0) && !statedSqmPrice && hours <= 0 && saved.sqmPerHour <= 0)
@@ -454,7 +513,7 @@ export async function generateCalculation(
       "Wie groß ist die Fläche in m² oder wie viele Stunden dauert ein Einsatz?",
     );
   }
-  const reviewNotes: string[] = [];
+  const reviewNotes: string[] = [...roomNotes];
   if (inferredArea > 0) reviewNotes.push(`Die Angabe „${inferredArea} m“ wurde als ${inferredArea} m² Reinigungsfläche verstanden.`);
   const extraServices = [
     ["glas", /\b(?:glas|fenster|scheiben)(?:reinigung)?\b/i, "Fenster/Glas"],
@@ -487,12 +546,12 @@ export async function generateCalculation(
   }
   if (saved && saved.hourlyRate > 0) {
     reviewNotes.push(`Verkaufspreis für diesen Auftrag: ${hourlyRate.toFixed(2).replace(".", ",")} €/Std. netto. Interne Kosten werden separat geprüft.`);
-    if (saved.sqmPerHour > 0 && area > 0) reviewNotes.push(`Gespeicherter Leistungswert „${saved.label}“: ${saved.sqmPerHour} m²/Std.; ${area} m² ÷ ${saved.sqmPerHour} = ${round2(calculatedHours)} Std. je Einsatz.`);
+    if (!roomNotes.length && saved.sqmPerHour > 0 && area > 0) reviewNotes.push(`Gespeicherter Leistungswert „${saved.label}“: ${saved.sqmPerHour} m²/Std.; ${area} m² ÷ ${saved.sqmPerHour} = ${round2(calculatedHours)} Std. je Einsatz.`);
   }
   const baseItem = deterministicBaseItem({
     type: cleaningType,
     area,
-    hours,
+    hours: pricingBasis === "hours" ? calculatedHours : hours,
     floors,
     frequency,
     frequencyUnit,
@@ -501,6 +560,11 @@ export async function generateCalculation(
     hourlyRate,
     floorRate,
   });
+
+  if (baseItem && breakdown) {
+    const scope = breakdown.rooms.map((room) => `${room.name} ${String(room.area).replace(".", ",")} m²`).join(" + ");
+    baseItem.description = `${defaults.label} (${String(primaryArea).replace(".", ",")} m² ${breakdown.included ? "gesamt, davon" : "+"} ${scope}; ${billingPeriod === "once" ? "einmalig" : `${frequency}× ${recurrenceUnitLabel(frequencyUnit)}`})`;
+  }
 
   // Die KI liefert nur Kontext. Mengen, Turnus und zusätzliche Positionen
   // dürfen ohne eindeutige Angaben nicht in das Angebot geraten.

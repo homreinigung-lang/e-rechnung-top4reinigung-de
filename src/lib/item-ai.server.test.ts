@@ -91,7 +91,7 @@ describe("KI-Kalkulation für Praxisreinigung", () => {
         description: expect.stringContaining("Praxisreinigung"),
         quantity: 1,
         unit: "Monat",
-        unit_price: 1733.33,
+        unit_price: 1516.67,
       }),
     ]);
   });
