@@ -114,15 +114,18 @@ export function useKalkulationSuggestions(input: {
     updateAttachment,
   } = input;
   const aiSuggest = useMutation({
-    mutationFn: async (recurrence?: { value: number; unit: RecurrenceUnit }) =>
-      analyze({
+    mutationFn: async (recurrence?: { value: number; unit: RecurrenceUnit }) => {
+      const sourcePrompt = aiPrompt.trim();
+      const sourceRate = num(hourlyRate);
+      const result = await analyze({
         data: {
-          prompt: aiPrompt,
-          sellingHourlyRate: num(hourlyRate) > 0 ? num(hourlyRate) : undefined,
-          recurrence:
-            recurrence ?? (frequencyUnit === "once" ? { value: 1, unit: "once" } : undefined),
+          prompt: sourcePrompt,
+          sellingHourlyRate: sourceRate > 0 ? sourceRate : undefined,
+          recurrence,
         },
-      }),
+      });
+      return { result, sourcePrompt, sourceRate };
+    },
     onMutate: () => {
       setKiItems([]);
       setAiReviewQuestions([]);
@@ -131,8 +134,12 @@ export function useKalkulationSuggestions(input: {
       setKiPrompt("");
       setKiOriginalItem(null);
     },
-    onSuccess: (res) => {
-      setKiPrompt(aiPrompt.trim());
+    onSuccess: ({ result: res, sourcePrompt, sourceRate }) => {
+      if (sourcePrompt !== aiPrompt.trim() || sourceRate !== num(hourlyRate)) {
+        toast.info("Beschreibung oder Stundenpreis wurden während der Berechnung geändert. Bitte erneut berechnen.");
+        return;
+      }
+      setKiPrompt(sourcePrompt);
       setAiReviewQuestions(res.review_questions);
       setAiReviewNotes(res.review_notes);
       setKiBillingPeriod(res.billing_period);

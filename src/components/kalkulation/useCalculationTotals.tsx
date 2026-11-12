@@ -265,7 +265,7 @@ export function useCalculationTotals(input: {
       frequencyUnit !== kiBasis.frequencyUnit ||
       ((kiPricingBasis === "area" || (kiPricingBasis === "floor" && kiItems.length > 1)) &&
         num(pricePerSqm) !== kiBasis.pricePerSqm) ||
-      (mode === "hours" && num(hourlyRate) !== kiBasis.hourlyRate) ||
+      (kiBasis.hours > 0 && num(hourlyRate) !== kiBasis.hourlyRate) ||
       (kiPricingBasis === "floor" && num(floors) !== kiBasis.floors));
   const vatRate = vatRateForTaxMode(taxMode);
   const taxNote = taxNoteForTaxMode(taxMode);
@@ -281,6 +281,9 @@ export function useCalculationTotals(input: {
   // Live-Kennzahlen für die integrierte Projekt-Analyse
   const monthlyHours = useMemo(() => {
     if (roomCalculation.enabled) return roomSummary.monthlyHours;
+    // Keep the analyzed room-weighted workload even when a stated m² selling
+    // price is used. Selling prices must never replace workload estimates.
+    if (kiBasis && !kiBasisChanged && kiBasis.hours > 0) return kiBasis.hours * visitsPerMonth;
     return cleaningHoursPerVisit({
       mode, typeValue: selected.value, area: num(area), glassArea: num(glassArea),
       hours: num(hours), sqmPerHour: Number(selectedPerformanceRate?.sqm_per_hour ?? 0),
@@ -288,6 +291,8 @@ export function useCalculationTotals(input: {
   }, [
     roomCalculation.enabled,
     roomSummary.monthlyHours,
+    kiBasis,
+    kiBasisChanged,
     mode,
     hours,
     area,
