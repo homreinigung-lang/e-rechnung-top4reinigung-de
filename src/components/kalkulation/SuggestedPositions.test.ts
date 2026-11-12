@@ -82,3 +82,25 @@ it.each([
     expect(result.frequency_unit).toBe(unit);
   },
 );
+
+it("explains the actual 73.50 EUR analysis, not a later 49 EUR form value", async () => {
+  const result = await generateCalculation("zwei hallereinigung ein mal im monat ca 210 m");
+  const state = {
+    aiReviewQuestions: [], aiSuggest: { isPending: false, mutate: vi.fn() },
+    kiBasis: { type: result.cleaning_type, mode: result.mode, area: result.area_sqm,
+      hours: result.hours, frequency: result.frequency, frequencyUnit: result.frequency_unit,
+      pricePerSqm: result.price_per_sqm, hourlyRate: result.hourly_rate, floors: result.floors },
+    frequency: "1", frequencyUnit: "month", annualVisits: 12, visitsPerMonth: 1,
+    kiBillingPeriod: result.billing_period, kiPricingBasis: result.pricing_basis,
+    kiItems: result.items.map((item, index) => ({ ...item, id: String(index), quantity: String(item.quantity), unit_price: String(item.unit_price) })),
+    kiPositions: result.items, kiTotal: 73.5, kiItemChanged: false, kiBasisChanged: true,
+    area: "210", mode: "area", hours: "0", hourlyRate: "35", pricePerSqm: String(35 / 150),
+    setFrequency: vi.fn(), setFrequencyUnit: vi.fn(),
+  } as unknown as KalkulationStateContext;
+  const html = renderToStaticMarkup(createElement(SuggestedPositions, { state }));
+  expect(html).toContain("0,35");
+  expect(html).toContain("73,50");
+  expect(html).not.toContain("49,00");
+  expect(html).not.toContain("0,23");
+  expect(html).toContain("die Kalkulation erneut erstellen");
+});

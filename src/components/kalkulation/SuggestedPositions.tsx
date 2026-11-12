@@ -1,3 +1,4 @@
+import { num } from "./shared";
 import { AlertTriangle, Sparkles, Trash2 } from "lucide-react";
 import { formatMoney, formatNumber, parseGermanNumber } from "@/lib/format";
 import {
@@ -18,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { num } from "./shared";
 import type { KalkulationStateContext } from "./useKalkulationState";
 
 export function SuggestedPositions({
@@ -31,14 +31,9 @@ export function SuggestedPositions({
   const {
     aiReviewQuestions,
     aiSuggest,
-    annualVisits,
     applyKiAnalysis,
-    area,
-    floors,
     frequency,
     frequencyUnit,
-    hourlyRate,
-    hours,
     kiBasis,
     kiBasisChanged,
     kiBillingPeriod,
@@ -50,13 +45,10 @@ export function SuggestedPositions({
     kiPricingBasis,
     kiTotal,
     lvKiTotal,
-    mode,
     patchKiItem,
-    pricePerSqm,
     setKiItems,
     setFrequency,
     setFrequencyUnit,
-    visitsPerMonth,
   } = state;
   return (
     <Card className="border-dashed bg-muted/30">
@@ -222,39 +214,39 @@ export function SuggestedPositions({
                   </p>
                 ) : kiPricingBasis === "floor" ? (
                   <p>
-                    {formatNumber(num(floors))} Etagen × {formatMoney(STAIR_RATE_PER_FLOOR)} ={" "}
-                    {formatMoney(round2(num(floors) * STAIR_RATE_PER_FLOOR))} je Einsatz.
+                    {formatNumber(kiBasis.floors)} Etagen × {formatMoney(STAIR_RATE_PER_FLOOR)} ={" "}
+                    {formatMoney(round2(kiBasis.floors * STAIR_RATE_PER_FLOOR))} je Einsatz.
                   </p>
-                ) : mode === "area" ? (
+                ) : kiBasis.mode === "area" ? (
                   <>
                     <p>
-                      {formatNumber(num(area))} m² × {formatMoney(num(pricePerSqm))}/m² ={" "}
-                      {formatMoney(round2(num(area) * num(pricePerSqm)))} je Einsatz.
+                      {formatNumber(kiBasis.area)} m² × {formatMoney(kiBasis.pricePerSqm)}/m² ={" "}
+                      {formatMoney(round2(kiBasis.area * kiBasis.pricePerSqm))} je Einsatz.
                     </p>
-                    {num(hours) > 0 && (
+                    {kiBasis.hours > 0 && (
                       <p>
-                        Vergleich: {formatNumber(num(hours))} Std. × {formatMoney(num(hourlyRate))}
-                        /Std. = {formatMoney(round2(num(hours) * num(hourlyRate)))} je Einsatz.
+                        Vergleich: {formatNumber(kiBasis.hours)} Std. × {formatMoney(kiBasis.hourlyRate)}
+                        /Std. = {formatMoney(round2(kiBasis.hours * kiBasis.hourlyRate))} je Einsatz.
                       </p>
                     )}
                   </>
                 ) : (
                   <p>
-                    {formatNumber(num(hours))} Std. × {formatMoney(num(hourlyRate))}/Std. ={" "}
-                    {formatMoney(round2(num(hours) * num(hourlyRate)))} je Einsatz.
+                    {formatNumber(kiBasis.hours)} Std. × {formatMoney(kiBasis.hourlyRate)}/Std. ={" "}
+                    {formatMoney(round2(kiBasis.hours * kiBasis.hourlyRate))} je Einsatz.
                   </p>
                 )}
                 {kiBillingPeriod === "month" && (
                   <p>
-                    {formatNumber(num(frequency))} {recurrenceUnitLabel(frequencyUnit)} ={" "}
-                    {formatNumber(annualVisits)} Einsätze/Jahr ÷ 12 = {formatNumber(visitsPerMonth)}{" "}
+                    {formatNumber(kiBasis.frequency)} {recurrenceUnitLabel(kiBasis.frequencyUnit)} ={" "}
+                    {formatNumber(annualVisitsFor(kiBasis.frequency, kiBasis.frequencyUnit))} Einsätze/Jahr ÷ 12 = {formatNumber(annualVisitsFor(kiBasis.frequency, kiBasis.frequencyUnit) / 12)}{" "}
                     Einsätze im Monatsdurchschnitt.
                   </p>
                 )}
-                {mode === "area" &&
-                  num(hours) > 0 &&
-                  Math.abs(num(area) * num(pricePerSqm) - num(hours) * num(hourlyRate)) >
-                    0.2 * num(hours) * num(hourlyRate) && (
+                {kiBasis.mode === "area" &&
+                  kiBasis.hours > 0 &&
+                  Math.abs(kiBasis.area * kiBasis.pricePerSqm - kiBasis.hours * kiBasis.hourlyRate) >
+                    0.2 * kiBasis.hours * kiBasis.hourlyRate && (
                     <p className="font-medium text-amber-800 dark:text-amber-300">
                       Flächenpreis und Stundenansatz weichen um mehr als 20 % ab. Preis und Kosten
                       prüfen.

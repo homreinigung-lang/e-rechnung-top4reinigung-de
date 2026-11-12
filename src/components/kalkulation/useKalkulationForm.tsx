@@ -12,7 +12,7 @@ import { STAIR_RATE_PER_FLOOR, type RecurrenceUnit } from "@/lib/constants";
 import { emptyRoomCalculation, type RoomCalculation } from "@/lib/room-calculation";
 import { useRaumbuch } from "@/lib/raumbuch";
 import { findCleaningTypeRate, type PerformanceRate } from "@/lib/leistungswerte";
-import { pricePerSqmFromHourly } from "@/lib/cleaning-hours";
+import { automaticAreaPrice } from "@/lib/analysis-area-price";
 
 import { type Mode, CLEANING_TYPES, type Attachment, type AiItem, num } from "./shared";
 import { getRouteApi } from "@tanstack/react-router";
@@ -109,17 +109,25 @@ export function useKalkulationForm() {
 
   const selected = CLEANING_TYPES.find((t) => t.value === type) ?? CLEANING_TYPES[0]!;
   const selectedPerformanceRate = findCleaningTypeRate(visiblePerformanceRates, selected.value, selected.label);
+  const [kiBasis, setKiBasis] = useState<{
+    type: string;
+    mode: Mode;
+    area: number;
+    hours: number;
+    frequency: number;
+    frequencyUnit: RecurrenceUnit;
+    pricePerSqm: number;
+    hourlyRate: number;
+    floors: number;
+  } | null>(null);
   // Keine erfundenen Produktivitätswerte oder festen Preisvorgaben verwenden.
   // Der Nutzer bestimmt seinen Stundenpreis; der m²-Preis folgt dem gespeicherten Leistungswert.
   useEffect(() => {
-    const sqmPerHour = Number(selectedPerformanceRate?.sqm_per_hour ?? 0);
-    const hourly = num(hourlyRate);
-    if (sqmPerHour > 0 && hourly > 0) {
-      setPricePerSqm(String(pricePerSqmFromHourly(hourly, sqmPerHour)).replace(".", ","));
-    } else {
-      setPricePerSqm("");
-    }
-  }, [selected.value, selectedPerformanceRate?.sqm_per_hour, hourlyRate]);
+    const next = automaticAreaPrice({ analysis: kiBasis, cleaningType: selected.value,
+      hourlyRate: num(hourlyRate), sqmPerHour: Number(selectedPerformanceRate?.sqm_per_hour ?? 0) });
+    if (next === null) return;
+    setPricePerSqm(next > 0 ? String(next).replace(".", ",") : "");
+  }, [kiBasis, selected.value, selectedPerformanceRate?.sqm_per_hour, hourlyRate]);
 
   /**
    * Raumbuch des verknüpften Projekts. Liegen erfasste Räume vor, kommen
@@ -164,17 +172,7 @@ export function useKalkulationForm() {
   const [kiPricingBasis, setKiPricingBasis] = useState<"area" | "hours" | "floor">("area");
   const [kiPrompt, setKiPrompt] = useState("");
   const [kiOriginalItem, setKiOriginalItem] = useState<AiItem | null>(null);
-  const [kiBasis, setKiBasis] = useState<{
-    type: string;
-    mode: Mode;
-    area: number;
-    hours: number;
-    frequency: number;
-    frequencyUnit: RecurrenceUnit;
-    pricePerSqm: number;
-    hourlyRate: number;
-    floors: number;
-  } | null>(null);
+
   /** Vorschläge der KI-/Grundriss-Analyse – reine Vorschau bis zur Übernahme. */
   const [kiItems, setKiItems] = useState<AiItem[]>([]);
   /** Das Leistungsverzeichnis: einzige Quelle für Angebot, PDF und Speicherung. */
