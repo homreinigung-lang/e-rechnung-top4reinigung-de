@@ -319,3 +319,39 @@ it("verwendet den ausdrücklich gewählten Einmalauftrag auch für Unterhaltsrei
   expect(result.items[0]?.unit).toBe("Pauschal");
   expect(result.items[0]?.unit_price).toBe(200);
 });
+
+describe("Hallenreinigung mit umgangssprachlichem Monatsturnus", () => {
+  it("erkennt den gemeldeten Text und fragt nur noch nach der uneindeutigen Flächeneinheit", async () => {
+    const result = await generateCalculation("zwei hallereinigung\n ein mal im monat ca 210 m");
+    expect(result.cleaning_type).toBe("unterhalt");
+    expect(result.frequency).toBe(1);
+    expect(result.frequency_unit).toBe("month");
+    expect(result.billing_period).toBe("month");
+    expect(result.review_questions).toEqual([
+      "Sind mit 210 m eine Fläche von 210 m² gemeint? Bitte die Fläche mit m² oder qm angeben.",
+    ]);
+    expect(result.items).toEqual([]);
+  });
+  it.each(["ein mal im monat", "einmal im Monat", "1 mal im Monat", "1x monatlich"])("kalkuliert Hallen bei eindeutiger Fläche und %s monatlich", async (rhythm) => {
+    const result = await generateCalculation(`zwei hallereinigung ${rhythm} ca 210 m²`);
+    expect(result.frequency).toBe(1);
+    expect(result.frequency_unit).toBe("month");
+    expect(result.area_sqm).toBe(210);
+    expect(result.review_questions).toEqual([]);
+    expect(result.items.length).toBeGreaterThan(0);
+    expect(result.billing_period).toBe("month");
+  });
+  it("liest getrennte Zahlwörter auch wöchentlich ohne Einmalauftrag", async () => {
+    const result = await generateCalculation("Hallen Reinigung 210 qm zwei mal pro Woche");
+    expect(result.frequency).toBe(2);
+    expect(result.frequency_unit).toBe("week");
+    expect(result.review_questions).toEqual([]);
+  });
+});
+
+it("lässt die ausdrückliche Grundreinigung einer Halle unverändert", async () => {
+  const result = await generateCalculation("Halle 210 qm Grundreinigung ein mal im Monat");
+  expect(result.cleaning_type).toBe("grund");
+  expect(result.frequency).toBe(1);
+  expect(result.frequency_unit).toBe("month");
+});
