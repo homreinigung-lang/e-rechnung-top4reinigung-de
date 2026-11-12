@@ -39,5 +39,7 @@ export const analyzeCalculation = createServerFn({ method: "POST" })
     const { consumeCompanyAiQuota } = await import("./company-ai-access.server");
     await consumeCompanyAiQuota(context.supabase, context.userId);
     const { generateCalculation } = await import("@/lib/item-ai.server");
-    return await generateCalculation(data.prompt, data.recurrence);
+    const { loadCompanySellingPricing } = await import("./company-selling-pricing.server");
+    const pricing = await loadCompanySellingPricing(context.supabase, context.userId);
+    return await generateCalculation(data.prompt, data.recurrence, pricing);
   });

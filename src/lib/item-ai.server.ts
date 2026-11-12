@@ -1,3 +1,4 @@
+import { savedSellingBasis, type CompanySellingPricing } from "./company-selling-pricing";
 import { generateGeminiJson } from "./gemini-json.server";
 import { analysisAiOptions } from "./analysis-ai";
 import {
@@ -31,7 +32,8 @@ export type GeneratedCalculation = {
   review_questions: string[];
   review_notes: string[];
   billing_period: "once" | "month";
-  price_source: "stated" | "estimate";
+  price_source: "stated" | "estimate" | "company";
+  floor_rate?: number;
   pricing_basis: "area" | "hours" | "floor";
 };
 
@@ -298,6 +300,7 @@ function deterministicBaseItem(args: {
   billingPeriod: "once" | "month";
   pricePerSqm: number;
   hourlyRate: number;
+  floorRate?: number;
 }): GeneratedItem | null {
   if (
     !(args.area > 0 || args.hours > 0 || (args.type === "treppenhaus" && args.floors > 0)) ||
@@ -310,7 +313,7 @@ function deterministicBaseItem(args: {
       ? round2(args.area * args.pricePerSqm)
       : args.hours > 0
         ? round2(args.hours * args.hourlyRate)
-        : round2(args.floors * STAIR_RATE_PER_FLOOR);
+        : round2(args.floors * (args.floorRate ?? STAIR_RATE_PER_FLOOR));
   const turnus =
     args.billingPeriod === "once"
       ? "einmalig"
@@ -342,6 +345,7 @@ export async function generateItems(prompt: string): Promise<GeneratedItem[]> {
 export async function generateCalculation(
   prompt: string,
   recurrence?: { value: number; unit: RecurrenceUnit },
+  companyPricing?: CompanySellingPricing,
 ): Promise<GeneratedCalculation> {
   const statedType = explicitCleaningType(prompt);
   const cleaningType = statedType ?? "unterhalt";
@@ -386,17 +390,27 @@ export async function generateCalculation(
 
   const statedSqmPrice = statedPrice(prompt, "m2");
   const statedHourlyRate = statedPrice(prompt, "hour");
-  const pricePerSqm = statedSqmPrice || defaults.pricePerSqm;
-  const hourlyRate = statedHourlyRate || defaults.hourlyRate;
+  const saved = companyPricing ? savedSellingBasis(companyPricing, cleaningType, defaults.label) : null;
+  const hourlyRate = statedHourlyRate || (saved ? saved.minimum : defaults.hourlyRate);
+  let pricePerSqm = statedSqmPrice || (saved ? (saved.sqmPerHour > 0 ? hourlyRate / saved.sqmPerHour : 0) : defaults.pricePerSqm);
+  const floorRate = saved ? hourlyRate * saved.minutesPerFloor / 60 : STAIR_RATE_PER_FLOOR;
   // „21,65 Stunden“ kann sonst eine Monatssumme statt Stunden pro Einsatz sein.
   // Nur eine explizit genannte Dauer je Einsatz wird in das Stundenfeld übernommen.
   const hoursMatch = normalizedText(prompt).match(
     /(\d+(?:[.,]\d+)?)\s*(?:stunden?|std\.?|h)\b(?:\s*(?:pro|je)\s*(?:einsatz|besuch|reinigung))?/i,
   );
   const hours = hoursMatch ? num(hoursMatch[1]) : 0;
+  if (saved && area > 0 && hours > 0 && !statedSqmPrice) pricePerSqm = hours * hourlyRate / area;
   const pricingBasis = area > 0 ? "area" : hours > 0 ? "hours" : "floor";
+  const calculatedHours = hours || (saved ? (area > 0 && saved.sqmPerHour > 0 ? area / saved.sqmPerHour : floors > 0 && saved.minutesPerFloor > 0 ? floors * saved.minutesPerFloor / 60 : 0) : 0);
 
   const reviewQuestions: string[] = [];
+  if (saved && !statedSqmPrice && !statedHourlyRate && saved.minimum <= 0)
+    reviewQuestions.push("Bitte den Netto-Verkaufspreis pro Stunde in den Firmeneinstellungen speichern.");
+  if (saved && (area > 0 || corridorArea > 0) && !statedSqmPrice && hours <= 0 && saved.sqmPerHour <= 0)
+    reviewQuestions.push("Bitte einen passenden Leistungswert (m²/Std.) für diese Reinigungsart speichern.");
+  if (saved && pricingBasis === "floor" && floors > 0 && saved.minutesPerFloor <= 0)
+    reviewQuestions.push("Bitte Minuten je Etage in den gespeicherten Treppenhaus-Leistungswerten ergänzen.");
   if (unconfirmedArea > 0 && inferredArea <= 0) {
     reviewQuestions.push(`Sind mit ${unconfirmedArea} m eine Fläche von ${unconfirmedArea} m² gemeint? Bitte die Fläche mit m² oder qm angeben.`);
   }
@@ -461,15 +475,19 @@ export async function generateCalculation(
     );
   }
   if (
-    ((area > 0 || corridorArea > 0) && !statedSqmPrice) ||
-    (area <= 0 && hours > 0 && !statedHourlyRate)
+    !saved && (((area > 0 || corridorArea > 0) && !statedSqmPrice) ||
+    (area <= 0 && hours > 0 && !statedHourlyRate))
   ) {
     reviewNotes.push(
       "Der verwendete Einheitspreis ist ein Richtwert. Eigene Kosten und vereinbarten Preis prüfen.",
     );
   }
-  if (pricingBasis === "floor" && cleaningType === "treppenhaus") {
+  if (!saved && pricingBasis === "floor" && cleaningType === "treppenhaus") {
     reviewNotes.push("Der Etagenpreis ist ein Richtwert. Treppenfläche und Aufwand prüfen.");
+  }
+  if (saved && saved.minimum > 0) {
+    reviewNotes.push(`Gespeicherter Verkaufspreis: ${saved.minimum.toFixed(2).replace(".", ",")}–${saved.maximum.toFixed(2).replace(".", ",")} €/Std. netto. Vorschlag mit ${hourlyRate.toFixed(2).replace(".", ",")} €/Std.; Kosten werden separat geprüft.`);
+    if (saved.sqmPerHour > 0 && area > 0) reviewNotes.push(`Gespeicherter Leistungswert „${saved.label}“: ${saved.sqmPerHour} m²/Std.; ${area} m² ÷ ${saved.sqmPerHour} = ${round2(calculatedHours)} Std. je Einsatz.`);
   }
   const baseItem = deterministicBaseItem({
     type: cleaningType,
@@ -481,6 +499,7 @@ export async function generateCalculation(
     billingPeriod,
     pricePerSqm,
     hourlyRate,
+    floorRate,
   });
 
   // Die KI liefert nur Kontext. Mengen, Turnus und zusätzliche Positionen
@@ -515,7 +534,8 @@ export async function generateCalculation(
     cleaning_type: cleaningType,
     mode: pricingBasis === "hours" ? "hours" : "area",
     area_sqm: area,
-    hours,
+    hours: calculatedHours,
+    floor_rate: floorRate,
     hourly_rate: hourlyRate,
     price_per_sqm: pricePerSqm,
     frequency,
@@ -528,7 +548,7 @@ export async function generateCalculation(
     review_questions: reviewQuestions,
     review_notes: reviewNotes,
     billing_period: billingPeriod,
-    price_source:
+    price_source: saved && !statedSqmPrice && !statedHourlyRate ? "company" :
       area > 0 || corridorArea > 0
         ? statedSqmPrice > 0
           ? "stated"

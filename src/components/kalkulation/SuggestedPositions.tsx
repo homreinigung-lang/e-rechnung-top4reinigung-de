@@ -214,9 +214,11 @@ export function SuggestedPositions({
                   </p>
                 ) : kiPricingBasis === "floor" ? (
                   <p>
-                    {formatNumber(kiBasis.floors)} Etagen × {formatMoney(STAIR_RATE_PER_FLOOR)} ={" "}
-                    {formatMoney(round2(kiBasis.floors * STAIR_RATE_PER_FLOOR))} je Einsatz.
+                    {formatNumber(kiBasis.floors)} Etagen × {formatMoney(kiBasis.floorRate ?? STAIR_RATE_PER_FLOOR)} ={" "}
+                    {formatMoney(round2(kiBasis.floors * (kiBasis.floorRate ?? STAIR_RATE_PER_FLOOR)))} je Einsatz.
                   </p>
+                ) : kiBasis.mode === "area" && kiBasis.hours > 0 && Math.abs(kiBasis.area * kiBasis.pricePerSqm - kiBasis.hours * kiBasis.hourlyRate) < 0.01 ? (
+                  <p>{formatNumber(kiBasis.area)} m² · {formatNumber(kiBasis.hours)} Std. × {formatMoney(kiBasis.hourlyRate)}/Std. = {formatMoney(round2(kiBasis.hours * kiBasis.hourlyRate))} je Einsatz.</p>
                 ) : kiBasis.mode === "area" ? (
                   <>
                     <p>

@@ -86,6 +86,8 @@ export function useEinstellungenState() {
       calc_labor_burden_percent: String(d["calc_labor_burden_percent"] ?? "32"),
       calc_material_cost_hour: String(d["calc_material_cost_hour"] ?? "1.20"),
       calc_overhead_cost_hour: String(d["calc_overhead_cost_hour"] ?? "3.50"),
+      calc_selling_hourly_min: String(d["calc_selling_hourly_min"] ?? ""),
+      calc_selling_hourly_max: String(d["calc_selling_hourly_max"] ?? ""),
       calc_profit_markup_percent: String(d["calc_profit_markup_percent"] ?? "20"),
     });
   }, [data]);
@@ -95,9 +97,16 @@ export function useEinstellungenState() {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) throw new Error("Nicht angemeldet");
+      const sellingMin = String(form["calc_selling_hourly_min"] ?? "").trim();
+      const sellingMax = String(form["calc_selling_hourly_max"] ?? "").trim();
+      const min = sellingMin ? Number(sellingMin.replace(",", ".")) : null;
+      const max = sellingMax ? Number(sellingMax.replace(",", ".")) : null;
+      if ((min !== null || max !== null) && (!(min !== null && max !== null && Number.isFinite(min) && Number.isFinite(max)) || min! <= 0 || max! < min!)) throw new Error("Bitte einen gültigen Netto-Verkaufspreisbereich angeben.");
       const { error } = await supabase.from("company_settings").upsert(
         {
           ...form,
+          calc_selling_hourly_min: min,
+          calc_selling_hourly_max: max,
           smtp_port: Number(form["smtp_port"] || 587),
           calc_worker_hourly_wage: Number(
             String(form["calc_worker_hourly_wage"] || "0").replace(",", "."),

@@ -148,6 +148,7 @@ export function useKalkulationSuggestions(input: {
               pricePerSqm: res.price_per_sqm,
               hourlyRate: res.hourly_rate,
               floors: res.floors,
+              floorRate: res.floor_rate,
             }
           : null,
       );
