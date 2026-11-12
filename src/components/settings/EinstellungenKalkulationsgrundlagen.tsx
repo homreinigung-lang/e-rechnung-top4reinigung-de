@@ -94,7 +94,7 @@ export function EinstellungenKalkulationsgrundlagen({ state }: { state: Einstell
               <p className="font-semibold">{formatMoney(settingsSelfCost)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Ziel-Verkaufspreis / Std.</p>
+              <p className="text-xs text-muted-foreground">Kosten + Gewinnaufschlag / Std.</p>
               <p className="font-semibold">{formatMoney(settingsTargetRate)}</p>
             </div>
           </div>

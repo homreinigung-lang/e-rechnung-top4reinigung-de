@@ -214,16 +214,18 @@ export function SuggestedPositions({
                   </p>
                 ) : kiPricingBasis === "floor" ? (
                   <p>
-                    {formatNumber(kiBasis.floors)} Etagen × {formatMoney(STAIR_RATE_PER_FLOOR)} ={" "}
-                    {formatMoney(round2(kiBasis.floors * STAIR_RATE_PER_FLOOR))} je Einsatz.
+                    {formatNumber(kiBasis.floors)} Etagen × {formatMoney(kiBasis.floorRate ?? STAIR_RATE_PER_FLOOR)} ={" "}
+                    {formatMoney(round2(kiBasis.floors * (kiBasis.floorRate ?? STAIR_RATE_PER_FLOOR)))} je Einsatz.
                   </p>
+                ) : kiBasis.mode === "area" && kiBasis.hours > 0 && Math.abs(kiBasis.area * kiBasis.pricePerSqm - kiBasis.hours * kiBasis.hourlyRate) < 0.01 ? (
+                  <p>{formatNumber(kiBasis.area)} m² · {formatNumber(kiBasis.hours)} Std. × {formatMoney(kiBasis.hourlyRate)}/Std. = {formatMoney(round2(kiBasis.hours * kiBasis.hourlyRate))} je Einsatz.</p>
                 ) : kiBasis.mode === "area" ? (
                   <>
                     <p>
                       {formatNumber(kiBasis.area)} m² × {formatMoney(kiBasis.pricePerSqm)}/m² ={" "}
                       {formatMoney(round2(kiBasis.area * kiBasis.pricePerSqm))} je Einsatz.
                     </p>
-                    {kiBasis.hours > 0 && (
+                    {kiBasis.hours > 0 && kiBasis.hourlyRate > 0 && (
                       <p>
                         Vergleich: {formatNumber(kiBasis.hours)} Std. × {formatMoney(kiBasis.hourlyRate)}
                         /Std. = {formatMoney(round2(kiBasis.hours * kiBasis.hourlyRate))} je Einsatz.
@@ -244,7 +246,7 @@ export function SuggestedPositions({
                   </p>
                 )}
                 {kiBasis.mode === "area" &&
-                  kiBasis.hours > 0 &&
+                  kiBasis.hours > 0 && kiBasis.hourlyRate > 0 &&
                   Math.abs(kiBasis.area * kiBasis.pricePerSqm - kiBasis.hours * kiBasis.hourlyRate) >
                     0.2 * kiBasis.hours * kiBasis.hourlyRate && (
                     <p className="font-medium text-amber-800 dark:text-amber-300">

@@ -25,11 +25,12 @@ export const suggestItems = createServerFn({ method: "POST" })
 export const analyzeCalculation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: { prompt: string; recurrence?: { value: number; unit: RecurrenceUnit } }) => {
+    (input: { prompt: string; sellingHourlyRate?: number; recurrence?: { value: number; unit: RecurrenceUnit } }) => {
       const prompt = String(input?.prompt ?? "").trim();
       if (prompt.length < 5) throw new Error("Bitte die Leistung kurz beschreiben.");
       return {
         prompt: prompt.slice(0, 4000),
+        sellingHourlyRate: input.sellingHourlyRate === undefined ? undefined : z.number().finite().positive().parse(input.sellingHourlyRate),
         recurrence:
           input.recurrence === undefined ? undefined : recurrenceSchema.parse(input.recurrence),
       };
@@ -39,5 +40,7 @@ export const analyzeCalculation = createServerFn({ method: "POST" })
     const { consumeCompanyAiQuota } = await import("./company-ai-access.server");
     await consumeCompanyAiQuota(context.supabase, context.userId);
     const { generateCalculation } = await import("@/lib/item-ai.server");
-    return await generateCalculation(data.prompt, data.recurrence);
+    const { loadCompanySellingPricing } = await import("./company-selling-pricing.server");
+    const pricing = await loadCompanySellingPricing(context.supabase, context.userId, data.sellingHourlyRate ?? null);
+    return await generateCalculation(data.prompt, data.recurrence, pricing);
   });

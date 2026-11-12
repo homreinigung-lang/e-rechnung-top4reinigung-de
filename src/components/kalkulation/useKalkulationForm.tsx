@@ -119,6 +119,7 @@ export function useKalkulationForm() {
     pricePerSqm: number;
     hourlyRate: number;
     floors: number;
+    floorRate?: number;
   } | null>(null);
   // Keine erfundenen Produktivitätswerte oder festen Preisvorgaben verwenden.
   // Der Nutzer bestimmt seinen Stundenpreis; der m²-Preis folgt dem gespeicherten Leistungswert.
