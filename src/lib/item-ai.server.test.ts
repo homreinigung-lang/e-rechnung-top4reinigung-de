@@ -321,16 +321,16 @@ it("verwendet den ausdrücklich gewählten Einmalauftrag auch für Unterhaltsrei
 });
 
 describe("Hallenreinigung mit umgangssprachlichem Monatsturnus", () => {
-  it("erkennt den gemeldeten Text und fragt nur noch nach der uneindeutigen Flächeneinheit", async () => {
+  it("versteht den gemeldeten Text ohne erneute Eingabe", async () => {
     const result = await generateCalculation("zwei hallereinigung\n ein mal im monat ca 210 m");
     expect(result.cleaning_type).toBe("unterhalt");
     expect(result.frequency).toBe(1);
     expect(result.frequency_unit).toBe("month");
     expect(result.billing_period).toBe("month");
-    expect(result.review_questions).toEqual([
-      "Sind mit 210 m eine Fläche von 210 m² gemeint? Bitte die Fläche mit m² oder qm angeben.",
-    ]);
-    expect(result.items).toEqual([]);
+    expect(result.area_sqm).toBe(210);
+    expect(result.review_questions).toEqual([]);
+    expect(result.items.length).toBeGreaterThan(0);
+    expect(result.review_notes).toContain("Die Angabe „210 m“ wurde als 210 m² Reinigungsfläche verstanden.");
   });
   it.each(["ein mal im monat", "einmal im Monat", "1 mal im Monat", "1x monatlich"])("kalkuliert Hallen bei eindeutiger Fläche und %s monatlich", async (rhythm) => {
     const result = await generateCalculation(`zwei hallereinigung ${rhythm} ca 210 m²`);
@@ -354,4 +354,11 @@ it("lässt die ausdrückliche Grundreinigung einer Halle unverändert", async ()
   expect(result.cleaning_type).toBe("grund");
   expect(result.frequency).toBe(1);
   expect(result.frequency_unit).toBe("month");
+});
+
+it("macht aus einer ausdrücklich linearen Angabe keine Reinigungsfläche", async () => {
+  const result = await generateCalculation("Halle reinigen einmal im Monat, 210 m lang");
+  expect(result.area_sqm).toBe(0);
+  expect(result.items).toEqual([]);
+  expect(result.review_questions).toContain("Sind mit 210 m eine Fläche von 210 m² gemeint? Bitte die Fläche mit m² oder qm angeben.");
 });

@@ -349,14 +349,18 @@ export async function generateCalculation(
 
   const recurring = ["praxis", "buero", "unterhalt", "treppenhaus"].includes(cleaningType);
   const statedArea = explicitArea(prompt);
-  // A bare meter value may mean floor area, but must not silently become m².
+  // In an area-cleaning description, colloquial "210 m" denotes floor area.
+  // Keep glass/stair or explicitly linear dimensions ambiguous.
   const unconfirmedArea = statedArea > 0 ? 0 : num(normalizedText(prompt).match(/(\d+(?:[.,]\d+)?)\s*m\b/i)?.[1]);
+  const inferredArea = statedType && !["glas", "treppenhaus"].includes(statedType) &&
+    !/\b(?:laufmeter|lfm|länge|laenge|lang|breit|breite|hoch|höhe|hoehe)\b/i.test(normalizedText(prompt))
+    ? unconfirmedArea : 0;
   const floors = explicitFloors(prompt);
   const corridorArea =
     cleaningType === "treppenhaus" && floors > 0 ? additionalCorridorArea(prompt) : 0;
   // The corridor's m² are not the staircase's area. Keep the staircase on
   // its floor basis and add the corridor as its own proposal below.
-  const area = corridorArea > 0 ? 0 : statedArea;
+  const area = corridorArea > 0 ? 0 : statedArea || inferredArea;
 
   const statedFrequency = recurrence ?? explicitFrequency(prompt);
   const annualFrequency =
@@ -393,7 +397,7 @@ export async function generateCalculation(
   const pricingBasis = area > 0 ? "area" : hours > 0 ? "hours" : "floor";
 
   const reviewQuestions: string[] = [];
-  if (unconfirmedArea > 0) {
+  if (unconfirmedArea > 0 && inferredArea <= 0) {
     reviewQuestions.push(`Sind mit ${unconfirmedArea} m eine Fläche von ${unconfirmedArea} m² gemeint? Bitte die Fläche mit m² oder qm angeben.`);
   }
   if (corridorArea > 0 && hours > 0) {
@@ -437,6 +441,7 @@ export async function generateCalculation(
     );
   }
   const reviewNotes: string[] = [];
+  if (inferredArea > 0) reviewNotes.push(`Die Angabe „${inferredArea} m“ wurde als ${inferredArea} m² Reinigungsfläche verstanden.`);
   const extraServices = [
     ["glas", /\b(?:glas|fenster|scheiben)(?:reinigung)?\b/i, "Fenster/Glas"],
     ["treppenhaus", /\b(?:treppe|treppenhaus)(?:reinigung)?\b/i, "Treppenhaus"],
