@@ -29,14 +29,6 @@ export function EinstellungenKalkulationsgrundlagen({ state }: { state: Einstell
       </summary>
 
       <div className="space-y-6 border-t px-6 pb-6 pt-5">
-        <section className="space-y-3">
-          <h3 className="font-display font-semibold">Verkaufspreise an Kunden</h3>
-          <p className="text-sm text-muted-foreground">Netto-Verkaufspreis je Arbeitsstunde, getrennt von den internen Kosten. Die KI verwendet den unteren Wert als bearbeitbaren Vorschlag.</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2"><Label htmlFor="calc_selling_hourly_min">Verkaufspreis ab (€ / Std. netto)</Label><Input id="calc_selling_hourly_min" inputMode="decimal" value={form["calc_selling_hourly_min"] ?? ""} onChange={(e) => setForm({ ...form, calc_selling_hourly_min: e.target.value })} /></div>
-            <div className="space-y-2"><Label htmlFor="calc_selling_hourly_max">Verkaufspreis bis (€ / Std. netto)</Label><Input id="calc_selling_hourly_max" inputMode="decimal" value={form["calc_selling_hourly_max"] ?? ""} onChange={(e) => setForm({ ...form, calc_selling_hourly_max: e.target.value })} /></div>
-          </div>
-        </section>
         <div className="space-y-4">
           <div>
             <h3 className="font-display font-semibold">Kostenbasis</h3>

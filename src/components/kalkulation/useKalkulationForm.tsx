@@ -74,13 +74,12 @@ export function useKalkulationForm() {
     void supabase
       .from("company_settings")
       .select(
-        "small_business,calc_selling_hourly_min,calc_worker_hourly_wage,calc_labor_burden_percent,calc_material_cost_hour,calc_overhead_cost_hour,calc_profit_markup_percent",
+        "small_business,calc_worker_hourly_wage,calc_labor_burden_percent,calc_material_cost_hour,calc_overhead_cost_hour,calc_profit_markup_percent",
       )
       .maybeSingle()
       .then(({ data }) => {
         if (!active || !data) return;
         if (data.small_business) setTaxMode("kleinunternehmer");
-        if (Number(data.calc_selling_hourly_min) > 0) setHourlyRate(current => num(current) > 0 ? current : String(data.calc_selling_hourly_min).replace(".", ","));
         setLaborWage(String(Number(data.calc_worker_hourly_wage ?? 15)).replace(".", ","));
         setLaborBurdenPercent(
           String(Number(data.calc_labor_burden_percent ?? 32)).replace(".", ","),

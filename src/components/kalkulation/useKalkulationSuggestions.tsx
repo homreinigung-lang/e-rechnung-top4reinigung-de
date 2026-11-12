@@ -118,6 +118,7 @@ export function useKalkulationSuggestions(input: {
       analyze({
         data: {
           prompt: aiPrompt,
+          sellingHourlyRate: num(hourlyRate) > 0 ? num(hourlyRate) : undefined,
           recurrence:
             recurrence ?? (frequencyUnit === "once" ? { value: 1, unit: "once" } : undefined),
         },
@@ -156,8 +157,8 @@ export function useKalkulationSuggestions(input: {
       const preset = CLEANING_TYPES.find((t) => t.value === res.cleaning_type);
       if (preset) {
         setType(preset.value);
-        setPricePerSqm(dec(res.price_per_sqm > 0 ? res.price_per_sqm : preset.area));
-        setHourlyRate(dec(res.hourly_rate > 0 ? res.hourly_rate : preset.hourly));
+        setPricePerSqm(res.price_per_sqm > 0 ? dec(res.price_per_sqm) : "");
+        setHourlyRate(res.hourly_rate > 0 ? dec(res.hourly_rate) : "");
       }
       setMode(res.mode);
       // Fläche/Stunden kommen aus dem Raumbuch, sobald ein Projekt mit erfassten

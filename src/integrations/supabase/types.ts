@@ -531,8 +531,6 @@ export type Database = {
           calc_labor_burden_percent: number
           calc_material_cost_hour: number
           calc_overhead_cost_hour: number
-          calc_selling_hourly_min: number | null
-          calc_selling_hourly_max: number | null
           calc_profit_markup_percent: number
           country: string
           created_at: string
@@ -573,8 +571,6 @@ export type Database = {
           calc_labor_burden_percent?: number
           calc_material_cost_hour?: number
           calc_overhead_cost_hour?: number
-          calc_selling_hourly_min?: number | null
-          calc_selling_hourly_max?: number | null
           calc_profit_markup_percent?: number
           country?: string
           created_at?: string
@@ -615,8 +611,6 @@ export type Database = {
           calc_labor_burden_percent?: number
           calc_material_cost_hour?: number
           calc_overhead_cost_hour?: number
-          calc_selling_hourly_min?: number | null
-          calc_selling_hourly_max?: number | null
           calc_profit_markup_percent?: number
           country?: string
           created_at?: string

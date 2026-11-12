@@ -1,19 +1,16 @@
 import { findCleaningTypeRate, type PerformanceRate } from "./leistungswerte";
 
 export type CompanySellingPricing = {
-  minimum: number | null;
-  maximum: number | null;
+  hourlyRate: number | null;
   rates: PerformanceRate[];
 };
 
 export function savedSellingBasis(pricing: CompanySellingPricing, type: string, label: string) {
-  const minimum = Number(pricing.minimum);
-  const maximum = Number(pricing.maximum);
-  const valid = minimum > 0 && Number.isFinite(minimum) && maximum >= minimum && Number.isFinite(maximum);
+  const hourlyRate = Number(pricing.hourlyRate);
+  const valid = hourlyRate > 0 && Number.isFinite(hourlyRate);
   const rate = findCleaningTypeRate(pricing.rates, type, label);
   return {
-    minimum: valid ? minimum : 0,
-    maximum: valid ? maximum : 0,
+    hourlyRate: valid ? hourlyRate : 0,
     sqmPerHour: Number(rate?.sqm_per_hour ?? 0),
     minutesPerFloor: Number(rate?.minutes_per_floor ?? 0),
     label: rate?.label ?? "",

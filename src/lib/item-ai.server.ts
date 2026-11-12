@@ -32,7 +32,7 @@ export type GeneratedCalculation = {
   review_questions: string[];
   review_notes: string[];
   billing_period: "once" | "month";
-  price_source: "stated" | "estimate" | "company";
+  price_source: "stated" | "estimate" | "job";
   floor_rate?: number;
   pricing_basis: "area" | "hours" | "floor";
 };
@@ -391,7 +391,7 @@ export async function generateCalculation(
   const statedSqmPrice = statedPrice(prompt, "m2");
   const statedHourlyRate = statedPrice(prompt, "hour");
   const saved = companyPricing ? savedSellingBasis(companyPricing, cleaningType, defaults.label) : null;
-  const hourlyRate = statedHourlyRate || (saved ? saved.minimum : defaults.hourlyRate);
+  const hourlyRate = statedHourlyRate || (saved ? saved.hourlyRate : defaults.hourlyRate);
   let pricePerSqm = statedSqmPrice || (saved ? (saved.sqmPerHour > 0 ? hourlyRate / saved.sqmPerHour : 0) : defaults.pricePerSqm);
   const floorRate = saved ? hourlyRate * saved.minutesPerFloor / 60 : STAIR_RATE_PER_FLOOR;
   // „21,65 Stunden“ kann sonst eine Monatssumme statt Stunden pro Einsatz sein.
@@ -405,8 +405,8 @@ export async function generateCalculation(
   const calculatedHours = hours || (saved ? (area > 0 && saved.sqmPerHour > 0 ? area / saved.sqmPerHour : floors > 0 && saved.minutesPerFloor > 0 ? floors * saved.minutesPerFloor / 60 : 0) : 0);
 
   const reviewQuestions: string[] = [];
-  if (saved && !statedSqmPrice && !statedHourlyRate && saved.minimum <= 0)
-    reviewQuestions.push("Bitte den Netto-Verkaufspreis pro Stunde in den Firmeneinstellungen speichern.");
+  if (saved && !statedSqmPrice && !statedHourlyRate && saved.hourlyRate <= 0)
+    reviewQuestions.push("Welcher Netto-Verkaufspreis pro Stunde gilt für diesen Auftrag? Bitte oben eingeben oder im Auftragstext nennen.");
   if (saved && (area > 0 || corridorArea > 0) && !statedSqmPrice && hours <= 0 && saved.sqmPerHour <= 0)
     reviewQuestions.push("Bitte einen passenden Leistungswert (m²/Std.) für diese Reinigungsart speichern.");
   if (saved && pricingBasis === "floor" && floors > 0 && saved.minutesPerFloor <= 0)
@@ -485,8 +485,8 @@ export async function generateCalculation(
   if (!saved && pricingBasis === "floor" && cleaningType === "treppenhaus") {
     reviewNotes.push("Der Etagenpreis ist ein Richtwert. Treppenfläche und Aufwand prüfen.");
   }
-  if (saved && saved.minimum > 0) {
-    reviewNotes.push(`Gespeicherter Verkaufspreis: ${saved.minimum.toFixed(2).replace(".", ",")}–${saved.maximum.toFixed(2).replace(".", ",")} €/Std. netto. Vorschlag mit ${hourlyRate.toFixed(2).replace(".", ",")} €/Std.; Kosten werden separat geprüft.`);
+  if (saved && saved.hourlyRate > 0) {
+    reviewNotes.push(`Verkaufspreis für diesen Auftrag: ${hourlyRate.toFixed(2).replace(".", ",")} €/Std. netto. Interne Kosten werden separat geprüft.`);
     if (saved.sqmPerHour > 0 && area > 0) reviewNotes.push(`Gespeicherter Leistungswert „${saved.label}“: ${saved.sqmPerHour} m²/Std.; ${area} m² ÷ ${saved.sqmPerHour} = ${round2(calculatedHours)} Std. je Einsatz.`);
   }
   const baseItem = deterministicBaseItem({
@@ -548,7 +548,7 @@ export async function generateCalculation(
     review_questions: reviewQuestions,
     review_notes: reviewNotes,
     billing_period: billingPeriod,
-    price_source: saved && !statedSqmPrice && !statedHourlyRate ? "company" :
+    price_source: saved && !statedSqmPrice && !statedHourlyRate ? "job" :
       area > 0 || corridorArea > 0
         ? statedSqmPrice > 0
           ? "stated"

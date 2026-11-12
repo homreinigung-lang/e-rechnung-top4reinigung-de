@@ -15,11 +15,11 @@ const db = {
     return builder;
   }),
 };
-beforeEach(() => { calls.length = 0; error = null; });
-it("loads only the authenticated owner's selling prices and active performance rates", async () => {
-  const result = await loadCompanySellingPricing(db as never, userId);
-  expect(result).toEqual({ minimum: 35, maximum: 38, rates: [] });
-  expect(calls).toContainEqual(["company_settings", "user_id", userId]);
+beforeEach(() => { vi.clearAllMocks(); calls.length = 0; error = null; });
+it("loads only the authenticated owner's active performance values and accepts this job's agreed selling price", async () => {
+  const result = await loadCompanySellingPricing(db as never, userId, 41);
+  expect(result).toEqual({ hourlyRate: 41, rates: [] });
+  expect(db.from).not.toHaveBeenCalledWith("company_settings");
   expect(calls).toContainEqual(["performance_rates", "user_id", userId]);
   expect(calls).toContainEqual(["performance_rates", "active", true]);
 });

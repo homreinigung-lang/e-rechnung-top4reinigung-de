@@ -1,3 +1,5 @@
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { AlertTriangle, Sparkles } from "lucide-react";
 import { SpeechToTextButton } from "@/components/SpeechToTextButton";
 import { Button } from "@/components/ui/button";
@@ -109,6 +111,11 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
               onChange={setAiPrompt}
               label="Auftragsbeschreibung diktieren"
             />
+          </div>
+          <div className="max-w-sm space-y-1">
+            <Label htmlFor="job-selling-hourly-rate">Verkaufspreis für diesen Auftrag (€ / Std. netto)</Label>
+            <Input id="job-selling-hourly-rate" inputMode="decimal" value={state.hourlyRate ?? ""} onChange={(event) => state.setHourlyRate(event.target.value)} placeholder="Individuell für diesen Kunden" />
+            <p className="text-xs text-muted-foreground">Gilt nur für diese Kalkulation. Alternativ den vereinbarten Preis im Auftragstext nennen.</p>
           </div>
           <Button
             type="button"
