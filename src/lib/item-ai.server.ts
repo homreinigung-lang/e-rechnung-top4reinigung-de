@@ -112,6 +112,7 @@ function normalizedText(prompt: string) {
     .toLowerCase()
     .replace(/²/g, "2")
     .replace(/×/g, "x")
+    .replace(/\b(ein|zwei|drei|vier|fünf|fuenf|sechs|sieben)\s+mal\b/g, "$1mal")
     .replace(/\s+/g, " ");
 }
 
@@ -236,7 +237,7 @@ function explicitCleaningType(prompt: string): string | null {
     ["wohn", /\b(?:wohnung|wohnungsreinigung|haushaltsreinigung|privathaushalt)\b/i],
     ["grund", /\b(?:grund[- ]?reinigung|tiefenreinigung)\b/i],
     ["bau", /\b(?:bauend[- ]?reinigung|bau[- ]?reinigung)\b/i],
-    ["unterhalt", /\b(?:unterhaltsreinigung|unterhalt)\b/i],
+    ["unterhalt", /\b(?:unterhaltsreinigung|unterhalt|hallen?[- ]?reinigung)\b/i],
     ["treppenhaus", /\b(?:treppenhausreinigung|treppenhaus|treppe)\b/i],
     ["glas", /\b(?:glas[- ]?reinigung|fenster[- ]?reinigung|fenster)\b/i],
   ];
@@ -244,7 +245,7 @@ function explicitCleaningType(prompt: string): string | null {
     const index = text.search(pattern);
     if (index >= 0) matches.push({ type, index });
   }
-  return matches.sort((a, b) => a.index - b.index)[0]?.type ?? null;
+  return matches.sort((a, b) => a.index - b.index)[0]?.type ?? (/\bhallen?\b/i.test(text) ? "unterhalt" : null);
 }
 
 function statedPrice(prompt: string, unit: "m2" | "hour"): number {
@@ -348,12 +349,18 @@ export async function generateCalculation(
 
   const recurring = ["praxis", "buero", "unterhalt", "treppenhaus"].includes(cleaningType);
   const statedArea = explicitArea(prompt);
+  // In an area-cleaning description, colloquial "210 m" denotes floor area.
+  // Keep glass/stair or explicitly linear dimensions ambiguous.
+  const unconfirmedArea = statedArea > 0 ? 0 : num(normalizedText(prompt).match(/(\d+(?:[.,]\d+)?)\s*m\b/i)?.[1]);
+  const inferredArea = statedType && !["glas", "treppenhaus"].includes(statedType) &&
+    !/\b(?:laufmeter|lfm|länge|laenge|lang|breit|breite|hoch|höhe|hoehe)\b/i.test(normalizedText(prompt))
+    ? unconfirmedArea : 0;
   const floors = explicitFloors(prompt);
   const corridorArea =
     cleaningType === "treppenhaus" && floors > 0 ? additionalCorridorArea(prompt) : 0;
   // The corridor's m² are not the staircase's area. Keep the staircase on
   // its floor basis and add the corridor as its own proposal below.
-  const area = corridorArea > 0 ? 0 : statedArea;
+  const area = corridorArea > 0 ? 0 : statedArea || inferredArea;
 
   const statedFrequency = recurrence ?? explicitFrequency(prompt);
   const annualFrequency =
@@ -390,6 +397,9 @@ export async function generateCalculation(
   const pricingBasis = area > 0 ? "area" : hours > 0 ? "hours" : "floor";
 
   const reviewQuestions: string[] = [];
+  if (unconfirmedArea > 0 && inferredArea <= 0) {
+    reviewQuestions.push(`Sind mit ${unconfirmedArea} m eine Fläche von ${unconfirmedArea} m² gemeint? Bitte die Fläche mit m² oder qm angeben.`);
+  }
   if (corridorArea > 0 && hours > 0) {
     reviewQuestions.push(
       "Beziehen sich die Stunden auf das Treppenhaus, den Flur oder beide Leistungen?",
@@ -425,12 +435,13 @@ export async function generateCalculation(
   if (!statedType) {
     reviewQuestions.push("Welche Reinigungsart soll kalkuliert werden?");
   }
-  if (area <= 0 && hours <= 0 && !(cleaningType === "treppenhaus" && floors > 0)) {
+  if (area <= 0 && unconfirmedArea <= 0 && hours <= 0 && !(cleaningType === "treppenhaus" && floors > 0)) {
     reviewQuestions.push(
       "Wie groß ist die Fläche in m² oder wie viele Stunden dauert ein Einsatz?",
     );
   }
   const reviewNotes: string[] = [];
+  if (inferredArea > 0) reviewNotes.push(`Die Angabe „${inferredArea} m“ wurde als ${inferredArea} m² Reinigungsfläche verstanden.`);
   const extraServices = [
     ["glas", /\b(?:glas|fenster|scheiben)(?:reinigung)?\b/i, "Fenster/Glas"],
     ["treppenhaus", /\b(?:treppe|treppenhaus)(?:reinigung)?\b/i, "Treppenhaus"],
