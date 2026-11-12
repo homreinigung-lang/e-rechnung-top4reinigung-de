@@ -225,7 +225,7 @@ export function SuggestedPositions({
                       {formatNumber(kiBasis.area)} m² × {formatMoney(kiBasis.pricePerSqm)}/m² ={" "}
                       {formatMoney(round2(kiBasis.area * kiBasis.pricePerSqm))} je Einsatz.
                     </p>
-                    {kiBasis.hours > 0 && (
+                    {kiBasis.hours > 0 && kiBasis.hourlyRate > 0 && (
                       <p>
                         Vergleich: {formatNumber(kiBasis.hours)} Std. × {formatMoney(kiBasis.hourlyRate)}
                         /Std. = {formatMoney(round2(kiBasis.hours * kiBasis.hourlyRate))} je Einsatz.
@@ -246,7 +246,7 @@ export function SuggestedPositions({
                   </p>
                 )}
                 {kiBasis.mode === "area" &&
-                  kiBasis.hours > 0 &&
+                  kiBasis.hours > 0 && kiBasis.hourlyRate > 0 &&
                   Math.abs(kiBasis.area * kiBasis.pricePerSqm - kiBasis.hours * kiBasis.hourlyRate) >
                     0.2 * kiBasis.hours * kiBasis.hourlyRate && (
                     <p className="font-medium text-amber-800 dark:text-amber-300">
