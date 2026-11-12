@@ -67,3 +67,15 @@ it.each(CLEANING_TYPES.flatMap(selected => (["hours", "area"] as const).map(mode
     expect(summary).toContain(formatMoney(Math.round(totals.suggested * 1.19 * 100) / 100));
   },
 );
+
+it("does not report changed inputs after importing the monthly hall analysis", () => {
+  const basis = { type: "unterhalt", mode: "area" as const, area: 210, hours: 0, frequency: 1, frequencyUnit: "month" as const, pricePerSqm: 0.35, hourlyRate: 35, floors: 0 };
+  const patch = {
+    aiPrompt: "Hallenreinigung 210 qm einmal im Monat", kiPrompt: "Hallenreinigung 210 qm einmal im Monat",
+    kiBasis: basis, kiPricingBasis: "area" as const, kiOriginalItem: null, kiItems: [],
+    mode: "area" as const, type: "unterhalt", selected: CLEANING_TYPES.find(type => type.value === "unterhalt")!,
+    area: "210", hours: "0", hourlyRate: "35", pricePerSqm: "0,35", frequency: "1", frequencyUnit: "month" as const,
+  };
+  expect(calculate(patch).kiBasisChanged).toBe(false);
+  expect(calculate({ ...patch, pricePerSqm: "0,4" }).kiBasisChanged).toBe(true);
+});
