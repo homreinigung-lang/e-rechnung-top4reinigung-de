@@ -8,6 +8,14 @@ const rates = [
  { id: "t", label: "Treppenhaus", usage_type: "Treppenhaus", sqm_per_hour: 110, minutes_per_floor: 8 },
  { id: "f", label: "Glasreinigung", usage_type: "Fenster", sqm_per_hour: 70 },
 ].map(rate => ({ floor_covering: "", active: true, ...rate }));
+it("keeps the exact staircase example clean and calculates the saved eight minutes per floor", async () => {
+ const result = await generateCalculation("Treppenhausreinigung, 4 Etagen, alle 14 Tage", undefined, { hourlyRate: 38, rates });
+ expect(result.review_questions).toEqual([]);
+ expect(result.items).toHaveLength(1);
+ expect(result.items[0]?.description).toBe("Treppenhausreinigung (4 Etagen, 1× alle 2 Wochen (14-tägig))");
+ expect(result.items[0]?.unit_price).toBe(43.91);
+ expect(result.items[0]?.unit).toBe("Monat");
+});
 it.each(CALCULATION_EXAMPLES)("understands the product example $label without price guessing", async ({ prompt }) => {
  const result = await generateCalculation(prompt, undefined, { hourlyRate: 35, rates });
  expect(result.review_questions).toEqual([]);

@@ -8,6 +8,20 @@ import { visitsPerMonth, visitsPerYear } from "@/lib/constants";
 
 vi.mock("@/lib/gemini-json.server", () => ({ generateGeminiJson: vi.fn() }));
 
+it("explains time-based staircase prices without an unrelated area-price warning", () => {
+ const state = {
+  aiReviewQuestions: [], aiSuggest: { isPending: false },
+  kiBasis: { mode: "area", area: 0, hours: 32 / 60, hourlyRate: 38, floors: 4, floorRate: 8 / 60 * 38, pricePerSqm: 0, frequency: 1, frequencyUnit: "fortnight" },
+  kiBillingPeriod: "month", kiPricingBasis: "floor", frequency: "1", frequencyUnit: "fortnight",
+  kiItems: [{ id: "stair", description: "Treppenhausreinigung", quantity: "1", unit: "Monat", unit_price: "43,91" }],
+  kiTotal: 43.91, kiItemChanged: false,
+ } as unknown as KalkulationStateContext;
+ const html = renderToStaticMarkup(createElement(SuggestedPositions, { state, direct: true }));
+ expect(html).toContain("32 Minuten ÷ 60");
+ expect(html).toContain("20,27");
+ expect(html).not.toContain("weichen um mehr als 20 % ab");
+});
+
 it("bietet die Turnusauswahl auch an, wenn der Beschreibung die Häufigkeit fehlt", async () => {
   const prompt = "Treppenhausreinigung 4 Etagen plus 30 m² Flur";
   const result = await generateCalculation(prompt);
@@ -79,6 +93,9 @@ it.each([
     expect(html).toContain("Mit diesem Rhythmus neu berechnen");
     expect(html).toContain("Abrechnungsmenge");
     expect(html).toContain("Abrechnungseinheit");
+    expect(html).toContain("Positionen bearbeiten");
+    expect((html.match(/readonly=""/gi) ?? []).length).toBe(kiItems.length * 4);
+    expect(html).toContain('aria-label="Leistungsbezeichnung"');
     expect(result.frequency_unit).toBe(unit);
   },
 );
