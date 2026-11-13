@@ -230,6 +230,10 @@ export function SuggestedPositions({
                     Die Leistungen werden getrennt berechnet. Maßgeblich sind die oben aufgeführten
                     Positionen und deren Summe.
                   </p>
+                ) : kiPricingBasis === "floor" && kiBasis.hours > 0 && kiBasis.hourlyRate > 0 && Math.abs(kiBasis.hours * kiBasis.hourlyRate - kiBasis.floors * (kiBasis.floorRate ?? STAIR_RATE_PER_FLOOR)) < 0.01 ? (
+                  <p>
+                    {formatNumber(kiBasis.floors)} Etagen · {formatNumber(kiBasis.hours * 60)} Minuten ÷ 60 × {formatMoney(kiBasis.hourlyRate)}/Std. = {formatMoney(round2(kiBasis.hours * kiBasis.hourlyRate))} je Einsatz.
+                  </p>
                 ) : kiPricingBasis === "floor" ? (
                   <p>
                     {formatNumber(kiBasis.floors)} Etagen × {formatMoney(kiBasis.floorRate ?? STAIR_RATE_PER_FLOOR)} ={" "}
@@ -264,6 +268,7 @@ export function SuggestedPositions({
                   </p>
                 )}
                 {kiBasis.mode === "area" &&
+                  kiPricingBasis !== "floor" && kiBasis.area > 0 &&
                   kiBasis.hours > 0 && kiBasis.hourlyRate > 0 &&
                   Math.abs(kiBasis.area * kiBasis.pricePerSqm - kiBasis.hours * kiBasis.hourlyRate) >
                     0.2 * kiBasis.hours * kiBasis.hourlyRate && (
