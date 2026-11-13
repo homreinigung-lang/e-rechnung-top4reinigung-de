@@ -99,8 +99,10 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
         </CardHeader>
         <CardContent className="space-y-3">
           <CalculationExamples disabled={aiSuggest.isPending} onSelect={setAiPrompt} />
+          <Label htmlFor="ki-job-description">Was soll gereinigt werden?</Label>
           <div className="flex items-start gap-2">
             <Textarea
+              id="ki-job-description"
               rows={3}
               className="flex-1"
               placeholder="z. B. Büroreinigung 150 m² plus Teeküche 20 m² und WC 12 m², einmal pro Woche"
@@ -157,7 +159,16 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
       )}
 
       {mode === "ki" && <SuggestedPositions state={state} direct />}
-      {mode === "ki" && <KiTrainingPanel state={state} />}
+      {mode === "ki" && (
+        <details className="rounded-xl border p-4">
+          <summary className="cursor-pointer text-sm font-medium">
+            Erfahrungswerte speichern (optional)
+          </summary>
+          <div className="mt-4">
+            <KiTrainingPanel state={state} />
+          </div>
+        </details>
+      )}
       {mode === "room" && <CleaningParameters state={state} />}
     </div>
   );
