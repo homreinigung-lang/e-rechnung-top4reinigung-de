@@ -444,7 +444,6 @@ export async function generateCalculation(
 
   if (hours > 0 && !statedSqmPrice) pricingBasis = "hours";
   const roomNotes: string[] = [];
-  const missingRoomRates: string[] = [];
   if (breakdown && primaryArea > 0 && hours <= 0) {
     const baseArea = breakdown.included ? primaryArea - roomArea : primaryArea;
     const basePerformance = saved ? saved.sqmPerHour : defaults.performance;
@@ -455,8 +454,7 @@ export async function generateCalculation(
       roomNotes.push(`Hauptfläche: ${baseArea} m² ÷ ${basePerformance} m²/Std.`);
       for (const room of breakdown.rooms) {
         const usage_type = /küche|kueche/.test(room.name) ? "Küche" : /flur/.test(room.name) ? "Flur" : "WC";
-        const rate = findRate(rates, { usage_type }) ?? (companyPricing ? null : findRate(fallbackRates, { usage_type }));
-        if (!rate || rate.sqm_per_hour <= 0) { missingRoomRates.push(room.name); continue; }
+        const rate = findRate(rates, { usage_type }) ?? findRate(fallbackRates, { usage_type })!;
         calculatedHours += room.area / rate.sqm_per_hour;
         roomNotes.push(`${room.name}: ${room.area} m² ÷ ${rate.sqm_per_hour} m²/Std.${rates.includes(rate) ? "" : " (Richtwert)"}`);
       }
@@ -467,7 +465,6 @@ export async function generateCalculation(
     }
   }
   const reviewQuestions: string[] = [];
-  if (missingRoomRates.length) reviewQuestions.push(`Bitte passende Leistungswerte (m²/Std.) für ${missingRoomRates.join(" und ")} in den Firmendaten speichern.`);
   if (/\b(?:insgesamt|gesamtfläche|gesamtflaeche)\b/.test(normalizedText(prompt)) && countedObjectArea(normalizedText(prompt)) > statedArea) reviewQuestions.push("Die Gesamtfläche ist kleiner als die Summe der genannten Einzelflächen. Bitte Gesamtfläche oder Fläche je Objekt prüfen.");
   if (duration.ambiguous) reviewQuestions.push("Bitte die gesamte Reinigungsdauer je Einsatz eindeutig angeben, z. B. 1 Stunde 30 Minuten.");
   if (periodNeedsRecurrence && frequency > 0) reviewQuestions.push("Die Zeit ist als Wochen-/Monatssumme angegeben. Bitte den wiederkehrenden Turnus ergänzen.");

@@ -102,8 +102,20 @@ it.each([null, -1, Number.NaN])("asks for incomplete or invalid company cost inp
     calc_material_cost_hour: 2, calc_overhead_cost_hour: 4, calc_profit_markup_percent: 25 })).toBeNull();
 });
 
-it("asks for a missing saved room performance instead of using an industry estimate", async () => {
+it("calculates missing room performance automatically and labels the estimate", async () => {
   const result = await generateCalculation("Büroreinigung 150 qm plus Küche 20 qm einmal pro Woche", undefined, saved);
-  expect(result.items).toEqual([]);
-  expect(result.review_questions.join(" ")).toContain("Leistungswerte");
+  expect(result.review_questions).toEqual([]);
+  expect(result.items[0]?.unit_price).toBe(182);
+  expect(result.hours).toBeCloseTo(1.2);
+  expect(result.review_notes.join(" ")).toContain("(Richtwert)");
+});
+
+it("immediately calculates the screenshot example with saved company pricing and room estimates", async () => {
+  const result = await generateCalculation("Büroreinigung 150 m² plus Teeküche 20 m² und WC 12 m², einmal pro Woche", undefined, {
+    ...saved, hourlyRate: 33.35, source: "company", costBasis: { selfCostPerHour: 25.65, profitMarkupPercent: 30 },
+  });
+  expect(result.review_questions).toEqual([]);
+  expect(result.hours).toBeCloseTo(1.4);
+  expect(result.items[0]?.unit_price).toBe(202.32);
+  expect(result.review_notes.filter(note => note.includes("(Richtwert)"))).toHaveLength(2);
 });
