@@ -1,3 +1,4 @@
+import { CalculationExamples } from "./CalculationExamples";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, Sparkles } from "lucide-react";
@@ -93,16 +94,16 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
             <Sparkles className="size-5" /> KI-Assistent
           </CardTitle>
           <CardDescription>
-            Auftrag kurz beschreiben – Reinigungstyp, Fläche, Turnus, Etagen und die
-            Leistungspositionen werden automatisch übernommen.
+            Auftrag beschreiben oder Beispiel wählen. Fehlende Angaben ergänzen; Zeit und Preis werden vor der Übernahme angezeigt.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <CalculationExamples disabled={aiSuggest.isPending} onSelect={setAiPrompt} />
           <div className="flex items-start gap-2">
             <Textarea
               rows={3}
               className="flex-1"
-              placeholder="z. B. Bürogebäude 450 m², 3 Etagen, 2× wöchentlich Unterhaltsreinigung, Sanitär täglich, Fensterreinigung 2× jährlich"
+              placeholder="z. B. Büroreinigung 150 m² plus Teeküche 20 m² und WC 12 m², einmal pro Woche"
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
             />

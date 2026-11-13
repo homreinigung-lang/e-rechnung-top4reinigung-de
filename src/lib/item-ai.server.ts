@@ -1,3 +1,4 @@
+import { normalizeCalculationLanguage, readDescribedDuration } from "./calculation-language";
 import { findRate, DEFAULT_PERFORMANCE_RATES } from "./leistungswerte";
 import { savedSellingBasis, type CompanySellingPricing } from "./company-selling-pricing";
 import { generateGeminiJson } from "./gemini-json.server";
@@ -111,16 +112,20 @@ function normalizeItems(value: unknown): GeneratedItem[] {
 }
 
 function normalizedText(prompt: string) {
-  return canonicalPrompt(prompt)
-    .toLowerCase()
-    .replace(/²/g, "2")
-    .replace(/×/g, "x")
-    .replace(/\b(ein|zwei|drei|vier|fünf|fuenf|sechs|sieben)\s+mal\b/g, "$1mal")
-    .replace(/\s+/g, " ");
+  return normalizeCalculationLanguage(prompt);
+}
+
+function countedObjectArea(text: string): number {
+  const perRoom = text.match(/\b(\d+)\s*(?:hallen?|büros?|bueros?|räume|raeume|zimmer|etagen?)\s*(?:mit\s+)?(?:jeweils|je)\s*(?:ca\.?\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(?:m2|qm|quadratmeter)\b/i);
+  return perRoom ? Number(perRoom[1]) * num(perRoom[2]) : 0;
 }
 
 function explicitArea(prompt: string): number {
   const text = normalizedText(prompt);
+  const total = text.match(/(?:insgesamt|gesamtfläche|gesamtflaeche)\s*(?:von|:)?\s*(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(?:m2|qm|quadratmeter)\b/i);
+  if (total) return num(total[1]);
+  const counted = countedObjectArea(text);
+  if (counted > 0) return counted;
   const match = text.match(
     /(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(?:m2|qm|quadratmeter)\b/i,
   );
@@ -169,8 +174,14 @@ function roomAreaBreakdown(prompt: string) {
 
 function explicitFrequency(prompt: string): { value: number; unit: RecurrenceUnit } | null {
   const text = normalizedText(prompt).replace(/inderwoche/g, "in der woche");
-  const connector = "(?:pro\\s+|in\\s+der\\s+|inder\\s+|im\\s+|die\\s+|je\\s+|/\\s*)?";
+  const connector = "(?:pro\\s+|in\\s+(?:der|dem)\\s+|inder\\s+|im\\s+|die\\s+|je\\s+|/\\s*)?";
 
+  const fortnight = text.match(/\b(?:(\d+)\s*(?:x|mal)\s+)?alle\s+(?:(?:14|vierzehn)\s*tage|2\s*wochen)\b/i);
+  if (fortnight) return { value: fortnight[1] ? Number(fortnight[1]) : 1, unit: "fortnight" };
+  if (/\b(?:jede\s+zweite\s+woche|14[- ]?tägig|14[- ]?taegig)\b/i.test(text)) return { value: 1, unit: "fortnight" };
+  if (/\b(?:jeden\s+zweiten\s+monat)\b/i.test(text)) return { value: 0.5, unit: "month" };
+  const months = text.match(/\balle\s+(\d+)\s*monate\b/i);
+  if (months && Number(months[1]) > 0) return { value: 1 / Number(months[1]), unit: "month" };
   const days = text.match(
     /\b([1-7])\s*(?:tage?n?|einsätze?)\s*(?:pro|in der|die|je|\/)\s*woche\b/i,
   );
@@ -415,12 +426,12 @@ export async function generateCalculation(
   const hourlyRate = statedHourlyRate || (saved ? saved.hourlyRate : defaults.hourlyRate);
   let pricePerSqm = statedSqmPrice || (saved ? (saved.sqmPerHour > 0 ? hourlyRate / saved.sqmPerHour : 0) : defaults.pricePerSqm);
   const floorRate = saved ? hourlyRate * saved.minutesPerFloor / 60 : STAIR_RATE_PER_FLOOR;
-  // „21,65 Stunden“ kann sonst eine Monatssumme statt Stunden pro Einsatz sein.
-  // Nur eine explizit genannte Dauer je Einsatz wird in das Stundenfeld übernommen.
-  const hoursMatch = normalizedText(prompt).match(
-    /(\d+(?:[.,]\d+)?)\s*(?:stunden?|std\.?|h)\b(?:\s*(?:pro|je)\s*(?:einsatz|besuch|reinigung))?/i,
-  );
-  const hours = hoursMatch ? num(hoursMatch[1]) : 0;
+  // Keep visit durations distinct from explicitly stated weekly/monthly totals.
+  // Period totals are distributed over the known recurrence, never multiplied again.
+  const duration = readDescribedDuration(prompt);
+  const periodVisits = duration.period === "month" ? visitsPerMonth(frequency, frequencyUnit) : duration.period === "week" ? visitsPerMonth(frequency, frequencyUnit) / (52 / 12) : 1;
+  const periodNeedsRecurrence = duration.period !== "visit" && (billingPeriod === "once" || frequency <= 0);
+  const hours = duration.ambiguous || periodNeedsRecurrence ? 0 : duration.hours / (periodVisits || 1);
   if (area > 0 && hours > 0 && !statedSqmPrice) pricePerSqm = hours * hourlyRate / area;
   let pricingBasis: "area" | "hours" | "floor" = area > 0 ? "area" : hours > 0 ? "hours" : "floor";
   let calculatedHours = hours || (saved ? (area > 0 && saved.sqmPerHour > 0 ? area / saved.sqmPerHour : floors > 0 && saved.minutesPerFloor > 0 ? floors * saved.minutesPerFloor / 60 : 0) : 0);
@@ -448,6 +459,9 @@ export async function generateCalculation(
     }
   }
   const reviewQuestions: string[] = [];
+  if (/\b(?:insgesamt|gesamtfläche|gesamtflaeche)\b/.test(normalizedText(prompt)) && countedObjectArea(normalizedText(prompt)) > statedArea) reviewQuestions.push("Die Gesamtfläche ist kleiner als die Summe der genannten Einzelflächen. Bitte Gesamtfläche oder Fläche je Objekt prüfen.");
+  if (duration.ambiguous) reviewQuestions.push("Bitte die gesamte Reinigungsdauer je Einsatz eindeutig angeben, z. B. 1 Stunde 30 Minuten.");
+  if (periodNeedsRecurrence && frequency > 0) reviewQuestions.push("Die Zeit ist als Wochen-/Monatssumme angegeben. Bitte den wiederkehrenden Turnus ergänzen.");
   if (["buero", "praxis", "unterhalt", "wohn"].includes(cleaningType) && hours <= 0 && !statedSqmPrice) {
     const text = normalizedText(prompt);
     const missingRooms = [
@@ -508,12 +522,13 @@ export async function generateCalculation(
   if (!statedType) {
     reviewQuestions.push("Welche Reinigungsart soll kalkuliert werden?");
   }
-  if (area <= 0 && unconfirmedArea <= 0 && hours <= 0 && !(cleaningType === "treppenhaus" && floors > 0)) {
+  if (area <= 0 && unconfirmedArea <= 0 && duration.hours <= 0 && !(cleaningType === "treppenhaus" && floors > 0)) {
     reviewQuestions.push(
       "Wie groß ist die Fläche in m² oder wie viele Stunden dauert ein Einsatz?",
     );
   }
   const reviewNotes: string[] = [...roomNotes];
+  if (duration.period !== "visit" && !periodNeedsRecurrence && duration.hours > 0) reviewNotes.push(`Die angegebenen ${duration.hours} Stunden pro ${duration.period === "month" ? "Monat" : "Woche"} wurden auf die geplanten Einsätze verteilt, nicht je Besuch erneut berechnet.`);
   if (inferredArea > 0) reviewNotes.push(`Die Angabe „${inferredArea} m“ wurde als ${inferredArea} m² Reinigungsfläche verstanden.`);
   const extraServices = [
     ["glas", /\b(?:glas|fenster|scheiben)(?:reinigung)?\b/i, "Fenster/Glas"],
