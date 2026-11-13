@@ -117,8 +117,8 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
           </div>
           <div className="max-w-sm space-y-1">
             <Label htmlFor="job-selling-hourly-rate">Verkaufspreis für diesen Auftrag (€ / Std. netto)</Label>
-            <Input id="job-selling-hourly-rate" inputMode="decimal" value={state.hourlyRate ?? ""} onChange={(event) => state.setHourlyRate(event.target.value)} placeholder="Individuell für diesen Kunden" />
-            <p className="text-xs text-muted-foreground">Gilt nur für diese Kalkulation. Alternativ den vereinbarten Preis im Auftragstext nennen.</p>
+            <Input id="job-selling-hourly-rate" inputMode="decimal" value={state.hourlyRate ?? ""} onChange={(event) => state.setHourlyRate(event.target.value)} placeholder="Automatisch aus Firmendaten" />
+            <p className="text-xs text-muted-foreground">Optional: überschreibt den aus gespeicherten Firmenkosten und Gewinnaufschlag berechneten Preis. Ein Preis im Auftragstext hat Vorrang.</p>
           </div>
           <Button
             type="button"
@@ -162,7 +162,7 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
       {mode === "ki" && (
         <details className="rounded-xl border p-4">
           <summary className="cursor-pointer text-sm font-medium">
-            KI-Training
+            Erfahrungswerte speichern (optional)
           </summary>
           <div className="mt-4">
             <KiTrainingPanel state={state} />

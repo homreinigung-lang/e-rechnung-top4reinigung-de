@@ -5,7 +5,7 @@ export function CalculationExamples({ disabled = false, onSelect }: { disabled?:
   return (
     <details className="rounded-md border p-3">
       <summary className="cursor-pointer text-sm font-medium">Beispiele für Ihren Auftrag</summary>
-      <p className="mt-2 text-xs text-muted-foreground">Ein Beispiel ersetzt die Beschreibung. Fläche und Turnus anpassen; den Verkaufspreis legen Sie selbst fest.</p>
+      <p className="mt-2 text-xs text-muted-foreground">Ein Beispiel ersetzt die Beschreibung. Fläche und Turnus anpassen. Ohne vereinbarten Preis werden die gespeicherten Firmenkosten und der Gewinnaufschlag verwendet.</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {CALCULATION_EXAMPLES.map(example => (
           <Button key={example.label} type="button" variant="outline" size="sm" disabled={disabled} onClick={() => onSelect(example.prompt)}>{example.label}</Button>

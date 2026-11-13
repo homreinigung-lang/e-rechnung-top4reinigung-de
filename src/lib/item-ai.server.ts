@@ -34,7 +34,7 @@ export type GeneratedCalculation = {
   review_questions: string[];
   review_notes: string[];
   billing_period: "once" | "month";
-  price_source: "stated" | "estimate" | "job";
+  price_source: "stated" | "estimate" | "job" | "company";
   floor_rate?: number;
   pricing_basis: "area" | "hours" | "floor";
 };
@@ -284,7 +284,13 @@ function statedPrice(prompt: string, unit: "m2" | "hour"): number {
   const match = text.match(
     new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:€|eur|euro)\\s*(?:pro|je|/)\\s*${suffix}\\b`, "i"),
   );
-  return match ? num(match[1]) : 0;
+  if (match) return num(match[1]);
+  // Common dictated wording: "38€ kostet stunden" / "38 Euro die Stunde".
+  if (unit === "hour") {
+    const spoken = text.match(/(\d+(?:[.,]\d+)?)\s*(?:€|eur|euro)\s*(?:kostet?\s*(?:die\s*)?|die\s+|je\s+)(?:stunden?|std\.?)(?![a-z])/i);
+    if (spoken) return num(spoken[1]);
+  }
+  return 0;
 }
 
 function explicitFloors(prompt: string): number {
@@ -438,9 +444,10 @@ export async function generateCalculation(
 
   if (hours > 0 && !statedSqmPrice) pricingBasis = "hours";
   const roomNotes: string[] = [];
+  const missingRoomRates: string[] = [];
   if (breakdown && primaryArea > 0 && hours <= 0) {
     const baseArea = breakdown.included ? primaryArea - roomArea : primaryArea;
-    const basePerformance = saved?.sqmPerHour || defaults.performance;
+    const basePerformance = saved ? saved.sqmPerHour : defaults.performance;
     const rates = companyPricing?.rates ?? [];
     const fallbackRates = DEFAULT_PERFORMANCE_RATES.map((r) => ({ ...r, id: r.label, active: true }));
     if (baseArea >= 0 && basePerformance > 0) {
@@ -448,7 +455,8 @@ export async function generateCalculation(
       roomNotes.push(`Hauptfläche: ${baseArea} m² ÷ ${basePerformance} m²/Std.`);
       for (const room of breakdown.rooms) {
         const usage_type = /küche|kueche/.test(room.name) ? "Küche" : /flur/.test(room.name) ? "Flur" : "WC";
-        const rate = findRate(rates, { usage_type }) ?? findRate(fallbackRates, { usage_type })!;
+        const rate = findRate(rates, { usage_type }) ?? (companyPricing ? null : findRate(fallbackRates, { usage_type }));
+        if (!rate || rate.sqm_per_hour <= 0) { missingRoomRates.push(room.name); continue; }
         calculatedHours += room.area / rate.sqm_per_hour;
         roomNotes.push(`${room.name}: ${room.area} m² ÷ ${rate.sqm_per_hour} m²/Std.${rates.includes(rate) ? "" : " (Richtwert)"}`);
       }
@@ -459,6 +467,7 @@ export async function generateCalculation(
     }
   }
   const reviewQuestions: string[] = [];
+  if (missingRoomRates.length) reviewQuestions.push(`Bitte passende Leistungswerte (m²/Std.) für ${missingRoomRates.join(" und ")} in den Firmendaten speichern.`);
   if (/\b(?:insgesamt|gesamtfläche|gesamtflaeche)\b/.test(normalizedText(prompt)) && countedObjectArea(normalizedText(prompt)) > statedArea) reviewQuestions.push("Die Gesamtfläche ist kleiner als die Summe der genannten Einzelflächen. Bitte Gesamtfläche oder Fläche je Objekt prüfen.");
   if (duration.ambiguous) reviewQuestions.push("Bitte die gesamte Reinigungsdauer je Einsatz eindeutig angeben, z. B. 1 Stunde 30 Minuten.");
   if (periodNeedsRecurrence && frequency > 0) reviewQuestions.push("Die Zeit ist als Wochen-/Monatssumme angegeben. Bitte den wiederkehrenden Turnus ergänzen.");
@@ -560,6 +569,10 @@ export async function generateCalculation(
     reviewNotes.push("Der Etagenpreis ist ein Richtwert. Treppenfläche und Aufwand prüfen.");
   }
   if (saved && saved.hourlyRate > 0) {
+    if (companyPricing?.source === "company" && companyPricing.costBasis && !statedHourlyRate && !statedSqmPrice) {
+      const basis = companyPricing.costBasis;
+      reviewNotes.push(`Aus gespeicherten Firmendaten berechnet: Selbstkosten ${basis.selfCostPerHour.toFixed(2).replace(".", ",")} €/Std. + ${basis.profitMarkupPercent} % Gewinnaufschlag = ${hourlyRate.toFixed(2).replace(".", ",")} €/Std. netto.`);
+    }
     reviewNotes.push(`Verkaufspreis für diesen Auftrag: ${hourlyRate.toFixed(2).replace(".", ",")} €/Std. netto. Interne Kosten werden separat geprüft.`);
     if (!roomNotes.length && saved.sqmPerHour > 0 && area > 0) reviewNotes.push(`Gespeicherter Leistungswert „${saved.label}“: ${saved.sqmPerHour} m²/Std.; ${area} m² ÷ ${saved.sqmPerHour} = ${round2(calculatedHours)} Std. je Einsatz.`);
   }
@@ -627,7 +640,7 @@ export async function generateCalculation(
     review_questions: reviewQuestions,
     review_notes: reviewNotes,
     billing_period: billingPeriod,
-    price_source: saved && !statedSqmPrice && !statedHourlyRate ? "job" :
+    price_source: statedSqmPrice || statedHourlyRate ? "stated" : saved ? (companyPricing?.source ?? "job") :
       area > 0 || corridorArea > 0
         ? statedSqmPrice > 0
           ? "stated"

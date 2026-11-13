@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { generateCalculation } from "./item-ai.server";
 vi.mock("./gemini-json.server", () => ({ generateGeminiJson: vi.fn() }));
-const pricing = { hourlyRate: 38, rates: [{ id: "office", label: "Unterhaltsreinigung", usage_type: "Büro", floor_covering: "", sqm_per_hour: 150, active: true }] };
+const pricing = { hourlyRate: 38, rates: [{ id: "kitchen", label: "Küche", usage_type: "Küche", floor_covering: "", sqm_per_hour: 100, active: true }, { id: "sanitary", label: "WC", usage_type: "WC", floor_covering: "", sqm_per_hour: 60, active: true }, { id: "office", label: "Unterhaltsreinigung", usage_type: "Büro", floor_covering: "", sqm_per_hour: 150, active: true }] };
 it.each([
   "Büroreinigung 150 m², zusätzlich Teeküche 20 m² und WC 12 m², einmal pro Woche",
   "Büroreinigung 150 m² plus 20 m² Teeküche und 12 m² WC, einmal pro Woche",
@@ -17,7 +17,7 @@ it("subtracts included room areas before weighting their time", async () => {
   expect(result.hours).toBeCloseTo(118 / 150 + 20 / 100 + 12 / 60);
 });
 it("uses saved sanitary performance instead of fallback", async () => {
- const result = await generateCalculation("Büroreinigung 150 m² plus WC 12 m² einmal pro Woche", undefined, { ...pricing, rates: [...pricing.rates, { id: "wc", label: "WC", usage_type: "WC", floor_covering: "", sqm_per_hour: 30, active: true }] });
+ const result = await generateCalculation("Büroreinigung 150 m² plus WC 12 m² einmal pro Woche", undefined, { ...pricing, rates: [...pricing.rates.filter(rate => rate.usage_type !== "WC"), { id: "wc", label: "WC", usage_type: "WC", floor_covering: "", sqm_per_hour: 30, active: true }] });
  expect(result.hours).toBeCloseTo(1.4);
 });
 it("keeps explicitly specified total working hours authoritative", async () => {
