@@ -17,8 +17,11 @@ export function normalizeCalculationLanguage(value: string): string {
 export type DescribedDuration = { hours: number; period: "visit" | "month" | "week"; ambiguous: boolean };
 export function readDescribedDuration(value: string): DescribedDuration {
   const text = normalizeCalculationLanguage(value);
-  const number = (value: string | undefined) => Number((value ?? "0").replace(",", "."));
-  const pattern = /(?<![-\d])(?:(\d{1,2}):(\d{2})\s*(?:stunden?|std\.?|h)(?![a-z])|(\d+(?:[.,]\d+)?)\s*(?:stunden?|std\.?|h)(?![a-z])(?:\s*(?:und\s*)?(\d+(?:[.,]\d+)?)\s*(?:minuten?|min\.?)(?![a-z]))?|(\d+(?:[.,]\d+)?)\s*(?:minuten?|min\.?)(?![a-z]))/g;
+  const number = (value: string | undefined) => {
+    const raw = value ?? "0";
+    return Number(/^\d{1,3}(?:\.\d{3})+(?:,\d+)?$/.test(raw) ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(",", "."));
+  };
+  const pattern = /(?<![-−\d.,])(?:(\d{1,2}):(\d{2})\s*(?:stunden?|std\.?|h)(?![a-z])|(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(?:stunden?|std\.?|h)(?![a-z])(?:\s*(?:und\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(?:minuten?|min\.?)(?![a-z]))?|(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)\s*(?:minuten?|min\.?)(?![a-z]))/g;
   const found: DescribedDuration[] = [];
   for (const match of text.matchAll(pattern)) {
     const before = text.slice(Math.max(0, match.index! - 35), match.index).trim();

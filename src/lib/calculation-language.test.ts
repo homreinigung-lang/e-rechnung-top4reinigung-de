@@ -12,3 +12,6 @@ it("does not treat travel or per-floor time as total cleaning time", () => {
 });
 it("asks about separate durations rather than silently ignoring a room", () => expect(readDescribedDuration("Büro 2 Stunden, WC 30 Minuten").ambiguous).toBe(true));
 it("does not interpret an hourly price as work duration", () => expect(readDescribedDuration("38 Euro pro Stunde").hours).toBe(0));
+
+it.each(["-1,5 Stunden", "-0.5 Stunden", "−2 Stunden"])("never reads part of a negative duration as positive work: %s", text => expect(readDescribedDuration(text).hours).toBe(0));
+it("understands German thousands separators in monthly team hours", () => expect(readDescribedDuration("1.000,5 Stunden pro Monat")).toMatchObject({ hours: 1000.5, period: "month" }));
