@@ -57,8 +57,9 @@ export function SuggestedPositions({
           <Sparkles className="size-5" /> Positionen der KI-Analyse
         </CardTitle>
         <CardDescription>
-          Quelle: KI-Analyse (Grundriss/Beschreibung) – für normale Angebote an Endkunden. Diese
-          Positionen bleiben bearbeitbar. Prüfen Sie die Angebotsvorschau unterhalb der Kalkulation.
+          {direct
+            ? "Ergebnis aus Ihrer Auftragsbeschreibung. Positionen bei Bedarf bearbeiten und unten den Angebotspreis prüfen."
+            : "Quelle: KI-Analyse (Grundriss/Beschreibung). Positionen bleiben bearbeitbar. Bitte die Angebotsvorschau prüfen."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -124,8 +125,9 @@ export function SuggestedPositions({
         )}
         {kiItems.length === 0 ? (
           <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-            Noch keine KI-Positionen. Auftrag oben beschreiben oder einen Grundriss im Tab
-            „Grundriss" analysieren.
+            {direct
+              ? "Noch kein Ergebnis. Auftrag und Verkaufspreis oben eingeben, dann „Kalkulation erstellen“ wählen."
+              : "Noch keine KI-Positionen. Bitte zuerst einen Grundriss analysieren."}
           </p>
         ) : (
           <div className="space-y-2">
