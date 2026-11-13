@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { generateCalculation } from "./item-ai.server";
-import type { CompanySellingPricing } from "./company-selling-pricing";
+import { companyCostSellingBasis, type CompanySellingPricing } from "./company-selling-pricing";
 vi.mock("./gemini-json.server", () => ({ generateGeminiJson: vi.fn() }));
 const saved: CompanySellingPricing = {
   hourlyRate: 35,
@@ -71,4 +71,39 @@ it("supports another job's selling rate outside the example range", async () => 
 it("scales recurring visits as well as the object area", async () => {
   const result = await generateCalculation("Hallenreinigung 450 qm zwei mal im Monat", undefined, saved);
   expect(result.items[0]?.unit_price).toBe(210);
+});
+
+it("shows a result from saved company costs and productivity without another price question", async () => {
+  const basis = companyCostSellingBasis({ calc_worker_hourly_wage: 20, calc_labor_burden_percent: 30,
+    calc_material_cost_hour: 2, calc_overhead_cost_hour: 4, calc_profit_markup_percent: 25 })!;
+  const result = await generateCalculation("Büroreinigung 300 qm alle zwei Wochen", undefined, {
+    ...saved, hourlyRate: basis.hourlyRate, source: "company", costBasis: basis,
+  });
+  expect(result.review_questions).toEqual([]);
+  expect(result.hours).toBe(2);
+  expect(result.hourly_rate).toBe(40);
+  expect(result.items[0]?.unit_price).toBe(173.33);
+  expect(result.price_source).toBe("company");
+  expect(result.review_notes.join(" ")).toContain("Selbstkosten 32,00 €/Std. + 25 %");
+});
+it("recognizes the user's exact dictated job and gives the stated rate priority", async () => {
+  const result = await generateCalculation("Reinigung büro 250m einmal in zwei Wochen 2,5 stunden Pro Einsatz 38€ kostet stunden", undefined, {
+    ...saved, hourlyRate: 40, source: "company", costBasis: { selfCostPerHour: 32, profitMarkupPercent: 25 },
+  });
+  expect(result.review_questions).toEqual([]);
+  expect(result.hourly_rate).toBe(38);
+  expect(result.hours).toBe(2.5);
+  expect(result.items[0]?.unit_price).toBe(205.83);
+  expect(result.price_source).toBe("stated");
+  expect(result.review_notes.join(" ")).not.toContain("Aus gespeicherten Firmendaten berechnet");
+});
+it.each([null, -1, Number.NaN])("asks for incomplete or invalid company cost inputs: %s", value => {
+  expect(companyCostSellingBasis({ calc_worker_hourly_wage: value, calc_labor_burden_percent: 30,
+    calc_material_cost_hour: 2, calc_overhead_cost_hour: 4, calc_profit_markup_percent: 25 })).toBeNull();
+});
+
+it("asks for a missing saved room performance instead of using an industry estimate", async () => {
+  const result = await generateCalculation("Büroreinigung 150 qm plus Küche 20 qm einmal pro Woche", undefined, saved);
+  expect(result.items).toEqual([]);
+  expect(result.review_questions.join(" ")).toContain("Leistungswerte");
 });

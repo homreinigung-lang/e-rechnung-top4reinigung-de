@@ -3,6 +3,8 @@ import { generateCalculation } from "./item-ai.server";
 import { CALCULATION_EXAMPLES } from "./calculation-examples";
 vi.mock("./gemini-json.server", () => ({ generateGeminiJson: vi.fn() }));
 const rates = [
+ { id: "k", label: "Küche", usage_type: "Küche", sqm_per_hour: 100 },
+ { id: "wc", label: "WC", usage_type: "WC", sqm_per_hour: 60 },
  { id: "u", label: "Unterhaltsreinigung", usage_type: "Allgemein", sqm_per_hour: 150 },
  { id: "g", label: "Grundreinigung", usage_type: "Allgemein", sqm_per_hour: 110 },
  { id: "t", label: "Treppenhaus", usage_type: "Treppenhaus", sqm_per_hour: 110, minutes_per_floor: 8 },

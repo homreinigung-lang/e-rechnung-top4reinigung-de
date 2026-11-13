@@ -11,6 +11,7 @@ export function normalizeCalculationLanguage(value: string): string {
     .replace(/\b(?:eine?\s+)?halbe\s+stunde\b/g, "0,5 stunden")
     .replace(/\b(ein|eine|einen|einem|einer|eins|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwoelf)\b(?=\s+(?:stunden?|minuten?|etagen?|hallen?|monate?|wochen|tage)\b)/g, word => numbers[word]!)
     .replace(/\b(ein|zwei|drei|vier|fünf|fuenf|sechs|sieben)mal(?=\s+alle\b)/g, (_match, word: string) => `${numbers[word]}mal`)
+    .replace(/\beinmal\s+in\s+(\d+)\s+(wochen|monaten?)\b/g, "einmal alle $1 $2")
     .replace(/\s+/g, " ");
 }
 

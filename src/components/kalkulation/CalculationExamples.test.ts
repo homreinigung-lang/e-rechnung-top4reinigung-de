@@ -9,7 +9,7 @@ it("offers practical examples without injecting a customer selling price", () =>
    expect(html).toContain(example.label);
    expect(example.prompt).not.toMatch(/€|eur|euro/i);
  }
- expect(html).toContain("den Verkaufspreis legen Sie selbst fest");
+ expect(html).toContain("die gespeicherten Firmenkosten und der Gewinnaufschlag");
 });
 it("disables example replacement during a running analysis", () => {
  const html = renderToStaticMarkup(createElement(CalculationExamples, { disabled: true, onSelect: vi.fn() }));

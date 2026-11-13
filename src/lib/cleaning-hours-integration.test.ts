@@ -58,7 +58,7 @@ it("keeps room-weighted AI time, live costs, preview and document totals consist
   const { computeDocumentTotals } = await import("./document-totals");
   const { visitsPerMonth } = await import("./constants");
   const calculation = await generateCalculation("Büroreinigung 150 m² plus Küche 20 m² und WC 12 m² einmal pro Woche", undefined, {
-    hourlyRate: 38, rates: [{ id: "office", label: "Unterhaltsreinigung", usage_type: "Büro", floor_covering: "", sqm_per_hour: 150, active: true }],
+    hourlyRate: 38, rates: [{ id: "kitchen", label: "Küche", usage_type: "Küche", floor_covering: "", sqm_per_hour: 100, active: true }, { id: "sanitary", label: "WC", usage_type: "WC", floor_covering: "", sqm_per_hour: 60, active: true }, { id: "office", label: "Unterhaltsreinigung", usage_type: "Büro", floor_covering: "", sqm_per_hour: 150, active: true }],
   });
   const result = totals({
     type: "buero", mode: calculation.mode, area: String(calculation.area_sqm),
