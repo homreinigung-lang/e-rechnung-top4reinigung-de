@@ -137,7 +137,7 @@ export function SuggestedPositions({
             <Button type="button" variant="outline" size="sm" onClick={() => setEditing(!editing)}>
               {editing ? "Bearbeitung abschließen" : "Positionen bearbeiten"}
             </Button>
-            <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
+            <div className="hidden gap-2 px-1 text-xs text-muted-foreground lg:grid lg:grid-cols-[minmax(0,1fr)_5rem_6rem_7rem_7rem_2.5rem]">
               <span>Leistung</span>
               <span>Menge</span>
               <span>Einheit</span>
@@ -148,10 +148,10 @@ export function SuggestedPositions({
             {kiItems.map((i) => (
               <div
                 key={i.id}
-                className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem] sm:items-center"
+                className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_5rem_6rem_7rem_7rem_2.5rem] lg:items-center"
               >
                 <label className="space-y-1">
-                  <span className="text-xs text-muted-foreground sm:hidden">Leistung</span>
+                  <span className="text-xs text-muted-foreground lg:hidden">Leistung</span>
                   <Textarea
                     aria-label="Leistungsbezeichnung"
                     readOnly={!editing}
@@ -162,7 +162,7 @@ export function SuggestedPositions({
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs text-muted-foreground sm:hidden">Abrechnungsmenge</span>
+                  <span className="text-xs text-muted-foreground lg:hidden">Abrechnungsmenge</span>
                   <Input
                     aria-label="Abrechnungsmenge"
                     readOnly={!editing}
@@ -172,7 +172,7 @@ export function SuggestedPositions({
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs text-muted-foreground sm:hidden">
+                  <span className="text-xs text-muted-foreground lg:hidden">
                     Abrechnungseinheit
                   </span>
                   <Input
@@ -183,7 +183,7 @@ export function SuggestedPositions({
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-xs text-muted-foreground sm:hidden">
+                  <span className="text-xs text-muted-foreground lg:hidden">
                     Preis je Abrechnungseinheit (netto)
                   </span>
                   <Input

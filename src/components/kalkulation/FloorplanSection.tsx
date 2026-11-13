@@ -162,7 +162,7 @@ export function FloorplanSection({ state, mode }: { state: KalkulationStateConte
       {mode === "ki" && (
         <details className="rounded-xl border p-4">
           <summary className="cursor-pointer text-sm font-medium">
-            Erfahrungswerte speichern (optional)
+            KI-Training
           </summary>
           <div className="mt-4">
             <KiTrainingPanel state={state} />
