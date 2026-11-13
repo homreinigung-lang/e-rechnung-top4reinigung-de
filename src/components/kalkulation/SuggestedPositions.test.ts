@@ -79,6 +79,9 @@ it.each([
     expect(html).toContain("Mit diesem Rhythmus neu berechnen");
     expect(html).toContain("Abrechnungsmenge");
     expect(html).toContain("Abrechnungseinheit");
+    expect(html).toContain("Positionen bearbeiten");
+    expect((html.match(/readonly=""/gi) ?? []).length).toBe(kiItems.length * 4);
+    expect(html).toContain('aria-label="Leistungsbezeichnung"');
     expect(result.frequency_unit).toBe(unit);
   },
 );

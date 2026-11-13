@@ -1,4 +1,6 @@
 import { num } from "./shared";
+import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Sparkles, Trash2 } from "lucide-react";
 import { formatMoney, formatNumber, parseGermanNumber } from "@/lib/format";
 import {
@@ -28,6 +30,7 @@ export function SuggestedPositions({
   state: KalkulationStateContext;
   direct?: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
   const {
     aiReviewQuestions,
     aiSuggest,
@@ -131,6 +134,9 @@ export function SuggestedPositions({
           </p>
         ) : (
           <div className="space-y-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditing(!editing)}>
+              {editing ? "Bearbeitung abschließen" : "Positionen bearbeiten"}
+            </Button>
             <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7rem_7rem_2.5rem]">
               <span>Leistung</span>
               <span>Menge</span>
@@ -146,7 +152,10 @@ export function SuggestedPositions({
               >
                 <label className="space-y-1">
                   <span className="text-xs text-muted-foreground sm:hidden">Leistung</span>
-                  <Input
+                  <Textarea
+                    aria-label="Leistungsbezeichnung"
+                    readOnly={!editing}
+                    rows={3}
                     value={i.description}
                     placeholder="Leistung"
                     onChange={(e) => patchKiItem(i.id, { description: e.target.value })}
@@ -155,6 +164,8 @@ export function SuggestedPositions({
                 <label className="space-y-1">
                   <span className="text-xs text-muted-foreground sm:hidden">Abrechnungsmenge</span>
                   <Input
+                    aria-label="Abrechnungsmenge"
+                    readOnly={!editing}
                     inputMode="decimal"
                     value={i.quantity}
                     onChange={(e) => patchKiItem(i.id, { quantity: e.target.value })}
@@ -165,6 +176,8 @@ export function SuggestedPositions({
                     Abrechnungseinheit
                   </span>
                   <Input
+                    aria-label="Abrechnungseinheit"
+                    readOnly={!editing}
                     value={i.unit}
                     onChange={(e) => patchKiItem(i.id, { unit: e.target.value })}
                   />
@@ -174,6 +187,8 @@ export function SuggestedPositions({
                     Preis je Abrechnungseinheit (netto)
                   </span>
                   <Input
+                    aria-label="Preis je Abrechnungseinheit (netto)"
+                    readOnly={!editing}
                     inputMode="decimal"
                     value={i.unit_price}
                     onChange={(e) => patchKiItem(i.id, { unit_price: e.target.value })}
@@ -187,6 +202,7 @@ export function SuggestedPositions({
                   variant="ghost"
                   size="icon"
                   aria-label="Position entfernen"
+                  disabled={!editing}
                   onClick={() => setKiItems((prev) => prev.filter((x) => x.id !== i.id))}
                 >
                   <Trash2 className="size-4" />
