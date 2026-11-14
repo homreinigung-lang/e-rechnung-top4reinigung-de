@@ -13,6 +13,7 @@ export type CalculationRoom = {
   area: string;
   sqmPerHour: string;
   rateLabel: string;
+  performanceRateId?: string;
   frequency: string;
   frequencyUnit: RecurrenceUnit;
   included: boolean;
@@ -29,6 +30,35 @@ export const emptyRoomCalculation = (): RoomCalculation => ({
   enabled: false,
   rooms: [],
 });
+
+/** Refresh saved company rates on load and after settings changes. Manual rates and
+ * documented/manual minutes stay independent of the company's productivity rate. */
+export function syncRoomPerformanceRates(
+  calculation: RoomCalculation,
+  rates: PerformanceRate[],
+): RoomCalculation {
+  let changed = false;
+  const rooms = calculation.rooms.map((room) => {
+    if (room.rateLabel === "Eigener Leistungswert") return room;
+    const rate = rates.find((candidate) =>
+      candidate.active !== false && Number(candidate.sqm_per_hour) > 0 &&
+      (room.performanceRateId ? candidate.id === room.performanceRateId :
+        candidate.label.trim().toLowerCase() === room.rateLabel.trim().toLowerCase()),
+    );
+    if (!rate) return room;
+    if (parsePositiveNumber(room.sqmPerHour) === Number(rate.sqm_per_hour) &&
+      room.performanceRateId === rate.id && room.rateLabel === rate.label) return room;
+    changed = true;
+    const next = { ...room, sqmPerHour: String(rate.sqm_per_hour).replace(".", ","),
+      performanceRateId: rate.id, rateLabel: rate.label };
+    if (room.minutesOrigin === "estimate") {
+      next.minutesPerVisit = "";
+      return suggestRoomDefaults(next, rates);
+    }
+    return next;
+  });
+  return changed ? { ...calculation, rooms } : calculation;
+}
 
 function suggestedTasks(room: {
   name: string;
@@ -109,6 +139,7 @@ export function roomsFromScan(
         area: String(room.area_sqm > 0 ? room.area_sqm : "").replace(".", ","),
         sqmPerHour: rate ? String(rate.sqm_per_hour).replace(".", ",") : "",
         rateLabel: rate?.label ?? "Kein passender Leistungswert",
+        performanceRateId: rate?.id,
         frequency: documentedFrequency ? String(room.cleaning_frequency).replace(".", ",") : "",
         frequencyUnit: documentedFrequency ? room.cleaning_frequency_unit! : "week",
         included: true,

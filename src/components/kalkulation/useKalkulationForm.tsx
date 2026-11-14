@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { STAIR_RATE_PER_FLOOR, type RecurrenceUnit } from "@/lib/constants";
 
-import { emptyRoomCalculation, type RoomCalculation } from "@/lib/room-calculation";
+import { emptyRoomCalculation, syncRoomPerformanceRates, type RoomCalculation } from "@/lib/room-calculation";
 import { useRaumbuch } from "@/lib/raumbuch";
 import { findCleaningTypeRate, type PerformanceRate } from "@/lib/leistungswerte";
 import { automaticAreaPrice } from "@/lib/analysis-area-price";
@@ -45,12 +45,7 @@ export function useKalkulationForm() {
   const [glassArea, setGlassArea] = useState("");
   const [taxMode, setTaxMode] = useState("domestic");
   // Interne Kostenkalkulation: Standardwerte kommen aus den Firmeneinstellungen.
-  const [laborWage, setLaborWage] = useState("15");
   const [glassGrossWage, setGlassGrossWage] = useState("18");
-  const [laborBurdenPercent, setLaborBurdenPercent] = useState("32");
-  const [materialCost, setMaterialCost] = useState("1,20");
-  const [overheadCost, setOverheadCost] = useState("3,50");
-  const [profitMarkup, setProfitMarkup] = useState("20");
   const [calcId, setCalcId] = useState<string | null>(null);
   const [calcTitle, setCalcTitle] = useState(search.objekt ?? "");
   const [projectId, setProjectId] = useState<string | null>(search.projekt ?? null);
@@ -68,30 +63,25 @@ export function useKalkulationForm() {
   });
   const visiblePerformanceRates = performanceRates.filter(rate => rate.active !== false);
 
-  // Steuerart und interne Kostenbasis einmalig aus den Firmeneinstellungen vorbelegen.
+  // Shared settings cache: saving company settings updates every calculation view.
+  const { data: companySettings } = useQuery({
+    queryKey: ["company_settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("company_settings").select("*").maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const decimal = (value: number | null | undefined, fallback: number) =>
+    String(Number(value ?? fallback)).replace(".", ",");
+  const laborWage = decimal(companySettings?.calc_worker_hourly_wage, 15);
+  const laborBurdenPercent = decimal(companySettings?.calc_labor_burden_percent, 32);
+  const materialCost = decimal(companySettings?.calc_material_cost_hour, 1.2);
+  const overheadCost = decimal(companySettings?.calc_overhead_cost_hour, 3.5);
+  const profitMarkup = decimal(companySettings?.calc_profit_markup_percent, 20);
   useEffect(() => {
-    let active = true;
-    void supabase
-      .from("company_settings")
-      .select(
-        "small_business,calc_worker_hourly_wage,calc_labor_burden_percent,calc_material_cost_hour,calc_overhead_cost_hour,calc_profit_markup_percent",
-      )
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!active || !data) return;
-        if (data.small_business) setTaxMode("kleinunternehmer");
-        setLaborWage(String(Number(data.calc_worker_hourly_wage ?? 15)).replace(".", ","));
-        setLaborBurdenPercent(
-          String(Number(data.calc_labor_burden_percent ?? 32)).replace(".", ","),
-        );
-        setMaterialCost(String(Number(data.calc_material_cost_hour ?? 1.2)).replace(".", ","));
-        setOverheadCost(String(Number(data.calc_overhead_cost_hour ?? 3.5)).replace(".", ","));
-        setProfitMarkup(String(Number(data.calc_profit_markup_percent ?? 20)).replace(".", ","));
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (companySettings?.small_business) setTaxMode("kleinunternehmer");
+  }, [companySettings?.small_business]);
 
   const [note, setNote] = useState(() => {
     const parts: string[] = [];
@@ -100,6 +90,10 @@ export function useKalkulationForm() {
     return parts.join(" · ");
   });
   const [roomCalculation, setRoomCalculation] = useState<RoomCalculation>(emptyRoomCalculation);
+  // Also runs after a saved calculation is loaded, not just after a settings fetch.
+  useEffect(() => {
+    setRoomCalculation((current) => syncRoomPerformanceRates(current, performanceRates));
+  }, [performanceRates, roomCalculation]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [tenderDocs, setTenderDocs] = useState<Attachment[]>([]);
   const [floorplanSummary, setFloorplanSummary] = useState("");

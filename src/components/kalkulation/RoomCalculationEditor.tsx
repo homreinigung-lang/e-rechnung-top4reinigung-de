@@ -104,6 +104,7 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
             const rate = findRate(visiblePerformanceRates, next);
             next.sqmPerHour = rate ? String(rate.sqm_per_hour).replace(".", ",") : "";
             next.rateLabel = rate?.label ?? "Kein passender Leistungswert";
+            next.performanceRateId = rate?.id;
           }
           return suggestRoomDefaults(next, visiblePerformanceRates);
         }
@@ -462,6 +463,7 @@ export function RoomCalculationEditor({ state }: { state: KalkulationStateContex
                           patch(room.id, {
                             sqmPerHour: String(rate.sqm_per_hour).replace(".", ","),
                             rateLabel: rate.label,
+                            performanceRateId: rate.id,
                           });
                         }}
                       >
