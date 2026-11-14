@@ -15,7 +15,9 @@ it("updates a reopened saved calculation and its hours and price without manual 
   expect(current.rooms[0]?.minutesPerVisit).toBe("30");
   const totals = calculateRooms(current, 30);
   expect(totals.monthlyHours).toBe(0.5);
-  expect(totals.positions[0]?.unit_price * totals.positions[0]?.quantity).toBe(15);
+  expect(totals.positions).toHaveLength(1);
+  const position = totals.positions[0]!;
+  expect(position.unit_price * position.quantity).toBe(15);
   expect(syncRoomPerformanceRates(current, [{ ...rate, sqm_per_hour: 200 }])).toBe(current);
 });
 it("updates older saved rooms linked by label and keeps the link after a rename", () => {
