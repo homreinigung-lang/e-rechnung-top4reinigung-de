@@ -65,18 +65,13 @@ export function CalculationBasis({ state }: { state: KalkulationStateContext }) 
             <p className="text-xs text-muted-foreground">m² pro Stunde</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {visiblePerformanceRates.slice(0, 4).map((rate) => (
+            {visiblePerformanceRates.map((rate) => (
               <div key={rate.id} className="rounded-md border bg-background/70 p-2">
                 <p className="truncate text-xs text-muted-foreground">{rate.label}</p>
                 <p className="text-sm font-semibold">{formatNumber(rate.sqm_per_hour)} m²/h</p>
               </div>
             ))}
           </div>
-          {visiblePerformanceRates.length > 4 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              + {visiblePerformanceRates.length - 4} weitere Leistungswerte in den Einstellungen
-            </p>
-          ) : null}
         </div>
 
         <Button
