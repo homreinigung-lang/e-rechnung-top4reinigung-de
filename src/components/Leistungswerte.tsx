@@ -30,12 +30,16 @@ export function Leistungswerte({ embedded = false }: { embedded?: boolean } = {}
       return (data ?? []) as PerformanceRate[];
     },
   });
+  const refreshCalculations = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["performance_rates"] }),
+    queryClient.invalidateQueries({ queryKey: ["raumbuch-kalkulation"], refetchType: "all" }),
+  ]);
   const patch = useMutation({
     mutationFn: async ({ id, values }: { id: string; values: Partial<PerformanceRate> }) => {
       const { error } = await supabase.from("performance_rates").update(values).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["performance_rates"] }),
+    onSuccess: refreshCalculations,
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -48,9 +52,9 @@ export function Leistungswerte({ embedded = false }: { embedded?: boolean } = {}
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setNewLabel("");
-      void queryClient.invalidateQueries({ queryKey: ["performance_rates"] });
+      await refreshCalculations();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -59,7 +63,7 @@ export function Leistungswerte({ embedded = false }: { embedded?: boolean } = {}
       const { error } = await supabase.from("performance_rates").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["performance_rates"] }),
+    onSuccess: refreshCalculations,
     onError: (e: Error) => toast.error(e.message),
   });
   const customRates = rates.filter(r => !SERVICES.some(s => s.key.toLowerCase() === r.label.trim().toLowerCase()));
